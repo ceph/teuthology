@@ -76,7 +76,8 @@ def task(ctx, config):
             continue
         PREFIX = 'client.'
         assert role.startswith(PREFIX)
-        _make_scratch_dir(ctx, role)
+        dir_owner = ctx.summary['owner'].split('@',1)[0]
+        _make_scratch_dir(ctx, role, dir_owner)
     all_spec = False #is there an all grouping?
     with parallel() as p:
         for role, tests in clients.iteritems():
@@ -89,7 +90,7 @@ def task(ctx, config):
         all_tasks = clients["all"]
         _spawn_on_all_clients(ctx, refspec, all_tasks, config.get('env'))
 
-def _make_scratch_dir(ctx, role):
+def _make_scratch_dir(ctx, role, dir_owner):
     PREFIX = 'client.'
     id_ = role[len(PREFIX):]
     log.debug("getting remote for {id} role {role_}".format(id=id_, role_=role))
@@ -108,7 +109,7 @@ def _make_scratch_dir(ctx, role):
             'install',
             '-d',
             '-m', '0755',
-            '--owner={user}'.format(user='ubuntu'), #TODO
+            '--owner={user}'.format(user=dir_owner), #TODO
             '--',
             'client.{id}'.format(id=id_),
             ],
