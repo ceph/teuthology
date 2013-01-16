@@ -4,7 +4,7 @@ import logging
 import os
 import shutil
 import subprocess
-import MySQLdb
+#import MySQLdb
 import yaml
 
 from teuthology import misc as teuthology
@@ -241,4 +241,4 @@ def _analyze(args):
                 os.path.join(args.lcov_output, 'total.lcov'),
                 ])
 
-    store_coverage(args, test_coverage, summary['ceph-sha1'], suite)
+#    store_coverage(args, test_coverage, summary['ceph-sha1'], suite)
