@@ -42,7 +42,6 @@ kernel:
 nuke-on-error: true
 tasks:
 - chef:
-- clock:
 overrides:
   workunit:
     sha1: $CEPH_SHA1
