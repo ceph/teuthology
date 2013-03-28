@@ -251,8 +251,13 @@ def archive(ctx, config):
 
     try:
         yield
+    except:
+        # we need to know this below
+        ctx.summary['success'] = False
+        raise
     finally:
-        if ctx.archive is not None:
+        if ctx.archive is not None and \
+                not (ctx.config.get('archive-on-error', False) and ctx.summary['success'] == True):
             log.info('Transferring archived files...')
             logdir = os.path.join(ctx.archive, 'remote')
             for remote in ctx.cluster.remotes.iterkeys():
