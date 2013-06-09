@@ -75,3 +75,11 @@
 	fun:fuse_parse_cmdline
 	...
 }
+{
+	boost thread leaks on exit
+	Memcheck:Leak
+	...
+	fun:*boost*detail*
+	...
+	fun:exit
+}
