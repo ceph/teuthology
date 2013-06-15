@@ -25,6 +25,8 @@ global_jobid = None
 checked_jobid = False
 is_vm = lambda x: x.startswith('vpm') or x.startswith('ubuntu@vpm')
 
+is_arm = lambda x: x.startswith('tala') or x.startswith('ubuntu@tala')
+
 def get_testdir(ctx):
     if 'test_path' in ctx.teuthology_config:
         return ctx.teuthology_config['test_path']
