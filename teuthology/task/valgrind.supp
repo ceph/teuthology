@@ -6,21 +6,10 @@
 	...
 }
 {
-	leveldb leaks its environment and various other things
+	whitelist all of leveldb
 	Memcheck:Leak
 	...
-	fun:pthread_once
-	...
-	fun:*leveldb*Env*Default*
-	...
-}
-{
-	leveldb leaks a thread
-	Memcheck:Leak
-	...
-	fun:pthread_create*
-	...
-	fun:*leveldb*PosixEnv*Schedule*
+	fun:*leveldb*
 	...
 }
 {
