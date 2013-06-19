@@ -215,7 +215,7 @@ def valgrind_post(ctx, config):
                     continue
                 (file, kind) = line.split(':')
                 log.debug('file %s kind %s', file, kind)
-                if file.find('mds') >= 0 and kind.find('Lost') > 0:
+                if kind.find('Lost') > 0:
                     continue
                 log.error('saw valgrind issue %s in %s', kind, file)
                 valgrind_exception = Exception('saw valgrind issues')
