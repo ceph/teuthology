@@ -922,6 +922,15 @@ def healthy(ctx, config):
         remote=mon0_remote,
         )
 
+def wait_for_osds_up(ctx, config):
+    log.info('Waiting until ceph osds are all up...')
+    firstmon = teuthology.get_first_mon(ctx, config)
+    (mon0_remote,) = ctx.cluster.only(firstmon).remotes.keys()
+    teuthology.wait_until_osds_up(
+        ctx,
+        cluster=ctx.cluster,
+        remote=mon0_remote
+        )
 
 @contextlib.contextmanager
 def restart(ctx, config):
