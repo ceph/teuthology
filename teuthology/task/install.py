@@ -370,7 +370,7 @@ def install(ctx, config):
 
     extras = config.get('extras')
     if extras is not None:
-        debs = ['ceph-test', 'ceph-test-dbg', 'ceph-fuse', 'ceph-fuse-dbg']
+        debs = ['ceph-test', 'ceph-test-dbg', 'ceph-fuse', 'ceph-fuse-dbg', 'python-ceph']
         rpm = ['ceph-fuse',]
 
     # install lib deps (so we explicitly specify version), but do not
