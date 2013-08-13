@@ -30,6 +30,7 @@ library. To make the dependencies easier to get right, we use a
 ``virtualenv`` and ``pip`` programs installed; e.g. on Debian/Ubuntu::
 
 	sudo apt-get install python-dev python-virtualenv python-pip libevent-dev
+        sudo apt-get install libmysqlclient-dev python-libvirt
 
 and then run::
 
