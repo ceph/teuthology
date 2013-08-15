@@ -10,7 +10,7 @@ import tempfile
 import os
 import time
 
-from teuthology import lockstatus as ls
+from teuthology import httprequest as ls
 from teuthology import misc as teuthology
 
 log = logging.getLogger(__name__)

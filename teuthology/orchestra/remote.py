@@ -52,7 +52,7 @@ import pexpect
 import re
 import logging
 import libvirt
-from teuthology import lockstatus as ls
+from teuthology import httprequest as ls
 
 log = logging.getLogger(__name__)
 
