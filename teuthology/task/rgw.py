@@ -24,8 +24,8 @@ def create_dirs(ctx, config):
                 '-p',
                 '{tdir}/apache/htdocs.{client}'.format(tdir=testdir,
                                                        client=client),
-                '{tdir}/apache/tmp.{client}'.format(tdir=testdir,
-                                                    client=client),
+                '{tdir}/apache/tmp.{client}/fastcgi_sock'.format(tdir=testdir,
+                                                                 client=client),
                 run.Raw('&&'),
                 'mkdir',
                 '{tdir}/archive/apache.{client}'.format(tdir=testdir,
@@ -53,13 +53,10 @@ def create_dirs(ctx, config):
         for client in config.iterkeys():
             ctx.cluster.only(client).run(
                 args=[
-                    'test', '-d', 
-                    '{tdir}/apache'.format(tdir=testdir),
-                    run.Raw('&&'), 
                     'rmdir',
                     '{tdir}/apache'.format(tdir=testdir),
-                    run.Raw(';'), 
                     ],
+                check_status=False, # only need to remove once per host
                 )
 
 
@@ -101,7 +98,7 @@ def ship_config(ctx, config, role_endpoints):
                                                                  client=client),
             data="""#!/bin/sh
 ulimit -c unlimited
-exec radosgw -f -n {client} --rgw-socket-path {tdir}/apache/tmp.{client}/fastcgi_sock/rgw_sock
+exec radosgw -f -n {client} -k /etc/ceph/ceph.{client}.keyring --rgw-socket-path {tdir}/apache/tmp.{client}/fastcgi_sock/rgw_sock
 
 """.format(tdir=testdir, client=client)
             )
@@ -250,11 +247,20 @@ def start_apache(ctx, config):
 
         run.wait(apaches.itervalues())
 
+def extract_user_info(client_config):
+    # test if there isn't a system user or if there isn't a name for that user, return None
+    if 'system user' not in client_config or 'name' not in client_config['system user']:
+        return None
+
+    user_info = dict()
+    user_info['system_key'] = dict(
+        user=client_config['system user']['name'],
+        access_key=client_config['system user']['access key'],
+        secret_key=client_config['system user']['secret key'],
+        )
+    return user_info
+
 def extract_zone_info(ctx, client, client_config):
-    user_info = client_config['system user']
-    system_user = user_info['name']
-    system_access_key = user_info['access key']
-    system_secret_key = user_info['secret key']
 
     ceph_config = ctx.ceph.conf.get('global', {})
     ceph_config.update(ctx.ceph.conf.get('client', {}))
@@ -268,16 +274,33 @@ def extract_zone_info(ctx, client, client_config):
     zone_info = dict(
         domain_root=ceph_config['rgw zone root pool'],
         )
-    for key in ['control_pool', 'gc_pool', 'log_pool', 'intent_log_pool',
-                'usage_log_pool', 'user_keys_pool', 'user_email_pool',
-                'user_swift_pool', 'user_uid_pool']:
-        zone_info[key] = '.' + region + '.' + zone + '.' + key
+    for key in ['rgw control pool', 'rgw gc pool', 'rgw log pool', 'rgw intent log pool',
+                'rgw usage log pool', 'rgw user keys pool', 'rgw user email pool',
+                'rgw user swift pool', 'rgw user uid pool']:
+        new_key = key.split(' ',1)[1]
+        new_key = new_key.replace(' ', '_')
 
-    zone_info['system_key'] = dict(
-        user=system_user,
-        access_key=system_access_key,
-        secret_key=system_secret_key,
-        )
+        if key in ceph_config:
+            value = ceph_config[key]
+            log.debug('{key} specified in ceph_config ({val})'.format(key=key, val=value))
+            zone_info[new_key] = value
+        else:
+            zone_info[new_key] = '.' + region + '.' + zone + '.' + new_key
+
+    # these keys are meant for the zones argument in the region info.
+    # We insert them into zone_info with a different format and then remove them
+    # in the fill_in_endpoints() method
+    for key in ['rgw log meta', 'rgw log data']:
+        if key in ceph_config:
+            zone_info[key] = ceph_config[key]
+
+    # these keys are meant for the zones argument in the region info.
+    # We insert them into zone_info with a different format and then remove them
+    # in the fill_in_endpoints() method
+    for key in ['rgw log meta', 'rgw log data']:
+        if key in ceph_config:
+            zone_info[key] = ceph_config[key]
+
     return region, zone, zone_info
 
 def extract_region_info(region, region_info):
@@ -287,6 +310,8 @@ def extract_region_info(region, region_info):
         name=region,
         api_name=region_info.get('api name', region),
         is_master=region_info.get('is master', False),
+        log_meta=region_info.get('log meta', False),
+        log_data=region_info.get('log data', False),
         master_zone=region_info.get('master zone', region_info['zones'][0]),
         placement_targets=region_info.get('placement targets', []),
         default_placement=region_info.get('default placement', ''),
@@ -305,18 +330,74 @@ def assign_ports(ctx, config):
 
 def fill_in_endpoints(region_info, role_zones, role_endpoints):
     for role, (host, port) in role_endpoints.iteritems():
-        region, zone, _ = role_zones[role]
+        region, zone, zone_info, _ = role_zones[role]
         host, port = role_endpoints[role]
         endpoint = 'http://{host}:{port}/'.format(host=host, port=port)
+        # check if the region specified under client actually exists 
+        # in region_info (it should, if properly configured).
+        # If not, throw a reasonable error
+        if region not in region_info:
+            raise Exception('Region: {region} was specified but no corresponding' \
+                            ' entry was round under \'regions\''.format(region=region))
+
         region_conf = region_info[region]
         region_conf.setdefault('endpoints', [])
         region_conf['endpoints'].append(endpoint)
+
+        # this is the payload for the 'zones' field in the region field
+        zone_payload = dict()
+        zone_payload['endpoints'] = [endpoint]
+        zone_payload['name'] = zone
+
+        # Pull the log meta and log data settings out of zone_info, if they exist, then pop them
+        # as they don't actually belong in the zone info
+        for key in ['rgw log meta', 'rgw log data']:
+            new_key = key.split(' ',1)[1]
+            new_key = new_key.replace(' ', '_')
+
+            if key in zone_info:
+                value = zone_info.pop(key)
+            else:
+                value = 'false'
+
+            zone_payload[new_key] = value
+
         region_conf.setdefault('zones', [])
-        region_conf['zones'].append(dict(name=zone, endpoints=[endpoint]))
+        region_conf['zones'].append(zone_payload)
+
+@contextlib.contextmanager
+def configure_users(ctx, config):
+    log.info('Configuring users...')
+
+    # extract the user info and append it to the payload tuple for the given client
+    for client, c_config in config.iteritems():
+        if not c_config:
+            continue
+        user_info = extract_user_info(c_config)
+
+        # if user_info was successfully parsed, use it to create a user
+        if user_info is not None:
+            log.debug('Creating user {user} on {client}'.format(
+                      user=user_info['system_key']['user'],client=client))
+            rgwadmin(ctx, client,
+                    cmd=[
+                        '-n', client,
+                        'user', 'create',
+                        '--uid', user_info['system_key']['user'],
+                        '--access-key', user_info['system_key']['access_key'],
+                        '--secret', user_info['system_key']['secret_key'],
+                        '--display-name', user_info['system_key']['user'],
+                        '--system',
+                        ],
+                    check_status=True,
+                    )
+
+    yield
 
 @contextlib.contextmanager
 def configure_regions_and_zones(ctx, config, regions, role_endpoints):
     if not regions:
+        log.debug('In rgw.configure_regions_and_zones() and regions is None. Bailing')
         yield
         return
 
@@ -325,14 +406,49 @@ def configure_regions_and_zones(ctx, config, regions, role_endpoints):
     log.debug('config is %r', config)
     log.debug('regions are %r', regions)
     log.debug('role_endpoints = %r', role_endpoints)
+    # extract the zone info
     role_zones = dict([(client, extract_zone_info(ctx, client, c_config))
                        for client, c_config in config.iteritems()])
     log.debug('roles_zones = %r', role_zones)
+
+    # extract the user info and append it to the payload tuple for the given client
+    for client, c_config in config.iteritems():
+        if not c_config:
+            user_info = None
+        else:
+            user_info = extract_user_info(c_config)
+
+        (region, zone, zone_info) = role_zones[client]
+        role_zones[client] = (region, zone, zone_info, user_info)
+
     region_info = dict([(region, extract_region_info(region, r_config))
                         for region, r_config in regions.iteritems()])
 
     fill_in_endpoints(region_info, role_zones, role_endpoints)
+
+    # clear out the old defaults
+    first_mon = teuthology.get_first_mon(ctx, config)
+    (mon,) = ctx.cluster.only(first_mon).remotes.iterkeys()
+    # removing these objects from .rgw.root and the per-zone root pools
+    # may or may not matter
+    rados(ctx, mon,
+          cmd=['-p', '.rgw.root', 'rm', 'region_info.default'])
+    rados(ctx, mon,
+          cmd=['-p', '.rgw.root', 'rm', 'zone_info.default'])
+
     for client in config.iterkeys():
+        for role, (_, zone, zone_info, user_info) in role_zones.iteritems():
+            rados(ctx, mon,
+                  cmd=['-p', zone_info['domain_root'],
+                       'rm', 'region_info.default'])
+            rados(ctx, mon,
+                  cmd=['-p', zone_info['domain_root'],
+                       'rm', 'zone_info.default'])
+            rgwadmin(ctx, client,
+                     cmd=['-n', client, 'zone', 'set', '--rgw-zone', zone],
+                     stdin=StringIO(json.dumps(dict(zone_info.items() + user_info.items()))),
+                     check_status=True)
+
         for region, info in region_info.iteritems():
             region_json = json.dumps(info)
             log.debug('region info is: %s', region_json)
@@ -346,41 +462,8 @@ def configure_regions_and_zones(ctx, config, regions, role_endpoints):
                               'region', 'default',
                               '--rgw-region', region],
                          check_status=True)
-        for role, (_, zone, info) in role_zones.iteritems():
-            rgwadmin(ctx, client,
-                     cmd=['-n', client, 'zone', 'set', '--rgw-zone', zone],
-                     stdin=StringIO(json.dumps(info)),
-                     check_status=True)
 
-    first_mon = teuthology.get_first_mon(ctx, config)
-    (mon,) = ctx.cluster.only(first_mon).remotes.iterkeys()
-    # removing these objects from .rgw.root and the per-zone root pools
-    # may or may not matter
-    rados(ctx, mon,
-          cmd=['-p', '.rgw.root', 'rm', 'region_info.default'])
-    rados(ctx, mon,
-          cmd=['-p', '.rgw.root', 'rm', 'zone_info.default'])
-
-    for client in config.iterkeys():
         rgwadmin(ctx, client, cmd=['-n', client, 'regionmap', 'update'])
-        for role, (_, zone, zone_info) in role_zones.iteritems():
-            rados(ctx, mon,
-                  cmd=['-p', zone_info['domain_root'],
-                       'rm', 'region_info.default'])
-            rados(ctx, mon,
-                  cmd=['-p', zone_info['domain_root'],
-                       'rm', 'zone_info.default'])
-            rgwadmin(ctx, client,
-                     cmd=[
-                         '-n', client,
-                         'user', 'create',
-                         '--uid', zone_info['system_key']['user'],
-                         '--access-key', zone_info['system_key']['access_key'],
-                         '--secret-key', zone_info['system_key']['secret_key'],
-                         '--display-name', zone_info['system_key']['user'],
-                         ],
-                     check_status=True,
-                     )
     yield
 
 @contextlib.contextmanager
@@ -441,18 +524,22 @@ def task(ctx, config):
               client.0:
                 rgw region: foo
                 rgw zone: foo-1
-                rgw region root pool: .rgw.root.foo
-                rgw zone root pool: .rgw.root.foo
+                rgw region root pool: .rgw.rroot.foo
+                rgw zone root pool: .rgw.zroot.foo
+                rgw log meta: true
+                rgw log data: true
               client.1:
                 rgw region: bar
                 rgw zone: bar-master
-                rgw region root pool: .rgw.root.bar
-                rgw zone root pool: .rgw.root.bar
+                rgw region root pool: .rgw.rroot.bar
+                rgw zone root pool: .rgw.zroot.bar
+                rgw log meta: true
+                rgw log data: true
               client.2:
                 rgw region: bar
                 rgw zone: bar-secondary
-                rgw region root pool: .rgw.root.bar
-                rgw zone root pool: .rgw.root.bar-secondary 
+                rgw region root pool: .rgw.rroot.bar
+                rgw zone root pool: .rgw.zroot.bar-secondary 
         - rgw:
             regions:
               foo:
@@ -460,6 +547,8 @@ def task(ctx, config):
                 is master: true    # default: false
                 master zone: foo-1 # default: first zone
                 zones: [foo-1]
+                log meta: true
+                log data: true
                 placement targets: [target1, target2] # default: []
                 default placement: target2            # default: ''
               bar:
@@ -502,6 +591,10 @@ def task(ctx, config):
             config=config,
             regions=regions,
             role_endpoints=role_endpoints,
+            ),
+        lambda: configure_users(
+            ctx=ctx,
+            config=config,
             ),
         lambda: ship_config(ctx=ctx, config=config,
                             role_endpoints=role_endpoints),

@@ -23,6 +23,16 @@ perform actions concurrently or in the background.
 
 Build
 =====
+``teuthology`` is not meant to be distributed as a library, therefore we depend
+on the pinned dependencies listed in ``requirements.txt``, the ``setup.py``
+will not list any and will only be there to install the package entry points
+(a.k.a teuthology's scripts).
+
+
+``bootstrap`` for Ubuntu Systems
+--------------------------------
+A ``boostrap`` script is provided for automated builds/execution of teuthology
+itself. You can run it directly **only if you are using Ubuntu**.
 
 Teuthology uses several Python packages that are not in the standard
 library. To make the dependencies easier to get right, we use a
@@ -35,9 +45,65 @@ and then run::
 
 	./bootstrap
 
-You can run Teuthology's internal unit tests with::
 
-	./virtualenv/bin/nosetests
+osx
+---
+
+.. note:: These instructions assume you are using `homebrew <http://brew.sh/>`_
+
+As always, create a ``virtualenv`` specific to ``teuthology`` and make sure it
+is activated before proceeding (location doesn't matter, we use an example
+location)::
+
+    mkdir ~/.virtualenvs
+    virtualenv ~/.virtualenvs/teuthology
+    source ~/.virtualenvs/teuthology/bin/activate
+
+Install the system dependencies::
+
+    brew install libvirt mysql libevent
+
+``libvirt`` does not link the python bindings so you need to do this step
+manually::
+
+    $ cd /Library/Python/{pyversion}/site-packages
+    $ sudo ln -s /usr/local/Cellar/libvirt/{version}/lib/python{pyversion}/site-packages/* .
+
+Make sure you are able to import ``libvirt`` without error::
+
+    python -c "import libvirt"
+
+Finally, install the teuthology package and ``requirements.txt``::
+
+    $ python setup.py develop
+    $ pip install -r requirements.txt
+
+
+Generic install
+---------------
+These instructions should help get ``teuthology`` installed properly in
+a system that is not OSX or Debian-based.
+
+Install all the system dependencies needed:
+
+* mysql client
+* libevent
+* libvirt (with the Python bindings)
+
+Install Python packaging tools:
+
+* pip
+* virtualenv
+
+In some cases, depending on the OS, you will need a python development package
+with some build helpers that are required to build packages. In Ubuntu, this is
+the ``python-dev`` package.
+
+With a dedicated ``virtualenv`` activated, install the teuthology package and
+``requirements.txt``::
+
+    $ python setup.py develop
+    $ pip install -r requirements.txt
 
 
 Test configuration
@@ -71,6 +137,7 @@ the nodes & use the live cluster ad hoc), might look like this::
 	  ubuntu@host08.example.com: ssh-rsa host08_ssh_key
 	  ubuntu@host09.example.com: ssh-rsa host09_ssh_key
 	tasks:
+	- install:
 	- ceph:
 	- ceph-fuse: [client.0]
 	- interactive:
@@ -79,11 +146,14 @@ The number of entries under ``roles`` and ``targets`` must match.
 
 Note the colon after every task name in the ``tasks`` section.
 
-You need to be able to SSH in to the listed targets without
-passphrases, and the remote user needs to have passphraseless `sudo`
-access. Note that the ssh keys at the end of the ``targets``
-entries are the public ssh keys for the hosts.
-On Ubuntu, these are located at /etc/ssh/ssh_host_rsa_key.pub
+The ``install`` task needs to precede all other tasks.
+
+The listed targets need resolvable hostnames. If you do not have a DNS server
+running, you can add entries to ``/etc/hosts``. You also need to be able to SSH
+in to the listed targets without passphrases, and the remote user needs to have
+passphraseless `sudo` access. Note that the ssh keys at the end of the
+``targets`` entries are the public ssh keys for the hosts.  On Ubuntu, these
+are located at /etc/ssh/ssh_host_rsa_key.pub
 
 If you'd save the above file as ``example.yaml``, you could run
 teuthology on it by saying::
@@ -179,7 +249,6 @@ displays a page of more documentation and more concrete examples.
 Some of the more important / commonly used tasks include:
 
 * ``chef``: Run the chef task.
-* ``ceph``: Bring up Ceph
 * ``install``: by default, the install task goes to gitbuilder and installs the results of the latest build. You can, however, add additional parameters to the test configuration to cause it to install any branch, SHA, archive or URL. The following are valid parameters.
 
 - ``branch``: specify a branch (bobtail, cuttlefish...)
@@ -189,6 +258,7 @@ Some of the more important / commonly used tasks include:
 - ``project``: specify a project (ceph, samba...)
 - ``sha1``: install the build with this sha1 value.
 - ``tag``: specify a tag/identifying text for this build (v47.2, v48.1...)
+* ``ceph``: Bring up Ceph
 
 * ``overrides``: override behavior. Typically, this includes sub-tasks being overridden. Sub-tasks can nest further information.  For example, overrides of install tasks are project specific, so the following section of a yaml file would cause all ceph installation to default into using the cuttlefish branch::
 
@@ -312,7 +382,7 @@ When a virtual machine is locked, downburst is run on that machine to
 install a new image.  This allows the user to set different virtual
 OSes to be installed on the newly created virtual machine.  Currently
 the default virtual machine is ubuntu (precise).  A different vm installation
-can be set using the ``--vm-type`` option in ``teuthology.lock``.
+can be set using the ``--os-type`` option in ``teuthology.lock``.
 
 When a virtual machine is unlocked, downburst destroys the image on the
 machine.

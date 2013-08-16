@@ -63,6 +63,7 @@ def create_users(ctx, config):
                     'ceph-coverage',
                     '{tdir}/archive/coverage'.format(tdir=testdir),
                     'radosgw-admin',
+                    '-n', client,
                     'user', 'create',
                     '--subuser', '{account}:{user}'.format(account=testswift_conf['func_test']['account{s}'.format(s=suffix)],user=user),
                     '--display-name', testswift_conf['func_test']['display_name{s}'.format(s=suffix)],
@@ -83,6 +84,7 @@ def create_users(ctx, config):
                         'ceph-coverage',
                         '{tdir}/archive/coverage'.format(tdir=testdir),
                         'radosgw-admin',
+                        '-n', client,
                         'user', 'rm',
                         '--uid', uid,
                         '--purge-data',
@@ -95,8 +97,8 @@ def configure(ctx, config):
     log.info('Configuring testswift...')
     testdir = teuthology.get_testdir(ctx)
     for client, properties in config['clients'].iteritems():
-        print 'client={c}'.format(c=client)
-        print 'config={c}'.format(c=config)
+        log.info('client={c}'.format(c=client))
+        log.info('config={c}'.format(c=config))
         testswift_conf = config['testswift_conf'][client]
         if properties is not None and 'rgw_server' in properties:
             host = None
@@ -110,7 +112,7 @@ def configure(ctx, config):
         else:
             testswift_conf['func_test']['auth_host'] = 'localhost'
 
-        print client
+        log.info(client)
         (remote,) = ctx.cluster.only(client).remotes.keys()
         remote.run(
             args=[
@@ -201,7 +203,7 @@ def task(ctx, config):
         config = dict.fromkeys(config)
     clients = config.keys()
 
-    print 'clients={c}'.format(c=clients)
+    log.info('clients={c}'.format(c=clients))
 
     testswift_conf = {}
     for client in clients:

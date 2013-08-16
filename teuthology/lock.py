@@ -28,6 +28,9 @@ def lock_many(ctx, num, machinetype, user=None, description=None):
     if success:
         machines = json.loads(content)
         log.debug('locked {machines}'.format(machines=', '.join(machines.keys())))
+        if ctx.machine_type == 'vps':
+            for machine in machines:
+                create_if_vm(ctx, machine)
         return machines
     if status == 503:
         log.error('Insufficient nodes available to lock %d nodes.', num)
@@ -217,14 +220,14 @@ Lock, unlock, or query lock status of machines.
         help='machines to operate on',
         )
     parser.add_argument(
-        '--vm-type',
+        '--os-type',
         default='ubuntu',
         help='virtual machine type',
         )
 
     ctx = parser.parse_args()
 
-    loglevel = logging.ERROR
+    loglevel = logging.INFO
     if ctx.verbose:
         loglevel = logging.DEBUG
 
@@ -278,7 +281,14 @@ Lock, unlock, or query lock status of machines.
         assert ctx.desc is None, '--desc does nothing with --list'
 
         if machines:
-            statuses = [ls.get_status(ctx, machine) for machine in machines]
+            statuses = []
+            for machine in machines:
+                status = ls.get_status(ctx, machine)
+                if status:
+                    statuses.append(status)
+                else:
+                    log.error("Lockserver doesn't know about machine: %s" %
+                              machine)
         else:
             statuses = list_locks(ctx)
         vmachines = []
@@ -366,9 +376,10 @@ Lock, unlock, or query lock status of machines.
         else:
             machines_to_update = result.keys()
             if ctx.machine_type == 'vps':
-                print "Locks successful"
-                print "Unable to display keys at this time (virtual machines are rebooting)."
-                print "Please run teuthology-lock --list-targets once these machines come up."
+                shortnames = ' '.join([name.split('@')[1].split('.')[0] for name in result.keys()])
+                print "Successfully Locked:\n%s\n" % shortnames
+                print "Unable to display keys at this time (virtual machines are booting)."
+                print "Please run teuthology-lock --list-targets %s once these machines come up." % shortnames
             else:
                 print yaml.safe_dump(dict(targets=result), default_flow_style=False)
     elif ctx.update:
@@ -415,7 +426,7 @@ to run on, or use -a to check all of them automatically.
 
     ctx = parser.parse_args()
 
-    loglevel = logging.ERROR
+    loglevel = logging.INFO
     if ctx.verbose:
         loglevel = logging.DEBUG
 
@@ -441,7 +452,7 @@ to run on, or use -a to check all of them automatically.
                             machines.append(t)
         except IOError, e:
             raise argparse.ArgumentTypeError(str(e))
-    
+
     return scan_for_locks(ctx, machines)
 
 def keyscan_check(ctx, machines):
@@ -481,7 +492,7 @@ def update_keys(ctx, out, current_locks):
                 log.error('failed to update %s!', full_name)
                 ret = 1
     return ret
-    
+
 def scan_for_locks(ctx, machines):
     out, current_locks = keyscan_check(ctx, machines)
     return update_keys(ctx, out, current_locks)
@@ -558,10 +569,15 @@ def create_if_vm(ctx, machine_name):
     with tempfile.NamedTemporaryFile() as tmp:
         try:
             lcnfg = ctx.config['downburst']
-        except KeyError:
+        except (KeyError, AttributeError):
             lcnfg = {}
 
         distro = lcnfg.get('distro', os_type.lower())
+        try:
+            distroversion = ctx.config.get('os_version', default_os_version[distro])
+        except AttributeError:
+            distroversion = default_os_version[distro]
+
         file_info = {}
         file_info['disk-size'] = lcnfg.get('disk-size', '30G')
         file_info['ram'] = lcnfg.get('ram', '1.9G')
@@ -569,7 +585,7 @@ def create_if_vm(ctx, machine_name):
         file_info['networks'] = lcnfg.get('networks',
                 [{'source' : 'front', 'mac' : status_info['mac']}])
         file_info['distro'] = distro
-        file_info['distroversion'] = ctx.config.get('os_version', default_os_version[distro])
+        file_info['distroversion'] = distroversion
         file_info['additional-disks'] = lcnfg.get(
                 'additional-disks', 3)
         file_info['additional-disks-size'] = lcnfg.get(

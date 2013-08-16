@@ -20,7 +20,7 @@ def download(ctx, config):
     log.info('Downloading s3-tests...')
     testdir = teuthology.get_testdir(ctx)
     for (client, cconf) in config.items():
-        branch = cconf.get('force-branch', 'master')
+        branch = cconf.get('force-branch', None)
         if not branch:
             branch = cconf.get('branch', 'master')
         sha1 = cconf.get('sha1')
@@ -82,6 +82,7 @@ def create_users(ctx, config):
                     'ceph-coverage',
                     '{tdir}/archive/coverage'.format(tdir=testdir),
                     'radosgw-admin',
+                    '-n', client,
                     'user', 'create',
                     '--uid', s3tests_conf[section]['user_id'],
                     '--display-name', s3tests_conf[section]['display_name'],
@@ -102,6 +103,7 @@ def create_users(ctx, config):
                         'ceph-coverage',
                         '{tdir}/archive/coverage'.format(tdir=testdir),
                         'radosgw-admin',
+                        '-n', client,
                         'user', 'rm',
                         '--uid', uid,
                         '--purge-data',

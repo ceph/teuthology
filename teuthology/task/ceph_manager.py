@@ -40,10 +40,10 @@ class Thrasher:
         # try both old and new tell syntax, in case we are testing old code
         try:
             manager.raw_cluster_cmd('--', 'tell', 'mon.*', 'injectargs',
-                                    '--mon-osd-down-out-interval', '0')
+                                    '--mon-osd-down-out-interval 0')
         except:
             manager.raw_cluster_cmd('--', 'mon', 'tell', '*', 'injectargs',
-                                    '--mon-osd-down-out-interval', '0')
+                                    '--mon-osd-down-out-interval 0')
         self.thread = gevent.spawn(self.do_thrash)
 
     def kill_osd(self, osd=None, mark_down=False, mark_out=False):
@@ -55,7 +55,7 @@ class Thrasher:
         self.ceph_manager.kill_osd(osd)
         if mark_down:
             self.ceph_manager.mark_down_osd(osd)
-        if mark_out:
+        if mark_out and osd in self.in_osds:
             self.out_osd(osd)
 
     def blackhole_kill_osd(self, osd=None):
@@ -211,6 +211,12 @@ class Thrasher:
         while len(self.in_osds) < (self.minin + 1):
             self.in_osd()
         self.log("Waiting for recovery")
+        self.ceph_manager.wait_for_all_up(
+            timeout=self.config.get('timeout')
+            )
+        # now we wait 20s for the pg status to change, if it takes longer,
+        # the test *should* fail!
+        time.sleep(20)
         self.ceph_manager.wait_for_clean(
             timeout=self.config.get('timeout')
             )
@@ -510,7 +516,8 @@ class CephManager:
                 ['config', 'set', str(k), str(v)])
 
     def raw_cluster_status(self):
-        return self.raw_cluster_cmd('-s')
+        status = self.raw_cluster_cmd('status', '--format=json-pretty')
+        return json.loads(status)
 
     def raw_osd_status(self):
         return self.raw_cluster_cmd('osd', 'dump')
@@ -542,9 +549,7 @@ class CephManager:
     def get_num_pgs(self):
         status = self.raw_cluster_status()
         self.log(status)
-        return int(re.search(
-                "\d* pgs:",
-                status).group(0).split()[0])
+        return status['pgmap']['num_pgs']
 
     def create_pool(self, pool_name, pg_num=1):
         with self.lock:
@@ -602,8 +607,7 @@ class CephManager:
                     'set',
                     pool_name,
                     prop,
-                    str(val),
-                    '--allow-experimental-feature')
+                    str(val))
                 if r != 11: # EAGAIN
                     break
                 tries += 1
@@ -717,13 +721,7 @@ class CephManager:
     def get_num_unfound_objects(self):
         status = self.raw_cluster_status()
         self.log(status)
-        match = re.search(
-            "\d+/\d+ unfound",
-            status)
-        if match == None:
-            return 0
-        else:
-            return int(match.group(0).split('/')[0])
+        return status['pgmap'].get('unfound_objects', 0)
 
     def get_num_creating(self):
         pgs = self.get_pg_stats()
@@ -799,6 +797,21 @@ class CephManager:
                 num_active_clean = cur_active_clean
             time.sleep(3)
         self.log("clean!")
+
+    def are_all_osds_up(self):
+        x = self.get_osd_dump()
+        return (len(x) == \
+                    sum([(y['up'] > 0) for y in x]))
+
+    def wait_for_all_up(self, timeout=None):
+        self.log("waiting for all up")
+        start = time.time()
+        while not self.are_all_osds_up():
+            if timeout is not None:
+                assert time.time() - start < timeout, \
+                    'timeout expired in wait_for_all_up'
+            time.sleep(3)
+        self.log("all up!")
 
     def wait_for_recovery(self, timeout=None):
         self.log("waiting for recovery to complete")

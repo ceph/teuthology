@@ -38,7 +38,7 @@ def get_testdir(ctx):
 
     # check if a jobid exists in the machine status for all our targets
     # and if its the same jobid, use that as the subdir for the test
-    if not checked_jobid:
+    if not checked_jobid and ctx.config.get('check-locks') != False:
         jobids = {}
         for machine in ctx.config['targets'].iterkeys():
             status = lockstatus.get_status(ctx, machine)
@@ -319,8 +319,8 @@ def sudo_write_file(remote, path, data, perms=None):
 
 def move_file(remote, from_path, to_path, sudo=False):
 
-    # need to stat the file first, to make sure we 
-    # maintain the same permissions  
+    # need to stat the file first, to make sure we
+    # maintain the same permissions
     args = []
     if sudo:
         args.append('sudo')
@@ -399,8 +399,8 @@ def remove_lines_from_file(remote, path, line_is_valid_test, string_to_test_for)
         else:
             log.info('removing line: {bad_line}'.format(bad_line=line))
 
-    # get a temp file path on the remote host to write to, 
-    # we don't want to blow away the remote file and then have the 
+    # get a temp file path on the remote host to write to,
+    # we don't want to blow away the remote file and then have the
     # network drop out
     temp_file_path = remote_mktemp(remote)
 
@@ -409,14 +409,14 @@ def remove_lines_from_file(remote, path, line_is_valid_test, string_to_test_for)
 
     # then do a 'mv' to the actual file location
     move_file(remote, temp_file_path, path)
-            
+
 def append_lines_to_file(remote, path, lines, sudo=False):
     temp_file_path = remote_mktemp(remote)
- 
+
     data = get_file(remote, path, sudo)
 
     # add the additional data and write it back out, using a temp file
-    # in case of connectivity of loss, and then mv it to the 
+    # in case of connectivity of loss, and then mv it to the
     # actual desired location
     data += lines
     temp_file_path
@@ -605,7 +605,13 @@ def get_scratch_devices(remote):
                 args=['ls', run.Raw('/dev/[sv]d?')],
                 stdout=StringIO()
                 )
-        devs = r.stdout.getvalue().split('\n')
+        devs = r.stdout.getvalue().strip().split('\n')
+
+    #Remove root device (vm guests) from the disk list
+    for dev in devs:
+        if 'vda' in dev:
+            devs.remove(dev)
+            log.warn("Removing root device: %s from device list" % dev)
 
     log.debug('devs={d}'.format(d=devs))
 
@@ -774,9 +780,15 @@ def get_clients(ctx, roles):
 def get_user():
     return getpass.getuser() + '@' + socket.gethostname()
 
+
 def read_config(ctx):
-    filename = os.path.join(os.environ['HOME'], '.teuthology.yaml')
     ctx.teuthology_config = {}
+    filename = os.path.join(os.environ['HOME'], '.teuthology.yaml')
+
+    if not os.path.exists(filename):
+        log.debug("%s not found", filename)
+        return
+
     with file(filename) as f:
         g = yaml.safe_load_all(f)
         for new in g:
@@ -897,3 +909,5 @@ def get_distro(ctx):
         return ctx.config['downburst'].get('distro', os_type)
     except KeyError:
         return os_type
+    except AttributeError:
+        return ctx.os_type

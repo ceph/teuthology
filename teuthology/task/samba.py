@@ -163,7 +163,7 @@ def task(ctx, config):
 
         # let smbd initialize, probably a better way...
         import time
-        time.sleep(1)
+        time.sleep(5)
     try:
         yield
     finally:
@@ -196,7 +196,12 @@ def task(ctx, config):
             try:
                 remote.run(
                     args=[
+                        'while',
                         'sudo', 'killall', '-9', 'smbd',
+                        run.Raw(';'),
+                        'do', 'sleep', '1',
+                        run.Raw(';'),
+                        'done',
                         ],
                     )
 

@@ -4,18 +4,22 @@
 #   grep '^ *# TESTCASE' | sed 's/^ *# TESTCASE //'
 #
 
-from cStringIO import StringIO
-import logging
+import contextlib
 import json
+import logging
+import time
+
+from cStringIO import StringIO
 
 import boto.exception
 import boto.s3.connection
 import boto.s3.acl
 
-import time
+import teuthology.task_util.rgw as rgw_utils
 
 from teuthology import misc as teuthology
-from teuthology.task.util.rgw import rgwadmin
+from teuthology import contextutil
+from teuthology.task_util.rgw import rgwadmin
 
 log = logging.getLogger(__name__)
 
@@ -25,6 +29,12 @@ def successful_ops(out):
         return 0
     entry = summary[0]
     return entry['total']['successful_ops']
+
+# simple test to indicate if multi-region testing should occur
+def multi_region_enabled(ctx):
+    # this is populated by the radosgw_agent task, seems reasonable to use that as an indicator that
+    # we're testing multi-region sync 
+    return 'radosgw_agent' in ctx
 
 def task(ctx, config):
     """
@@ -41,8 +51,11 @@ def task(ctx, config):
         config = dict.fromkeys(config)
     clients = config.keys()
 
-    # just use the first client...
-    client = clients[0];
+    multi_region_run = multi_region_enabled(ctx)
+
+    client = clients[0]; # default choice, multi-region code may overwrite this
+    if multi_region_run:
+        client = rgw_utils.get_master_client(ctx, clients)
 
     ##
     user1='foo'
@@ -87,6 +100,65 @@ def task(ctx, config):
             '--email', email,
             ])
     assert err
+
+    # this whole block should only be run if regions have been configured
+    if multi_region_run:
+		    rgw_utils.radosgw_agent_sync_all(ctx)
+		    # post-sync, validate that user1 exists on the sync destination host
+		    for agent_client, c_config in ctx.radosgw_agent.config.iteritems():
+		        dest_client = c_config['dest']
+		        (err, out) = rgwadmin(ctx, dest_client, ['user', 'info', '--uid', user1])
+		        assert not err
+		        assert out['user_id'] == user1
+		        assert out['email'] == email
+		        assert out['display_name'] == display_name1
+		        assert len(out['keys']) == 1
+		        assert out['keys'][0]['access_key'] == access_key
+		        assert out['keys'][0]['secret_key'] == secret_key
+		        assert not out['suspended']
+		
+		    # compare the metadata between different regions, make sure it matches
+		    for agent_client, c_config in ctx.radosgw_agent.config.iteritems():
+		        source_client = c_config['src']
+		        dest_client = c_config['dest']
+		        (err1, out1) = rgwadmin(ctx, source_client, ['metadata', 'get', 'user:{uid}'.format(uid=user1)])
+		        (err2, out2) = rgwadmin(ctx, dest_client, ['metadata', 'get', 'user:{uid}'.format(uid=user1)])
+		        assert not err1
+		        assert not err2
+		        assert out1 == out2
+		
+		    # suspend a user on the master, then check the status on the destination
+		    for agent_client, c_config in ctx.radosgw_agent.config.iteritems():
+		        source_client = c_config['src']
+		        dest_client = c_config['dest']
+		        (err, out) = rgwadmin(ctx, source_client, ['user', 'suspend', '--uid', user1])
+		        rgw_utils.radosgw_agent_sync_all(ctx)
+		        (err, out) = rgwadmin(ctx, dest_client, ['user', 'info', '--uid', user1])
+		        assert not err
+		        assert out['suspended']
+		
+		    # delete a user on the master, then check that it's gone on the destination
+		    for agent_client, c_config in ctx.radosgw_agent.config.iteritems():
+		        source_client = c_config['src']
+		        dest_client = c_config['dest']
+		        (err, out) = rgwadmin(ctx, source_client, ['user', 'rm', '--uid', user1])
+		        assert not err
+		        rgw_utils.radosgw_agent_sync_all(ctx)
+		        (err, out) = rgwadmin(ctx, dest_client, ['user', 'info', '--uid', user1])
+		        assert out is None
+		
+		        # then recreate it so later tests pass
+		        (err, out) = rgwadmin(ctx, client, [
+		            'user', 'create',
+		            '--uid', user1,
+		            '--display-name', display_name1,
+		            '--email', email,
+		            '--access-key', access_key,
+		            '--secret', secret_key,
+		            '--max-buckets', '4'
+		            ])
+		        assert not err
+    # end of 'if multi_region_run:'
 
     # TESTCASE 'info-existing','user','info','existing user','returns correct info'
     (err, out) = rgwadmin(ctx, client, ['user', 'info', '--uid', user1])
@@ -214,6 +286,9 @@ def task(ctx, config):
     (err, out) = rgwadmin(ctx, client, ['bucket', 'stats', '--uid', user1])
     assert not err
     assert len(out) == 0
+
+    if multi_region_run:
+        rgw_utils.radosgw_agent_sync_all(ctx)
 
     # connect to rgw
     (remote,) = ctx.cluster.only(client).remotes.iterkeys()
@@ -367,9 +442,13 @@ def task(ctx, config):
 
     for obj in out:
         # TESTCASE 'log-show','log','show','after activity','returns expected info'
+        if obj[:4] == 'meta' or obj[:4] == 'data':
+            continue
+
         (err, log) = rgwadmin(ctx, client, ['log', 'show', '--object', obj])
         assert not err
         assert len(log) > 0
+
         assert log['bucket'].find(bucket_name) == 0
         assert log['bucket'] != bucket_name or log['bucket_id'] == bucket_id 
         assert log['bucket_owner'] == user1 or log['bucket'] == bucket_name + '5'
@@ -563,12 +642,19 @@ def task(ctx, config):
     assert err
 
     # TESTCASE 'zone-info', 'zone', 'get', 'get zone info', 'succeeds, has default placement rule'
-    (err, out) = rgwadmin(ctx, client, ['zone', 'get'])
-    assert len(out) > 0
-    assert len(out['placement_pools']) == 1
+    # 
 
-    default_rule = out['placement_pools'][0]
-    assert default_rule['key'] == 'default-placement'
+    (err, out) = rgwadmin(ctx, client, ['zone', 'get'])
+    orig_placement_pools = len(out['placement_pools'])
+
+    # removed this test, it is not correct to assume that zone has default placement, it really
+    # depends on how we set it up before
+    #
+    # assert len(out) > 0
+    # assert len(out['placement_pools']) == 1
+
+    # default_rule = out['placement_pools'][0]
+    # assert default_rule['key'] == 'default-placement'
 
     rule={'key': 'new-placement', 'val': {'data_pool': '.rgw.buckets.2', 'index_pool': '.rgw.buckets.index.2'}}
 
@@ -579,4 +665,4 @@ def task(ctx, config):
 
     (err, out) = rgwadmin(ctx, client, ['zone', 'get'])
     assert len(out) > 0
-    assert len(out['placement_pools']) == 2
+    assert len(out['placement_pools']) == orig_placement_pools + 1
