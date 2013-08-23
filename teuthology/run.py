@@ -50,6 +50,10 @@ def parse_args():
         help='job owner',
         )
     parser.add_argument(
+        '--name',
+        help='job name',
+        )
+    parser.add_argument(
         '--lock',
         action='store_true',
         default=False,
