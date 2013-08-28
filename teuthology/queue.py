@@ -29,10 +29,11 @@ def fetch_teuthology_branch(path, branch='master'):
     """
     if not os.path.isdir(path):
         log.info("Cloning %s from upstream", branch)
+        parent_path = path[:os.path.normpath(path).rindex(os.path.sep)+1]
         log.info(
             subprocess.check_output(('git', 'clone', '--branch', branch,
                                      teuthology_git_upstream, path),
-                                    cwd=os.getenv("HOME"))
+                                    cwd=parent_path)
         )
     else:
         log.info("Fetching %s from upstream", branch)
