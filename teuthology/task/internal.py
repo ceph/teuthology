@@ -322,6 +322,31 @@ def archive(ctx, config):
                 ),
             )
 
+
+@contextlib.contextmanager
+def limits(ctx, config):
+    log.info('Setting limits...')
+    limits_d = {
+        '/etc/security/limits.d/ubuntu.conf': 'ubuntu hard nofile 16384\n',
+        '/etc/security/limits.d/remote.conf': '*   hard    core   unlimited\n',
+    }
+    for (path, content) in limits_d.iteritems():
+        ctx.cluster.write_file(path, content, sudo=True)
+
+    limits_conf = '/etc/security/limits.conf'
+    limits_expr = r's/#\(*\s*soft\s*core\s*0\)/\1/'
+    run.wait(
+        ctx.cluster.run(
+            args="sudo sed -i -e '{expr}' {conf_file}".format(
+                expr=limits_expr,
+                conf_file=limits_conf,
+            ),
+            wait=False,
+        )
+    )
+    yield
+
+
 @contextlib.contextmanager
 def coredump(ctx, config):
     log.info('Enabling coredump saving...')

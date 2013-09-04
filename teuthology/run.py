@@ -215,6 +215,7 @@ def main():
             {'internal.base': None},
             {'internal.archive': None},
             {'internal.coredump': None},
+            {'internal.limits': None},
             {'internal.syslog': None},
             {'internal.timer': None},
             ])
