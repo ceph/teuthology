@@ -18,7 +18,10 @@ The schema can be created with::
 If using MySQL, be sure to use an engine that supports
 transactions, like InnoDB.
 """
+import yaml
 import web
 
-# Change these values to the connection info for your database.
-DB = web.database(dbn='dbn', db='db', user='user', pw='pw', host='host')
+dconfig = {}
+with open('teuthology/teuthology/suiteDB/config.yaml','r') as file_conf:
+    dconfig = yaml.safe_load(file_conf)
+DB = web.database(dbn=dconfig['dbn'], db=dconfig['db'], user=dconfig['user'], pw=dconfig['pw'], host=dconfig['host'])

@@ -66,7 +66,17 @@ Step 7: Install python web and mysql modules.
         sudo easy_install web.py
         sudo /etc/init.d/apache2 restart
 
-Step 8: On your server, change the information in the statement at the end
-        of teuthology/suiteDB/config.py to match the user, password, and
-        database that you set 'DB = web.database(...)'.
+Step 8: On your server, create a file named config.yaml in
+        teuthlogy/suiteDB.  Add the appropriate entries for dbn, db, user,
+        pw, and host.  A sample config.yaml file looks like:
+
+        dbn: mysql
+        db: wusui_suite_results
+        user: machl
+        pw: aardvark
+        host: localhost 
+
+        Also, on the client machine, one should run set the TEUTH_DB_SITE
+        environment variable to the machine on which you have your server
+        database.  (export TEUTH_DB_SITE=vpm008, for example)
 
