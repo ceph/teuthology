@@ -282,8 +282,7 @@ def check_conflict(ctx, config):
 @contextlib.contextmanager
 def archive(ctx, config):
     log.info('Creating archive directory...')
-    testdir = teuthology.get_testdir(ctx)
-    archive_dir = '{tdir}/archive'.format(tdir=testdir)
+    archive_dir = teuthology.get_archive_dir(ctx)
     run.wait(
         ctx.cluster.run(
             args=[
@@ -323,10 +322,53 @@ def archive(ctx, config):
                 ),
             )
 
+
+@contextlib.contextmanager
+def limits(ctx, config):
+    log.info('Setting limits...')
+    limits_d = {
+        '/etc/security/limits.d/ubuntu.conf': 'ubuntu hard nofile 16384\n',
+        '/etc/security/limits.d/remote.conf': '*   hard    core   unlimited\n',
+    }
+    for (path, content) in limits_d.iteritems():
+        ctx.cluster.write_file(path, content, sudo=True)
+
+    limits_conf = '/etc/security/limits.conf'
+    limits_expr = r's/#\(*\s*soft\s*core\s*0\)/\1/'
+    run.wait(
+        ctx.cluster.run(
+            args="sudo sed -i -e '{expr}' {conf_file}".format(
+                expr=limits_expr,
+                conf_file=limits_conf,
+            ),
+            wait=False,
+        )
+    )
+    yield
+
+
+@contextlib.contextmanager
+def sudo(ctx, config):
+    log.info('Configuring sudo...')
+    sudoers_file = '/etc/sudoers'
+    tty_expr = 's/requiretty/!requiretty/'
+    pw_expr = 's/!visiblepw/visiblepw/'
+
+    run.wait(
+        ctx.cluster.run(
+            args="sudo sed -i -e '{tty_expr}' -e '{pw_expr}' {path}".format(
+                tty_expr=tty_expr, pw_expr=pw_expr, path=sudoers_file
+            ),
+            wait=False,
+        )
+    )
+    yield
+
+
 @contextlib.contextmanager
 def coredump(ctx, config):
     log.info('Enabling coredump saving...')
-    archive_dir = '{tdir}/archive'.format(tdir=teuthology.get_testdir(ctx))
+    archive_dir = teuthology.get_archive_dir(ctx)
     run.wait(
         ctx.cluster.run(
             args=[
@@ -384,7 +426,7 @@ def syslog(ctx, config):
 
     log.info('Starting syslog monitoring...')
 
-    archive_dir = '{tdir}/archive'.format(tdir=teuthology.get_testdir(ctx))
+    archive_dir = teuthology.get_archive_dir(ctx)
     run.wait(
         ctx.cluster.run(
             args=[
