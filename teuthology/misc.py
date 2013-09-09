@@ -14,7 +14,7 @@ import yaml
 import json
 
 from teuthology import safepath
-from teuthology import lockstatus
+from teuthology import httprequest
 from .orchestra import run
 
 log = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ def get_testdir(ctx):
     if not checked_jobid and ctx.config.get('check-locks') != False:
         jobids = {}
         for machine in ctx.config['targets'].iterkeys():
-            status = lockstatus.get_status(ctx, machine)
+            status = httprequest.get_status(ctx, machine)
             if status is None or 'description' not in status or status['description'] is None:
                 continue
             jid = status['description'].split('/')[-1]
