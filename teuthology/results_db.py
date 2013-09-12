@@ -100,7 +100,7 @@ def _save_data(dbase, filename, tbl_info):
     return True
 
 
-def _config_db():
+def _connect_db():
     """
     Establish a connection to a MySQL database.
 
@@ -296,7 +296,7 @@ def build():
     running teuthology-build-db will update all the databases with all the
     available information on /a.
     """
-    dbase = _config_db()
+    dbase = _connect_db()
     tbl_info = _get_table_info(dbase)
     for filename in _scan_files('/a'):
         _save_data(dbase, filename, tbl_info)
@@ -312,7 +312,7 @@ def store_in_database(testrun):
     :returns: False if filename cannot be split into database suite and pid
               values (these values effectively act as keys).
     """
-    dbase = _config_db()
+    dbase = _connect_db()
     tbl_info = _get_table_info(dbase)
     return _save_data(dbase, testrun, tbl_info)
 
