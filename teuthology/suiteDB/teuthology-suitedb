@@ -1,0 +1,21 @@
+<VirtualHost *:80>
+        DocumentRoot /var/www
+        <Directory /var/www>
+                Order deny,allow
+                allow from 10.
+        </Directory>
+
+        WSGIScriptAlias /suitedb /var/lib/teuthsuitedb/teuthology/teuthology/suiteDB/suitedb.py
+        WSGIDaemonProcess suitedb user=teuthsuitedb group=teuthsuitedb
+        WSGIProcessGroup suitedb
+        <Directory /var/lib/teuthsuitedb/teuthology/teuthology/suiteDB>
+                Order deny,allow
+                allow from 10.
+        </Directory>
+
+        LogLevel debug
+
+        ServerSignature Off
+
+</VirtualHost>
+
