@@ -278,8 +278,15 @@ def _get_table_info(dbase):
     :param dbase: database connection
     :returns: table information (insert string, function, name)
     """
-    tbl_info = {'suite_results': _get_summary,
-                'rados_bench': _get_bandwidth}
+    tbl_infoorg = {'suite_results': _get_summary,
+                   'rados_bench': _get_bandwidth}
+    cursor = dbase.cursor()
+    cursor.execute('SHOW TABLES')
+    tbinfo = cursor.fetchall()
+    tbl_info = {}
+    for lbl in tbl_infoorg:
+        if (lbl,) in tbinfo:
+            tbl_info[lbl] = tbl_infoorg[lbl]
     ret_tbl_vec = []
     for tbl in tbl_info:
         ret_tbl_vec.append((_get_insert_cmd(dbase, tbl), tbl_info[tbl], tbl,))
