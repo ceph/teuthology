@@ -15,6 +15,7 @@ import argparse
 import logging
 
 log = logging.getLogger(__name__)
+LOG_DIR = '/a/'
 
 
 def _xtract_date(text):
@@ -69,7 +70,7 @@ def _scan_files(indir):
               to the database.
     """
     for suite in os.listdir(indir):
-        dir1 = "%s/%s" % (indir, suite)
+        dir1 = "%s%s" % (indir, suite)
         for pid in os.listdir(dir1):
             if pid.isdigit():
                 rfile = "%s/%s" % (dir1, pid)
@@ -308,7 +309,7 @@ def build():
     """
     dbase = _connect_db()
     tbl_info = _get_table_info(dbase)
-    for filename in _scan_files('/a'):
+    for filename in _scan_files(LOG_DIR):
         _save_data(dbase, filename, tbl_info)
 
 
@@ -342,9 +343,7 @@ def update():
 
     :returns: False on a parameter error.
     """
-    logging.basicConfig(
-        level=logging.INFO,
-        )
+    logging.basicConfig( level=logging.INFO,)
 
     parser = argparse.ArgumentParser()
     parser.add_argument('suite', help='suite name (or /a/suite_name/pid)')
@@ -354,8 +353,8 @@ def update():
     testrun = args.suite
     if args.pid:
         hdr = ''
-        if not testrun.startswith("/a/"):
-            hdr = '/a/'
+        if not testrun.startswith(LOG_DIR):
+            hdr = LOG_DIR
         testrun = "%s%s/%s" % (hdr, args.suite, args.pid)
     if os.path.isdir(testrun):
         if store_in_database(testrun):
@@ -365,3 +364,12 @@ def update():
     else:
         log.info("%s is an invalid directory" % testrun)
     return 1
+
+
+def unit_test():
+    """
+    Unit test 
+    """
+    logging.basicConfig( level=logging.INFO,)
+    log.info("In unit test code")
+    
