@@ -53,7 +53,7 @@ def task(ctx, config):
         proc = remote.run(
             args=[
                 "/bin/sh", "-c",
-                " ".join(['adjust-ulimits',
+                " ".join(['/usr/local/bin/adjust-ulimits',
                           'ceph-coverage',
                           '{tdir}/archive/coverage',
                           'omapbench',

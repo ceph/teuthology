@@ -82,10 +82,10 @@ def task(ctx, config):
 
         run_cmd=[
             'sudo',
-            'adjust-ulimits',
+            '/usr/local/bin/adjust-ulimits',
             'ceph-coverage',
             '{tdir}/archive/coverage'.format(tdir=testdir),
-            'daemon-helper',
+            '/usr/local/bin/daemon-helper',
             daemon_signal,
             ]
         run_cmd_tail=[

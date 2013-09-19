@@ -146,10 +146,10 @@ def start_rgw(ctx, config):
         log.info('client {client} is id {id}'.format(client=client, id=id_))
         run_cmd=[
             'sudo',
-            'adjust-ulimits',
+            '/usr/local/bin/adjust-ulimits',
             'ceph-coverage',
             '{tdir}/archive/coverage'.format(tdir=testdir),
-            'daemon-helper',
+            '/usr/local/bin/daemon-helper',
             'term',
             ]
         run_cmd_tail=[
@@ -224,8 +224,8 @@ def start_apache(ctx, config):
             apache_name = '/usr/sbin/httpd'
         proc = remote.run(
             args=[
-                'adjust-ulimits',
-                'daemon-helper',
+                '/usr/local/bin/adjust-ulimits',
+                '/usr/local/bin/daemon-helper',
                 'kill',
                 apache_name,
                 '-X',

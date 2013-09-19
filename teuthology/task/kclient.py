@@ -69,7 +69,7 @@ def task(ctx, config):
         remote.run(
             args=[
                 'sudo',
-                'adjust-ulimits',
+                '/usr/local/bin/adjust-ulimits',
                 'ceph-coverage',
                 '{tdir}/archive/coverage'.format(tdir=testdir),
                 '/sbin/mount.ceph',

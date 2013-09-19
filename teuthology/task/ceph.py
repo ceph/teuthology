@@ -164,7 +164,7 @@ def ship_utilities(ctx, config):
                 )
             f.seek(0)
 
-    FILES = ['daemon-helper', 'adjust-ulimits', 'kcon_most']
+    FILES = ['/usr/local/bin/daemon-helper', '/usr/local/bin/adjust-ulimits', 'kcon_most']
     destdir = '/usr/local/bin'
     for filename in FILES:
         log.info('Shipping %r...', filename)
@@ -411,7 +411,7 @@ def cluster(ctx, config):
     ctx.cluster.only(firstmon).run(
         args=[
             'sudo',
-            'adjust-ulimits',
+            '/usr/local/bin/adjust-ulimits',
             'ceph-coverage',
             coverage_dir,
             'ceph-authtool',
@@ -422,7 +422,7 @@ def cluster(ctx, config):
     ctx.cluster.only(firstmon).run(
         args=[
             'sudo',
-            'adjust-ulimits',
+            '/usr/local/bin/adjust-ulimits',
             'ceph-coverage',
             coverage_dir,
             'ceph-authtool',
@@ -450,7 +450,7 @@ def cluster(ctx, config):
     ctx.cluster.only(firstmon).run(
         args=[
             'sudo',
-            'adjust-ulimits',
+            '/usr/local/bin/adjust-ulimits',
             'ceph-coverage',
             coverage_dir,
             'ceph-authtool',
@@ -494,7 +494,7 @@ def cluster(ctx, config):
     run.wait(
         mons.run(
             args=[
-                'adjust-ulimits',
+                '/usr/local/bin/adjust-ulimits',
                 'ceph-coverage',
                 coverage_dir,
                 'osdmaptool',
@@ -523,7 +523,7 @@ def cluster(ctx, config):
                     '/var/lib/ceph/mds/ceph-{id}'.format(id=id_),
                     run.Raw('&&'),
                     'sudo',
-                    'adjust-ulimits',
+                    '/usr/local/bin/adjust-ulimits',
                     'ceph-coverage',
                     coverage_dir,
                     'ceph-authtool',
@@ -627,7 +627,7 @@ def cluster(ctx, config):
                 args=[
                     'sudo',
                     'MALLOC_CHECK_=3',
-                    'adjust-ulimits',
+                    '/usr/local/bin/adjust-ulimits',
                     'ceph-coverage',
                     coverage_dir,
                     'ceph-osd',
@@ -683,7 +683,7 @@ def cluster(ctx, config):
             mons.run(
                 args=[
                     'sudo',
-                    'adjust-ulimits',
+                    '/usr/local/bin/adjust-ulimits',
                     'ceph-coverage',
                     coverage_dir,
                     'ceph-authtool',
@@ -711,7 +711,7 @@ def cluster(ctx, config):
             remote.run(
                 args=[
                     'sudo',
-                    'adjust-ulimits',
+                    '/usr/local/bin/adjust-ulimits',
                     'ceph-coverage',
                     coverage_dir,
                     'ceph-mon',
@@ -890,10 +890,10 @@ def run_daemon(ctx, config, type_):
 
             run_cmd = [
                 'sudo',
-                'adjust-ulimits',
+                '/usr/local/bin/adjust-ulimits',
                 'ceph-coverage',
                 coverage_dir,
-                'daemon-helper',
+                '/usr/local/bin/daemon-helper',
                 daemon_signal,
                 ]
             run_cmd_tail = [
@@ -929,7 +929,7 @@ def run_daemon(ctx, config, type_):
         (mon0_remote,) = ctx.cluster.only(firstmon).remotes.keys()
 
         mon0_remote.run(args=[
-            'adjust-ulimits',
+            '/usr/local/bin/adjust-ulimits',
             'ceph-coverage',
             coverage_dir,
             'ceph',

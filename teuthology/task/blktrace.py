@@ -41,7 +41,7 @@ def execute(ctx, config):
                         'cd',
                         log_dir,
                         run.Raw(';'),
-                        'daemon-helper',
+                        '/usr/local/bin/daemon-helper',
                         daemon_signal,
                         'sudo',
                         blktrace,

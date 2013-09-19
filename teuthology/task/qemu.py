@@ -162,10 +162,10 @@ def run_qemu(ctx, config):
 
         base_file = '{tdir}/qemu/base.{client}.qcow2'.format(tdir=testdir, client=client)
         args=[
-            'adjust-ulimits',
+            '/usr/local/bin/adjust-ulimits',
             'ceph-coverage',
             '{tdir}/archive/coverage'.format(tdir=testdir),
-            'daemon-helper',
+            '/usr/local/bin/daemon-helper',
             'term',
             'kvm', '-enable-kvm', '-nographic',
             '-m', str(client_config.get('memory', DEFAULT_MEM)),

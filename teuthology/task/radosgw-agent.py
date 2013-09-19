@@ -74,7 +74,7 @@ def run_radosgw_agent(ctx, config):
         port = cconf.get('port', 8000)
         daemon_name = '{host}.{port}.syncdaemon'.format(host=remote.name, port=port)
         in_args=[
-		        'daemon-helper',
+		        '/usr/local/bin/daemon-helper',
 		        'kill',
 		        '{tdir}/radosgw-agent.{client}/radosgw-agent'.format(tdir=testdir,
 		                                                             client=client),

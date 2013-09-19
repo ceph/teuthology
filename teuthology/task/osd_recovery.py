@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 def rados_start(testdir, remote, cmd):
     log.info("rados %s" % ' '.join(cmd))
     pre = [
-        'adjust-ulimits',
+        '/usr/local/bin/adjust-ulimits',
         'ceph-coverage',
         '{tdir}/archive/coverage'.format(tdir=testdir),
         'rados',

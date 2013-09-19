@@ -31,7 +31,7 @@ def rgwadmin(ctx, client, cmd):
     log.info('radosgw-admin: %s' % cmd)
     testdir = teuthology.get_testdir(ctx)
     pre = [
-        'adjust-ulimits',
+        '/usr/local/bin/adjust-ulimits',
         'ceph-coverage',
         '{tdir}/archive/coverage'.format(tdir=testdir),
         'radosgw-admin',
