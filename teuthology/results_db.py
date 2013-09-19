@@ -12,6 +12,9 @@ import os
 import re
 import yaml
 import argparse
+import logging
+
+log = logging.getLogger(__name__)
 
 
 def _xtract_date(text):
@@ -106,7 +109,7 @@ def _connect_db():
 
     Database parameters are:
         1. read from a yaml file whose name is in the
-           environemnent variabe TEUTH_DB_YAML
+           environment variable TEUTH_DB_YAML
         2. read from HOME/db.yaml.
         3. default to fixed values.
 
@@ -339,11 +342,26 @@ def update():
 
     :returns: False on a parameter error.
     """
+    logging.basicConfig(
+        level=logging.INFO,
+        )
+
     parser = argparse.ArgumentParser()
     parser.add_argument('suite', help='suite name (or /a/suite_name/pid)')
-    parser.add_argument('pid', help='pid (if suite specified as first arg')
+    parser.add_argument('pid', nargs='?',
+            help='pid (if suite specified as first arg)')
     args = parser.parse_args()
     testrun = args.suite
     if args.pid:
-        testrun = "/a/%s/%s" % (args.suite, args.pid)
-    return store_in_database(testrun)
+        hdr = ''
+        if not testrun.startswith("/a/"):
+            hdr = '/a/'
+        testrun = "%s%s/%s" % (hdr, args.suite, args.pid)
+    if os.path.isdir(testrun):
+        if store_in_database(testrun):
+            return 0
+        else:
+            log.info("Information in %s was not saved" % testrun)
+    else:
+        log.info("%s is an invalid directory" % testrun)
+    return 1
