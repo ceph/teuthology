@@ -8,7 +8,7 @@ def rados(ctx, remote, cmd, wait=True, check_status=False):
     testdir = teuthology.get_testdir(ctx)
     log.info("rados %s" % ' '.join(cmd))
     pre = [
-        'adjust-ulimits',
+        '/usr/local/bin/adjust-ulimits',
         'ceph-coverage',
         '{tdir}/archive/coverage'.format(tdir=testdir),
         'rados',

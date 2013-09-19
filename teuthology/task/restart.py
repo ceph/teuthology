@@ -111,7 +111,7 @@ def task(ctx, config):
                         env_arg = '{var}={val}'.format(var=var, val=quoted_val)
                         args.append(run.Raw(env_arg))
                 args.extend([
-                            'adjust-ulimits',
+                            '/usr/local/bin/adjust-ulimits',
                             'ceph-coverage',
                             '{tdir}/archive/coverage'.format(tdir=testdir),
                             '{srcdir}/{c}'.format(

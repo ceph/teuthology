@@ -192,10 +192,10 @@ def lock_one(op, ctx):
     try:
         proc = client_remote.run(
             args=[
-                'adjust-ulimits',
+                '/usr/local/bin/adjust-ulimits',
                 'ceph-coverage',
                 '{tdir}/archive/coverage'.format(tdir=testdir),
-                'daemon-helper',
+                '/usr/local/bin/daemon-helper',
                 'kill',
                 '{tdir}/lockfile/sclockandhold'.format(tdir=testdir),
                 filepath,

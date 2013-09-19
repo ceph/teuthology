@@ -21,7 +21,7 @@ def run_rest_api_daemon(ctx, api_clients):
                 id_ = whole_id_[len('clients'):]
                 run_cmd = [
                     'sudo',
-                    'daemon-helper',
+                    '/usr/local/bin/daemon-helper',
                     'kill',
                     'ceph-rest-api',
                     '-n',
@@ -98,7 +98,7 @@ def task(ctx, config):
                 rems.run(
                     args=[
                         'sudo',
-                        'adjust-ulimits',
+                        '/usr/local/bin/adjust-ulimits',
                         'ceph-coverage',
                         coverage_dir,
                         'ceph-authtool',
