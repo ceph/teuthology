@@ -12,6 +12,7 @@ import os
 import re
 import yaml
 import argparse
+import datetime
 import logging
 
 log = logging.getLogger(__name__)
@@ -369,7 +370,19 @@ def update():
 def unit_test():
     """
     Unit test 
+
+    One way to run this unit test is to go into interactive mode from teuthology.
+
+    Then enter:
+        import teuthology.results_db as teuth
+        teuth.unit_test(ctx)
+
+    :param ctx: Context
     """
     logging.basicConfig( level=logging.INFO,)
     log.info("In unit test code")
-    
+    dtfield = datetime.datetime.now()
+    udate = dtfield.date().isoformat()
+    utime = dtfield.time().replace(microsecond=0).isoformat()
+    udir = "unittest-%s_%s-xxx-yyyy-aaaaa-bb-cccccc" % (udate, utime)
+    log.info(udir)
