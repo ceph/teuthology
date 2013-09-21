@@ -453,9 +453,9 @@ def _results(args):
     finally:
         generate_coverage(args)
 
-    for job in get_jobs(args.archive_dir):
-        job_dir = os.path.join(args.archive_dir, job)
-        log.info("DEBUG save in: %s" % job_dir)
+    #for job in get_jobs(args.archive_dir):
+        #job_dir = os.path.join(args.archive_dir, job)
+        #log.info("DEBUG save in: %s" % job_dir)
         #results_db.store_in_database(job_dir)
 
 
