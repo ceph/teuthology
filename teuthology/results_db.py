@@ -14,6 +14,7 @@ import yaml
 import argparse
 import datetime
 import logging
+import time
 
 log = logging.getLogger(__name__)
 LOG_DIR = '/a/'
@@ -27,8 +28,14 @@ def _xtract_date(text):
     :returns: date extracted from the text input.
     """
     pmtch = re.match('.*\-[-0-9]*_[:0-9]*', text)
+    if not pmtch:
+        return
     pdate = pmtch.group(0)
     pdate = pdate[pdate.find('-') + 1:]
+    try:
+        time.strptime(pdate,"%Y-%m-%d_%H:%M:%S")
+    except:
+        return
     return pdate.replace('_', ' ')
 
 
