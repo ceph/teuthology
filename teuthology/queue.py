@@ -245,8 +245,8 @@ def run_job(job_config, teuth_bin_path):
         for line in p.stderr:
             child.error(': %s', line.rstrip('\n'))
         p.wait()
-        with open('/tmp/aardvark121') as f
-            f.write('foobat')
+        with open('/tmp/aardvark121','w') as f:
+            f.write('foobat\n')
         if p.returncode != 0:
             log.error('Child exited with code %d', p.returncode)
         else:
