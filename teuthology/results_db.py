@@ -374,22 +374,19 @@ def update():
     return 1
 
 
-def unit_test():
+def delete_record(dsuites):
     """
-    Unit test 
+    Delete database records.  This function normally will not be called but
+    is needed to run test cases that add and delete entries to the tables.
 
-    One way to run this unit test is to go into interactive mode from teuthology.
-
-    Then enter:
-        import teuthology.results_db as teuth
-        teuth.unit_test(ctx)
-
-    :param ctx: Context
+    :param dsuite: suite to be deleted
     """
-    logging.basicConfig( level=logging.INFO,)
-    log.info("In unit test code")
-    dtfield = datetime.datetime.now()
-    udate = dtfield.date().isoformat()
-    utime = dtfield.time().replace(microsecond=0).isoformat()
-    udir = "unittest-%s_%s-xxx-yyyy-aaaaa-bb-cccccc" % (udate, utime)
-    log.info(udir)
+    dbase = _connect_db()
+    cursor = dbase.cursor()
+    for _,_,tablev in _get_table_info(dbase):
+        pattern1 = 'DELETE FROM %s WHERE SUITE="%s"' % (tablev, dsuite)
+        if cursor.execute(pattern1) > 0:
+            continue
+        log.info("Command failed: %s",pattern1)
+        return
+    return True

@@ -1,4 +1,5 @@
 from .. import results_db
+import os
 
 def test_xtract_date_bad_text():
     # test bad input
@@ -20,3 +21,14 @@ def test_xtract_date_good():
     got = results_db._xtract_date('foo-2013-09-20_12:18:12-xxxxxxxxxxxxx')
     assert got == '2013-09-20 12:18:12'
 
+
+class TestUpdateBuildAndDirectStore(object):
+
+    def setup(self):
+        pass
+
+    def teardown(self):
+        pass
+ 
+    def test_bogosity():
+        pass
