@@ -54,7 +54,7 @@ class TestDirectStore(object):
             assert cursor.execute(pattern1) == 1
         shutil.rmtree(self.path_header)
  
-    def test_storeDirect:
+    def test_storeDirect(self):
         dbase = results_db.connect_db()
         cursor = dbase.cursor()
         prev_size = {}
