@@ -112,7 +112,7 @@ def _save_data(dbase, filename, tbl_info):
     return True
 
 
-def _connect_db():
+def connect_db():
     """
     Establish a connection to a MySQL database.
 
@@ -278,7 +278,7 @@ def _get_insert_cmd(dbase, name):
             second_string)
 
 
-def _get_table_info(dbase):
+def get_table_info(dbase):
     """
     Get a list of table information (each entry in this list will correspond
     to an sql table, and each entry will contain three parts).
@@ -315,8 +315,8 @@ def build():
     running teuthology-build-db will update all the databases with all the
     available information on /a.
     """
-    dbase = _connect_db()
-    tbl_info = _get_table_info(dbase)
+    dbase = connect_db()
+    tbl_info = get_table_info(dbase)
     for filename in _scan_files(LOG_DIR):
         _save_data(dbase, filename, tbl_info)
 
@@ -331,8 +331,8 @@ def store_in_database(testrun):
     :returns: False if filename cannot be split into database suite and pid
               values (these values effectively act as keys).
     """
-    dbase = _connect_db()
-    tbl_info = _get_table_info(dbase)
+    dbase = connect_db()
+    tbl_info = get_table_info(dbase)
     return _save_data(dbase, testrun, tbl_info)
 
 
@@ -372,21 +372,3 @@ def update():
     else:
         log.info("%s is an invalid directory" % testrun)
     return 1
-
-
-def delete_record(dsuites):
-    """
-    Delete database records.  This function normally will not be called but
-    is needed to run test cases that add and delete entries to the tables.
-
-    :param dsuite: suite to be deleted
-    """
-    dbase = _connect_db()
-    cursor = dbase.cursor()
-    for _,_,tablev in _get_table_info(dbase):
-        pattern1 = 'DELETE FROM %s WHERE SUITE="%s"' % (tablev, dsuite)
-        if cursor.execute(pattern1) > 0:
-            continue
-        log.info("Command failed: %s",pattern1)
-        return
-    return True
