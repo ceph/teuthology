@@ -3,6 +3,7 @@ import os
 import random
 import shutil
 import yaml
+import datetime
 
 def test_xtract_date_bad_text():
     # test bad input
@@ -34,34 +35,42 @@ class TestDirectStore(object):
         self.udir = "unittest-%s_%s-xxx-yyy-aaa-bbb-ccc" % (udate, utime)
         self.path_header = "/a/%s" % self.udir
         self.piddir = str(random.randint(1,32767))
-        self.fullpath = os.join(self.path_header,self.piddir)
-        summary = os.join(self.fullpath,"summary.yaml")
-        teuthlog = os.join(self.fullpath,"teuthology.log")
-        with open(teuthlog,'w') as outfile:
-            write('Bandwidth (MB/sec): 100.1\n')
-            write('Stddev Bandwidth: 1500.1\n')
+        self.fullpath = os.path.join(self.path_header,self.piddir)
+        os.makedirs(self.fullpath)
+        summary = os.path.join(self.fullpath,"summary.yaml")
+        teuthlog = os.path.join(self.fullpath,"teuthology.log")
+        with open(teuthlog,'w+') as outfile:
+            outfile.write('xxx Bandwidth (MB/sec): 100.1\n')
+            outfile.write('xxx Stddev Bandwidth: 1500.1\n')
         ddata = {'success': 'False', 'description': 'unit test sample',
                 'duration': 17.1, 'failure_reason': 'too many aardvarks',
                 'owner': 'me'}
-        with open(summary,'w') as outfile:
+        with open(summary,'w+') as outfile:
             yaml.dump(ddata, outfile)
 
     def teardown(self):
+        shutil.rmtree(self.path_header)
         dbase = results_db.connect_db()
         cursor = dbase.cursor()
+        cursor.execute("START TRANSACTION WITH CONSISTENT SNAPSHOT")
         for _,_,tablev in results_db.get_table_info(dbase):
-            pattern1 = 'DELETE FROM %s WHERE SUITE="%s"' % (tablev, dsuites)
+            pattern1 = 'DELETE FROM %s WHERE SUITE="%s"' % (tablev, self.udir)
             assert cursor.execute(pattern1) == 1
-        shutil.rmtree(self.path_header)
+        cursor.execute("COMMIT")
  
     def test_storeDirect(self):
         dbase = results_db.connect_db()
         cursor = dbase.cursor()
+        cursor.execute("START TRANSACTION WITH CONSISTENT SNAPSHOT")
         prev_size = {}
         for _,_,tablev in results_db.get_table_info(dbase):
             pattern1 = 'SELECT * FROM %s' % tablev
             prev_size[tablev] = cursor.execute(pattern1)
         results_db.store_in_database(self.fullpath)
+        dbase = results_db.connect_db()
+        cursor = dbase.cursor()
         for _,_,tablev in results_db.get_table_info(dbase):
             pattern1 = 'SELECT * FROM %s' % tablev
-            assert prev_size[tablev]+1 == cursor.execute(pattern1)
+            newsz = cursor.execute(pattern1)
+            oldsz = prev_size[tablev]+1
+            assert newsz == oldsz 

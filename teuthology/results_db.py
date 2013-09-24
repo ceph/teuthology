@@ -146,7 +146,7 @@ def connect_db():
 # The suite_results table was created using the following command:
 #
 #   CREATE TABLE suite_results (
-#       id BIGINT(20) NOT NULL AUTO_INCREMENT,
+#       id INTEGER NOT NULL AUTO_INCREMENT,
 #       date DATETIME,
 #       suite VARCHAR(255) NOT NULL,
 #       pid INTEGER NOT NULL,
@@ -156,7 +156,7 @@ def connect_db():
 #       failure_reason VARCHAR(255),
 #       flavor VARCHAR(255),
 #       owner VARCHAR(255),
-#       PRIMARY KEY('id'))
+#       PRIMARY KEY(id))
 #       ENGINE=InnoDB DEFAULT CHARSET=utf8);
 #
 def _get_summary(filename):
@@ -210,14 +210,14 @@ def _txtfind(ftext, stext):
 #
 # The suite_results table was created using the following command:
 #
-#   CREATE TABLE suite_results (
-#       id BIGINT(20) NOT NULL AUTO_INCREMENT,
+#   CREATE TABLE rados_bench (
+#       id INTEGER NOT NULL AUTO_INCREMENT,
 #       date DATETIME,
 #       suite VARCHAR(255) NOT NULL,
 #       pid INTEGER NOT NULL,
 #       bandwidth FLOAT,
 #       stddev FLOAT,
-#       PRIMARY KEY('id'))
+#       PRIMARY KEY(id))
 #       ENGINE=InnoDB DEFAULT CHARSET=utf8);
 #
 
