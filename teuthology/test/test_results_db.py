@@ -64,5 +64,4 @@ class TestDirectStore(object):
         results_db.store_in_database(self.fullpath)
         for _,_,tablev in results_db.get_table_info(dbase):
             pattern1 = 'SELECT * FROM %s' % tablev
-            assert prev_size[tablev]+1 = cursor.execute(pattern1)
-        
+            assert prev_size[tablev]+1 == cursor.execute(pattern1)
