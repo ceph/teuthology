@@ -2,7 +2,6 @@
 Save teuthology information into a database.
 
 External entry points are:
-    store_in_database() -- called from other python modules.
     update() -- Main-line entry point.  Adds information from the
                 specified run to the database
     build() -- Main-line entry point.  Scans all saved teuthology runs.
@@ -32,83 +31,10 @@ def _xtract_date(text):
     pdate = pmtch.group(0)
     pdate = pdate[pdate.find('-') + 1:]
     try:
-        time.strptime(pdate,"%Y-%m-%d_%H:%M:%S")
+        time.strptime(pdate, "%Y-%m-%d_%H:%M:%S")
     except ValueError:
         return
     return pdate.replace('_', ' ')
-
-
-def _add2db(suite, pid, db_data, table, dbase):
-    """
-    Perform the actual insert into the database.  First this checks to make
-    sure that the data to be added is not already in the database.  If it is,
-    the operation is not performed.  Since each suite run occurs only once
-    (the name is timestamped), then adding more than one entry of the same
-    test should be avoided.
-
-    :param suite: suite name (first directory under /a)
-    :param pid: test run (second directory under /a)
-    :param db_data: information to be stored in the database that is unique
-                    for this tbl_val (see next parameter).
-    :param table: details of the table being updated.  A list of mixed items
-                  unique to this table entry.  table[2] is the name of the
-                  sql table,  table[0] is the sql insert statement that
-                  corresponds to this table.
-    :param dbase: Database connection.
-    """
-    date = _xtract_date(suite)
-    cursor = dbase.cursor()
-    pattern1 = 'SELECT * FROM %s WHERE SUITE="%s" AND PID=%s'
-    if cursor.execute(pattern1 % (table[2], suite, pid)) > 0:
-        return
-    cursor = dbase.cursor()
-    olist = [date, suite, pid] + list(db_data)
-    cursor.execute(table[0].format(*olist))
-    dbase.commit()
-
-
-def _scan_files(indir):
-    """
-    Search all files in the directory, returning ones that match the pattern
-    suite-name/pid-number.
-
-    :param indir: input directory (/a from main routine)
-    :returns: generator that returns a directory to be searched for data to add
-              to the database.
-    """
-    for suite in os.listdir(indir):
-        dir1 = "%s%s" % (indir, suite)
-        for pid in os.listdir(dir1):
-            if pid.isdigit():
-                rfile = "%s/%s" % (dir1, pid)
-                yield rfile
-
-
-def _save_data(dbase, filename, tbl_info):
-    """
-    All database entries wih have a file name (test suite directory) and an
-    associated number for the directory containing the logs and yaml files
-    being read (a pid number).
-
-    :param dbase: database connection
-    :param filename: directory containing the info we want to save on the
-                     database.
-    :param tbl_info: list of information pertaining to this table. The first
-                     entry in the ist is the string used by sql commands to
-                     insert an entry into this table.  The second entry is
-                     a routine that is used to find the data to add to the
-                     table.  The third entry is the name of the table.
-    :returns: False if filename cannot be split into database suite and pid
-              values (these values effectively act as keys).
-    """
-    parts = filename.split('/')[::-1]
-    if len(parts) < 3:
-        return False
-    for tbl in tbl_info:
-        retval = tbl[1](filename)
-        if retval:
-            _add2db(parts[1], parts[0], retval, tbl, dbase)
-    return True
 
 
 def connect_db():
@@ -121,7 +47,7 @@ def connect_db():
         2. read from HOME/db.yaml.
         3. default to fixed values.
 
-    :returns: databse connection.
+    :returns: database connection.
     """
     info = {}
     yaml_file = os.environ.get('TEUTH_DB_YAML',
@@ -167,6 +93,8 @@ def _get_summary(filename):
     :returns: list of column entries in the SuiteResults table.
     """
     rdct = yaml.load(filename)
+    if not rdct:
+        return
     retv = []
     for col in ['success', 'description', 'duration', 'failure_reason',
             'flavor', 'owner']:
@@ -200,6 +128,7 @@ def _txtfind(ftext, stext):
     tstrng = tstrng[:tstrng.find('\n')]
     return tstrng.split()[::-1][0].strip()
 
+
 #
 # This routine is used to collect data stored in the rados_bench table.
 #
@@ -225,6 +154,11 @@ def _get_bandwidth(filename):
     :returns: list of column entries in the RadosBench table.
     """
     txt = filename.read()
+    if not txt:
+        try:
+            txt = filename.getvalue()
+        except AttributeError:
+            return
     bandwidth = _txtfind(txt, 'Bandwidth (MB/sec):')
     if bandwidth:
         stddev = _txtfind(txt, 'Stddev Bandwidth:')
@@ -268,107 +202,11 @@ def _get_insert_cmd(dbase, name):
             second_string)
 
 
-def get_table_info(dbase):
-    """
-    Get a list of table information (each entry in this list will correspond
-    to an sql table, and each entry will contain three parts).
-        1. A string that is used for insert statements.
-        2. A reference to a function that is used to find the data unique
-           to this database table.
-        3. The name of the table on sql
-
-    :param dbase: database connection
-    :returns: table information (insert string, function, name)
-    """
-    tbl_infoorg = {'suite_results': _get_summary,
-                   'rados_bench': _get_bandwidth}
-    cursor = dbase.cursor()
-    cursor.execute('SHOW TABLES')
-    tbinfo = cursor.fetchall()
-    tbl_info = {}
-    for lbl in tbl_infoorg:
-        if (lbl,) in tbinfo:
-            tbl_info[lbl] = tbl_infoorg[lbl]
-    ret_tbl_vec = []
-    for tbl in tbl_info:
-        ret_tbl_vec.append((_get_insert_cmd(dbase, tbl), tbl_info[tbl], tbl,))
-    return ret_tbl_vec
-
-
-def build_old():
-    """
-    Main entry point for teuthology-build-db command.
-
-    Walk through all the files on /a, and write all appropriate data into
-    the database.
-
-    running teuthology-build-db will update all the databases with all the
-    available information on /a.
-    """
-    dbase = connect_db()
-    tbl_info = get_table_info(dbase)
-    for filename in _scan_files(LOG_DIR):
-        _save_data(dbase, filename, tbl_info)
-
-
-def store_in_database(testrun):
-    """
-    Wrapper for _save_data used by update and as an entry point from
-    other python modules (teuthology/suite.py for instance).
-
-    :param testrun: directory of information from a suite run.
-
-    :returns: False if filename cannot be split into database suite and pid
-              values (these values effectively act as keys).
-    """
-    dbase = connect_db()
-    tbl_info = get_table_info(dbase)
-    return _save_data(dbase, testrun, tbl_info)
-
-
-def update_old():
-    """
-    Main entry point for teuthology-update-db command.
-
-    Write all appropriate data to the database from the directory passed
-    (or /a/parm1/parm2 if two parameters are passed).
-
-    The following commands will both update all tables with the data in
-    /a/foo-2013-01-01_23:23:23-performance/1211.
-
-    teuthology-update-db /a/foo-2013-01-01_23:23:23-performance/1211
-    teuthology-update-db foo-2013-01-01_23:23:23-performance 1211
-
-    :returns: False on a parameter error.
-    """
-    logging.basicConfig( level=logging.INFO,)
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('suite', help='suite name (or /a/suite_name/pid)')
-    parser.add_argument('pid', nargs='?',
-            help='pid (if suite specified as first arg)')
-    args = parser.parse_args()
-    testrun = args.suite
-    if args.pid:
-        hdr = ''
-        if not testrun.startswith(LOG_DIR):
-            hdr = LOG_DIR
-        testrun = "%s%s/%s" % (hdr, args.suite, args.pid)
-    if os.path.isdir(testrun):
-        if store_in_database(testrun):
-            return 0
-        else:
-            log.info("Information in %s was not saved" % testrun)
-    else:
-        log.info("%s is an invalid directory" % testrun)
-    return 1
-
-
 RESULTS_MAP = {'teuthology.log': [('rados_bench', _get_bandwidth)],
                'summary.yaml': [('suite_results', _get_summary)]}
 
+
 def process_suite_data(suite, pid, in_file, filen):
-#def _add2db(suite, pid, db_data, table, dbase):
     """
     Perform the actual insert into the database.  First this checks to make
     sure that the data to be added is not already in the database.  If it is,
@@ -378,13 +216,8 @@ def process_suite_data(suite, pid, in_file, filen):
 
     :param suite: suite name (first directory under /a)
     :param pid: test run (second directory under /a)
-    :param db_data: information to be stored in the database that is unique
-                    for this tbl_val (see next parameter).
-    :param table: details of the table being updated.  A list of mixed items
-                  unique to this table entry.  table[2] is the name of the
-                  sql table,  table[0] is the sql insert statement that
-                  corresponds to this table.
-    :param dbase: Database connection.
+    :param in_file: Open file that we are reading from.
+    :param filen: Name of the file from which the information is read
     """
     date = _xtract_date(suite)
     dbase = connect_db()
@@ -394,8 +227,6 @@ def process_suite_data(suite, pid, in_file, filen):
         if cursor.execute(pattern1 % (tables[0], suite, pid)) > 0:
             continue
         cursor = dbase.cursor()
-        #olist = [date, suite, pid] + list(_get_insert_cmd(dbase, tables[0]))
-        #cursor.execute(tables[1](in_file).format(*olist))
         this_data = tables[1](in_file)
         if not this_data:
             continue
@@ -403,7 +234,8 @@ def process_suite_data(suite, pid, in_file, filen):
         cursor.execute(_get_insert_cmd(dbase, tables[0]).format(*olist))
         dbase.commit()
 
-def get_next_data_file(root_dir):
+
+def _get_next_data_file(root_dir):
     """
     Walk through a directory.  Return the next file found that is an
     entry in the RESULTS_MAP table.
@@ -417,13 +249,16 @@ def get_next_data_file(root_dir):
                 yield rootd, data_file
 
 
-def find_files(root_dir):
+def _find_files(root_dir):
     """
-    foo
+    Calls process_suite_data for all files under root_dir.
+
+    :param root_dir: base of tree containing files to be written to the
+                     database.
     """
-    for fpath, filen in get_next_data_file(root_dir):
+    for fpath, filen in _get_next_data_file(root_dir):
         full_path = os.path.join(fpath, filen)
-        with open(full_path, 'r') as in_file:         
+        with open(full_path, 'r') as in_file:
             parts = full_path.split('/')[::-1]
             if len(parts) < 3:
                 continue
@@ -445,7 +280,7 @@ def update():
 
     :returns: False on a parameter error.
     """
-    logging.basicConfig( level=logging.INFO,)
+    logging.basicConfig(level=logging.INFO,)
 
     parser = argparse.ArgumentParser()
     parser.add_argument('suite', help='suite name (or /a/suite_name/pid)')
@@ -458,7 +293,16 @@ def update():
         if not testrun.startswith(LOG_DIR):
             hdr = LOG_DIR
         testrun = "%s%s/%s" % (hdr, args.suite, args.pid)
-    find_files(testrun)
+    _find_files(testrun)
+
+
+def update_file(in_file):
+    """
+    Update the databases with a specific file
+
+    :param in_file: input file
+    """
+    _find_files(in_file)
 
 
 def build():
@@ -471,4 +315,4 @@ def build():
     running teuthology-build-db will update all the databases with all the
     available information on /a.
     """
-    find_files(LOG_DIR)
+    _find_files(LOG_DIR)
