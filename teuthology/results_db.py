@@ -84,7 +84,7 @@ def connect_db():
 #       PRIMARY KEY(id))
 #       ENGINE=InnoDB DEFAULT CHARSET=utf8);
 #
-def _get_summary(filename):
+def _get_summary(filename, suite):
     """
     Collect information from summary files that are found.  This function is
     used to collect data that is added to the suite_results database table.
@@ -94,6 +94,7 @@ def _get_summary(filename):
     """
     rdct = yaml.load(filename)
     if not rdct:
+        log.info('invalid yaml file found in %s' % suite)
         return
     retv = []
     for col in ['success', 'description', 'duration', 'failure_reason',
@@ -144,7 +145,7 @@ def _txtfind(ftext, stext):
 #       PRIMARY KEY(id))
 #       ENGINE=InnoDB DEFAULT CHARSET=utf8);
 #
-def _get_bandwidth(filename):
+def _get_bandwidth(filename, suite):
     """
     Collect information from teuthology.log files that are found.
     Bandwidth messages are extracted from the log.  This function
@@ -153,12 +154,11 @@ def _get_bandwidth(filename):
     :param filename: Directory being searched.
     :returns: list of column entries in the RadosBench table.
     """
-    txt = filename.read()
-    if not txt:
-        try:
-            txt = filename.getvalue()
-        except AttributeError:
-            return
+    try:
+        txt = filename.read()
+    except MemoryError:
+        log.info("MemoryError occured reading %s" % suite)
+        return
     bandwidth = _txtfind(txt, 'Bandwidth (MB/sec):')
     if bandwidth:
         stddev = _txtfind(txt, 'Stddev Bandwidth:')
@@ -227,7 +227,7 @@ def process_suite_data(suite, pid, in_file, filen):
         if cursor.execute(pattern1 % (tables[0], suite, pid)) > 0:
             continue
         cursor = dbase.cursor()
-        this_data = tables[1](in_file)
+        this_data = tables[1](in_file, suite)
         if not this_data:
             continue
         olist = [date, suite, pid] + list(this_data)
