@@ -28,12 +28,14 @@ def test_xtract_date_good():
 
 class TestDirectStore(object):
 
+    TESTDIR = "/tmp"
+
     def setup(self):
         dtfield = datetime.datetime.now()
         udate = dtfield.date().isoformat()
         utime = dtfield.time().replace(microsecond=0).isoformat()
         self.udir = "unittest-%s_%s-xxx-yyy-aaa-bbb-ccc" % (udate, utime)
-        self.path_header = "/a/%s" % self.udir
+        self.path_header = "%s/%s" % (self.TESTDIR, self.udir)
         self.piddir = str(random.randint(1,32767))
         self.fullpath = os.path.join(self.path_header,self.piddir)
         os.makedirs(self.fullpath)
@@ -52,7 +54,6 @@ class TestDirectStore(object):
         shutil.rmtree(self.path_header)
         dbase = results_db.connect_db()
         cursor = dbase.cursor()
-        cursor.execute("START TRANSACTION WITH CONSISTENT SNAPSHOT")
         for _,_,tablev in results_db.get_table_info(dbase):
             pattern1 = 'DELETE FROM %s WHERE SUITE="%s"' % (tablev, self.udir)
             assert cursor.execute(pattern1) == 1
@@ -61,7 +62,6 @@ class TestDirectStore(object):
     def test_storeDirect(self):
         dbase = results_db.connect_db()
         cursor = dbase.cursor()
-        cursor.execute("START TRANSACTION WITH CONSISTENT SNAPSHOT")
         prev_size = {}
         for _,_,tablev in results_db.get_table_info(dbase):
             pattern1 = 'SELECT * FROM %s' % tablev

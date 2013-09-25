@@ -12,7 +12,6 @@ import os
 import re
 import yaml
 import argparse
-import datetime
 import logging
 import time
 
@@ -34,7 +33,7 @@ def _xtract_date(text):
     pdate = pdate[pdate.find('-') + 1:]
     try:
         time.strptime(pdate,"%Y-%m-%d_%H:%M:%S")
-    except:
+    except ValueError:
         return
     return pdate.replace('_', ' ')
 
@@ -70,7 +69,7 @@ def _add2db(suite, pid, db_data, table, dbase):
 
 def _scan_files(indir):
     """
-    Search al files in the directory, returning ones that match the pattern
+    Search all files in the directory, returning ones that match the pattern
     suite-name/pid-number.
 
     :param indir: input directory (/a from main routine)
@@ -136,7 +135,7 @@ def connect_db():
         db=info.get('db', 'perf_test'),
         passwd=info.get('passwd', 'speedkills'),
         )
-    dbase.autocommit(False)
+    dbase.autocommit(True)
     return dbase
 
 
@@ -167,11 +166,7 @@ def _get_summary(filename):
     :param filename: Filename being searched.
     :returns: list of column entries in the SuiteResults table.
     """
-    sfile = "%s/summary.yaml" % filename
-    rdct = {}
-    if os.path.exists(sfile):
-        with open(sfile, 'r') as fyaml:
-            rdct = yaml.load(fyaml)
+    rdct = yaml.load(filename)
     retv = []
     for col in ['success', 'description', 'duration', 'failure_reason',
             'flavor', 'owner']:
@@ -220,8 +215,6 @@ def _txtfind(ftext, stext):
 #       PRIMARY KEY(id))
 #       ENGINE=InnoDB DEFAULT CHARSET=utf8);
 #
-
-
 def _get_bandwidth(filename):
     """
     Collect information from teuthology.log files that are found.
@@ -231,14 +224,11 @@ def _get_bandwidth(filename):
     :param filename: Directory being searched.
     :returns: list of column entries in the RadosBench table.
     """
-    tfile = "%s/teuthology.log" % filename
-    if os.path.exists(tfile):
-        with open(tfile, 'r') as tlogfile:
-            txt = tlogfile.read()
-            bandwidth = _txtfind(txt, 'Bandwidth (MB/sec):')
-            if bandwidth:
-                stddev = _txtfind(txt, 'Stddev Bandwidth:')
-                return (bandwidth, stddev)
+    txt = filename.read()
+    bandwidth = _txtfind(txt, 'Bandwidth (MB/sec):')
+    if bandwidth:
+        stddev = _txtfind(txt, 'Stddev Bandwidth:')
+        return (bandwidth, stddev)
 
 
 def _get_insert_cmd(dbase, name):
@@ -305,7 +295,7 @@ def get_table_info(dbase):
     return ret_tbl_vec
 
 
-def build():
+def build_old():
     """
     Main entry point for teuthology-build-db command.
 
@@ -336,7 +326,7 @@ def store_in_database(testrun):
     return _save_data(dbase, testrun, tbl_info)
 
 
-def update():
+def update_old():
     """
     Main entry point for teuthology-update-db command.
 
@@ -372,3 +362,113 @@ def update():
     else:
         log.info("%s is an invalid directory" % testrun)
     return 1
+
+
+RESULTS_MAP = {'teuthology.log': [('rados_bench', _get_bandwidth)],
+               'summary.yaml': [('suite_results', _get_summary)]}
+
+def process_suite_data(suite, pid, in_file, filen):
+#def _add2db(suite, pid, db_data, table, dbase):
+    """
+    Perform the actual insert into the database.  First this checks to make
+    sure that the data to be added is not already in the database.  If it is,
+    the operation is not performed.  Since each suite run occurs only once
+    (the name is timestamped), then adding more than one entry of the same
+    test should be avoided.
+
+    :param suite: suite name (first directory under /a)
+    :param pid: test run (second directory under /a)
+    :param db_data: information to be stored in the database that is unique
+                    for this tbl_val (see next parameter).
+    :param table: details of the table being updated.  A list of mixed items
+                  unique to this table entry.  table[2] is the name of the
+                  sql table,  table[0] is the sql insert statement that
+                  corresponds to this table.
+    :param dbase: Database connection.
+    """
+    date = _xtract_date(suite)
+    dbase = connect_db()
+    for tables in RESULTS_MAP[filen]:
+        cursor = dbase.cursor()
+        pattern1 = 'SELECT * FROM %s WHERE SUITE="%s" AND PID=%s'
+        if cursor.execute(pattern1 % (tables[0], suite, pid)) > 0:
+            continue
+        cursor = dbase.cursor()
+        #olist = [date, suite, pid] + list(_get_insert_cmd(dbase, tables[0]))
+        #cursor.execute(tables[1](in_file).format(*olist))
+        this_data = tables[1](in_file)
+        if not this_data:
+            continue
+        olist = [date, suite, pid] + list(this_data)
+        cursor.execute(_get_insert_cmd(dbase, tables[0]).format(*olist))
+        dbase.commit()
+
+def get_next_data_file(root_dir):
+    """
+    Walk through a directory.  Return the next file found that is an
+    entry in the RESULTS_MAP table.
+
+    :param root_dir: Directory to be searched.
+    :returns: yields the next entry found.
+    """
+    for rootd, _, fyles in os.walk(root_dir):
+        for data_file in fyles:
+            if data_file in RESULTS_MAP:
+                yield rootd, data_file
+
+
+def find_files(root_dir):
+    """
+    foo
+    """
+    for fpath, filen in get_next_data_file(root_dir):
+        full_path = os.path.join(fpath, filen)
+        with open(full_path, 'r') as in_file:         
+            parts = full_path.split('/')[::-1]
+            if len(parts) < 3:
+                continue
+            process_suite_data(parts[2], parts[1], in_file, filen)
+
+
+def update():
+    """
+    Main entry point for teuthology-update-db command.
+
+    Write all appropriate data to the database from the directory passed
+    (or /a/parm1/parm2 if two parameters are passed).
+
+    The following commands will both update all tables with the data in
+    /a/foo-2013-01-01_23:23:23-performance/1211.
+
+    teuthology-update-db /a/foo-2013-01-01_23:23:23-performance/1211
+    teuthology-update-db foo-2013-01-01_23:23:23-performance 1211
+
+    :returns: False on a parameter error.
+    """
+    logging.basicConfig( level=logging.INFO,)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('suite', help='suite name (or /a/suite_name/pid)')
+    parser.add_argument('pid', nargs='?',
+            help='pid (if suite specified as first arg)')
+    args = parser.parse_args()
+    testrun = args.suite
+    if args.pid:
+        hdr = ''
+        if not testrun.startswith(LOG_DIR):
+            hdr = LOG_DIR
+        testrun = "%s%s/%s" % (hdr, args.suite, args.pid)
+    find_files(testrun)
+
+
+def build():
+    """
+    Main entry point for teuthology-build-db command.
+
+    Walk through all the files on /a, and write all appropriate data into
+    the database.
+
+    running teuthology-build-db will update all the databases with all the
+    available information on /a.
+    """
+    find_files(LOG_DIR)
