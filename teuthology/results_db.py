@@ -13,6 +13,9 @@ import yaml
 import argparse
 import logging
 import time
+import datetime
+import random
+import StringIO
 
 log = logging.getLogger(__name__)
 LOG_DIR = '/a/'
@@ -116,7 +119,9 @@ def _get_summary(filename, suite):
 def _txtfind(ftext, stext):
     """
     Scan for some text inside some other text.  If found, return the last
-    word on the line of the text found.
+    word on the line of the text found.  Note that this code scans for text
+    inside multi-line strings and expects to find the data, if it exists, in
+    a internal line.
 
     :param ftext: text to be scanned.
     :param stext: text to be searched for.
@@ -316,3 +321,73 @@ def build():
     available information on /a.
     """
     _find_files(LOG_DIR)
+
+#
+# Functional Test 
+#
+
+class TestDirectStore(object):
+    """
+    testcases -- sample file values for testing known sql tables.
+    udir -- artificiially constructed suite directory
+    piddir -- artificially constructed subdiretory of udir
+    """
+    testcases = {}
+    testfile = {}
+    udir = ''
+    piddir = 0
+    def __init__(self):
+        dtfield = datetime.datetime.now()
+        udate = dtfield.date().isoformat()
+        utime = dtfield.time().replace(microsecond=0).isoformat()
+        self.udir = "unittest-%s_%s-xxx-yyy-aaa-bbb-ccc" % (udate, utime)
+        self.piddir = str(random.randint(1, 32767))
+        self.testcases['rados_bench'] = \
+            u'xxx Bandwidth (MB/sec): 100.1\nxxx Stddev Bandwidth: 1500.1\n'
+        self.testcases['suite_results'] = \
+            u'description: aardvarks\nduration: 0.9\nfailure_reason: foo\n' +\
+            u'success: false\n'
+        self.testfile = {'rados_bench': 'teuthology.log',
+                         'suite_results': 'summary.yaml'}
+
+    def teardown(self):
+        """
+        Get rid of the records that we created for this test.
+        """
+        for db_table in self.testcases:
+            dbase = connect_db()
+            cursor = dbase.cursor()
+            pattern1 = 'DELETE FROM %s WHERE SUITE="%s"' % (db_table, self.udir)
+            assert cursor.execute(pattern1) == 1
+            cursor.execute("COMMIT")
+ 
+    def test_store_direct(self):
+        """
+        For each table, use process_suite_data to add a fake record.
+        Note that this measurement may not be accurate if another task is
+        updating the table.
+        """
+        for db_table in self.testcases:
+            pattern1 = 'SELECT * FROM %s' % db_table
+            dbase = connect_db()
+            cursor = dbase.cursor()
+            oldsz = cursor.execute(pattern1)
+            outfile = StringIO.StringIO()
+            outfile.write(self.testcases[db_table])
+            outfile.seek(0)
+            process_suite_data(self.udir, self.piddir, outfile,
+                self.testfile[db_table])
+            dbase.commit()
+            cursor = dbase.cursor()
+            newsz = cursor.execute(pattern1)
+            dbase.commit()
+            assert newsz == oldsz + 1 
+
+
+def functional_test():
+    """
+    Test process_suite_data for all known tables.
+    """
+    testdir = TestDirectStore()
+    testdir.test_store_direct()
+    testdir.teardown()
