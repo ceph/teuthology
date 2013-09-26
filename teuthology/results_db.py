@@ -59,7 +59,7 @@ def connect_db():
         host=info.get('host', 'deeby.inktank.com'),
         user=info.get('user', 'perf_test'),
         db=info.get('db', 'perf_test'),
-        passwd=info.get('passwd', 'speedkills'),
+        passwd=info.get('passwd', 'passwd'),
         )
     dbase.autocommit(True)
     return dbase
