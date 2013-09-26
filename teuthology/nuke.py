@@ -1,5 +1,4 @@
 import argparse
-import os
 import yaml
 import textwrap
 from argparse import RawTextHelpFormatter
@@ -340,6 +339,7 @@ def main():
 
     info = {}
     if ctx.archive:
+        import os
         ctx.config = config_file(ctx.archive + '/config.yaml')
         ifn = os.path.join(ctx.archive, 'info.yaml')
         if os.path.exists(ifn):
