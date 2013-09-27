@@ -216,6 +216,10 @@ RESULTS_MAP = {'teuthology.log': [('rados_bench', _get_bandwidth)],
 
 
 def _get_tables():
+    """
+    Return a list of datbase table names.  This data is extracted from
+    RESULTS_MAP
+    """
     lyst = []
     for tfyle in RESULTS_MAP:
         for ttuple in RESULTS_MAP[tfyle]:
@@ -346,7 +350,7 @@ def build():
     if args.force:
         _find_files(LOG_DIR)
     else:
-        lastd = datetime.datetime(1,1,1,1,1,1)
+        lastd = datetime.datetime(1, 1, 1, 1, 1, 1)
         for dbtab in _get_tables():
             dbase = connect_db()
             cursor = dbase.cursor()
@@ -367,8 +371,9 @@ def build():
                 _find_files("%s%s" % (LOG_DIR, chck_file))
 
 #
-# Functional Test 
+# Functional Test
 #
+
 
 class TestDirectStore(object):
     """
@@ -380,6 +385,7 @@ class TestDirectStore(object):
     testfile = {}
     udir = ''
     piddir = 0
+
     def __init__(self):
         dtfield = datetime.datetime.now()
         udate = dtfield.date().isoformat()
@@ -401,10 +407,11 @@ class TestDirectStore(object):
         for db_table in self.testcases:
             dbase = connect_db()
             cursor = dbase.cursor()
-            pattern1 = 'DELETE FROM %s WHERE SUITE="%s"' % (db_table, self.udir)
+            pattern1 = 'DELETE FROM %s WHERE SUITE="%s"' % (db_table,
+                    self.udir)
             assert cursor.execute(pattern1) == 1
             cursor.execute("COMMIT")
- 
+
     def test_store_direct(self):
         """
         For each table, use process_suite_data to add a fake record.
@@ -425,7 +432,7 @@ class TestDirectStore(object):
             cursor = dbase.cursor()
             newsz = cursor.execute(pattern1)
             dbase.commit()
-            assert newsz == oldsz + 1 
+            assert newsz == oldsz + 1
 
 
 def functional_test():
