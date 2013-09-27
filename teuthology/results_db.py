@@ -98,6 +98,9 @@ def _get_summary(filename, suite):
     """
     rdct = yaml.load(filename)
     if not rdct:
+        log.info('cannot find yaml file for %s' % suite)
+        return
+    if not isinstance(rdct, dict):
         log.info('invalid yaml file found in %s' % suite)
         return
     retv = []

@@ -1,4 +1,5 @@
 from .. import results_db
+import StringIO
 
 def test_xtract_date_bad_text():
     # test bad input
@@ -57,3 +58,48 @@ def test_txtfind_found_2word():
 def test_txtfind_found_bad():
     # test _txtfind with more no matches
     assert not results_db._txtfind('aardvarks and wombats\n', 'xxx')
+
+def test_get_next_data_file():
+    # test _get_nex_data_file execution -- don't die for simple input
+    for foo, bar in results_db._get_next_data_file('/tmp'):
+        pass
+
+def dummy(parts2, parts1, in_file, filen):
+    pass
+
+def test_find_files():
+    # test _find_files execution -- make sure it doesn't die for simple input
+    results_db._find_files('/tmp',dummy)
+
+def test_get_bandwidth_found():
+    # test _get_bandwidth when bandwidth data exists
+    outfile = StringIO.StringIO()
+    outfile.write(
+            u'xxx Bandwidth (MB/sec): 100.1\nxxx Stddev Bandwidth: 1500.1\n')
+    outfile.seek(0)
+    bw1, bw2 = results_db._get_bandwidth(outfile,'unit-test')
+    assert bw1 == u'100.1'
+    assert bw2 == u'1500.1'
+
+def test_get_bandwidth_notfound():
+    # test _get_bandwidth when bandwidth data does not exists
+    outfile = StringIO.StringIO()
+    outfile.write(u'time has come the Walrus said to speak of many things.1\n')
+    outfile.seek(0)
+    assert not results_db._get_bandwidth(outfile,'unit-test')
+
+def test_get_summary_found():
+    # test _get_summary when summary data is good.
+    outfile = StringIO.StringIO()
+    outfile.write(u'success:   False\nduration:   100.0\n')
+    outfile.seek(0)
+    res = results_db._get_summary(outfile,'unit-test')
+    assert res[0] == False
+    assert res[2] == 100.0
+
+def test_get_summary_notfound():
+    # test _get_summary when summary data is bad.
+    outfile = StringIO.StringIO()
+    outfile.write(u'time has come the Walrus said to speak of many things.1\n')
+    outfile.seek(0)
+    assert not results_db._get_summary(outfile,'unit-test')
