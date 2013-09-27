@@ -26,7 +26,7 @@ def test_xtract_date_bad_datetime():
     got = results_db._xtract_date('foo-2013-aa-aa_12:12:12-xxxxxxxxxxxxx', True)
     assert not got
 
-def test_xtract_date_good():
+def test_xtract_date_good_datetime():
     # test valid date with datetime return
     got = results_db._xtract_date('foo-2013-09-20_12:18:12-xxxxxxxxxxxxx', True)
     assert got.year == 2013
