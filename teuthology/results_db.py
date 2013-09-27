@@ -12,7 +12,6 @@ import re
 import yaml
 import argparse
 import logging
-import time
 import datetime
 import random
 import StringIO
@@ -21,7 +20,7 @@ log = logging.getLogger(__name__)
 LOG_DIR = '/a/'
 
 
-def _xtract_date(text):
+def _xtract_date(text, retdt=False):
     """
     Given a suite name, extract the date.
 
@@ -34,7 +33,9 @@ def _xtract_date(text):
     pdate = pmtch.group(0)
     pdate = pdate[pdate.find('-') + 1:]
     try:
-        time.strptime(pdate, "%Y-%m-%d_%H:%M:%S")
+        rldate = datetime.datetime.strptime(pdate, "%Y-%m-%d_%H:%M:%S")
+        if retdt:
+            return rldate
     except ValueError:
         return
     return pdate.replace('_', ' ')
@@ -211,6 +212,14 @@ RESULTS_MAP = {'teuthology.log': [('rados_bench', _get_bandwidth)],
                'summary.yaml': [('suite_results', _get_summary)]}
 
 
+def _get_tables():
+    lyst = []
+    for tfyle in RESULTS_MAP:
+        for ttuple in RESULTS_MAP[tfyle]:
+            lyst.append(ttuple[0])
+    return set(lyst)
+
+
 def process_suite_data(suite, pid, in_file, filen):
     """
     Perform the actual insert into the database.  First this checks to make
@@ -228,7 +237,7 @@ def process_suite_data(suite, pid, in_file, filen):
     dbase = connect_db()
     for tables in RESULTS_MAP[filen]:
         cursor = dbase.cursor()
-        pattern1 = 'SELECT * FROM %s WHERE SUITE="%s" AND PID=%s'
+        pattern1 = 'SELECT id FROM %s WHERE SUITE="%s" AND PID=%s'
         if cursor.execute(pattern1 % (tables[0], suite, pid)) > 0:
             continue
         cursor = dbase.cursor()
@@ -254,7 +263,7 @@ def _get_next_data_file(root_dir):
                 yield rootd, data_file
 
 
-def _find_files(root_dir):
+def _find_files(root_dir, xrtn=process_suite_data):
     """
     Calls process_suite_data for all files under root_dir.
 
@@ -267,7 +276,7 @@ def _find_files(root_dir):
             parts = full_path.split('/')[::-1]
             if len(parts) < 3:
                 continue
-            process_suite_data(parts[2], parts[1], in_file, filen)
+            xrtn(parts[2], parts[1], in_file, filen)
 
 
 def update():
@@ -288,7 +297,8 @@ def update():
     logging.basicConfig(level=logging.INFO,)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('suite', help='suite name (or /a/suite_name/pid)')
+    help_msg = 'suite name (or %ssuite_name/pid)' % LOG_DIR
+    parser.add_argument('suite', help=help_msg)
     parser.add_argument('pid', nargs='?',
             help='pid (if suite specified as first arg)')
     args = parser.parse_args()
@@ -314,13 +324,44 @@ def build():
     """
     Main entry point for teuthology-build-db command.
 
-    Walk through all the files on /a, and write all appropriate data into
-    the database.
+    If -f specified, walk through all the files on /a, and write all
+    appropriate data into the database (takes a long time)
 
-    running teuthology-build-db will update all the databases with all the
-    available information on /a.
+    If -f is not specified, only data newer than the lastest record in any
+    of the databases will be recorded.
     """
-    _find_files(LOG_DIR)
+    logging.basicConfig(level=logging.INFO,)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-f', '--force',
+        action='store_true',
+        default=False,
+        help='update all entries in the database',
+        )
+    args = parser.parse_args()
+    if args.force:
+        _find_files(LOG_DIR)
+    else:
+        lastd = datetime.datetime(1,1,1,1,1,1)
+        for dbtab in _get_tables():
+            dbase = connect_db()
+            cursor = dbase.cursor()
+            cursor.execute('SELECT COUNT(*) FROM %s' % dbtab)
+            indx = cursor.fetchone()[0]
+            cursor.execute('SELECT date FROM %s WHERE id >= %s' %
+                    (dbtab, indx))
+            for odate in cursor.fetchall():
+                if odate[0] > lastd:
+                    lastd = odate[0]
+        check_these = os.listdir(LOG_DIR)
+        for chck_file in check_these:
+            ddate = _xtract_date(chck_file, True)
+            if not ddate:
+                continue
+            if ddate > lastd:
+                log.info("Storing data from %s" % chck_file)
+                _find_files("%s%s" % (LOG_DIR, chck_file))
 
 #
 # Functional Test 
@@ -368,7 +409,7 @@ class TestDirectStore(object):
         updating the table.
         """
         for db_table in self.testcases:
-            pattern1 = 'SELECT * FROM %s' % db_table
+            pattern1 = 'SELECT id FROM %s' % db_table
             dbase = connect_db()
             cursor = dbase.cursor()
             oldsz = cursor.execute(pattern1)
