@@ -17,9 +17,9 @@ import yaml
 
 from teuthology import misc
 from teuthology import lock as lock
+from teuthology import results_db
 
 log = logging.getLogger(__name__)
-
 
 def main():
     parser = argparse.ArgumentParser(description="""
@@ -436,6 +436,11 @@ def _results(args):
 
     (subject, body) = build_email_body(args.name, args.archive_dir,
                                        args.timeout)
+
+    for job in get_jobs(args.archive_dir):
+        job_dir = os.path.join(args.archive_dir, job)
+        log.info("save in: %s" % job_dir)
+        results_db.update_file(job_dir)
 
     try:
         if args.email:

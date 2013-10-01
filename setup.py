@@ -26,6 +26,8 @@ setup(
             'teuthology-updatekeys = teuthology.lock:update_hostkeys',
             'teuthology-coverage = teuthology.coverage:analyze',
             'teuthology-results = teuthology.suite:results',
+            'teuthology-build-db = teuthology.results_db:build',
+            'teuthology-update-db = teuthology.results_db:update',
             ],
         },
 
