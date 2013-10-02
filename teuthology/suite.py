@@ -88,6 +88,12 @@ combination, and will override anything in the suite.
         help='which worker to use (type of machine)',
         )
     parser.add_argument(
+        '-p', '--priority',
+        default=1000,
+        type=int,
+        help='beanstalk priority (lower is sooner)'
+        )
+    parser.add_argument(
         'config',
         metavar='CONFFILE',
         nargs='*',
@@ -110,6 +116,7 @@ combination, and will override anything in the suite.
         '--name', args.name,
         '--num', str(args.num),
         '--worker', args.worker,
+        '--priority', str(args.priority),
         ]
     if args.verbose:
         base_arg.append('-v')
