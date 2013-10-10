@@ -10,6 +10,7 @@ import tempfile
 import os
 import time
 import textwrap
+import httplib2
 from argparse import RawTextHelpFormatter
 
 from .config import config
@@ -665,3 +666,120 @@ def destroy_if_vm(ctx, machine_name):
         log.info("%s destroyed: %s" % (machine_name,owt))
     return True
 
+#
+# Get list of cobbler profiles.
+#
+def get_cobbler_profiles():
+    #Get Profile List
+    http = httplib2.Http()
+    resp, content = http.request("http://plana01.front.sepia.ceph.com/cblr/svc/op/list/what/profiles", "GET")
+    profiles = content.strip('\n').split('\n')
+    if resp['status'] != '200':
+        raise Exception('Cobbler Server did not respond correctly')
+    return profiles
+
+#
+# Set machine's cobbler profile and enable PXE.
+#
+def set_cobbler_profile(profile, servername, dist, release):
+    #Set Profile:
+    http = httplib2.Http()
+    resp, content = http.request("http://plana01.front.sepia.ceph.com/cblr/svc/op/changeprofile/system/" + servername + "/profile/" + profile, "GET")
+    succeeded = content.strip('\n')
+    if succeeded  != 'True':
+        raise Exception('Cobbler Failed to change server: %s' % servername   + ' to profile: %s' % profile )
+    if resp['status'] != '200':
+        raise Exception('Cobbler Server did not respond correctly')
+
+    #Enable PXE
+    resp, content = http.request("http://plana01.front.sepia.ceph.com/cblr/svc/op/dopxe/system/" + servername, "GET")
+    succeeded = content.strip('\n')
+    if succeeded  != 'True':
+        raise Exception('Cobbler Failed to enable PXE for server: %s' % servername)
+    if resp['status'] != '200':
+        raise Exception('Cobbler Server did not respond correctly')
+    log.info('Imaging of server: {server} from: {dist}-{release} using cobbler profile: {profile}'.format(server=servername, dist=dist, release=release, profile=profile))
+
+#
+# Find cobbler profile from os type, verison, arch.
+#
+def find_cobbler_profile(os_type, os_version, os_arch):
+    #Image names are not consistent, check for all varieties of arch.
+    if os_arch == 'x86_64':
+        archs = ['x86_64', '64-bit', 'amd64']
+    if os_arch == 'i386':
+        archs = ['i386', '32-bit', 'i686']
+    if os_arch == 'armv7l':
+        archs = ['armv7l', 'armhf']
+
+    #Grab list of available profiles from cobbler server
+    profiles = get_cobbler_profiles()
+    ret = None
+    for profile in profiles:
+        #Skip profiles with vserver or vercoi in their names, vserver images
+        if 'vserver' in profile:
+            continue
+        if 'vercoi' in profile:
+            continue
+
+        #Search for profile in profile list.
+        if os_type in profile:
+            if os_version in profile:
+                for arch in archs:
+                    if arch in profile:
+                        ret = profile
+    if not ret:
+        raise Exception('Unable to find distro in Cobbler Profiles')
+    return ret
+
+#
+# Check current OS/version and re-image if wrong.
+#
+def reimage_if_wrong_os(ctx, machine_name, machine_type, dist, release):
+    #This is for baremetal so ignore VPS
+    if machine_type == 'vps':
+        return False
+    servername = decanonicalize_hostname(machine_name)
+    from teuthology.misc import get_distro
+    os_type = get_distro(ctx)
+
+    #Dictionray of default versions if not specified.
+    default_os_version = dict(
+        ubuntu="12.04",
+        fedora="18",
+        centos="6.4",
+        opensuse="12.2",
+        sles="11-sp2",
+        rhel="6.4",
+        debian='7.0'
+        )
+
+    # Try to grab os version or default from dict if it fails.
+    try:
+        os_version = ctx.config.get('os_version', default_os_version[os_type])
+    except AttributeError:
+        os_version = default_os_version[os_type]
+
+    # Try to grab os arch or default of x86_64.
+    try:
+        os_arch = ctx.config.get('os_arch', 'x86_64')
+    except AttributeError:
+        os_arch = 'x86_64'
+
+    #Allow other common writings for arch.
+    if os_arch == 'amd64' or os_arch == '64-bit':
+        os_arch = 'x86_64'
+    if os_arch == '32-bit' or os_arch == 'i686':
+        os_arch = 'i386'
+    if os_arch == 'arm' or os_arch == 'armhf':
+        os_arch = 'armv7l'
+
+    #Check if machine is already the requested os/version.
+    if dist in os_type:
+       if release in os_version:
+           return False
+
+    #Find cobbler profile for re-image, set, and reboot
+    profile = find_cobbler_profile(os_type, os_version, os_arch)
+    set_cobbler_profile(profile, servername, dist, release)
+    return True

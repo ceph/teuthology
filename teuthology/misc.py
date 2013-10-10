@@ -890,6 +890,49 @@ def get_system_type(remote):
         return "rpm"
     return system_value
 
+def get_current_dist_and_release(machine_name, ssh_pubkey, machine_type, reboot=False):
+    """
+    Return this system distribution ID
+    """
+    if machine_type == 'vps':
+        return None, None
+
+    # This is expected to run before SSH connection shave been made and targets generated.
+    # Because ssh connections are not active, first connect to SSH.
+    from orchestra import connection, remote
+    connection = remote.Remote(name=machine_name,
+                  ssh=connection.connect(user_at_host=machine_name,
+                                         host_key=ssh_pubkey,
+                                         keep_alive=True),
+                  console=None)
+
+    # Reboot quickly and consistently. FS doesnt matter since its being reimaged.
+    if reboot:
+        r = connection.run(
+            args=[
+                'sudo','reboot', '-f', '-n',
+            ],
+        wait=False,
+        )
+        return
+
+    r = connection.run(
+        args=[
+            'lsb_release', '-sir',
+        ],
+    stdout=StringIO(),
+    )
+    system_value = r.stdout.getvalue().strip().split()
+    dist = system_value[0].lower()
+    release = system_value[1]
+    # lsb on Redhat is 'RedHatEnterpriseServer'
+    if 'redhat' in dist:
+        dist = 'rhel'
+
+    #Close connection to ssh
+    connection.ssh.close()
+    return dist, release
+
 def get_distro(ctx):
     try:
         os_type = ctx.config.get('os_type', ctx.os_type)
