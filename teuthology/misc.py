@@ -901,3 +901,59 @@ def get_distro(ctx):
         return os_type
     except AttributeError:
         return ctx.os_type
+
+def pre_targets_ssh_connect(machine_name, ssh_pubkey, machine_type):
+    """
+    SSH to the machine (intended for use before targets have been built)
+    """
+    # This is expected to run before SSH connection shave been made and targets generated.
+    # Because ssh connections are not active, first connect to SSH.
+    from orchestra import connection, remote
+    connection = remote.Remote(name=machine_name,
+                  ssh=connection.connect(user_at_host=machine_name,
+                                         host_key=ssh_pubkey,
+                                         keep_alive=True),
+                  console=None)
+    return connection
+
+def get_current_dist_and_release(machine_name, ssh_pubkey, machine_type):
+    """
+    Get lsb id and release and return values (Pre targets)
+    """
+    # VPS are destroyed, they are down before targets are listed so ignore them.
+    if machine_type == 'vps':
+        return None, None
+
+    connection = pre_targets_ssh_connect(machine_name, ssh_pubkey, machine_type)
+    r = connection.run(
+        args=[
+            'lsb_release', '-sir',
+        ],
+    stdout=StringIO(),
+    )
+    system_value = r.stdout.getvalue().strip().split()
+    dist = system_value[0].lower()
+    release = system_value[1]
+    # lsb on Redhat is 'RedHatEnterpriseServer'
+    if 'redhat' in dist:
+        dist = 'rhel'
+
+    #Close connection to ssh
+    connection.ssh.close()
+    return dist, release
+
+def nosync_reboot(machine_name, ssh_pubkey, machine_type):
+    """
+    Reboot with no sync for instant reboot intended for imaging. (Pre targets)
+    """
+    connection = pre_targets_ssh_connect(machine_name, ssh_pubkey, machine_type)
+    r = connection.run(
+        args=[
+            'sudo','reboot', '-f', '-n',
+        ],
+    wait=False,
+    )
+
+    #Close connection to ssh
+    connection.ssh.close()
+    return
