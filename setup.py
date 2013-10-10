@@ -16,17 +16,17 @@ setup(
     # and find sub foo
     entry_points={
         'console_scripts': [
-            'teuthology = teuthology.run:main',
-            'teuthology-nuke = teuthology.nuke:main',
-            'teuthology-suite = teuthology.suite:main',
-            'teuthology-ls = teuthology.suite:ls',
-            'teuthology-worker = teuthology.queue:worker',
-            'teuthology-lock = teuthology.lock:main',
-            'teuthology-schedule = teuthology.run:schedule',
-            'teuthology-updatekeys = teuthology.lock:update_hostkeys',
-            'teuthology-coverage = teuthology.coverage:analyze',
-            'teuthology-results = teuthology.suite:results',
-            'teuthology-report = teuthology.report:main',
+            'teuthology = scripts.run:main',
+            'teuthology-nuke = scripts.nuke:main',
+            'teuthology-suite = scripts.suite:main',
+            'teuthology-ls = scripts.ls:main',
+            'teuthology-worker = scripts.worker:main',
+            'teuthology-lock = scripts.lock:main',
+            'teuthology-schedule = scripts.schedule:main',
+            'teuthology-updatekeys = scripts.updatekeys:main',
+            'teuthology-coverage = scripts.coverage:main',
+            'teuthology-results = scripts.results:main',
+            'teuthology-report = scripts.report:main',
             ],
         },
 
