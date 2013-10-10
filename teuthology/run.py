@@ -28,6 +28,67 @@ class MergeConfig(argparse.Action):
             deep_merge(config, new)
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description='Run ceph integration tests')
+    parser.add_argument(
+        '-v', '--verbose',
+        action='store_true', default=None,
+        help='be more verbose',
+    )
+    parser.add_argument(
+        'config',
+        metavar='CONFFILE',
+        nargs='+',
+        type=config_file,
+        action=MergeConfig,
+        default={},
+        help='config file to read',
+    )
+    parser.add_argument(
+        '-a', '--archive',
+        metavar='DIR',
+        help='path to archive results in',
+    )
+    parser.add_argument(
+        '--description',
+        help='job description',
+    )
+    parser.add_argument(
+        '--owner',
+        help='job owner',
+    )
+    parser.add_argument(
+        '--lock',
+        action='store_true',
+        default=False,
+        help='lock machines for the duration of the run',
+    )
+    parser.add_argument(
+        '--machine-type',
+        default=None,
+        help='Type of machine to lock/run tests on.',
+    )
+    parser.add_argument(
+        '--os-type',
+        default='ubuntu',
+        help='Distro/OS of machine to run test on.',
+    )
+    parser.add_argument(
+        '--block',
+        action='store_true',
+        default=False,
+        help='block until locking machines succeeds (use with --lock)',
+    )
+    parser.add_argument(
+        '--name',
+        metavar='NAME',
+        help='name for this teuthology run',
+    )
+
+    args = parser.parse_args()
+    return args
+
+
 def set_up_logging(ctx):
     import logging
 
@@ -90,7 +151,7 @@ def write_initial_metadata(ctx):
             yaml.safe_dump(info, f, default_flow_style=False)
 
 
-def main(ctx):
+def main():
     from gevent import monkey
     monkey.patch_all(dns=False)
     from .orchestra import monkey
@@ -100,6 +161,7 @@ def main(ctx):
     # block. That would cause connections to hang because the monkey patching
     # hadn't been done.
     import logging
+    ctx = parse_args()
     set_up_logging(ctx)
     log = logging.getLogger(__name__)
 
