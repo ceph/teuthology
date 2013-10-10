@@ -947,7 +947,7 @@ def nosync_reboot(machine_name, ssh_pubkey, machine_type):
     Reboot with no sync for instant reboot intended for imaging. (Pre targets)
     """
     connection = pre_targets_ssh_connect(machine_name, ssh_pubkey, machine_type)
-    r = connection.run(
+    connection.run(
         args=[
             'sudo','reboot', '-f', '-n',
         ],

@@ -556,7 +556,7 @@ def find_cobbler_profile(os_type, os_version, os_arch):
 
     # Grab list of available profiles from cobbler server
     profiles = cobbler_request("http://plana01.front.sepia.ceph.com/cblr/svc/op/list/what/profiles").strip('\n').split()
-    ret = None
+
     for profile in profiles:
         # Skip profiles with vserver or vercoi in their names, vserver images
         if 'vserver' in profile:
