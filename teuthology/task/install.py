@@ -194,6 +194,16 @@ def _block_looking_for_package_version(remote, base_url, wait=False):
     version = r.stdout.getvalue().strip()
     return version
 
+def _get_local_dir(ctx): 
+    ldir = None
+    for tsk in ctx.config['tasks']:
+        if 'install' in tsk:
+            try:
+                ldir = tsk['install']['local']
+                break
+            except TypeError, KeyError:
+                log.info("Attempted to install invalid local file")
+    return ldir
 
 def _update_deb_package_list_and_install(ctx, remote, debs, config):
     """
@@ -249,11 +259,29 @@ def _update_deb_package_list_and_install(ctx, remote, debs, config):
         log.info('Package version is %s', version)
         break
 
+    ldir = _get_local_dir(ctx)
+    if ldir:
+        remote.run(
+            args=['sudo', 'apt-get', 'install', 'dpkg-dev']
+        )
+        remote.run(
+            args=['cd', ldir, run.Raw('&&'),
+                'dpkg-scanpackages', '.', '/dev/null',
+                run.Raw('|'), 'gzip', run.Raw('>'), 'Packages.gz']
+        )
+        remote.run(
+            args=[
+                'echo', 'deb', 'file:%s' % ldir, './',
+                run.Raw('|'),
+                'sudo', 'tee', '-a', '/etc/apt/sources.list.d/{proj}.list'.format(proj=config.get('project', 'ceph')),]
+
+        )
+
     remote.run(
         args=[
             'echo', 'deb', base_url, baseparms['dist'], 'main',
             run.Raw('|'),
-            'sudo', 'tee', '/etc/apt/sources.list.d/{proj}.list'.format(proj=config.get('project', 'ceph')),
+            'sudo', 'tee', '-a', '/etc/apt/sources.list.d/{proj}.list'.format(proj=config.get('project', 'ceph')),
         ],
         stdout=StringIO(),
     )
@@ -335,12 +363,24 @@ def _update_rpm_package_list_and_install(ctx, remote, rpm, config):
     t_vers1 = tmp_vers[0:dloc]
     t_vers2 = tmp_vers[dloc + 1:]
     trailer = "-{tv1}-{tv2}.{dist_release}".format(tv1=t_vers1, tv2=t_vers2, dist_release=dist_release)
+    ldir = _get_local_dir(ctx)
     for cpack in rpm:
         pk_err_mess = StringIO()
-        pkg2add = "{cpack}{trailer}".format(cpack=cpack, trailer=trailer)
-        remote.run(args=['sudo', 'yum', 'install', pkg2add, '-y', ],
-                   stderr=pk_err_mess)
-
+        pkg2add = None
+        if ldir:
+            pkg = "{ldir}/{cpack}{trailer}*".format(ldir=ldir, cpack=cpack, trailer=trailer)
+            p = remote.run(
+                args = [ 'test', '-e', run.Raw(pkg), ],
+                wait=True,
+                check_status=False,
+            )
+            if not p.exitstatus:
+                pkg2add = pkg
+        if not pkg2add:  
+            pkg2add = "{cpack}{trailer}".format(cpack=cpack, trailer=trailer)
+        remote.run(args=['sudo', 'yum', 'install', run.Raw(pkg2add), '-y', ],
+                stderr=pk_err_mess)
+ 
 
 def purge_data(ctx):
     """
