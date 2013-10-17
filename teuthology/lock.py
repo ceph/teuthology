@@ -437,8 +437,7 @@ def create_if_vm(ctx, machine_name):
     phys_host = status_info['vpshost']
     if not phys_host:
         return False
-    from teuthology.misc import get_distro
-    os_type = get_distro(ctx)
+    os_type = misc.get_distro(ctx)
     default_os_version = dict(
         ubuntu="12.04",
         fedora="18",
@@ -530,14 +529,14 @@ def destroy_if_vm(ctx, machine_name):
 #
 # Set machine's cobbler profile and enable PXE.
 #
-def set_cobbler_profile(profile, servername, dist, release):
+def set_cobbler_profile(profile, servername, dist, release, cobbler_url):
     #Set Profile:
     err_msg = 'Cobbler Failed to change server: {servername} to profile: {profile}'.format(servername=servername, profile=profile)
-    cobbler_request("http://plana01.front.sepia.ceph.com/cblr/svc/op/changeprofile/system/" + servername + "/profile/" + profile, err_msg)
+    cobbler_request(cobbler_url + "/svc/op/changeprofile/system/" + servername + "/profile/" + profile, err_msg)
 
     #Enable PXE
     err_msg = 'Cobbler Failed to enable PXE for server: {servername}'.format(servername=servername)
-    cobbler_request("http://plana01.front.sepia.ceph.com/cblr/svc/op/dopxe/system/" + servername, err_msg)
+    cobbler_request(cobbler_url + "/svc/op/dopxe/system/" + servername, err_msg)
 
     log.info('Imaging of server: {server} from: {dist}-{release} using cobbler profile: {profile}'.format(
         server=servername, dist=dist, release=release, profile=profile)) 
@@ -545,17 +544,12 @@ def set_cobbler_profile(profile, servername, dist, release):
 #
 # Find cobbler profile from os type, verison, arch.
 #
-def find_cobbler_profile(os_type, os_version, os_arch):
-    # Image names are not consistent, check for all varieties of arch.
-    if os_arch == 'x86_64':
-        archs = ['x86_64', '64-bit', 'amd64']
-    if os_arch == 'i386':
-        archs = ['i386', '32-bit', 'i686']
-    if os_arch == 'armv7l':
-        archs = ['armv7l', 'armhf']
+def find_cobbler_profile(os_type, os_version, os_arch, cobbler_url):
+    # Get list of common archs from standardized name
+    archs = misc.resolve_equivelent_arch(os_arch)
 
     # Grab list of available profiles from cobbler server
-    profiles = cobbler_request("http://plana01.front.sepia.ceph.com/cblr/svc/op/list/what/profiles").strip('\n').split()
+    profiles = cobbler_request(cobbler_url + "/svc/op/list/what/profiles").strip('\n').split()
 
     for profile in profiles:
         # Skip profiles with vserver or vercoi in their names, vserver images
@@ -581,8 +575,7 @@ def reimage_if_wrong_os(ctx, machine_name, machine_type, dist, release):
     if machine_type == 'vps':
         return False
     servername = decanonicalize_hostname(machine_name)
-    from teuthology.misc import get_distro
-    os_type = get_distro(ctx)
+    os_type = misc.get_distro(ctx)
 
     # Dictionray of default versions if not specified.
     default_os_version = dict(
@@ -608,12 +601,7 @@ def reimage_if_wrong_os(ctx, machine_name, machine_type, dist, release):
         os_arch = 'x86_64'
 
     # Allow other common writings for arch.
-    if os_arch == 'amd64' or os_arch == '64-bit':
-        os_arch = 'x86_64'
-    if os_arch == '32-bit' or os_arch == 'i686':
-        os_arch = 'i386'
-    if os_arch == 'arm' or os_arch == 'armhf':
-        os_arch = 'armv7l'
+    os_arch = misc.resolve_equivelent_arch(os_arch, reverse=True)
 
     # Check if machine is already the requested os/version.
     if dist in os_type:
@@ -621,8 +609,9 @@ def reimage_if_wrong_os(ctx, machine_name, machine_type, dist, release):
            return False
 
     # Find cobbler profile for re-image, set, and reboot
-    profile = find_cobbler_profile(os_type, os_version, os_arch)
-    set_cobbler_profile(profile, servername, dist, release)
+    cobbler_url = ctx.teuthology_config.get('cobbler_url', 'http://plana01.front.sepia.ceph.com/cblr')
+    profile = find_cobbler_profile(os_type, os_version, os_arch, cobbler_url)
+    set_cobbler_profile(profile, servername, dist, release, cobbler_url)
     return True
 
 #

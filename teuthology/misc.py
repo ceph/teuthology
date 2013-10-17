@@ -977,3 +977,20 @@ def nosync_reboot(machine_name, ssh_pubkey, machine_type):
     #Close connection to ssh
     connection.ssh.close()
     return
+
+def resolve_equivelent_arch(arch, reverse=False):
+    os_architectures = {
+        'x86_64': ['x86_64', '64-bit', 'amd64'],
+        'i386':   ['i386', '32-bit', 'i686', 'i586'],
+        'armv7l': ['armv7l', 'armhf', 'arm']
+    }
+    if reverse:
+        for key,value in os_architectures.items():
+            if arch in value:
+                return key
+        raise Exception('Unable to resolve arch \'{arch}\' into valid architecture.'.format(arch=arch))
+    try:
+        return os_architectures[arch]
+    except KeyError:
+        raise Exception('Unable to expand \'{arch}\' into valid common architecture.'.format(arch=arch))
+

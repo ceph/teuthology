@@ -108,16 +108,15 @@ def lock_machines(ctx, config):
                     keyscan_out, current_locks = lock.keyscan_check(ctx,
                                                                     waitlist)
                     log.info('machine is stil unavailable')
-                    if machine_type == 'vps': 
-                        if loopcount == 40:
-                            loopcount = 0
-                            log.info('virtual machine(s) still not up, ' +
-                                     'recreating unresponsive ones.')
-                            for guest in waitlist:
-                                if guest not in keyscan_out:
-                                    log.info('recreating: ' + guest)
-                                    lock.destroy_if_vm(ctx, 'ubuntu@' + guest)
-                                    lock.create_if_vm(ctx, 'ubuntu@' + guest)
+                    if loopcount == 40 and machine_type == 'vps':
+                        loopcount = 0
+                        log.info('virtual machine(s) still not up, ' +
+                                 'recreating unresponsive ones.')
+                        for guest in waitlist:
+                            if guest not in keyscan_out:
+                                log.info('recreating: ' + guest)
+                                lock.destroy_if_vm(ctx, 'ubuntu@' + guest)
+                                lock.create_if_vm(ctx, 'ubuntu@' + guest)
                 if lock.update_keys(ctx, keyscan_out, current_locks):
                     log.info("Error in virtual/re-imaged machine(s) keys")
                 newscandict = {}
