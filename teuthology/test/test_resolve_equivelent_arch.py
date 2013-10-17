@@ -24,13 +24,13 @@ class TestResolveEquivelentArch(object):
 
     def test_reverse_64(self):
         for arch in ['x86_64', '64-bit', 'amd64']:
-        assert teuthology.resolve_equivelent_arch(arch, reverse=True) == 'x86_64'
+            assert teuthology.resolve_equivelent_arch(arch, reverse=True) == 'x86_64'
 
     def test_reverse_32(self):
         for arch in ['i386', '32-bit', 'i686']:
-        assert teuthology.resolve_equivelent_arch(arch, reverse=True) == 'i386'
+            assert teuthology.resolve_equivelent_arch(arch, reverse=True) == 'i386'
 
     def test_reverse_arm(self):
         for arch in ['armv7l', 'armhf', 'arm']:
-        assert teuthology.resolve_equivelent_arch(arch, reverse=True) == 'armv7l'
+            assert teuthology.resolve_equivelent_arch(arch, reverse=True) == 'armv7l'
 

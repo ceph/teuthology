@@ -979,6 +979,11 @@ def nosync_reboot(machine_name, ssh_pubkey, machine_type):
     return
 
 def resolve_equivelent_arch(arch, reverse=False):
+    """
+    Get a list of common arch names from proper arch name.
+    If reverse is true it takes a proper/inproper name and
+    does a reverse search and returns the proper arch name.
+    """
     os_architectures = {
         'x86_64': ['x86_64', '64-bit', 'amd64'],
         'i386':   ['i386', '32-bit', 'i686', 'i586'],
