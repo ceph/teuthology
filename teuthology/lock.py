@@ -9,6 +9,7 @@ import collections
 import tempfile
 import os
 import time
+import httplib2 
 
 import teuthology
 from .config import config
@@ -436,8 +437,7 @@ def create_if_vm(ctx, machine_name):
     phys_host = status_info['vpshost']
     if not phys_host:
         return False
-    from teuthology.misc import get_distro
-    os_type = get_distro(ctx)
+    os_type = misc.get_distro(ctx)
     default_os_version = dict(
         ubuntu="12.04",
         fedora="18",
@@ -525,3 +525,108 @@ def destroy_if_vm(ctx, machine_name):
     else:
         log.info("%s destroyed: %s" % (machine_name, owt))
     return True
+
+#
+# Set machine's cobbler profile and enable PXE.
+#
+def set_cobbler_profile(profile, servername, dist, release, cobbler_url):
+    #Set Profile:
+    err_msg = 'Cobbler Failed to change server: {servername} to profile: {profile}'.format(servername=servername, profile=profile)
+    cobbler_request(cobbler_url + "/svc/op/changeprofile/system/" + servername + "/profile/" + profile, err_msg)
+
+    #Enable PXE
+    err_msg = 'Cobbler Failed to enable PXE for server: {servername}'.format(servername=servername)
+    cobbler_request(cobbler_url + "/svc/op/dopxe/system/" + servername, err_msg)
+
+    log.info('Imaging of server: {server} from: {dist}-{release} using cobbler profile: {profile}'.format(
+        server=servername, dist=dist, release=release, profile=profile)) 
+
+#
+# Find cobbler profile from os type, verison, arch.
+#
+def find_cobbler_profile(os_type, os_version, os_arch, cobbler_url):
+    # Get list of common archs from standardized name
+    archs = misc.resolve_equivelent_arch(os_arch)
+
+    # Grab list of available profiles from cobbler server
+    profiles = cobbler_request(cobbler_url + "/svc/op/list/what/profiles").strip('\n').split()
+
+    for profile in profiles:
+        # Skip profiles with vserver or vercoi in their names, vserver images
+        if 'vserver' in profile:
+            continue
+        if 'vercoi' in profile:
+            continue
+
+        # Search for profile in profile list.
+        if os_type in profile:
+            if os_version in profile:
+                for arch in archs:
+                    if arch in profile:
+                        return profile
+
+    raise Exception('Unable to find distro in Cobbler Profiles')
+
+#
+# Check current OS/version and re-image if wrong.
+#
+def reimage_if_wrong_os(ctx, machine_name, machine_type, dist, release):
+    # This is for baremetal so ignore VPS
+    if machine_type == 'vps':
+        return False
+    servername = decanonicalize_hostname(machine_name)
+    os_type = misc.get_distro(ctx)
+
+    # Dictionray of default versions if not specified.
+    default_os_version = dict(
+        ubuntu="12.04",
+        fedora="18",
+        centos="6.4",
+        opensuse="12.2",
+        sles="11-sp2",
+        rhel="6.4",
+        debian='7.0'
+        )
+
+    # Try to grab os version or default from dict if it fails.
+    try:
+        os_version = ctx.config.get('os_version', default_os_version[os_type])
+    except AttributeError:
+        os_version = default_os_version[os_type]
+
+    # Try to grab os arch or default of x86_64.
+    try:
+        os_arch = ctx.config.get('os_arch', 'x86_64')
+    except AttributeError:
+        os_arch = 'x86_64'
+
+    # Allow other common writings for arch.
+    os_arch = misc.resolve_equivelent_arch(os_arch, reverse=True)
+
+    # Check if machine is already the requested os/version.
+    if dist in os_type:
+       if release in os_version:
+           return False
+
+    # Find cobbler profile for re-image, set, and reboot
+    cobbler_url = ctx.teuthology_config.get('cobbler_url', 'http://plana01.front.sepia.ceph.com/cblr')
+    profile = find_cobbler_profile(os_type, os_version, os_arch, cobbler_url)
+    set_cobbler_profile(profile, servername, dist, release, cobbler_url)
+    return True
+
+#
+# Helper for interactig with cobbler.
+#
+def cobbler_request(url, err_msg='Unknown Error'):
+    http = httplib2.Http()
+    # Send Get request to server.
+    resp, content = http.request(url, "GET")
+    succeeded = content.strip('\n')
+    status = resp['status']
+    # What queries to cobbler returns data instead of a True/False suceeded message.
+    if 'what' not in url:
+        if succeeded  != 'True':
+            raise Exception(err_msg)
+    if status != '200':
+        raise Exception('Received non 200 HTTP response code: {status}'.format(status=status))
+    return content
