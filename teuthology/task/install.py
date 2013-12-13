@@ -247,6 +247,19 @@ def _block_looking_for_package_version(remote, base_url, wait=False):
     version = r.stdout.getvalue().strip()
     return version
 
+def _get_local_dir(ctx):
+    """
+    Extract local directory name from the task lists 
+    """
+    ldir = None
+    for tsk in ctx.config['tasks']:
+        if 'install' in tsk:
+            try:
+                ldir = tsk['install']['local']
+                break
+            except (TypeError, KeyError):
+                log.info("Attempted to install invalid local file")
+    return ldir
 
 def _update_deb_package_list_and_install(ctx, remote, debs, config):
     """
@@ -280,6 +293,13 @@ def _update_deb_package_list_and_install(ctx, remote, debs, config):
             ],
             stdout=StringIO(),
         )
+        remote.run(
+            args=[
+                'wget', '-q', '-O-',
+                'https://ceph.com/git/?p=ceph.git;a=blob_plain;f=keys/autobuild.asc',
+            ],
+            stdout=StringIO(),
+        )
 
     baseparms = _get_baseurlinfo_and_dist(ctx, remote, config)
     log.info("Installing packages: {pkglist} on remote deb {arch}".format(
@@ -310,14 +330,34 @@ def _update_deb_package_list_and_install(ctx, remote, debs, config):
         log.info('Package version is %s', version)
         break
 
+    ldir = _get_local_dir(ctx)
+    if ldir:
+        """
+        remote.run(
+            args=['sudo', 'apt-get', 'install', 'dpkg-dev', '-y']
+        )
+        """
+        remote.run(
+            args=['cd', ldir, run.Raw('&&'),
+                'dpkg-scanpackages', '.', '/dev/null',
+                run.Raw('|'), 'gzip', run.Raw('>'), 'Packages.gz']
+        )
+        remote.run(
+            args=[
+                'echo', 'deb', 'file:%s' % ldir, './', 
+                run.Raw('|'),
+                'sudo', 'tee', '-a', '/etc/apt/sources.list.d/{proj}.list'.format(proj=config.get('project_local', 'localceph')),]
+        )
+        remote.run(
+            args=['sudo', 'apt-get', 'upgrade', '-y', '--force-yes']
+        )
     remote.run(
         args=[
             'echo', 'deb', base_url, baseparms['dist'], 'main',
             run.Raw('|'),
             'sudo', 'tee', '/etc/apt/sources.list.d/{proj}.list'.format(
-                proj=config.get('project', 'ceph')),
+                    proj=config.get('project', 'ceph')),
         ],
-        stdout=StringIO(),
     )
     remote.run(
         args=[
@@ -327,7 +367,6 @@ def _update_deb_package_list_and_install(ctx, remote, debs, config):
                 'Dpkg::Options::="--force-confold"'),
             'install',
         ] + ['%s=%s' % (d, version) for d in debs],
-        stdout=StringIO(),
     )
 
 
@@ -421,12 +460,29 @@ def _update_rpm_package_list_and_install(ctx, remote, rpm, config):
     tmp_vers = version_no.getvalue().strip()[1:]
     if '-' in tmp_vers:
         tmp_vers = tmp_vers.split('-')[0]
+    ldir = _get_local_dir(ctx)
     for cpack in rpm:
         pk_err_mess = StringIO()
         pkg2add = "{cpack}-{version}".format(cpack=cpack, version=tmp_vers)
-        remote.run(args=['sudo', 'yum', 'install', pkg2add, '-y', ],
-                   stderr=pk_err_mess)
-
+        pkg = None
+        if ldir:
+            pkg = "{ldir}/{cpack}-{trailer}".format(ldir=ldir, cpack=cpack, trailer=tmp_vers)
+            remote.run(
+                args = ['if', 'test', '-e', 
+                        run.Raw(pkg), run.Raw(';'), 'then',
+                        'sudo', 'yum', 'remove', pkg, '-y', run.Raw(';'),
+                        'sudo', 'yum', 'install', pkg, '-y',
+                        run.Raw(';'), 'fi']
+            )
+        if pkg is None:
+            remote.run(args=['sudo', 'yum', 'install', pkg2add, '-y', ],
+                    stderr=pk_err_mess)
+        else:
+            remote.run(
+                args = ['if', 'test', run.Raw('!'), '-e', 
+                        run.Raw(pkg), run.Raw(';'), 'then',
+                        'sudo', 'yum', 'install', pkg2add, '-y',
+                        run.Raw(';'), 'fi'])
 
 def purge_data(ctx):
     """
