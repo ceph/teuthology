@@ -8,6 +8,7 @@ import yaml
 import re
 import subprocess
 
+from teuthology import provision
 from teuthology import lockstatus
 from teuthology import lock
 from teuthology import misc as teuthology
@@ -89,31 +90,37 @@ def lock_machines(ctx, config):
         newly_locked = lock.lock_many(ctx, how_many, machine_type, ctx.owner,
                                       ctx.archive)
         if len(newly_locked) == how_many:
-            vmlist = []
+            waitlist = []
             for lmach in newly_locked:
-                if teuthology.is_vm(lmach):
-                    vmlist.append(lmach)
-            if vmlist:
-                log.info('Waiting for virtual machines to come up')
+                if provision.create_if_vm(ctx, lmach):
+                    waitlist.append(lmach)
+
+                dist, release = teuthology.get_current_dist_and_release(lmach, newly_locked[lmach], machine_type)
+                if provision.reimage_if_wrong_os(ctx, lmach, machine_type, dist, release):
+                    waitlist.append(lmach)
+                    teuthology.nosync_reboot(lmach, newly_locked[lmach], machine_type)
+
+            if waitlist:
+                log.info('Waiting for virtual/re-imaged machines to come up')
                 keyscan_out = ''
                 loopcount = 0
-                while len(keyscan_out.splitlines()) != len(vmlist):
+                while len(keyscan_out.splitlines()) != len(waitlist):
                     loopcount += 1
                     time.sleep(10)
                     keyscan_out, current_locks = lock.keyscan_check(ctx,
-                                                                    vmlist)
-                    log.info('virtual machine is still unavailable')
-                    if loopcount == 40:
+                                                                    waitlist)
+                    log.info('machine is stil unavailable')
+                    if loopcount == 40 and machine_type == 'vps':
                         loopcount = 0
                         log.info('virtual machine(s) still not up, ' +
                                  'recreating unresponsive ones.')
-                        for guest in vmlist:
+                        for guest in waitlist:
                             if guest not in keyscan_out:
                                 log.info('recreating: ' + guest)
-                                lock.destroy_if_vm(ctx, 'ubuntu@' + guest)
-                                lock.create_if_vm(ctx, 'ubuntu@' + guest)
+                                provision.destroy_if_vm(ctx, 'ubuntu@' + guest)
+                                provision.create_if_vm(ctx, 'ubuntu@' + guest)
                 if lock.update_keys(ctx, keyscan_out, current_locks):
-                    log.info("Error in virtual machine keys")
+                    log.info("Error in machine(s) keys")
                 newscandict = {}
                 for dkey in newly_locked.iterkeys():
                     stats = lockstatus.get_status(ctx, dkey)
