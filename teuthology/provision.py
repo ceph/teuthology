@@ -6,8 +6,6 @@ import logging
 import tempfile
 import re
 
-import teuthology
-from .config import config
 from . import lockstatus as ls
 from . import misc
 
