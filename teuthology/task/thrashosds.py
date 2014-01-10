@@ -19,7 +19,7 @@ def task(ctx, config):
 
     The config is optional, and is a dict containing some or all of:
 
-    min_in: (default 2) the minimum number of OSDs to keep in the
+    min_in: (default 3) the minimum number of OSDs to keep in the
        cluster
 
     min_out: (default 0) the minimum number of OSDs to keep out of the
