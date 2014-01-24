@@ -77,13 +77,14 @@ def normalize_config(ctx, config):
                     new_config[name] = role_config
     return new_config
 
+
 def _find_arch_and_dist(ctx):
     """
     Return the arch and distro value as a tuple.
 
     Currently this only returns armv7l on the quantal distro or x86_64
     on the precise distro
-  
+
     :param ctx: Context
     :returns: arch,distro
     """
@@ -91,6 +92,7 @@ def _find_arch_and_dist(ctx):
     if teuthology.is_arm(info):
         return ('armv7l', 'quantal')
     return ('x86_64', 'precise')
+
 
 def validate_config(ctx, config):
     """
@@ -112,6 +114,7 @@ def validate_config(ctx, config):
                 if role in config:
                     del config[role]
 
+
 def _vsplitter(version):
     """Kernels from Calxeda are named ...ceph-<sha1>...highbank.
     Kernels that we generate are named ...-g<sha1>.
@@ -124,10 +127,11 @@ def _vsplitter(version):
         return 'ceph-'
     return '-g'
 
+
 def need_to_install(ctx, role, sha1):
     """
     Check to see if we need to install a kernel.  Get the version
-    of the currently running kernel, extract the sha1 value from 
+    of the currently running kernel, extract the sha1 value from
     its name, and compare it against the value passed in.
 
     :param ctx: Context
@@ -164,6 +168,7 @@ def need_to_install(ctx, role, sha1):
                 version=version))
     version_fp.close()
     return ret
+
 
 def install_firmware(ctx, config):
     """
@@ -220,6 +225,7 @@ def install_firmware(ctx, config):
                 ],
             )
 
+
 def download_deb(ctx, config):
     """
     Download a Debian kernel and copy the assocated linux image.
@@ -234,7 +240,7 @@ def download_deb(ctx, config):
 	if src.find('distro') >= 0:
             log.info('Installing newest kernel distro');
             return
-            
+
 
         if src.find('/') >= 0:
             # local deb
@@ -294,7 +300,7 @@ def _no_grub_link(in_file, remote, kernel_ver):
     (as is the case in Arm kernels)
 
     :param infile: kernel file or image file to be copied.
-    :param remote: remote machine 
+    :param remote: remote machine
     :param kernel_ver: kernel version
     """
     boot1 = '/boot/%s' % in_file
@@ -307,6 +313,7 @@ def _no_grub_link(in_file, remote, kernel_ver):
     remote.run(
         args=['sudo', 'ln', '-s', '%s-%s' % (in_file, kernel_ver) , boot1, ],
     )
+
 
 def install_and_reboot(ctx, config):
     """
@@ -463,6 +470,7 @@ def install_and_reboot(ctx, config):
         log.debug('Waiting for install on %s to complete...', name)
         proc.exitstatus.get()
 
+
 def enable_disable_kdb(ctx, config):
     """
     Enable kdb on remote machines in use.  Disable on those that are
@@ -496,6 +504,7 @@ def enable_disable_kdb(ctx, config):
                     run.Raw('|'),
                     'true',
                     ])
+
 
 def wait_for_reboot(ctx, need_install, timeout, distro=False):
     """
@@ -538,7 +547,10 @@ def need_to_install_distro(ctx, role):
     and compares against current (uname -r) and returns true if newest != current.
     Similar check for deb.
     """
-    (role_remote,) = ctx.cluster.only(role).remotes.keys()
+    try:
+        (role_remote,) = ctx.cluster.only(role).remotes.keys()
+    except ValueError:
+        raise RuntimeError('role %s is assigned to more than one machine' % role)
     system_type = teuthology.get_system_type(role_remote)
     output, err_mess = StringIO(), StringIO()
     role_remote.run(args=['uname', '-r' ], stdout=output, stderr=err_mess )
@@ -560,6 +572,7 @@ def need_to_install_distro(ctx, role):
         return False
     log.info('Not newest distro kernel. Curent: {cur} Expected: {new}'.format(cur=current, new=newest))
     return True
+
 
 def install_distro_kernel(remote):
     """
@@ -612,6 +625,7 @@ def install_distro_kernel(remote):
             remote.run( args=['sudo', 'shutdown', '-r', 'now'], wait=False )
             return
 
+
 def update_grub_rpm(remote, newversion):
     """
     Updates grub file to boot new kernel version on both legacy grub/grub2.
@@ -636,6 +650,7 @@ def update_grub_rpm(remote, newversion):
         #Update grub menu entry to new version.
         grub2_kernel_select_generic(remote, newversion, 'rpm')
 
+
 def grub2_kernel_select_generic(remote, newversion, ostype):
     """
     Can be used on DEB and RPM. Sets which entry should be boted by entrynum.
@@ -657,6 +672,7 @@ def grub2_kernel_select_generic(remote, newversion, ostype):
                 break
             entry_num =+ 1
     remote.run(args=['sudo', grubset, str(entry_num), ])
+
 
 def generate_legacy_grub_entry(remote, newversion):
     """
@@ -714,6 +730,7 @@ def generate_legacy_grub_entry(remote, newversion):
         linenum += 1
     return newgrubconf
 
+
 def get_version_from_pkg(remote, ostype):
     """
     Round-about way to get the newest kernel uname -r compliant version string
@@ -747,6 +764,7 @@ def get_version_from_pkg(remote, ostype):
     output.close()
     err_mess.close()
     return newest
+
 
 def task(ctx, config):
     """
