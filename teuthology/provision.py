@@ -158,7 +158,7 @@ def set_cobbler_profile(profile, servername, dist, release, cobbler_url):
 #
 def find_cobbler_profile(os_type, os_version, os_arch, cobbler_url):
     # Get list of common archs from standardized name
-    archs = misc.resolve_equivelent_arch(os_arch)
+    archs = misc.resolve_equivalent_arch(os_arch)
 
     # Grab list of available profiles from cobbler server
     profiles = cobbler_request(cobbler_url + "/svc/op/list/what/profiles").strip('\n').split()
@@ -213,7 +213,7 @@ def reimage_if_wrong_os(ctx, machine_name, machine_type, dist, release):
         os_arch = 'x86_64'
 
     # Allow other common writings for arch.
-    os_arch = misc.resolve_equivelent_arch(os_arch, reverse=True)
+    os_arch = misc.resolve_equivalent_arch(os_arch, reverse=True)
 
     # Check if machine is already the requested os/version.
     if dist in os_type:

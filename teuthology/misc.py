@@ -1024,7 +1024,7 @@ def nosync_reboot(machine_name, ssh_pubkey, machine_type):
     connection.ssh.close()
     return
 
-def resolve_equivelent_arch(arch, reverse=False):
+def resolve_equivalent_arch(arch, reverse=False):
     """
     Get a list of common arch names from proper arch name.
     If reverse is true it takes a proper/inproper name and
