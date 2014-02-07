@@ -95,10 +95,13 @@ def lock_machines(ctx, config):
                 if provision.create_if_vm(ctx, lmach):
                     waitlist.append(lmach)
 
-                dist, release = teuthology.get_current_dist_and_release(lmach, newly_locked[lmach], machine_type)
-                if provision.reimage_if_wrong_os(ctx, lmach, machine_type, dist, release):
+                dist, release = teuthology.get_current_dist_and_release(
+                    lmach, newly_locked[lmach], machine_type)
+                if provision.reimage_if_wrong_os(ctx, lmach, machine_type,
+                                                 dist, release):
                     waitlist.append(lmach)
-                    teuthology.nosync_reboot(lmach, newly_locked[lmach], machine_type)
+                    teuthology.nosync_reboot(lmach, newly_locked[lmach],
+                                             machine_type)
 
             if waitlist:
                 log.info('Waiting for virtual/re-imaged machines to come up')
@@ -117,8 +120,9 @@ def lock_machines(ctx, config):
                         for guest in waitlist:
                             if guest not in keyscan_out:
                                 log.info('recreating: ' + guest)
-                                provision.destroy_if_vm(ctx, 'ubuntu@' + guest)
-                                provision.create_if_vm(ctx, 'ubuntu@' + guest)
+                                fullguest = 'ubuntu@' + guest
+                                provision.destroy_if_vm(ctx, fullguest)
+                                provision.create_if_vm(ctx, fullguest)
                 if lock.update_keys(ctx, keyscan_out, current_locks):
                     log.info("Error in machine(s) keys")
                 newscandict = {}

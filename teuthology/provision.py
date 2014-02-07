@@ -140,15 +140,21 @@ def set_cobbler_profile(profile, servername, dist, release, cobbler_url):
     Set machine's cobbler profile and enable PXE.
     """
     # Set Profile
-    err_msg = 'Cobbler Failed to change server: {servername} to profile: {profile}'.format(servername=servername, profile=profile)
-    cobbler_request(cobbler_url + "/svc/op/changeprofile/system/" + servername + "/profile/" + profile, err_msg)
+    err_msg = 'Cobbler failed to change server: {servername}' \
+              'to profile: {profile}'.\
+              format(servername=servername, profile=profile)
+    cobbler_request(cobbler_url + "/svc/op/changeprofile/system/" + \
+                    servername + "/profile/" + profile, err_msg)
 
     # Enable PXE
-    err_msg = 'Cobbler Failed to enable PXE for server: {servername}'.format(servername=servername)
-    cobbler_request(cobbler_url + "/svc/op/dopxe/system/" + servername, err_msg)
+    err_msg = 'Cobbler failed to enable PXE for server: {servername}'.\
+              format(servername=servername)
+    cobbler_request(cobbler_url + "/svc/op/dopxe/system/" + servername,
+                     err_msg)
 
-    log.info('Imaging of server: {server} from: {dist}-{release} using cobbler profile: {profile}'.format(
-        server=servername, dist=dist, release=release, profile=profile)) 
+    log.info('Imaging server: {server} from: {dist}-{release} ' \
+             'using cobbler profile: {profile}'.format(
+             server=servername, dist=dist, release=release, profile=profile))
 
 
 def find_cobbler_profile(os_type, os_version, os_arch, cobbler_url):
@@ -159,7 +165,8 @@ def find_cobbler_profile(os_type, os_version, os_arch, cobbler_url):
     archs = misc.resolve_equivalent_arch(os_arch)
 
     # Grab list of available profiles from cobbler server
-    profiles = cobbler_request(cobbler_url + "/svc/op/list/what/profiles").strip('\n').split()
+    profiles = cobbler_request(cobbler_url + "/svc/op/list/what/profiles").\
+        strip('\n').split()
 
     for profile in profiles:
         # Skip profiles with vserver or vercoi in their names, vserver images
@@ -175,7 +182,7 @@ def find_cobbler_profile(os_type, os_version, os_arch, cobbler_url):
                     if arch in profile:
                         return profile
 
-    raise Exception('Unable to find distro in Cobbler Profiles')
+    raise Exception('Unable to find distro in Cobbler profiles')
 
 
 def reimage_if_wrong_os(ctx, machine_name, machine_type, dist, release):
@@ -243,5 +250,6 @@ def cobbler_request(url, err_msg='Unknown Error'):
         if succeeded  != 'True':
             raise Exception(err_msg)
     if status != '200':
-        raise Exception('Received non 200 HTTP response code: {status}'.format(status=status))
+        raise Exception('Received non 200 HTTP response code: {status}'.\
+            format(status=status))
     return content

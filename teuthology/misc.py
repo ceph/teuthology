@@ -972,8 +972,8 @@ def pre_targets_ssh_connect(machine_name, ssh_pubkey, machine_type):
     """
     SSH to the machine (intended for use before targets have been built)
     """
-    # This is expected to run before SSH connection shave been made and targets generated.
-    # Because ssh connections are not active, first connect to SSH.
+    # This is expected to run before ssh connections have been made
+    # and targets generated, so we must make the ssh connection now
     from orchestra import connection, remote
     connection = remote.Remote(name=machine_name,
                   ssh=connection.connect(user_at_host=machine_name,
@@ -986,11 +986,14 @@ def get_current_dist_and_release(machine_name, ssh_pubkey, machine_type):
     """
     Get lsb id and release and return values (Pre targets)
     """
-    # VPS are destroyed, they are down before targets are listed so ignore them.
+
+    # vpses are destroyed; they are down before targets are listed
+    # so ignore them.
     if machine_type == 'vps':
         return None, None
 
-    connection = pre_targets_ssh_connect(machine_name, ssh_pubkey, machine_type)
+    connection = pre_targets_ssh_connect(machine_name, ssh_pubkey,
+                                         machine_type)
     r = connection.run(
         args=[
             'lsb_release', '-sir',
@@ -1012,12 +1015,13 @@ def nosync_reboot(machine_name, ssh_pubkey, machine_type):
     """
     Reboot with no sync for instant reboot intended for imaging. (Pre targets)
     """
-    connection = pre_targets_ssh_connect(machine_name, ssh_pubkey, machine_type)
+    connection = pre_targets_ssh_connect(machine_name, ssh_pubkey,
+                                         machine_type)
     connection.run(
         args=[
             'sudo','reboot', '-f', '-n',
         ],
-    wait=False,
+        wait=False,
     )
 
     #Close connection to ssh
@@ -1027,8 +1031,8 @@ def nosync_reboot(machine_name, ssh_pubkey, machine_type):
 def resolve_equivalent_arch(arch, reverse=False):
     """
     Get a list of common arch names from proper arch name.
-    If reverse is true it takes a proper/inproper name and
-    does a reverse search and returns the proper arch name.
+    If 'reverse' is True, take a proper/improper name and
+    return the proper arch name.
     """
     os_architectures = {
         'x86_64': ['x86_64', '64-bit', 'amd64'],
@@ -1039,8 +1043,10 @@ def resolve_equivalent_arch(arch, reverse=False):
         for key,value in os_architectures.items():
             if arch in value:
                 return key
-        raise Exception('Unable to resolve arch \'{arch}\' into valid architecture.'.format(arch=arch))
+        raise Exception('Can\'t find valid arch name for \'{arch}\''.
+                        format(arch=arch))
     try:
         return os_architectures[arch]
     except KeyError:
-        raise Exception('Unable to expand \'{arch}\' into valid common architecture.'.format(arch=arch))
+        raise Exception('Can\'t find common arch name for \'{arch}\''.
+                        format(arch=arch))
