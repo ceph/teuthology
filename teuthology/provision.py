@@ -185,6 +185,10 @@ def reimage_if_wrong_os(ctx, machine_name, machine_type, dist, release):
     # This is for baremetal so ignore VPS
     if machine_type == 'vps':
         return False
+    cobbler_url = ctx.teuthology_config.get('cobbler_url', None)
+    if not cobbler_url:
+        log.error('No cobbler_url in config, can\'t reimage %s', machine_name)
+        return False
     servername = decanonicalize_hostname(machine_name)
     os_type = misc.get_distro(ctx)
 
@@ -220,7 +224,6 @@ def reimage_if_wrong_os(ctx, machine_name, machine_type, dist, release):
            return False
 
     # Find cobbler profile for re-image, set, and reboot
-    cobbler_url = ctx.teuthology_config.get('cobbler_url', 'http://plana01.front.sepia.ceph.com/cblr')
     profile = find_cobbler_profile(os_type, os_version, os_arch, cobbler_url)
     set_cobbler_profile(profile, servername, dist, release, cobbler_url)
     return True
