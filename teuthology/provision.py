@@ -36,12 +36,11 @@ def _get_downburst_exec():
             return pth
     return ''
 
-#
-# Use downburst to create a virtual machine
-#
-
 
 def create_if_vm(ctx, machine_name):
+    """
+    Use downburst to create a virtual machine
+    """
     status_info = ls.get_status(ctx, machine_name)
     phys_host = status_info['vpshost']
     if not phys_host:
@@ -108,13 +107,11 @@ def create_if_vm(ctx, machine_name):
             destroy_if_vm(ctx, machine_name)
             create_if_vm(ctx, machine_name)
     return True
-#
-# Use downburst to destroy a virtual machine
-#
 
 
 def destroy_if_vm(ctx, machine_name):
     """
+    Use downburst to destroy a virtual machine
     Return False only on vm downburst failures.
     """
     status_info = ls.get_status(ctx, machine_name)
@@ -138,25 +135,26 @@ def destroy_if_vm(ctx, machine_name):
     return True
 
 
-#
-# Set machine's cobbler profile and enable PXE.
-#
 def set_cobbler_profile(profile, servername, dist, release, cobbler_url):
-    #Set Profile:
+    """
+    Set machine's cobbler profile and enable PXE.
+    """
+    # Set Profile
     err_msg = 'Cobbler Failed to change server: {servername} to profile: {profile}'.format(servername=servername, profile=profile)
     cobbler_request(cobbler_url + "/svc/op/changeprofile/system/" + servername + "/profile/" + profile, err_msg)
 
-    #Enable PXE
+    # Enable PXE
     err_msg = 'Cobbler Failed to enable PXE for server: {servername}'.format(servername=servername)
     cobbler_request(cobbler_url + "/svc/op/dopxe/system/" + servername, err_msg)
 
     log.info('Imaging of server: {server} from: {dist}-{release} using cobbler profile: {profile}'.format(
         server=servername, dist=dist, release=release, profile=profile)) 
 
-#
-# Find cobbler profile from os type, verison, arch.
-#
+
 def find_cobbler_profile(os_type, os_version, os_arch, cobbler_url):
+    """
+    Find cobbler profile from os type, version, arch.
+    """
     # Get list of common archs from standardized name
     archs = misc.resolve_equivalent_arch(os_arch)
 
@@ -179,10 +177,11 @@ def find_cobbler_profile(os_type, os_version, os_arch, cobbler_url):
 
     raise Exception('Unable to find distro in Cobbler Profiles')
 
-#
-# Check current OS/version and re-image if wrong.
-#
+
 def reimage_if_wrong_os(ctx, machine_name, machine_type, dist, release):
+    """
+    Check current OS/version and re-image if wrong.
+    """
     # This is for baremetal so ignore VPS
     if machine_type == 'vps':
         return False
@@ -226,16 +225,17 @@ def reimage_if_wrong_os(ctx, machine_name, machine_type, dist, release):
     set_cobbler_profile(profile, servername, dist, release, cobbler_url)
     return True
 
-#
-# Helper for interactig with cobbler.
-#
 def cobbler_request(url, err_msg='Unknown Error'):
+    """
+    Helper for interacting with cobbler.
+    """
     http = httplib2.Http()
-    # Send Get request to server.
+    # Send GET request to server.
     resp, content = http.request(url, "GET")
     succeeded = content.strip('\n')
     status = resp['status']
-    # What queries to cobbler returns data instead of a True/False suceeded message.
+    # 'what' queries to cobbler return data instead of a
+    # True/False succeeded message.
     if 'what' not in url:
         if succeeded  != 'True':
             raise Exception(err_msg)
