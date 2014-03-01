@@ -78,7 +78,7 @@ def ship_config(ctx, config, role_endpoints):
     log.info('Shipping apache config and rgw.fcgi...')
     src = os.path.join(os.path.dirname(__file__), 'apache.conf.template')
     for client in config.iterkeys():
-        (remote,) = ctx.cluster.only(client).remotes.keys()
+        remote = teuthology.get_single_remote_value(ctx, client)
         system_type = teuthology.get_system_type(remote)
         if system_type == 'deb':
             mod_path = '/usr/lib/apache2/modules'
@@ -148,7 +148,7 @@ def start_rgw(ctx, config):
     log.info('Starting rgw...')
     testdir = teuthology.get_testdir(ctx)
     for client in config.iterkeys():
-        (remote,) = ctx.cluster.only(client).remotes.iterkeys()
+        remote = teuthology.get_single_remote_value(ctx, client)
 
         client_config = config.get(client)
         if client_config is None:
@@ -231,7 +231,7 @@ def start_apache(ctx, config):
     testdir = teuthology.get_testdir(ctx)
     apaches = {}
     for client in config.iterkeys():
-        (remote,) = ctx.cluster.only(client).remotes.keys()
+        remote = teuthology.get_single_remote_value(ctx, client)
         system_type = teuthology.get_system_type(remote)
         if system_type == 'deb':
             apache_name = 'apache2'
@@ -477,7 +477,7 @@ def configure_regions_and_zones(ctx, config, regions, role_endpoints):
 
     # clear out the old defaults
     first_mon = teuthology.get_first_mon(ctx, config)
-    (mon,) = ctx.cluster.only(first_mon).remotes.iterkeys()
+    mon = teuthology.get_single_remote_value(ctx, first_mon)
     # removing these objects from .rgw.root and the per-zone root pools
     # may or may not matter
     rados(ctx, mon,
