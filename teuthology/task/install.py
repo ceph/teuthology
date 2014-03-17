@@ -862,6 +862,10 @@ def _upgrade_deb_packages(ctx, config, remote, debs):
         uri = 'ref/' + config.get('branch')
     elif 'tag' in config:
         uri = 'ref/' + config.get('tag')
+    else:
+        # FIXME: Should master be the default?
+        log.debug("defaulting to master branch")
+        uri = 'ref/master'
     base_url = 'http://{host}/{proj}-deb-{dist}-{arch}-{flavor}/{uri}'.format(
         host=ctx.teuthology_config.get('gitbuilder_host',
                                        'gitbuilder.ceph.com'),
