@@ -44,7 +44,8 @@ def run_radosgw_agent(ctx, config):
                 'cd', testdir, run.Raw('&&'),
                 'git', 'clone',
                 '-b', branch,
-                'https://github.com/ceph/radosgw-agent.git',
+#                'https://github.com/ceph/radosgw-agent.git',
+                'git://ceph.com/git/radosgw-agent.git',
                 'radosgw-agent.{client}'.format(client=client),
                 ]
             )
@@ -87,7 +88,7 @@ def run_radosgw_agent(ctx, config):
             '--source', "http://{addr}:{port}".format(addr=src_host, port=src_port),
             '--dest-access-key', dest_access,
             '--dest-secret-key', dest_secret,
-            '--max-entries', '10',
+            '--max-entries', cconf.get('max-entries', '1000'),
             '--log-file', '{tdir}/archive/rgw_sync_agent.{client}.log'.format(
                 tdir=testdir,
                 client=client),

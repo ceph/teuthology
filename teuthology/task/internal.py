@@ -488,7 +488,7 @@ kern.* -{adir}/syslog/kern.log;RSYSLOG_FileFormat
             log.debug('Checking %s', remote.name)
             r = remote.run(
                 args=[
-                    'egrep',
+                    'egrep', '--binary-files=text',
                     '\\bBUG\\b|\\bINFO\\b|\\bDEADLOCK\\b',
                     run.Raw('{adir}/syslog/*.log'.format(adir=archive_dir)),
                     run.Raw('|'),
