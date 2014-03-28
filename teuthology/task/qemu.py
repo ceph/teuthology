@@ -167,7 +167,7 @@ def run_qemu(ctx, config):
             '{tdir}/archive/coverage'.format(tdir=testdir),
             '{tdir}/daemon-helper'.format(tdir=testdir),
             'term',
-            'kvm', '-enable-kvm', '-nographic',
+            'qemu-system-x86_64', '-enable-kvm', '-nographic',
             '-m', str(client_config.get('memory', DEFAULT_MEM)),
             # base OS device
             '-drive',
@@ -194,7 +194,7 @@ def run_qemu(ctx, config):
         for i in xrange(client_config.get('num_rbd', DEFAULT_NUM_RBD)):
             args.extend([
                 '-drive',
-                'file=rbd:rbd/{img}:id={id},format=rbd,if=virtio,cache={cachemode}'.format(
+                'file=rbd:rbd/{img}:id={id},format=raw,if=virtio,cache={cachemode}'.format(
                     img='{client}.{num}'.format(client=client, num=i),
                     id=client[len('client.'):],
                     cachemode=cachemode,
