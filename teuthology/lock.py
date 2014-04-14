@@ -71,9 +71,11 @@ def lock_one(ctx, name, user=None, description=None):
 
 
 def unlock_one(ctx, name, user=None):
+    failure_types = {403: 'You do not have %s locked',
+                     404: '%s is an invalid host name'}
     if user is None:
         user = misc.get_user()
-    success, _, _ = ls.send_request(
+    success, _, http_ret = ls.send_request(
         'DELETE',
         config.lock_server + '/' + name + '?' +
         urllib.urlencode(dict(user=user)))
@@ -84,6 +86,8 @@ def unlock_one(ctx, name, user=None):
             log.info('%s is not locked' % name)
     else:
         log.error('failed to unlock %s', name)
+        if http_ret in failure_types:
+            log.error(failure_types[http_ret], name)
     return success
 
 
