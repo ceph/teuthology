@@ -579,7 +579,7 @@ def create_if_vm(ctx, machine_name):
             distroversion = default_os_version[distro]
 
         file_info = {}
-        file_info['disk-size'] = lcnfg.get('disk-size', '30G')
+        file_info['disk-size'] = lcnfg.get('disk-size', '100G')
         file_info['ram'] = lcnfg.get('ram', '1.9G')
         file_info['cpus'] = lcnfg.get('cpus', 1)
         file_info['networks'] = lcnfg.get('networks',
