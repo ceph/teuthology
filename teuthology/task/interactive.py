@@ -27,6 +27,7 @@ def task(ctx, config):
         - ceph:
         - interactive:
     """
+
     pp = pprint.PrettyPrinter().pprint
     code.interact(
         banner='Ceph test interactive mode, use ctx to interact with the cluster, press control-D to exit...',
