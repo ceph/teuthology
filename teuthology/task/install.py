@@ -380,6 +380,37 @@ def _yum_fix_repo_priority(remote, project, uri):
     )
 
 
+
+def _fix_repo_priority(remote, project, uri, distro):
+    """
+    On the remote, 'priority=1' lines to each enabled repo in:
+
+        /etc/yum.repos.d/{project}.repo
+
+    :param remote: the teuthology.orchestra.remote.Remote object
+    :param project: the project whose repos need modification
+    """    
+    #suse distros use zypper instead of yum
+    if distro.upper() == SUSE:
+        repopath = '/etc/zypp/repos.d/%s.repo'
+    else:
+        repopath = '/etc/yum.repos.d/%s.repo'
+       
+    remote.run(
+        args=[
+            'sudo',
+            'sed',
+            '-i',
+            '-e',
+            run.Raw(
+                '\':a;N;$!ba;s/enabled=1\\ngpg/enabled=1\\npriority=1\\ngpg/g\''),
+            '-e',
+            run.Raw("'s;ref/[a-zA-Z0-9_]*/;{uri}/;g'".format(uri=uri)),
+            repopath % project,
+        ]
+    )
+
+
 def _update_rpm_package_list_and_install(ctx, remote, rpm, config):
     """
     Installs the ceph-release package for the relevant branch, then installs
