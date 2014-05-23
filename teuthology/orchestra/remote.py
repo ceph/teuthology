@@ -11,6 +11,7 @@ import logging
 from cStringIO import StringIO
 from teuthology import lockstatus as ls
 import os
+import pwd
 import tempfile
 
 try:
@@ -35,6 +36,13 @@ class Remote(object):
     def __init__(self, name, ssh=None, shortname=None, console=None,
                  host_key=None, keep_alive=True):
         self.name = name
+        if '@' in name:
+            (self.user, self.hostname) = name.split('@')
+        else:
+            # os.getlogin() doesn't work on non-login shells. The following
+            # should work on any unix system
+            self.user = pwd.getpwuid(os.getuid()).pw_name
+            self.hostname = name
         self._shortname = shortname
         self.host_key = host_key
         self.keep_alive = keep_alive
@@ -62,27 +70,24 @@ class Remote(object):
 
     @property
     def shortname(self):
-        """
-        shortname decorator
-        """
         name = self._shortname
         if name is None:
-            name = self.name
+            name = self.hostname.split('.')[0]
         return name
-
-    @property
-    def hostname(self):
-        return self.name.split('@')[1]
 
     @property
     def is_online(self):
         if self.ssh is None:
             return False
         try:
-            self.run(args="echo online")
+            self.run(args="true")
         except Exception:
             return False
         return self.ssh.get_transport().is_active()
+
+    def ensure_online(self):
+        if not self.is_online:
+            return self.connect()
 
     @property
     def system_type(self):
@@ -92,7 +97,7 @@ class Remote(object):
         return misc.get_system_type(self)
 
     def __str__(self):
-        return self.shortname
+        return self.name
 
     def __repr__(self):
         return '{classname}(name={name!r})'.format(
@@ -106,7 +111,7 @@ class Remote(object):
 
         TODO refactor to move run.run here?
         """
-        r = self._runner(client=self.ssh, **kwargs)
+        r = self._runner(client=self.ssh, name=self.shortname, **kwargs)
         r.remote = self
         return r
 

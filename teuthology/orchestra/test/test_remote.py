@@ -13,14 +13,14 @@ class TestRemote(object):
             ssh=fudge.Fake('SSHConnection'),
             )
         assert r.shortname == 'xyz'
-        assert str(r) == 'xyz'
+        assert str(r) == 'jdoe@xyzzy.example.com'
 
     def test_shortname_default(self):
         r = remote.Remote(
             name='jdoe@xyzzy.example.com',
             ssh=fudge.Fake('SSHConnection'),
             )
-        assert r.shortname == 'jdoe@xyzzy.example.com'
+        assert r.shortname == 'xyzzy'
         assert str(r) == 'jdoe@xyzzy.example.com'
 
     @fudge.with_fakes
@@ -41,12 +41,13 @@ class TestRemote(object):
             exitstatus=None,
             exited=None,
             )
+        r = remote.Remote(name='jdoe@xyzzy.example.com', ssh=ssh)
         run.expects_call().with_args(
             client=fudge.inspector.arg.passes_test(lambda v: v is ssh),
             args=fudge.inspector.arg.passes_test(lambda v: v is args),
             foo=fudge.inspector.arg.passes_test(lambda v: v is foo),
+            name=r.shortname,
             ).returns(ret)
-        r = remote.Remote(name='jdoe@xyzzy.example.com', ssh=ssh)
         # monkey patch ook ook
         r._runner = run
         got = r.run(

@@ -9,7 +9,9 @@ import time
 import yaml
 
 from datetime import datetime
+from traceback import format_tb
 
+from teuthology import setup_log_file
 from . import beanstalk
 from . import report
 from . import safepath
@@ -39,6 +41,23 @@ def restart():
     os.execv(sys.executable, args)
 
 
+def install_except_hook():
+    """
+    Install an exception hook that first logs any uncaught exception, then
+    raises it.
+    """
+    def log_exception(exception_class, exception, traceback):
+        logging.critical(''.join(format_tb(traceback)))
+        if not exception.message:
+            logging.critical(exception_class.__name__)
+        else:
+            logging.critical('{0}: {1}'.format(
+                exception_class.__name__, exception))
+        # Now raise the exception like normal
+        sys.__excepthook__(exception_class, exception, traceback)
+    sys.excepthook = log_exception
+
+
 class filelock(object):
     # simple flock class
     def __init__(self, fn):
@@ -54,6 +73,14 @@ class filelock(object):
         assert self.fd
         fcntl.lockf(self.fd, fcntl.LOCK_UN)
         self.fd = None
+
+
+class BranchNotFoundError(ValueError):
+    def __init__(self, branch):
+        self.branch = branch
+
+    def __str__(self):
+        return "teuthology branch not found: '{0}'".format(self.branch)
 
 
 def fetch_teuthology_branch(path, branch='master'):
@@ -94,9 +121,8 @@ def fetch_teuthology_branch(path, branch='master'):
                 cwd=path,
             )
         except subprocess.CalledProcessError:
-            log.exception("teuthology branch not found: %s", branch)
             shutil.rmtree(path)
-            raise
+            raise BranchNotFoundError(branch)
 
         log.debug("Bootstrapping %s", path)
         # This magic makes the bootstrap script not attempt to clobber an
@@ -126,12 +152,9 @@ def main(ctx):
 
     log_file_path = os.path.join(ctx.log_dir, 'worker.{tube}.{pid}'.format(
         pid=os.getpid(), tube=ctx.tube,))
-    log_handler = logging.FileHandler(filename=log_file_path)
-    log_formatter = logging.Formatter(
-        fmt='%(asctime)s.%(msecs)03d %(levelname)s:%(name)s:%(message)s',
-        datefmt='%Y-%m-%dT%H:%M:%S')
-    log_handler.setFormatter(log_formatter)
-    log.addHandler(log_handler)
+    setup_log_file(log, log_file_path)
+
+    install_except_hook()
 
     if not os.path.isdir(ctx.archive_dir):
         sys.exit("{prog}: archive directory must exist: {path}".format(
@@ -175,7 +198,16 @@ def main(ctx):
         teuth_path = os.path.join(os.getenv("HOME"),
                                   'teuthology-' + teuthology_branch)
 
-        fetch_teuthology_branch(path=teuth_path, branch=teuthology_branch)
+        try:
+            fetch_teuthology_branch(path=teuth_path, branch=teuthology_branch)
+        except BranchNotFoundError:
+            log.exception(
+                "Branch not found; throwing job away")
+            # Optionally, we could mark the job as dead, but we don't have a
+            # great way to express why it is dead.
+            report.try_delete_jobs(job_config['name'],
+                                   job_config['job_id'])
+            continue
 
         teuth_bin_path = os.path.join(teuth_path, 'virtualenv', 'bin')
         if not os.path.isdir(teuth_bin_path):

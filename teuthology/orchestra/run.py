@@ -2,6 +2,7 @@
 Paramiko run support
 """
 from cStringIO import StringIO
+from paramiko import ChannelFile
 
 import gevent
 import gevent.event
@@ -13,7 +14,9 @@ from ..contextutil import safe_while
 
 log = logging.getLogger(__name__)
 
+
 class RemoteProcess(object):
+
     """
     Remote process object used to keep track of attributes of a process.
     """
@@ -22,6 +25,7 @@ class RemoteProcess(object):
         # for orchestra.remote.Remote to place a backreference
         'remote',
         ]
+
     def __init__(self, command, stdin, stdout, stderr, exitstatus, exited):
         self.command = command
         self.stdin = stdin
@@ -30,7 +34,9 @@ class RemoteProcess(object):
         self.exitstatus = exitstatus
         self.exited = exited
 
+
 class Raw(object):
+
     """
     Raw objects are passed to remote objects and are not processed locally.
     """
@@ -42,6 +48,7 @@ class Raw(object):
             cls=self.__class__.__name__,
             value=self.value,
             )
+
 
 def quote(args):
     """
@@ -59,7 +66,7 @@ def quote(args):
     return ' '.join(_quote(args))
 
 
-def execute(client, args):
+def execute(client, args, name=None):
     """
     Execute a command remotely.
 
@@ -67,6 +74,7 @@ def execute(client, args):
 
     :param client: SSHConnection to run the command with
     :param args: command to run
+    :param name: name of client (optional)
     :type args: string or list of strings
 
     Returns a RemoteProcess, where exitstatus is a callable that will
@@ -76,8 +84,13 @@ def execute(client, args):
         cmd = args
     else:
         cmd = quote(args)
-    (host, port) = client.get_transport().getpeername()
-    log.debug('Running [{h}]: {cmd!r}'.format(h=host, cmd=cmd))
+
+    if name:
+        host = name
+    else:
+        (host, port) = client.get_transport().getpeername()
+    log.getChild(host).info(u"Running: {cmd!r}".format(cmd=cmd))
+
     (in_, out, err) = client.exec_command(cmd)
 
     def get_exitstatus():
@@ -110,15 +123,26 @@ def execute(client, args):
         )
     return r
 
-def copy_to_log(f, logger, host, loglevel=logging.INFO):
+
+def copy_to_log(f, logger, loglevel=logging.INFO):
     """
     Interface to older xreadlines api.
     """
+    # Work-around for http://tracker.ceph.com/issues/8313
+    if isinstance(f, ChannelFile):
+        f._flags += ChannelFile.FLAG_BINARY
+
     # i can't seem to get fudge to fake an iterable, so using this old
     # api for now
     for line in f.xreadlines():
         line = line.rstrip()
-        logger.log(loglevel, '[' + host + ']: ' + line)
+        # Second part of work-around for http://tracker.ceph.com/issues/8313
+        try:
+            line = unicode(line, 'utf-8', 'replace').encode('utf-8')
+            logger.log(loglevel, line)
+        except (UnicodeDecodeError, UnicodeEncodeError):
+            logger.exception("Encountered unprintable line in command output")
+
 
 def copy_and_close(src, fdst):
     """
@@ -130,7 +154,8 @@ def copy_and_close(src, fdst):
         shutil.copyfileobj(src, fdst)
     fdst.close()
 
-def copy_file_to(f, dst, host):
+
+def copy_file_to(f, dst):
     """
     Copy file
     :param f: file to be copied.
@@ -141,13 +166,13 @@ def copy_file_to(f, dst, host):
         # looks like a Logger to me; not using isinstance to make life
         # easier for unit tests
         handler = copy_to_log
-        return handler(f, dst, host)
     else:
         handler = shutil.copyfileobj
-        return handler(f, dst)
+    return handler(f, dst)
 
 
 class CommandFailedError(Exception):
+
     """
     Exception thrown on command failure
     """
@@ -157,14 +182,15 @@ class CommandFailedError(Exception):
         self.node = node
 
     def __str__(self):
-        return "Command failed on {node} with status {status}: {command!r}".format(
+        return "Command failed on {node} with status {status}: {cmd!r}".format(
             node=self.node,
             status=self.exitstatus,
-            command=self.command,
+            cmd=self.command,
             )
 
 
 class CommandCrashedError(Exception):
+
     """
     Exception thrown on crash
     """
@@ -178,6 +204,7 @@ class CommandCrashedError(Exception):
 
 
 class ConnectionLostError(Exception):
+
     """
     Exception thrown when the connection is lost
     """
@@ -188,6 +215,7 @@ class ConnectionLostError(Exception):
         return "SSH connection was lost: {command!r}".format(
             command=self.command,
             )
+
 
 def spawn_asyncresult(fn, *args, **kwargs):
     """
@@ -200,6 +228,7 @@ def spawn_asyncresult(fn, *args, **kwargs):
     AsyncResult avoids this.
     """
     r = gevent.event.AsyncResult()
+
     def wrapper():
         """
         Internal wrapper.
@@ -214,7 +243,9 @@ def spawn_asyncresult(fn, *args, **kwargs):
 
     return r
 
+
 class Sentinel(object):
+
     """
     Sentinel -- used to define PIPE file-like object.
     """
@@ -226,7 +257,9 @@ class Sentinel(object):
 
 PIPE = Sentinel('PIPE')
 
+
 class KludgeFile(object):
+
     """
     Wrap Paramiko's ChannelFile in a way that lets ``f.close()``
     actually cause an EOF for the remote command.
@@ -244,27 +277,46 @@ class KludgeFile(object):
         self._wrapped.close()
         self._wrapped.channel.shutdown_write()
 
+
 def run(
     client, args,
     stdin=None, stdout=None, stderr=None,
     logger=None,
     check_status=True,
     wait=True,
-    ):
+    name=None
+):
     """
     Run a command remotely.
 
     :param client: SSHConnection to run the command with
     :param args: command to run
     :type args: list of string
-    :param stdin: Standard input to send; either a string, a file-like object, None, or `PIPE`. `PIPE` means caller is responsible for closing stdin, or command may never exit.
-    :param stdout: What to do with standard output. Either a file-like object, a `logging.Logger`, `PIPE`, or `None` for copying to default log. `PIPE` means caller is responsible for reading, or command may never exit.
+    :param stdin: Standard input to send; either a string, a file-like object,
+                  None, or `PIPE`. `PIPE` means caller is responsible for
+                  closing stdin, or command may never exit.
+    :param stdout: What to do with standard output. Either a file-like object,
+                   a `logging.Logger`, `PIPE`, or `None` for copying to default
+                   log. `PIPE` means caller is responsible for reading, or
+                   command may never exit.
     :param stderr: What to do with standard error. See `stdout`.
-    :param logger: If logging, write stdout/stderr to "out" and "err" children of this logger. Defaults to logger named after this module.
-    :param check_status: Whether to raise CommandFailedError on non-zero exit status, and . Defaults to True. All signals and connection loss are made to look like SIGHUP.
-    :param wait: Whether to wait for process to exit. If False, returned ``r.exitstatus`` s a `gevent.event.AsyncResult`, and the actual status is available via ``.get()``.
+    :param logger: If logging, write stdout/stderr to "out" and "err" children
+                   of this logger. Defaults to logger named after this module.
+    :param check_status: Whether to raise CommandFailedError on non-zero exit
+                         status, and . Defaults to True. All signals and
+                         connection loss are made to look like SIGHUP.
+    :param wait: Whether to wait for process to exit. If False, returned
+                 ``r.exitstatus`` s a `gevent.event.AsyncResult`, and the
+                 actual status is available via ``.get()``.
+    :param name: Human readable name (probably hostname) of the destination
+                 host
     """
-    r = execute(client, args)
+    (host, port) = client.get_transport().getpeername()
+
+    if name is None:
+        name = host
+
+    r = execute(client, args, name=name)
 
     r.stdin = KludgeFile(wrapped=r.stdin)
 
@@ -273,28 +325,31 @@ def run(
         g_in = gevent.spawn(copy_and_close, stdin, r.stdin)
         r.stdin = None
     else:
-        assert not wait, "Using PIPE for stdin without wait=False would deadlock."
+        assert not wait, \
+            "Using PIPE for stdin without wait=False would deadlock."
 
     if logger is None:
         logger = log
-    (host, port) = client.get_transport().getpeername()
+
     g_err = None
     if stderr is not PIPE:
         if stderr is None:
-            stderr = logger.getChild('err')
-        g_err = gevent.spawn(copy_file_to, r.stderr, stderr, host)
+            stderr = logger.getChild(name).getChild('stderr')
+        g_err = gevent.spawn(copy_file_to, r.stderr, stderr)
         r.stderr = stderr
     else:
-        assert not wait, "Using PIPE for stderr without wait=False would deadlock."
+        assert not wait, \
+            "Using PIPE for stderr without wait=False would deadlock."
 
     g_out = None
     if stdout is not PIPE:
         if stdout is None:
-            stdout = logger.getChild('out')
-        g_out = gevent.spawn(copy_file_to, r.stdout, stdout, host)
+            stdout = logger.getChild(name).getChild('stdout')
+        g_out = gevent.spawn(copy_file_to, r.stdout, stdout)
         r.stdout = stdout
     else:
-        assert not wait, "Using PIPE for stdout without wait=False would deadlock."
+        assert not wait, \
+            "Using PIPE for stdout without wait=False would deadlock."
 
     def _check_status(status):
         """
@@ -322,8 +377,8 @@ def run(
                 # signal; sadly SSH does not tell us which signal
                 raise CommandCrashedError(command=r.command)
             if status != 0:
-                (host, port) = client.get_transport().getpeername()
-                raise CommandFailedError(command=r.command, exitstatus=status, node=host)
+                raise CommandFailedError(
+                    command=r.command, exitstatus=status, node=name)
         return status
 
     if wait:

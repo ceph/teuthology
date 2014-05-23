@@ -10,6 +10,8 @@ from datetime import datetime
 import teuthology
 from .config import config
 
+report_exceptions = (requests.exceptions.RequestException, socket.error)
+
 
 def init_logging():
     """
@@ -36,7 +38,8 @@ def main(args):
     if args['--verbose']:
         teuthology.log.setLevel(logging.DEBUG)
 
-    archive_base = os.path.abspath(os.path.expanduser(args['--archive']))
+    archive_base = os.path.abspath(os.path.expanduser(args['--archive'])) or \
+        config.archive_base
     save = not args['--no-save']
 
     log = init_logging()
@@ -44,7 +47,7 @@ def main(args):
                                log=log)
     if dead and not job:
         for run_name in run:
-            reporter.report_run(run[0], dead=True)
+            try_mark_run_dead(run[0])
     elif dead and len(run) == 1 and job:
         reporter.report_jobs(run[0], job, dead=True)
     elif len(run) == 1 and job:
@@ -179,10 +182,15 @@ class ResultsReporter(object):
         self.base_uri = base_uri or config.results_server
         if self.base_uri:
             self.base_uri = self.base_uri.rstrip('/')
+
         self.serializer = ResultsSerializer(archive_base, log=self.log)
         self.save_last_run = save
         self.refresh = refresh
         self.session = self._make_session()
+
+        if not self.base_uri:
+            msg = "No results_server set in {yaml}; cannot report results"
+            self.log.warn(msg.format(yaml=config.teuthology_yaml))
 
     def _make_session(self, max_retries=10):
         session = requests.Session()
@@ -393,6 +401,8 @@ def push_job_info(run_name, job_id, job_info, base_uri=None):
                      ResultsReporter will ask teuthology.config.
     """
     reporter = ResultsReporter()
+    if not reporter.base_uri:
+        return
     reporter.report_job(run_name, job_id, job_info)
 
 
@@ -409,11 +419,7 @@ def try_push_job_info(job_config, extra_info=None):
     """
     log = init_logging()
 
-    if not config.results_server:
-        msg = "No results_server set in {yaml}; not attempting to push results"
-        log.debug(msg.format(yaml=config.teuthology_yaml))
-        return
-    elif job_config.get('job_id') is None:
+    if job_config.get('job_id') is None:
         log.warning('No job_id found; not reporting results')
         return
 
@@ -430,7 +436,7 @@ def try_push_job_info(job_config, extra_info=None):
         log.debug("Pushing job info to %s", config.results_server)
         push_job_info(run_name, job_id, job_info)
         return
-    except (requests.exceptions.RequestException, socket.error):
+    except report_exceptions:
         log.exception("Could not report results to %s",
                       config.results_server)
 
@@ -446,17 +452,14 @@ def try_delete_jobs(run_name, job_ids, delete_empty_run=True):
     """
     log = init_logging()
 
-    if not config.results_server:
-        msg = "No results_server set in {yaml}; not attempting to delete job"
-        log.debug(msg.format(yaml=config.teuthology_yaml))
-        return
-
     if isinstance(job_ids, int):
         job_ids = [str(job_ids)]
     elif isinstance(job_ids, basestring):
         job_ids = [job_ids]
 
     reporter = ResultsReporter()
+    if not reporter.base_uri:
+        return
 
     log.debug("Deleting jobs from {server}: {jobs}".format(
         server=config.results_server, jobs=str(job_ids)))
@@ -468,15 +471,40 @@ def try_delete_jobs(run_name, job_ids, delete_empty_run=True):
             try:
                 reporter.delete_run(run_name)
                 return
-            except (requests.exceptions.RequestException, socket.error):
+            except report_exceptions:
                 log.exception("Run deletion failed")
 
     def try_delete_job(job_id):
             try:
                 reporter.delete_job(run_name, job_id)
                 return
-            except (requests.exceptions.RequestException, socket.error):
+            except report_exceptions:
                 log.exception("Job deletion failed")
 
     for job_id in job_ids:
         try_delete_job(job_id)
+
+
+def try_mark_run_dead(run_name):
+    """
+    Using the same error checking and retry mechanism as try_push_job_info(),
+    mark any unfinished runs as dead.
+
+    :param run_name:         The name of the run.
+    """
+    log = init_logging()
+    reporter = ResultsReporter()
+    if not reporter.base_uri:
+        return
+
+    log.debug("Marking run as dead: {name}".format(name=run_name))
+    jobs = reporter.get_jobs(run_name, fields=['status'])
+    for job in jobs:
+        if job['status'] not in ['pass', 'fail', 'dead']:
+            job_id = job['job_id']
+            try:
+                log.info("Marking job {job_id} as dead".format(job_id=job_id))
+                reporter.report_job(run_name, job['job_id'], dead=True)
+            except report_exceptions:
+                log.exception("Could not mark job as dead: {job_id}".format(
+                    job_id=job_id))
