@@ -1221,7 +1221,7 @@ def run_daemon(ctx, config, type_):
                                    wait=False,
                                    )
 
-    if type_ == 'mds':
+    if type_ == 'mds' and daemons.remotes:
         firstmon = teuthology.get_first_mon(ctx, config)
         (mon0_remote,) = ctx.cluster.only(firstmon).remotes.keys()
 
