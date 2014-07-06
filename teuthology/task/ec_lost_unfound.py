@@ -34,10 +34,13 @@ def task(ctx, config):
     manager.wait_for_clean()
 
 
+    manager.create_erasure_code_profile(
+        profile_name='m2k2',
+        profile={'m': 2, 'k': 2}
+        )
     pool = manager.create_pool_with_unique_name(
-        ec_pool=True,
-        ec_m=2,
-        ec_k=2)
+        erasure_code_profile_name='m2k2'
+        )
 
     # something that is always there
     dummyfile = '/etc/fstab'
