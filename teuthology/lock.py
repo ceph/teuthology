@@ -46,7 +46,7 @@ def lock_many(ctx, num, machinetype, user=None, description=None):
                         ok_machs[machine] = machines[machine]
                     else:
                         log.error('Unable to create virtual machine: %s' % machine)
-                        unlock_one(ctx, machine)
+                        unlock_one(ctx, machine, del_only=True)   
                 return ok_machs
             return machines
         if status == 503:
@@ -70,13 +70,15 @@ def lock_one(ctx, name, user=None, description=None):
     return success
 
 
-def unlock_one(ctx, name, user=None):
+def unlock_one(ctx, name, user=None, del_only=False):
     if user is None:
         user = misc.get_user()
     success, _, http_ret = ls.send_request(
         'DELETE',
         config.lock_server + '/' + name + '?' +
         urllib.urlencode(dict(user=user)))
+    if del_only:
+        return
     if success:
         log.debug('unlocked %s', name)
         if not destroy_if_vm(ctx, name):
@@ -446,8 +448,11 @@ def create_if_vm(ctx, machine_name):
     if not phys_host:
         return False
     os_type = get_distro(ctx)
-    os_version = get_distro_version(ctx)
-
+    try:
+        os_version = get_distro_version(ctx)
+    except KeyError:
+        log.info('invalid os-type detected when trying to find a default version')
+        return
     createMe = decanonicalize_hostname(machine_name)
     with tempfile.NamedTemporaryFile() as tmp:
         if hasattr(ctx, 'config') and ctx.config is not None:
@@ -482,6 +487,9 @@ def create_if_vm(ctx, machine_name):
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE,)
         owt, err = p.communicate()
         if err:
+            if err.find('Image not found on server') > 0:
+                log.info('Image not found on server -- check parameters')
+                return
             log.info("Downburst completed on %s: %s" %
                     (machine_name, err))
         else:
