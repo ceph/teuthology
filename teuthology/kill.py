@@ -4,6 +4,7 @@ import sys
 import beanstalkc
 import yaml
 import psutil
+import re
 import subprocess
 import tempfile
 import logging
@@ -23,6 +24,8 @@ def main(args):
     machine_type = args['--machine_type']
     preserve_queue = args['--preserve-queue']
 
+    run_name = normalize_run_name(run_name)
+
     if job:
         for job_id in job:
             kill_job(run_name, job_id, archive_base, owner, machine_type)
@@ -30,6 +33,11 @@ def main(args):
         kill_run(run_name, archive_base, owner, machine_type,
                  preserve_queue=preserve_queue)
 
+def normalize_run_name(run_name):
+    m = re.search('.*/([^/]+)/\d+', run_name)
+    if m:
+        return m.group(1)
+    return run_name
 
 def kill_run(run_name, archive_base=None, owner=None, machine_type=None,
              preserve_queue=False):
