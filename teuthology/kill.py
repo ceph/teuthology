@@ -3,6 +3,7 @@ import os
 import sys
 import yaml
 import psutil
+import re
 import subprocess
 import tempfile
 import logging
@@ -25,9 +26,15 @@ def main(args):
     preserve_queue = args['--preserve-queue']
 
     if jobspec:
-        split_spec = jobspec.split('/')
-        run_name = split_spec[0]
-        job = [split_spec[1]]
+        # ignore leading bits of path name, if present
+        m = re.search('(.*/)?([^/]+)/(\d+)$', jobspec)
+        run_name = m.group(2)
+        job = [m.group(3)]
+    else:
+        # strip off leading or trailing bits of path, if present
+        m = re.search('.*/([^/]+)/\d+$', run_name)
+        if m:
+            run_name = m.group(1)
 
     if job:
         for job_id in job:
