@@ -337,7 +337,7 @@ def get_worker(machine_type):
 
 
 def get_hash(project='ceph', branch='master', flavor='basic',
-             machine_type='plana', distro='ubuntu'):
+             distro='ubuntu', machine_type='plana'):
     """
     Find the hash representing the head of the project's repository via
     querying a gitbuilder repo.
