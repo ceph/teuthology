@@ -74,16 +74,21 @@ class FuseMount(CephFSMount):
         self.fuse_daemon = proc
 
     def is_mounted(self):
-        proc = self.client_remote.run(
-            args=[
-                'stat',
-                '--file-system',
-                '--printf=%T\n',
-                '--',
-                self.mountpoint,
-            ],
-            stdout=StringIO(),
-        )
+        try:
+            proc = self.client_remote.run(
+                args=[
+                    'stat',
+                    '--file-system',
+                    '--printf=%T\n',
+                    '--',
+                    self.mountpoint,
+                ],
+                stdout=StringIO(),
+            )
+        except CommandFailedError:
+            # This happens if the mount directory doesn't exist
+            return False
+
         fstype = proc.stdout.getvalue().rstrip('\n')
         if fstype == 'fuseblk':
             log.info('ceph-fuse is mounted on %s', self.mountpoint)
