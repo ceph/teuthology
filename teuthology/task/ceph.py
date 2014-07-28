@@ -20,6 +20,7 @@ from teuthology.orchestra.run import CommandFailedError
 from teuthology.orchestra.daemon import DaemonGroup
 
 DEFAULT_CONF_PATH = '/etc/ceph/ceph.conf'
+CEPH_ROLE_TYPES = ['mon', 'osd', 'mds', 'rgw']
 
 log = logging.getLogger(__name__)
 
@@ -1081,6 +1082,45 @@ def wait_for_mon_quorum(ctx, config):
         time.sleep(1)
 
 
+def _resolve_role_list(ctx, roles):
+    """
+    Resolve a list of roles from configuration into an explicit list of concrete roles.
+
+    Valid inputs are None or a list.  List items may be a role like "osd.2", or a wildcard like "mds.*"
+
+    :return: List of strings like ["mds.0", "osd.2"]
+    """
+
+    assert (isinstance(roles, list) or roles is None)
+
+    resolved = []
+    if roles is None:
+        # Handle default: all roles available
+        for type_ in CEPH_ROLE_TYPES:
+            for daemon in ctx.daemons.iter_daemons_of_role(type_):
+                resolved.append(type_ + '.' + daemon.id_)
+    else:
+        # Handle explicit list of roles or wildcards
+        for raw_role in roles:
+            try:
+                role_type, role_id = raw_role.split(".")
+            except ValueError:
+                raise RuntimeError("Invalid role '{0}', roles must be of format <type>.<id>".format(raw_role))
+
+            if role_type not in CEPH_ROLE_TYPES:
+                raise RuntimeError("Invalid role type '{0}' in role '{1}'".format(role_type, raw_role))
+
+            if role_id == "*":
+                # Handle wildcard, all roles of the type
+                for daemon in ctx.daemons.iter_daemons_of_role(role_type):
+                    resolved.append(role_type + '.' + daemon.id_)
+            else:
+                # Handle explicit role
+                resolved.append(raw_role)
+
+    return resolved
+
+
 @contextlib.contextmanager
 def restart(ctx, config):
     """
@@ -1092,7 +1132,7 @@ def restart(ctx, config):
 
    For example::
       tasks:
-      - ceph.restart: [osd.0, mon.1]
+      - ceph.restart: [osd.0, mon.1, mds.*]
 
    or::
 
@@ -1107,19 +1147,11 @@ def restart(ctx, config):
     """
     if config is None:
         config = {}
-    if isinstance(config, list):
-        config = { 'daemons': config }
-    if 'daemons' not in config:
-        config['daemons'] = []
-        type_daemon = ['mon', 'osd', 'mds', 'rgw']
-        for d in type_daemon:
-            type_ = d
-            for daemon in ctx.daemons.iter_daemons_of_role(type_):
-                config['daemons'].append(type_ + '.' + daemon.id_)
+    elif isinstance(config, list):
+        config = {'daemons': config}
 
-    assert isinstance(config['daemons'], list)
-    daemons = dict.fromkeys(config['daemons'])
-    for i in daemons.keys():
+    daemons = _resolve_role_list(ctx, config.get('daemons', None))
+    for i in daemons:
         type_ = i.split('.', 1)[0]
         id_ = i.split('.', 1)[1]
         ctx.daemons.get_daemon(type_, id_).stop()
@@ -1130,6 +1162,38 @@ def restart(ctx, config):
     if config.get('wait-for-osds-up', False):
         wait_for_osds_up(ctx=ctx, config=None)
     yield
+
+
+@contextlib.contextmanager
+def stop(ctx, config):
+    """
+    Stop ceph daemons
+
+    For example::
+      tasks:
+      - ceph.stop: [mds.*]
+
+      tasks:
+      - ceph.stop: [osd.0, osd.2]
+
+      tasks:
+      - ceph.stop:
+          daemons: [osd.0, osd.2]
+
+    """
+    if config is None:
+        config = {}
+    elif isinstance(config, list):
+        config = {'daemons': config}
+
+    daemons = _resolve_role_list(ctx, config.get('daemons', None))
+    for i in daemons:
+        type_ = i.split('.', 1)[0]
+        id_ = i.split('.', 1)[1]
+        ctx.daemons.get_daemon(type_, id_).stop()
+
+    yield
+
 
 @contextlib.contextmanager
 def task(ctx, config):
