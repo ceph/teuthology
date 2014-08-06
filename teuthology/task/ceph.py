@@ -11,6 +11,7 @@ import logging
 import os
 import json
 import time
+import re
 
 from teuthology import misc as teuthology
 from teuthology import contextutil
@@ -910,8 +911,32 @@ def osd_scrub_pgs(ctx, config):
     if not all_clean:
         log.info("Scrubbing terminated -- not all pgs were active and clean.")
         return
-    check_time_now = time.localtime()
     time.sleep(1)
+    testdir = teuthology.get_testdir(ctx)
+    all_up = False
+    for _ in range(0, retries):
+        osd_upinfo = StringIO()
+        rem_site.run(args=[
+                'adjust-ulimits',
+                'ceph-coverage',
+                '{tdir}/archive/coverage'.format(tdir=testdir),
+                'sudo',
+                'ceph',
+                'osd',
+                'stat', ],
+                stdout=osd_upinfo)
+        stat_str = osd_upinfo.getvalue().rstrip('\n')
+        checker = re.search('e.[0-9]*: (.+?) osds: (.+?) up, (.+?) in',
+                stat_str)
+        log.info('checking if all OSDs are up')
+        if checker.group(1) == checker.group(2):
+            all_up = True
+            break
+        time.sleep(delays)
+    if not all_up:
+        log.info("Scrubbing terminated -- not all osds are up.")
+        return
+    check_time_now = time.localtime()
     for slists in vlist:
         for role in slists:
             if role.startswith('osd.'):
