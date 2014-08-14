@@ -4,6 +4,7 @@ import StringIO
 import contextlib
 import sys
 import logging
+import gevent
 from traceback import format_tb
 
 import teuthology
@@ -105,6 +106,8 @@ def main(ctx):
     if job_id is not None:
         job_id = str(job_id)
         ctx.config['job_id'] = job_id
+
+    ctx.gevent_lock = gevent.coros.RLock()
 
     write_initial_metadata(ctx)
     report.try_push_job_info(ctx.config, dict(status='running'))
