@@ -72,6 +72,9 @@ def main(args):
     if owner:
         job_config.owner = owner
 
+    # teuthology-schedule requires these YAMLs to be in ceph-qa-suite
+    base_yaml_paths = [os.path.join(suite_repo_path, b) for b in base_yaml_paths]
+
     with NamedTemporaryFile(prefix='schedule_suite_',
                             delete=False) as base_yaml:
         base_yaml.write(str(job_config))
