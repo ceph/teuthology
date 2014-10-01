@@ -266,25 +266,13 @@ def download_kernel(ctx, config):
             log.info('Downloading kernel {sha1} on {role}...'.format(sha1=src,
                                                                      role=role))
             if package_type == 'rpm':
-                dist, ver = teuthology.get_system_type(role_remote, distro=True, version=True)
-                if '.' in ver:
-                    ver = ver.split('.')[0]
-                ldist = '{dist}{ver}'.format(dist=dist, ver=ver)
-                _, rpm_url = teuthology.get_ceph_binary_url(
-                    package='kernel',
-                    sha1=src,
-                    format='rpm',
-                    flavor='basic',
-                    arch='x86_64',
-                    dist=ldist,
-                    )
-
-                kernel_url = urlparse.urljoin(rpm_url, 'kernel.x86_64.rpm')
+                kernelstring, kernel_url = get_version_from_rpm(role_remote, src)
+                unamestring = kernelstring.split('-')[1]
                 output, err_mess = StringIO(), StringIO()
                 role_remote.run(args=['sudo', 'yum', 'list', 'installed', 'kernel'], stdout=output, stderr=err_mess )
                 # Check if short (first 8 digits) sha1 is in uname output as expected
                 short_sha1 = src[0:7]
-                if short_sha1 in output.getvalue():
+                if short_sha1 in output.getvalue() or unamestring in output.getvalue():
                     output.close()
                     err_mess.close()
                     continue
@@ -604,6 +592,14 @@ def need_to_install_distro(ctx, role):
     current = output.getvalue().strip()
     if system_type == 'rpm':
         role_remote.run(args=['sudo', 'yum', 'install', '-y', 'kernel'], stdout=output, stderr=err_mess )
+        if 'Nothing to do' in output.getvalue():
+            role_remote.run(args=['sudo', 'yum', 'reinstall', '-y', 'kernel', run.Raw('||'), 'true'], stdout=output, stderr=err_mess )
+            if 'Skipping the running kernel' in output.getvalue():
+                if 'Error: Nothing to do' in output.getvalue():
+                    # Current running kernel is already newest and updated
+                    log.info('Newest distro kernel already installed/running')
+                    return False
+            output, err_mess = StringIO(), StringIO()
         #reset stringIO output.
         output, err_mess = StringIO(), StringIO()
         role_remote.run(args=['rpm', '-q', 'kernel', '--last' ], stdout=output, stderr=err_mess )
@@ -623,6 +619,34 @@ def need_to_install_distro(ctx, role):
     log.info('Not newest distro kernel. Curent: {cur} Expected: {new}'.format(cur=current, new=newest))
     return True
 
+def get_version_from_rpm(remote, sha1):
+    """
+    Get Actual version string from kernel file RPM URL.
+    """
+    system_type, system_ver = teuthology.get_system_type(remote, distro=True, version=True)
+    if '.' in system_ver:
+       system_ver = system_ver.split('.')[0]
+    ldist = '{system_type}{system_ver}'.format(system_type=system_type, system_ver=system_ver)
+    kern_out, kern_err = StringIO(), StringIO()
+    _, rpm_url = teuthology.get_ceph_binary_url(
+        package='kernel',
+        sha1=sha1,
+        format='rpm',
+        flavor='basic',
+        arch='x86_64',
+        dist=ldist,
+        )
+    kernel_url = urlparse.urljoin(rpm_url, 'kernel.x86_64.rpm')
+    kerninfo, kern_err = StringIO(), StringIO()
+    remote.run(args=['rpm', '-qp', kernel_url ], stdout=kerninfo, stderr=kern_err)
+    kernelstring = ''
+    if '\n' in kerninfo.getvalue():
+        kernelstring = kerninfo.getvalue().split('\n')[0]
+    else:
+        kernelstring = kerninfo.getvalue()
+    kern_out.close()
+    kern_err.close()
+    return kernelstring, kernel_url
 
 def install_kernel(remote, sha1=None):
     """
@@ -640,10 +664,11 @@ def install_kernel(remote, sha1=None):
         output, err_mess = StringIO(), StringIO()
         kern_out, kern_err = StringIO(), StringIO()
         if short_sha1:
+            kernelstring, kernel_url = get_version_from_rpm(remote, sha1)
             remote.run(args=['rpm', '-q', 'kernel' ], stdout=output, stderr=err_mess )
-            if short_sha1 in output.getvalue():
+            if kernelstring in output.getvalue():
                 for kernel in output.getvalue().split('\n'):
-                    if short_sha1 in kernel:
+                    if kernelstring in kernel:
                         remote.run(args=['rpm', '-ql', kernel ], stdout=kern_out, stderr=kern_err )
                         for file in kern_out.getvalue().split('\n'):
                             if 'vmlinuz' in file:
@@ -742,7 +767,7 @@ def grub2_kernel_select_generic(remote, newversion, ostype):
         if line.startswith('menuentry'):
             if newversion in line:
                 break
-            entry_num =+ 1
+            entry_num += 1
     remote.run(args=['sudo', grubset, str(entry_num), ])
 
 def generate_legacy_grub_entry(remote, newversion):
@@ -925,13 +950,19 @@ def task(ctx, config):
                 need_version[role] = 'distro'
         else:
             larch, ldist = _find_arch_and_dist(ctx)
+            (role_remote,) = ctx.cluster.only(role).remotes.keys()
+            package_type = teuthology.get_system_type(role_remote)
+            system_type, system_ver = teuthology.get_system_type(role_remote, distro=True, version=True)
+            if '.' in system_ver:
+                system_ver = system_ver.split('.')[0]
+            ldist = '{system_type}{system_ver}'.format(system_type=system_type, system_ver=system_ver)
             sha1, base_url = teuthology.get_ceph_binary_url(
                 package='kernel',
                 branch=role_config.get('branch'),
                 tag=role_config.get('tag'),
                 sha1=role_config.get('sha1'),
                 flavor='basic',
-                format='deb',
+                format=package_type,
                 dist=ldist,
                 arch=larch,
                 )
