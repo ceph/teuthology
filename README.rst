@@ -2,10 +2,11 @@
  `Teuthology` -- The Ceph integration test runner
 ==================================================
 
-``Teuthology`` is an automation framework for Ceph. It is used to run the vast
-majority of its tests and was developed because the unique requirements of
-testing such a highly distributed system with active kernel development meant
-that no other framework existed that could do its job.
+``teuthology`` is an automation framework for `Ceph
+<https://github.com/ceph/ceph>`__. It is used to run the vast majority of its
+tests and was developed because the unique requirements of testing such a
+highly distributed system with active kernel development meant that no other
+framework existed that could do its job.
 
 The name '`teuthology <http://en.wikipedia.org/wiki/Teuthology>`__' refers to the
 study of cephalopods.
