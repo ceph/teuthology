@@ -42,6 +42,12 @@ Whichever method you use to install ``teuthology``, you need to install the
 non-Python dependencies in whatever way your OS supports.
 
 
+Fedora
+~~~~~~
+
+
+
+
 Ubuntu
 ~~~~~~
 
@@ -72,6 +78,7 @@ At this time the recommended way to install teuthology is still to clone its
     virtualenv ./virtualenv
     source virtualenv/bin/activate
     pip install -r requirements.txt
+    python setup.py develop
 
 However if you prefer, you may install ``teuthology`` from `PyPI <http://pypi.python.org>`__::
 
