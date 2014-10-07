@@ -35,21 +35,8 @@ machines which match the following criteria specified in the job's YAML:
 Installation and setup
 ======================
 
-Non-Python dependencies
------------------------
-
-Whichever method you use to install ``teuthology``, you need to install the
-non-Python dependencies in whatever way your OS supports.
-
-
-Fedora
-~~~~~~
-
-
-
-
 Ubuntu
-~~~~~~
+------
 
 For better or worse, ``teuthology`` was originally written with Ubuntu in mind.
 Thus, a bootstrap script is provided that will do everything for you assuming
@@ -57,13 +44,23 @@ you have ``sudo``::
 
     ./bootstrap
 
+Other OSes
+----------
+
+Non-PyPI dependencies
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Whichever method you use to install ``teuthology``, you need to install the
+non-PyPI dependencies in whatever way your OS supports. They are::
+
+    python-dev python-pip python-virtualenv libevent-dev python-libvirt
 
 MacOS X
-~~~~~~~
+.......
 
 Using `homebrew <http://brew.sh/>`_::
 
-    brew install libvirt mysql libevent
+    brew install python libvirt mysql libevent
 
 
 Teuthology itself
@@ -77,6 +74,7 @@ At this time the recommended way to install teuthology is still to clone its
     cd teuthology
     virtualenv ./virtualenv
     source virtualenv/bin/activate
+    pip install --upgrade pip
     pip install -r requirements.txt
     python setup.py develop
 
