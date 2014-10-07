@@ -60,7 +60,7 @@ MacOS X
 
 Using `homebrew <http://brew.sh/>`_::
 
-    brew install python libvirt mysql libevent
+    brew install python libvirt libevent
 
 
 Teuthology itself
