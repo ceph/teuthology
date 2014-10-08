@@ -51,11 +51,9 @@ The ``bootstrap`` script was recently updated to support MacOS X using `homebrew
 
     ./bootstrap
 
-Note
-....
-Certain features might not work properly on MacOS X. Patches are encouraged,
-but it has never been a goal of ours to run a full ``teuthology`` setup on a
-Mac.
+**Note**: Certain features might not work properly on MacOS X. Patches are
+encouraged, but it has never been a goal of ours to run a full ``teuthology``
+setup on a Mac.
 
 Other operating systems
 -----------------------
