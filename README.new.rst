@@ -85,7 +85,5 @@ However if you prefer, you may install ``teuthology`` from `PyPI <http://pypi.py
     pip install teuthology
 
 
-Note
-....
-The version in PyPI can be (*far*) behind the development version.
+**Note**: The version in PyPI can be (*far*) behind the development version.
 
