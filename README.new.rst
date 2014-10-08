@@ -44,31 +44,25 @@ you have ``sudo``::
 
     ./bootstrap
 
-Other OSes
-----------
+MacOS X
+-------
 
-Non-PyPI dependencies
-~~~~~~~~~~~~~~~~~~~~~~~
+The `bootstrap` script was recently updated to support MacOS X using `homebrew <http://brew.sh/>`_::
 
-Whichever method you use to install ``teuthology``, you need to install the
-non-PyPI dependencies in whatever way your OS supports. They are::
+    ./bootstrap
+
+Other operating systems
+-----------------------
+
+Patches are welcomed to add `bootstrap` support for other operating systems. Until then, manual installs are possible
+
+First install the non-PyPI dependencies::
 
     python-dev python-pip python-virtualenv libevent-dev python-libvirt
 
-MacOS X
-.......
-
-Using `homebrew <http://brew.sh/>`_::
-
-    brew install python libvirt libevent
-
-
-Teuthology itself
------------------
-
-At this time the recommended way to install teuthology is still to clone its
-`git repository <https://github.com/ceph/teuthology/>`__, create a `virtualenv
-<http://virtualenv.readthedocs.org/en/latest/>`__, and install dependencies::
+Next, clone its `git repository <https://github.com/ceph/teuthology/>`__,
+create a `virtualenv <http://virtualenv.readthedocs.org/en/latest/>`__, and
+install dependencies::
 
     git clone https://github.com/ceph/teuthology/
     cd teuthology
@@ -77,6 +71,10 @@ At this time the recommended way to install teuthology is still to clone its
     pip install --upgrade pip
     pip install -r requirements.txt
     python setup.py develop
+
+
+Teuthology in PyPI
+------------------
 
 However if you prefer, you may install ``teuthology`` from `PyPI <http://pypi.python.org>`__::
 
