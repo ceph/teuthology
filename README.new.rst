@@ -47,14 +47,20 @@ you have ``sudo``::
 MacOS X
 -------
 
-The `bootstrap` script was recently updated to support MacOS X using `homebrew <http://brew.sh/>`_::
+The ``bootstrap`` script was recently updated to support MacOS X using `homebrew <http://brew.sh/>`_::
 
     ./bootstrap
+
+Note
+....
+Certain features might not work properly on MacOS X. Patches are encouraged,
+but it has never been a goal of ours to run a full ``teuthology`` setup on a
+Mac.
 
 Other operating systems
 -----------------------
 
-Patches are welcomed to add `bootstrap` support for other operating systems. Until then, manual installs are possible
+Patches are welcomed to add ``bootstrap`` support for other operating systems. Until then, manual installs are possible
 
 First install the non-PyPI dependencies::
 
@@ -80,5 +86,8 @@ However if you prefer, you may install ``teuthology`` from `PyPI <http://pypi.py
 
     pip install teuthology
 
-.. note:: The version in PyPI can be (*far*) behind the development version.
+
+Note
+....
+The version in PyPI can be (*far*) behind the development version.
 
