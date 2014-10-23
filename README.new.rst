@@ -2,6 +2,17 @@
 `Teuthology` -- The Ceph integration test framework
 ===================================================
 
+The ``teuthology`` command line interprets YAML files describing tasks
+to run on a given set of machines provisioned from scratch. If the
+machines are pre-provisioned by the caller, teuthology will exit with
+success if all tasks are completed successfully. If an error happens
+it will display a log to help figure out what was wrong.
+
+If a large number of teuthology jobs are to be run, there may not be
+enough machines to accomodate all of them. The ``teuthology-worker``
+daemons manage a pool of machines and a queue of jobs that needs them.
+A job can be added to the queue with ``teuthology-schedule`` or
+``teuthology-suite``.
 
 Provided Utilities
 ==================
