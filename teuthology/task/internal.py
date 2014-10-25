@@ -210,7 +210,8 @@ def connect(ctx, config):
     for name in ctx.config['targets'].iterkeys():
         machs.append(name)
     for t, key in ctx.config['targets'].iteritems():
-        t = misc.canonicalize_hostname(t)
+        if ctx.config.get('check-locks') != False:
+            t = misc.canonicalize_hostname(t)
         log.debug('connecting to %s', t)
         try:
             if ctx.config['sshkeys'] == 'ignore':
