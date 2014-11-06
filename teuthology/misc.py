@@ -1169,3 +1169,48 @@ def get_multi_machine_types(machinetype):
     if not machinetypes:
         machinetypes.append(machinetype)
     return machinetypes
+
+def version_to_codename(version, reverse=False):
+    """
+    Convert Debian/Ubuntu version string to codename
+    or reverse
+    """
+    codenames = {
+        '4.10': 'warty',
+        '5.10': 'hoary',
+        '5.10': 'breezy',
+        '6.06': 'dapper',
+        '6.10': 'edgy',
+        '7.04': 'feisty',
+        '7.10': 'gutsy',
+        '8.04': 'hardy',
+        '8.10': 'intrepid',
+        '9.04': 'jaunty',
+        '9.10': 'karmic',
+        '10.04': 'lucid',
+        '10.10': 'maverick',
+        '11.04': 'natty',
+        '11.10': 'oneiric',
+        '12.04': 'precise',
+        '12.10': 'quantal',
+        '13.04': 'raring',
+        '13.10': 'saucy',
+        '14.04': 'trusty',
+        '14.10': 'utopic',
+        '4.0': 'etch',
+        '5.0': 'lenny',
+        '6.0': 'squeeze',
+        '7.0': 'wheezy',
+        '8.0': 'jessie'}
+
+    if reverse:
+        ret = dict((v,k) for k,v in codenames.items()).get(version)
+        if not ret:
+            raise RuntimeError('Codename: {version}\'s version is Unknown'.format(version=version))
+    try:
+        ret = codenames[version]
+    except IndexError:
+        raise RuntimeError('Version: {version}\'s codename is Unknown'.format(version=version))
+    return ret
+
+

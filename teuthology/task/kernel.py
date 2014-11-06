@@ -593,15 +593,15 @@ def need_to_install_distro(ctx, role):
     if system_type == 'rpm':
         role_remote.run(args=['sudo', 'yum', 'install', '-y', 'kernel'], stdout=output, stderr=err_mess )
         if 'Nothing to do' in output.getvalue():
+            output.truncate(0), err_mess.truncate(0)
             role_remote.run(args=['sudo', 'yum', 'reinstall', '-y', 'kernel', run.Raw('||'), 'true'], stdout=output, stderr=err_mess )
             if 'Skipping the running kernel' in output.getvalue():
                 if 'Error: Nothing to do' in output.getvalue():
                     # Current running kernel is already newest and updated
                     log.info('Newest distro kernel already installed/running')
                     return False
-            output, err_mess = StringIO(), StringIO()
         #reset stringIO output.
-        output, err_mess = StringIO(), StringIO()
+        output.truncate(0), err_mess.truncate(0)
         role_remote.run(args=['rpm', '-q', 'kernel', '--last' ], stdout=output, stderr=err_mess )
         for kernel in output.getvalue().split():
             if kernel.startswith('kernel'):
@@ -644,8 +644,6 @@ def get_version_from_rpm(remote, sha1):
         kernelstring = kerninfo.getvalue().split('\n')[0]
     else:
         kernelstring = kerninfo.getvalue()
-    kern_out.close()
-    kern_err.close()
     return kernelstring, kernel_url
 
 def install_kernel(remote, sha1=None):
@@ -951,11 +949,15 @@ def task(ctx, config):
         else:
             larch, ldist = _find_arch_and_dist(ctx)
             (role_remote,) = ctx.cluster.only(role).remotes.keys()
-            package_type = teuthology.get_system_type(role_remote)
-            system_type, system_ver = teuthology.get_system_type(role_remote, distro=True, version=True)
-            if '.' in system_ver:
-                system_ver = system_ver.split('.')[0]
-            ldist = '{system_type}{system_ver}'.format(system_type=system_type, system_ver=system_ver)
+            package_type = role_remote.os.package_type
+            system_type, system_ver = role_remote.os.name, role_remote.os.version
+            if package_type == 'rpm':
+                if '.' in system_ver:
+                    system_ver = system_ver.split('.')[0]
+                ldist = '{system_type}{system_ver}'.format(system_type=system_type, system_ver=system_ver)
+            if package_type == 'deb':
+                system_ver = teuthology.version_to_codename(system_ver)
+                ldist = '{system_ver}'.format(system_ver=system_ver)
             sha1, base_url = teuthology.get_ceph_binary_url(
                 package='kernel',
                 branch=role_config.get('branch'),
