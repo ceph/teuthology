@@ -627,7 +627,6 @@ def get_version_from_rpm(remote, sha1):
     if '.' in system_ver:
        system_ver = system_ver.split('.')[0]
     ldist = '{system_type}{system_ver}'.format(system_type=system_type, system_ver=system_ver)
-    kern_out, kern_err = StringIO(), StringIO()
     _, rpm_url = teuthology.get_ceph_binary_url(
         package='kernel',
         sha1=sha1,
