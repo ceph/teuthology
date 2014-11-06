@@ -79,21 +79,6 @@ def normalize_config(ctx, config):
                     new_config[name] = role_config
     return new_config
 
-def _find_arch_and_dist(ctx):
-    """
-    Return the arch and distro value as a tuple.
-
-    Currently this only returns armv7l on the quantal distro or x86_64
-    on the precise distro
-
-    :param ctx: Context
-    :returns: arch,distro
-    """
-    info = ctx.config.get('machine_type', 'plana')
-    if teuthology.is_arm(info):
-        return ('armv7l', 'quantal')
-    return ('x86_64', 'precise')
-
 def validate_config(ctx, config):
     """
     Make sure that all kernels in the list of remove kernels
@@ -293,7 +278,7 @@ def download_kernel(ctx, config):
                 procs[role_remote.name] = proc
                 continue
 
-            larch, ldist = _find_arch_and_dist(ctx)
+            larch, ldist = role_remote.arch, teuthology.version_to_codename(role_remote.os.version)
             _, deb_url = teuthology.get_ceph_binary_url(
                 package='kernel',
                 sha1=src,
@@ -946,8 +931,8 @@ def task(ctx, config):
                 need_install[role] = 'distro'
                 need_version[role] = 'distro'
         else:
-            larch, ldist = _find_arch_and_dist(ctx)
             (role_remote,) = ctx.cluster.only(role).remotes.keys()
+            larch = role_remote.arch
             package_type = role_remote.os.package_type
             system_type, system_ver = role_remote.os.name, role_remote.os.version
             if package_type == 'rpm':
