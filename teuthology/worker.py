@@ -15,7 +15,6 @@ from . import safepath
 from .config import config as teuth_config
 from .exceptions import BranchNotFoundError
 from .kill import kill_job
-from .misc import read_config
 from .repo_utils import fetch_qa_suite, fetch_teuthology
 
 log = logging.getLogger(__name__)
@@ -55,28 +54,26 @@ def install_except_hook():
 
 def main(ctx):
     loglevel = logging.INFO
-    if ctx.verbose:
+    if ctx["--verbose"]:
         loglevel = logging.DEBUG
     log.setLevel(loglevel)
 
-    log_file_path = os.path.join(ctx.log_dir, 'worker.{tube}.{pid}'.format(
-        pid=os.getpid(), tube=ctx.tube,))
+    log_file_path = os.path.join(ctx["--log-dir"], 'worker.{tube}.{pid}'.format(
+        pid=os.getpid(), tube=ctx["--tube"],))
     setup_log_file(log_file_path)
 
     install_except_hook()
 
-    if not os.path.isdir(ctx.archive_dir):
+    if not os.path.isdir(ctx["--archive-dir"]):
         sys.exit("{prog}: archive directory must exist: {path}".format(
             prog=os.path.basename(sys.argv[0]),
-            path=ctx.archive_dir,
+            path=ctx["--archive-dir"],
         ))
     else:
-        teuth_config.archive_base = ctx.archive_dir
-
-    read_config(ctx)
+        teuth_config.archive_base = ctx["--archive-dir"]
 
     connection = beanstalk.connect()
-    beanstalk.watch_tube(connection, ctx.tube)
+    beanstalk.watch_tube(connection, ctx["--tube"])
     result_proc = None
 
     fetch_teuthology('master')
@@ -107,7 +104,7 @@ def main(ctx):
         safe_archive = safepath.munge(job_config['name'])
         job_config['worker_log'] = log_file_path
         archive_path_full = os.path.join(
-            ctx.archive_dir, safe_archive, str(job.jid))
+            ctx["--archive-dir"], safe_archive, str(job.jid))
         job_config['archive_path'] = archive_path_full
 
         # If the teuthology branch was not specified, default to master and
@@ -149,7 +146,7 @@ def main(ctx):
                 '--email',
                 job_config['email'],
                 '--archive-dir',
-                os.path.join(ctx.archive_dir, safe_archive),
+                os.path.join(ctx["--archive-dir"], safe_archive),
                 '--name',
                 job_config['name'],
             ]
@@ -160,7 +157,7 @@ def main(ctx):
             log.info("teuthology-results PID: %s", result_proc.pid)
         else:
             log.info('Creating archive dir %s', archive_path_full)
-            safepath.makedirs(ctx.archive_dir, safe_archive)
+            safepath.makedirs(ctx["--archive-dir"], safe_archive)
             log.info('Running job %d', job.jid)
             run_job(job_config, teuth_bin_path)
         job.delete()
