@@ -1,37 +1,22 @@
-import argparse
+"""
+usage: teuthology-worker [-h] [-v] --archive-dir=DIR -l LOG_DIR -t TUBE
+
+Grab jobs from a beanstalk queue and run the teuthology tests they describe.
+One job is run at a time.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -v, --verbose         be more verbose
+  --archive-dir=DIR     path under which to archive results
+  -l LOG_DIR --log-dir=LOG_DIR
+                        path in which to store logs
+  -t TUBE --tube=TUBE   which beanstalk tube to read jobs from
+"""
+import docopt
 
 import teuthology.worker
 
 
 def main():
-    teuthology.worker.main(parse_args())
-
-
-def parse_args():
-    parser = argparse.ArgumentParser(description="""
-Grab jobs from a beanstalk queue and run the teuthology tests they
-describe. One job is run at a time.
-""")
-    parser.add_argument(
-        '-v', '--verbose',
-        action='store_true', default=None,
-        help='be more verbose',
-    )
-    parser.add_argument(
-        '--archive-dir',
-        metavar='DIR',
-        help='path under which to archive results',
-        required=True,
-    )
-    parser.add_argument(
-        '-l', '--log-dir',
-        help='path in which to store logs',
-        required=True,
-    )
-    parser.add_argument(
-        '-t', '--tube',
-        help='which beanstalk tube to read jobs from',
-        required=True,
-    )
-
-    return parser.parse_args()
+    args = docopt.docopt(__doc__)
+    teuthology.worker.main(args)
