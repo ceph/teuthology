@@ -12,9 +12,9 @@ class TestWorker(Script):
     def test_args(self):
         args = docopt.docopt(doc, [
             "--verbose",
-            "--archive-dir=some/archive/dir",
-            "-l some/log/dir",
-            "-t the_tube",
+            "--archive-dir", "some/archive/dir",
+            "-l", "some/log/dir",
+            "-t", "the_tube",
         ])
         assert args["--verbose"]
         assert args["--archive-dir"] == "some/archive/dir"
