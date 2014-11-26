@@ -52,7 +52,8 @@ def write_initial_metadata(archive, config, name, description, owner):
             f.write(owner + '\n')
 
         with file(os.path.join(archive, 'orig.config.yaml'), 'w') as f:
-            yaml.safe_dump(config, f, default_flow_style=False)
+            # config is a JobConfig instance and outputs yaml in JobConfig.__str__
+            f.write(str(config))
 
         info = {
             'name': name,
