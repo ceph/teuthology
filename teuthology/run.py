@@ -249,7 +249,7 @@ def main(ctx):
     write_initial_metadata(ctx["--archive"], ctx["<config>"], ctx["--name"], ctx["--description"], ctx["--owner"])
     report.try_push_job_info(ctx["<config>"].to_dict(), dict(status='running'))
 
-    machine_type = get_machine_type(ctx["--machine-type"])
+    machine_type = get_machine_type(ctx["--machine-type"], ctx["<config>"])
 
     if ctx["--block"]:
         assert ctx["--lock"], \
