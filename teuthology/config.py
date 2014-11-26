@@ -91,6 +91,9 @@ class YamlConfig(object):
     def __getattr__(self, name):
         return self._conf.get(name, self._defaults.get(name))
 
+    def __contains__(self, name):
+        return self._conf.__contains__(name)
+
     def __setattr__(self, name, value):
         if name.endswith('_conf') or name in ('yaml_path'):
             object.__setattr__(self, name, value)

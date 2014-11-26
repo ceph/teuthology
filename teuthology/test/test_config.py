@@ -18,6 +18,14 @@ class TestYamlConfig(object):
         conf_obj = self.test_class.from_dict(in_dict)
         assert conf_obj.foo == 'bar'
 
+    def test_contains(self):
+        in_dict = dict(foo='bar')
+        conf_obj = self.test_class.from_dict(in_dict)
+        conf_obj.bar = "foo"
+        assert "bar" in conf_obj
+        assert "foo" in conf_obj
+        assert "baz" not in conf_obj
+
     def test_to_dict(self):
         in_dict = dict(foo='bar')
         conf_obj = self.test_class.from_dict(in_dict)
