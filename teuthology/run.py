@@ -247,7 +247,7 @@ def main(ctx):
     ctx["<config>"] = setup_config(ctx["<config>"])
 
     write_initial_metadata(ctx["--archive"], ctx["<config>"], ctx["--name"], ctx["--description"], ctx["--owner"])
-    report.try_push_job_info(ctx["<config>"], dict(status='running'))
+    report.try_push_job_info(ctx["<config>"].to_dict(), dict(status='running'))
 
     machine_type = get_machine_type(ctx["--machine-type"])
 
@@ -281,4 +281,4 @@ def main(ctx):
         run_tasks(tasks=ctx["<config>"]['tasks'], ctx=fake_ctx)
     finally:
         # print to stdout the results and possibly send an email on any errors
-        report_outcome(ctx["<config>"], ctx["--archive"], ctx["summary"], fake_ctx)
+        report_outcome(ctx["<config>"].to_dict(), ctx["--archive"], ctx["summary"], fake_ctx)
