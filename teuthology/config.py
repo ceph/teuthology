@@ -82,6 +82,9 @@ class YamlConfig(object):
     def __str__(self):
         return yaml.safe_dump(self._conf, default_flow_style=False).strip()
 
+    def __repr__(self):
+        return self.__str__()
+
     def __getitem__(self, name):
         return self._conf.__getitem__(name)
 
