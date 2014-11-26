@@ -79,6 +79,12 @@ class YamlConfig(object):
         """
         return str(self)
 
+    def get(self, key, default=None):
+        result = self.__getattr__(key)
+        if not result:
+            return default
+        return result
+
     def __str__(self):
         return yaml.safe_dump(self._conf, default_flow_style=False).strip()
 

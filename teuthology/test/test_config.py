@@ -56,6 +56,12 @@ class TestYamlConfig(object):
         del conf_obj.foo
         assert conf_obj.foo is None
 
+    def test_get(self):
+        conf_obj = self.test_class()
+        conf_obj.foo = "bar"
+        assert conf_obj.get("foo") == "bar"
+        assert conf_obj.get("not_there", "default") == "default"
+
 
 class TestTeuthologyConfig(TestYamlConfig):
     def setup(self):
