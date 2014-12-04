@@ -139,7 +139,7 @@ def main(args):
                 report.try_delete_jobs(job_config['name'],
                                        job_config['job_id'])
             log.info('Generating results email for %s', job_config['name'])
-            args = [
+            cmd_args = [
                 os.path.join(teuth_bin_path, 'teuthology-results'),
                 '--timeout',
                 str(job_config.get('results_timeout', 32400)),
@@ -153,7 +153,7 @@ def main(args):
             # Execute teuthology-results, passing 'preexec_fn=os.setpgrp' to
             # make sure that it will continue to run if this worker process
             # dies (e.g. because of a restart)
-            result_proc = subprocess.Popen(args=args, preexec_fn=os.setpgrp)
+            result_proc = subprocess.Popen(args=cmd_args, preexec_fn=os.setpgrp)
             log.info("teuthology-results PID: %s", result_proc.pid)
         else:
             log.info('Creating archive dir %s', archive_path_full)
