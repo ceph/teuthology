@@ -52,28 +52,28 @@ def install_except_hook():
     sys.excepthook = log_exception
 
 
-def main(ctx):
+def main(args):
     loglevel = logging.INFO
-    if ctx["--verbose"]:
+    if args["--verbose"]:
         loglevel = logging.DEBUG
     log.setLevel(loglevel)
 
-    log_file_path = os.path.join(ctx["--log-dir"], 'worker.{tube}.{pid}'.format(
-        pid=os.getpid(), tube=ctx["--tube"],))
+    log_file_path = os.path.join(args["--log-dir"], 'worker.{tube}.{pid}'.format(
+        pid=os.getpid(), tube=args["--tube"],))
     setup_log_file(log_file_path)
 
     install_except_hook()
 
-    if not os.path.isdir(ctx["--archive-dir"]):
+    if not os.path.isdir(args["--archive-dir"]):
         sys.exit("{prog}: archive directory must exist: {path}".format(
             prog=os.path.basename(sys.argv[0]),
-            path=ctx["--archive-dir"],
+            path=args["--archive-dir"],
         ))
     else:
-        teuth_config.archive_base = ctx["--archive-dir"]
+        teuth_config.archive_base = args["--archive-dir"]
 
     connection = beanstalk.connect()
-    beanstalk.watch_tube(connection, ctx["--tube"])
+    beanstalk.watch_tube(connection, args["--tube"])
     result_proc = None
 
     fetch_teuthology('master')
@@ -104,7 +104,7 @@ def main(ctx):
         safe_archive = safepath.munge(job_config['name'])
         job_config['worker_log'] = log_file_path
         archive_path_full = os.path.join(
-            ctx["--archive-dir"], safe_archive, str(job.jid))
+            args["--archive-dir"], safe_archive, str(job.jid))
         job_config['archive_path'] = archive_path_full
 
         # If the teuthology branch was not specified, default to master and
@@ -146,7 +146,7 @@ def main(ctx):
                 '--email',
                 job_config['email'],
                 '--archive-dir',
-                os.path.join(ctx["--archive-dir"], safe_archive),
+                os.path.join(args["--archive-dir"], safe_archive),
                 '--name',
                 job_config['name'],
             ]
@@ -157,7 +157,7 @@ def main(ctx):
             log.info("teuthology-results PID: %s", result_proc.pid)
         else:
             log.info('Creating archive dir %s', archive_path_full)
-            safepath.makedirs(ctx["--archive-dir"], safe_archive)
+            safepath.makedirs(args["--archive-dir"], safe_archive)
             log.info('Running job %d', job.jid)
             run_job(job_config, teuth_bin_path)
         job.delete()
