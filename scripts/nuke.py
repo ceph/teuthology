@@ -4,8 +4,26 @@ import teuthology.nuke
 
 doc = """
 usage: teuthology-nuke --help
-       teuthology-nuke [-v] [--owner OWNER] [-n NAME] [-u] [-i] [-r] [-s]
+       teuthology-nuke -v [--owner OWNER] [-n NAME] [-u] [-i] [-r] [-s]
                             [-t CONFIG...] [-a DIR] [-p PID]
+       teuthology-nuke --owner OWNER [-v] [-n NAME] [-u] [-i] [-r] [-s]
+                            [-t CONFIG...] [-a DIR] [-p PID]
+       teuthology-nuke -n NAME [-v] [--owner OWNER] [-u] [-i] [-r] [-s]
+                            [-t CONFIG...] [-a DIR] [-p PID]
+       teuthology-nuke -u [-v] [--owner OWNER] [-n NAME] [-i] [-r] [-s]
+                            [-t CONFIG...] [-a DIR] [-p PID]
+       teuthology-nuke -i [-v] [--owner OWNER] [-n NAME] [-u] [-r] [-s]
+                            [-t CONFIG...] [-a DIR] [-p PID]
+       teuthology-nuke -r [-v] [--owner OWNER] [-n NAME] [-u] [-i] [-s]
+                            [-t CONFIG...] [-a DIR] [-p PID]
+       teuthology-nuke -s [-v] [--owner OWNER] [-n NAME] [-u] [-i] [-r]
+                            [-t CONFIG...] [-a DIR] [-p PID]
+       teuthology-nuke (-t CONFIG...) [-v] [--owner OWNER] [-n NAME] [-u] [-i] [-r] [-s]
+                            [-a DIR] [-p PID]
+       teuthology-nuke -a DIR [-v] [--owner OWNER] [-n NAME] [-u] [-i] [-r] [-s]
+                            [-t CONFIG...] [-p PID]
+       teuthology-nuke -p PID [-v] [--owner OWNER] [-n NAME] [-u] [-i] [-r] [-s]
+                            [-t CONFIG...] [-a DIR] 
        teuthology-nuke [-v] [-u] [-i] [-r] [-s] --owner OWNER --stale
 
 Reset test machines
