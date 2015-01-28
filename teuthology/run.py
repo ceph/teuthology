@@ -337,7 +337,7 @@ def main(args):
     # store on global config if interactive-on-error, for contextutil.nested()
     # FIXME this should become more generic, and the keys should use
     # '_' uniformly
-    if fake_ctx.config.get('interactive-on-error'):
+    if fake_ctx.config.get('interactive-on-error') or fake_ctx.config.get('hang-on-error'):
         teuthology.config.config.ctx = fake_ctx
 
     try:
