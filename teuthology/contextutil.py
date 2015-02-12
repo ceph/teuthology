@@ -37,6 +37,11 @@ def nested(*managers):
             from .task import interactive
             log.warning('Saw failure, going into interactive mode...')
             interactive.task(ctx=config.ctx, config=None)
+        elif config.ctx and config.ctx.config.get('hang-on-error'):
+            config.ctx.config['hang-on-error'] = False
+            log.warning('Saw failure, hanging...')
+            while True:
+                time.sleep(300)
     finally:
         while exits:
             exit = exits.pop()

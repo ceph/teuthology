@@ -283,6 +283,12 @@ chance to inspect the system -- both through Teuthology and via extra
 SSH connections -- and the cleanup completes only when you choose so.
 Just exit the interactive Python session to continue the cleanup.
 
+    hang-on-error: true
+
+will allow a scheduled job to be examined before machines are cleaned up.
+With that option, any *task* that fails, will sit and do nothing.  This means
+that before any cleanup happens, you get a chance to inspect the system.
+
 Interactive task facilities
 ===========================
 
