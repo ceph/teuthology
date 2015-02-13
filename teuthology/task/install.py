@@ -426,7 +426,9 @@ def _update_rpm_package_list_and_install(ctx, remote, rpm, config):
         start_of_url=start_of_url, rpm_name=rpm_name)
     # When this was one command with a pipe, it would sometimes
     # fail with the message 'rpm: no packages given for install'
-    remote.run(args=['wget', base_url, ],)
+    # Also try deleting the file first incase it existed from previous
+    # run where connection broke or failed after install attempt.
+    remote.run(args=['rm', '-f', rpm_name, run.Raw('&&'), 'wget', base_url, ],)
     remote.run(args=['sudo', 'yum', '-y', 'localinstall', rpm_name])
 
     remote.run(args=['rm', '-f', rpm_name])
