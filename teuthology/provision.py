@@ -2,12 +2,14 @@ import logging
 import os
 import subprocess
 import tempfile
+import xmlrpclib
 import yaml
 
 from .config import config
 from .contextutil import safe_while
 from .misc import decanonicalize_hostname, get_distro, get_distro_version
 from .lockstatus import get_status
+from .orchestra.remote import Remote
 
 
 log = logging.getLogger(__name__)
@@ -229,3 +231,97 @@ def destroy_if_vm(ctx, machine_name, user=None, description=None,
     dbrst = _downburst or Downburst(name=machine_name, os_type=None,
                                     os_version=None, status=status_info)
     return dbrst.destroy()
+
+
+class Cobbler(object):
+    def __init__(self, name, os_type, os_version, status=None):
+        self.name = name
+        self.os_type = os_type
+        self.os_version = os_version
+        #self.status = status or get_status(self.name)
+        self.server = config.cobbler_server
+        self.user = config.cobbler_user
+        self.password = config.cobbler_password
+        self._connection = None
+        self._token = None
+        self._system_handle = None
+
+    def provision(self):
+        self.set_profile()
+        self.set_netboot()
+        self.save_system()
+        self.reboot()
+
+    @property
+    def connection(self):
+        # We need to us isinstance because "if _connection" calls bool(), which
+        # is unimplemented by xmlrpclib.ServerProxy
+        have_connection = isinstance(self._connection, xmlrpclib.ServerProxy)
+        if not have_connection or not self._token:
+            self._connect()
+        return self._connection
+
+    @property
+    def token(self):
+        # We need to us isinstance because "if _connection" calls bool(), which
+        # is unimplemented by xmlrpclib.ServerProxy
+        have_connection = isinstance(self._connection, xmlrpclib.ServerProxy)
+        if not self._token or not have_connection:
+            self._connect()
+        return self._token
+
+    def _connect(self):
+        if not self.server:
+            raise ValueError("config.cobbler_server not set!")
+        elif not self.user:
+            raise ValueError("config.cobbler_user not set!")
+        elif not self.password:
+            raise ValueError("config.cobbler_password not set!")
+        self._connection = xmlrpclib.Server(self.server)
+        self._token = self._connection.login(self.user, self.password)
+
+    @property
+    def system_handle(self):
+        if not self._system_handle:
+            self._system_handle = self.connection.get_system_handle(self.name,
+                                                                    self.token)
+        return self._system_handle
+
+    def find_profile(self):
+        profiles = self.connection.find_profile(dict(
+            name="*{os_type}*{os_version}*".format(
+                os_type=self.os_type.lower(), os_version=self.os_version)
+            ))
+        return profiles[0]
+
+    def set_profile(self):
+        self.profile = self.find_profile()
+        log.info('Using profile {profile} for {node}'.format(
+            profile=self.profile, node=self.name)
+        )
+        return self.connection.modify_system(
+            self.system_handle, 'profile', self.profile, self.token)
+
+    def set_netboot(self):
+        log.info('Enabling netboot on {node}'.format(
+            node=self.name)
+        )
+        return self.connection.modify_system(
+            self.system_handle, 'netboot_enabled', True, self.token)
+
+    def save_system(self):
+        log.info('Saving system {node}'.format(
+            node=self.name)
+        )
+        return self.connection.save_system(self.system_handle, self.token)
+
+    def reboot(self):
+        log.info('Rebooting {node}'.format(
+            node=self.name)
+        )
+        return self.connection.power_system(
+            self.system_handle, 'reboot', self.token)
+
+    def wait_for_remote(self, timeout=1200):
+        self.remote = Remote(self.name)
+        return self.remote.reconnect(timeout=timeout)
