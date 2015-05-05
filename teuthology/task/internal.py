@@ -272,10 +272,13 @@ def add_remotes(ctx, config):
     """
     remotes = []
     machs = []
+    user = teuth_config.test_user
+    if not user:
+        user = 'ubuntu'
     for name in ctx.config['targets'].iterkeys():
         machs.append(name)
     for t, key in ctx.config['targets'].iteritems():
-        t = misc.canonicalize_hostname(t)
+        t = misc.canonicalize_hostname(t, user)
         try:
             if ctx.config['sshkeys'] == 'ignore':
                 key = None
