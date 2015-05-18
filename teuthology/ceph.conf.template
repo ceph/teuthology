@@ -48,6 +48,7 @@
 	debug paxos = 20
 	mon data avail warn = 5
 	mon reweight min pgs per osd = 4
+        mon scrub interval = 120
 
 [mds]
         mds debug scatterstat = true
