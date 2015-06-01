@@ -14,10 +14,10 @@ def _positive_int(string):
 
 
 def main():
-    sys.exit(teuthology.lock.main(parse_args()))
+    sys.exit(teuthology.lock.main(parse_args(sys.argv[1:])))
 
 
-def parse_args():
+def parse_args(argv):
     parser = argparse.ArgumentParser(
         description='Lock, unlock, or query lock status of machines',
         epilog=textwrap.dedent('''
@@ -176,4 +176,4 @@ def parse_args():
             with value mira003.front.sepia.ceph.com.'''),
     )
 
-    return parser.parse_args()
+    return parser.parse_args(argv)
