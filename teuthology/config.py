@@ -162,8 +162,6 @@ class FakeNamespace(YamlConfig):
     to still be passed a single namespace object for the time being.
     """
     def __init__(self, config_dict=None, yaml_path=None):
-        if not yaml_path:
-            yaml_path = _get_config_path()
         if not config_dict:
             config_dict = dict()
         if 'config_file' not in config_dict:
