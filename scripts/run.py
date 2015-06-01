@@ -11,6 +11,7 @@ positional arguments:
 optional arguments:
   -h, --help                     show this help message and exit
   -v, --verbose                  be more verbose
+  --config-file                  path to the config file (default ~/.teuthology.yaml)
   --version                      the current installed version of teuthology
   -a DIR, --archive DIR          path to archive results in
   --description DESCRIPTION      job description

@@ -19,6 +19,7 @@ Arguments:
 
 optional arguments:
   -h, --help            Show this help message and exit
+  --config-file         path to the config file (default ~/.teuthology.yaml)
   -D, --delete PATTERN  Delete Jobs with PATTERN in their name
   -d, --description     Show job descriptions
   -r, --runs            Only show run names

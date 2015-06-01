@@ -166,6 +166,8 @@ class FakeNamespace(YamlConfig):
             yaml_path = _get_config_path()
         if not config_dict:
             config_dict = dict()
+        if 'config_file' not in config_dict:
+            config_dict['config_file'] = yaml_path
         self._conf = self._clean_config(config_dict)
         # avoiding circular imports
         from .misc import read_config

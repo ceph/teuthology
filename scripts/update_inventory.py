@@ -15,6 +15,7 @@ Update the given nodes' inventory information on the lock server
 
   -h, --help            show this help message and exit
   -v, --verbose         be more verbose
+  --config-file         path to the config file (default ~/.teuthology.yaml)
   REMOTE                hostnames of machines whose information to update
 
 """

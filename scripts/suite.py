@@ -19,6 +19,7 @@ runs the dumpling-x facet of the upgrade suite.
 Miscellaneous arguments:
   -h, --help                  Show this help message and exit
   -v, --verbose               Be more verbose
+  --config-file               path to the config file (default ~/.teuthology.yaml)
   --dry-run                   Do a dry run; do not schedule anything
 
 Standard arguments:

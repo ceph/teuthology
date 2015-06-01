@@ -108,6 +108,11 @@ def parse_args():
         "unlocking other machines",
     )
     parser.add_argument(
+        '--config-file',
+        default=None,
+        help='path to the config file (defaults ~/.teuthology.yaml)',
+    )
+    parser.add_argument(
         '--desc',
         default=None,
         help='lock description',
