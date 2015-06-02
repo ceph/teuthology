@@ -16,6 +16,7 @@ positional arguments:
 optional arguments:
   -h, --help            Show this help message and exit
   -v, --verbose         Be more verbose
+  --config-file         path to the config file (default ~/.teuthology.yaml)
   -t <targets>, --targets <targets>
                         Input yaml containing targets to check
   -a, --all             Update hostkeys of all machines in the db

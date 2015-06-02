@@ -9,6 +9,7 @@ positional arguments:
 optional arguments:
   -h, --help     show this help message and exit
   -v, --verbose  show reasons tests failed
+  --config-file  path to the config file (default ~/.teuthology.yaml)
 """
 import docopt
 import teuthology.ls

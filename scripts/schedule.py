@@ -15,6 +15,7 @@ positional arguments:
 optional arguments:
   -h, --help                           Show this help message and exit
   -v, --verbose                        Be more verbose
+  --config-file                        path to the config file (default ~/.teuthology.yaml)
   -n <name>, --name <name>             Name of suite run the job is part of
   -d <desc>, --description <desc>      Job description
   -o <owner>, --owner <owner>          Job owner

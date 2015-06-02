@@ -13,6 +13,7 @@ Submit test results to a web service
 
 optional arguments:
   -h, --help            show this help message and exit
+  --config-file         path to the config file (default ~/.teuthology.yaml)
   -a ARCHIVE, --archive ARCHIVE
                         The base archive directory
                         [default: {archive_base}]

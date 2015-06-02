@@ -1003,12 +1003,17 @@ def read_config(ctx):
     read the default teuthology yaml configuration file.
     """
     ctx.teuthology_config = {}
-    filename = os.path.join(os.environ['HOME'], '.teuthology.yaml')
+    if ctx.config_file:
+        filename = ctx.config_file
+        config.yaml_path = filename
+        config.load()
+    else:
+        filename = os.path.join(os.environ['HOME'], '.teuthology.yaml')
 
     if not os.path.exists(filename):
         log.debug("%s not found", filename)
         return
-
+    log.debug("read_config from: %s", filename)
     with file(filename) as f:
         g = yaml.safe_load_all(f)
         for new in g:

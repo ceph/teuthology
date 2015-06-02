@@ -14,6 +14,7 @@ Reset test machines
 optional arguments:
   -h, --help            show this help message and exit
   -v, --verbose         be more verbose
+  --config-file         path to the config file (default ~/.teuthology.yaml)
   -t CONFIG [CONFIG ...], --targets CONFIG [CONFIG ...]
                         yaml config containing machines to nuke
   -a DIR, --archive DIR
