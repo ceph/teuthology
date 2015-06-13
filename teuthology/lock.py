@@ -268,6 +268,8 @@ def main(ctx):
             for s in statuses:
                 if not s.get('is_vm', False):
                     continue
+                if s['vm_host'] is None:
+                    continue
                 vm_host_name = s.get('vm_host', dict())['name']
                 if vm_host_name:
                     s['vm_host'] = vm_host_name
