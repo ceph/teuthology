@@ -1168,6 +1168,17 @@ def ssh_keyscan(hostnames):
     return keys_dict
 
 
+def ssh_keyscan_wait(hostname):
+    with safe_while(sleep=60, tries=20,
+                    action="ssh_keyscan_wait " + hostname) as proceed:
+        success = False
+        while proceed():
+            keys_dict = ssh_keyscan([hostname])
+            if len(keys_dict) == 1:
+                success = True
+                break
+        return success
+
 def stop_daemons_of_type(ctx, type_):
     """
     :param type_: type of daemons to be stopped.

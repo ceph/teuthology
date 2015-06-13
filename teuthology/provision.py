@@ -1,7 +1,11 @@
+import json
 import logging
 import os
+import paramiko
+import socket
 import subprocess
 import tempfile
+import time
 import yaml
 
 from .config import config
@@ -401,6 +405,10 @@ def create_if_vm(ctx, machine_name, _downburst=None):
             'Usage of a custom downburst config has been deprecated.'
         )
 
+    if status_info.get('machine_type') == 'openstack':
+        return OpenStack(name=machine_name, status=status_info).create(
+            os_type=os_type, os_version=os_version)
+
     dbrst = _downburst or Downburst(name=machine_name, os_type=os_type,
                                     os_version=os_version, status=status_info)
     return dbrst.create()
@@ -434,6 +442,10 @@ def destroy_if_vm(ctx, machine_name, user=None, description=None,
         log.error(msg.format(node=machine_name, desc_arg=description,
                              desc_lock=status_info['description']))
         return False
+
+    if status_info.get('machine_type') == 'openstack':
+        return OpenStack(name=machine_name, status=status_info).destroy()
+
     dbrst = _downburst or Downburst(name=machine_name, os_type=None,
                                     os_version=None, status=status_info)
     return dbrst.destroy()
