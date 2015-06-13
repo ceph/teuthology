@@ -19,9 +19,6 @@ log = logging.getLogger(__name__)
 logging.getLogger("requests.packages.urllib3.connectionpool").setLevel(
     logging.WARNING)
 
-is_vpm = lambda name: 'vpm' in name
-
-
 def get_distro_from_downburst():
     """
     Return a table of valid distros.
@@ -314,7 +311,7 @@ def main(ctx):
         if ctx.owner is None and user is None:
             user = misc.get_user()
         # If none of them are vpm, do them all in one shot
-        if not filter(is_vpm, machines):
+        if not filter(misc.is_vm, machines):
             res = unlock_many(machines, user)
             return 0 if res else 1
         for machine in machines:
