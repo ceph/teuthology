@@ -32,9 +32,9 @@ def get_distro_from_downburst():
     table.
     """
     default_table = {u'rhel_minimal': [u'6.4', u'6.5'],
-                     u'fedora': [u'17', u'18', u'19', u'20'],
+                     u'fedora': [u'17', u'18', u'19', u'20', u'21'],
                      u'centos': [u'6.3', u'6.4', u'6.5', u'7.0'],
-                     u'opensuse': [u'12.2'],
+                     u'opensuse': [u'12.2', u'13.1', u'13.2'],
                      u'rhel': [u'6.3', u'6.4', u'6.5', u'7.0', u'7beta'],
                      u'centos_minimal': [u'6.4', u'6.5'],
                      u'ubuntu': [u'8.04(hardy)', u'9.10(karmic)',
@@ -44,7 +44,7 @@ def get_distro_from_downburst():
                                  u'13.04(raring)', u'13.10(saucy)',
                                  u'14.04(trusty)', u'utopic(utopic)'],
                      u'sles': [u'11-sp2'],
-                     u'debian': [u'6.0', u'7.0']}
+                     u'debian': [u'6.0', u'7.0', u'8.0']}
     executable_cmd = provision.downburst_executable()
     if not executable_cmd:
         log.warn("Downburst not found!")
