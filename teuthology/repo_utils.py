@@ -210,6 +210,8 @@ def fetch_teuthology(branch, lock=True):
     :param branch: The branch we want
     :returns:      The destination path
     """
+    if config.teuthology_path is not None:
+        return config.teuthology_path
     url = config.ceph_git_base_url + 'teuthology.git'
     return fetch_repo(url, branch, bootstrap_teuthology, lock)
 
