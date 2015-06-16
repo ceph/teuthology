@@ -9,6 +9,7 @@ import os
 import logging
 import configobj
 import getpass
+import requests
 import socket
 import subprocess
 import sys
@@ -39,6 +40,18 @@ is_arm = lambda x: x.startswith('tala') or x.startswith(
     'ubuntu@tala') or x.startswith('saya') or x.startswith('ubuntu@saya')
 
 hostname_expr_templ = '(?P<user>.*@)?(?P<shortname>.*)\.{lab_domain}'
+
+
+def get_status(name):
+    name = canonicalize_hostname(name, user=None)
+    uri = os.path.join(config.lock_server, 'nodes', name, '')
+    response = requests.get(uri)
+    success = response.ok
+    if success:
+        return response.json()
+    log.warning(
+        "Failed to query lock server for status of {name}".format(name=name))
+    return None
 
 
 def canonicalize_hostname(hostname, user='ubuntu'):
