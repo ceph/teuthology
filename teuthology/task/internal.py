@@ -11,7 +11,6 @@ import time
 import yaml
 import subprocess
 
-from teuthology import lockstatus
 from teuthology import lock
 from teuthology import misc
 from teuthology import provision
@@ -130,7 +129,7 @@ def lock_machines(ctx, config):
                 while len(keys_dict) != len(vmlist):
                     loopcount += 1
                     time.sleep(10)
-                    keys_dict = lock.ssh_keyscan(vmlist)
+                    keys_dict = misc.ssh_keyscan(vmlist)
                     log.info('virtual machine is still unavailable')
                     if loopcount == 40:
                         loopcount = 0
@@ -146,7 +145,7 @@ def lock_machines(ctx, config):
                     log.info("Error in virtual machine keys")
                 newscandict = {}
                 for dkey in all_locked.iterkeys():
-                    stats = lockstatus.get_status(dkey)
+                    stats = misc.get_status(dkey)
                     newscandict[dkey] = stats['ssh_pub_key']
                 ctx.config['targets'] = newscandict
             else:
@@ -205,7 +204,7 @@ def check_lock(ctx, config, check_up=True):
         return
     log.info('Checking locks...')
     for machine in ctx.config['targets'].iterkeys():
-        status = lockstatus.get_status(machine)
+        status = misc.get_status(machine)
         log.debug('machine status is %s', repr(status))
         assert status is not None, \
             'could not read lock status for {name}'.format(name=machine)

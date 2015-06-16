@@ -10,6 +10,12 @@ Here is a sample configuration with many of the options set and documented::
     # lab_domain: the domain name to append to all short hostnames
     lab_domain: example.com
 
+    # If true the hostname of the targets are canonicalized using an
+    # algorithm specific to the Ceph community lab. If false the
+    # targets hostname are left untouched.
+    # This is enabled by default.
+    canonicalize_hostname: true
+
     # The root directory to use for storage of all scheduled job logs and 
     # other data.
     archive_base: /home/teuthworker/archive

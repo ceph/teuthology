@@ -1,0 +1,4 @@
+#cloud-config
+packages:
+ - git
+final_message: "{up}, after $UPTIME seconds"

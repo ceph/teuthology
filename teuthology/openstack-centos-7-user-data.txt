@@ -1,0 +1,7 @@
+#cloud-config
+system_info:
+  default_user:
+    name: ubuntu
+packages:
+ - git
+final_message: "{up}, after $UPTIME seconds"

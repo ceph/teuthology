@@ -61,6 +61,13 @@ class TestHostnames(object):
     def teardown(self):
         config.load()
 
+    @patch("teuthology.misc.config")
+    def test_canonicalize_hostname_disabled(self, m_config):
+        m_config.canonicalize_hostname = False
+        host_base = 'box1'
+        result = misc.canonicalize_hostname(host_base)
+        assert result == host_base
+
     def test_canonicalize_hostname(self):
         host_base = 'box1'
         result = misc.canonicalize_hostname(host_base)

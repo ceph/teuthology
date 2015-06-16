@@ -13,15 +13,11 @@ import teuthology
 from . import misc
 from . import provision
 from .config import config
-from .lockstatus import get_status
 
 log = logging.getLogger(__name__)
 # Don't need to see connection pool INFO messages
 logging.getLogger("requests.packages.urllib3.connectionpool").setLevel(
     logging.WARNING)
-
-is_vpm = lambda name: 'vpm' in name
-
 
 def get_distro_from_downburst():
     """
@@ -32,9 +28,9 @@ def get_distro_from_downburst():
     table.
     """
     default_table = {u'rhel_minimal': [u'6.4', u'6.5'],
-                     u'fedora': [u'17', u'18', u'19', u'20'],
+                     u'fedora': [u'17', u'18', u'19', u'20', u'21'],
                      u'centos': [u'6.3', u'6.4', u'6.5', u'7.0'],
-                     u'opensuse': [u'12.2'],
+                     u'opensuse': [u'12.2', u'13.1', u'13.2'],
                      u'rhel': [u'6.3', u'6.4', u'6.5', u'7.0', u'7beta'],
                      u'centos_minimal': [u'6.4', u'6.5'],
                      u'ubuntu': [u'8.04(hardy)', u'9.10(karmic)',
@@ -44,7 +40,7 @@ def get_distro_from_downburst():
                                  u'13.04(raring)', u'13.10(saucy)',
                                  u'14.04(trusty)', u'utopic(utopic)'],
                      u'sles': [u'11-sp2'],
-                     u'debian': [u'6.0', u'7.0']}
+                     u'debian': [u'6.0', u'7.0', u'8.0']}
     executable_cmd = provision.downburst_executable()
     if not executable_cmd:
         log.warn("Downburst not found!")
@@ -115,7 +111,7 @@ def get_statuses(machines):
         statuses = []
         for machine in machines:
             machine = misc.canonicalize_hostname(machine)
-            status = get_status(machine)
+            status = misc.get_status(machine)
             if status:
                 statuses.append(status)
             else:
@@ -268,6 +264,8 @@ def main(ctx):
             for s in statuses:
                 if not s.get('is_vm', False):
                     continue
+                if s['vm_host'] is None:
+                    continue
                 vm_host_name = s.get('vm_host', dict())['name']
                 if vm_host_name:
                     s['vm_host'] = vm_host_name
@@ -313,7 +311,7 @@ def main(ctx):
         if ctx.owner is None and user is None:
             user = misc.get_user()
         # If none of them are vpm, do them all in one shot
-        if not filter(is_vpm, machines):
+        if not filter(misc.is_vm, machines):
             res = unlock_many(machines, user)
             return 0 if res else 1
         for machine in machines:
@@ -380,7 +378,7 @@ def lock_many(ctx, num, machine_type, user=None, description=None,
     # all in one shot. If we are passed 'plana,mira,burnupi,vps', do one query
     # for 'plana,mira,burnupi' and one for 'vps'
     machine_types_list = misc.get_multi_machine_types(machine_type)
-    if machine_types_list == ['vps']:
+    if machine_types_list == ['vps'] or machine_types_list == ['openstack']:
         machine_types = machine_types_list
     elif 'vps' in machine_types_list:
         machine_types_non_vps = list(machine_types_list)
@@ -401,7 +399,7 @@ def lock_many(ctx, num, machine_type, user=None, description=None,
         )
         # Only query for os_type/os_version if non-vps, since in that case we
         # just create them.
-        if machine_type != 'vps':
+        if machine_type not in ('vps', 'openstack'):
             if os_type:
                 data['os_type'] = os_type
             if os_version:
@@ -419,7 +417,7 @@ def lock_many(ctx, num, machine_type, user=None, description=None,
                         machine['ssh_pub_key'] for machine in response.json()}
             log.debug('locked {machines}'.format(
                 machines=', '.join(machines.keys())))
-            if machine_type == 'vps':
+            if machine_type in ('vps', 'openstack'):
                 ok_machs = {}
                 for machine in machines:
                     if provision.create_if_vm(ctx, machine):
@@ -641,33 +639,6 @@ def update_inventory(node_dict):
     return response.ok
 
 
-def ssh_keyscan(hostnames):
-    """
-    Fetch the SSH public key of one or more hosts
-    """
-    if isinstance(hostnames, basestring):
-        raise TypeError("'hostnames' must be a list")
-    hostnames = [misc.canonicalize_hostname(name, user=None) for name in
-                 hostnames]
-    args = ['ssh-keyscan', '-T', '1', '-t', 'rsa'] + hostnames
-    p = subprocess.Popen(
-        args=args,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    p.wait()
-
-    keys_dict = dict()
-    for line in p.stderr.readlines():
-        line = line.strip()
-        if line and not line.startswith('#'):
-            log.error(line)
-    for line in p.stdout.readlines():
-        host, key = line.strip().split(' ', 1)
-        keys_dict[host] = key
-    return keys_dict
-
-
 def updatekeys(args):
     loglevel = logging.DEBUG if args['--verbose'] else logging.INFO
     logging.basicConfig(
@@ -693,7 +664,7 @@ def do_update_keys(machines, all_=False):
     reference = list_locks(keyed_by_name=True)
     if all_:
         machines = reference.keys()
-    keys_dict = ssh_keyscan(machines)
+    keys_dict = misc.ssh_keyscan(machines)
     return push_new_keys(keys_dict, reference)
 
 

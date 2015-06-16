@@ -9,7 +9,9 @@ import os
 import logging
 import configobj
 import getpass
+import requests
 import socket
+import subprocess
 import sys
 import tarfile
 import time
@@ -32,7 +34,9 @@ log = logging.getLogger(__name__)
 
 import datetime
 stamp = datetime.datetime.now().strftime("%y%m%d%H%M")
-is_vm = lambda x: x.startswith('vpm') or x.startswith('ubuntu@vpm')
+
+def is_vm(name):
+    return get_status(name)['is_vm']
 
 is_arm = lambda x: x.startswith('tala') or x.startswith(
     'ubuntu@tala') or x.startswith('saya') or x.startswith('ubuntu@saya')
@@ -40,7 +44,22 @@ is_arm = lambda x: x.startswith('tala') or x.startswith(
 hostname_expr_templ = '(?P<user>.*@)?(?P<shortname>.*)\.{lab_domain}'
 
 
+def get_status(name):
+    name = canonicalize_hostname(name, user=None)
+    uri = os.path.join(config.lock_server, 'nodes', name, '')
+    response = requests.get(uri)
+    success = response.ok
+    if success:
+        return response.json()
+    log.warning(
+        "Failed to query lock server for status of {name}".format(name=name))
+    return None
+
+
 def canonicalize_hostname(hostname, user='ubuntu'):
+    if (config.canonicalize_hostname is False):
+        return hostname
+
     hostname_expr = hostname_expr_templ.format(
         lab_domain=config.lab_domain.replace('.', '\.'))
     match = re.match(hostname_expr, hostname)
@@ -66,6 +85,9 @@ def canonicalize_hostname(hostname, user='ubuntu'):
 
 
 def decanonicalize_hostname(hostname):
+    if (config.canonicalize_hostname is False):
+        return hostname
+
     hostname_expr = hostname_expr_templ.format(
         lab_domain=config.lab_domain.replace('.', '\.'))
     match = re.match(hostname_expr, hostname)
@@ -1119,6 +1141,44 @@ def get_valgrind_args(testdir, name, preamble, v):
     return args
 
 
+def ssh_keyscan(hostnames):
+    """
+    Fetch the SSH public key of one or more hosts
+    """
+    if isinstance(hostnames, basestring):
+        raise TypeError("'hostnames' must be a list")
+    hostnames = [canonicalize_hostname(name, user=None) for name in
+                 hostnames]
+    args = ['ssh-keyscan', '-T', '1', '-t', 'rsa'] + hostnames
+    p = subprocess.Popen(
+        args=args,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    p.wait()
+
+    keys_dict = dict()
+    for line in p.stderr.readlines():
+        line = line.strip()
+        if line and not line.startswith('#'):
+            log.error(line)
+    for line in p.stdout.readlines():
+        host, key = line.strip().split(' ', 1)
+        keys_dict[host] = key
+    return keys_dict
+
+
+def ssh_keyscan_wait(hostname):
+    with safe_while(sleep=60, tries=20,
+                    action="ssh_keyscan_wait " + hostname) as proceed:
+        success = False
+        while proceed():
+            keys_dict = ssh_keyscan([hostname])
+            if len(keys_dict) == 1:
+                success = True
+                break
+        return success
+
 def stop_daemons_of_type(ctx, type_):
     """
     :param type_: type of daemons to be stopped.
@@ -1257,3 +1317,16 @@ def is_in_dict(searchkey, searchval, d):
         return True
     else:
         return searchval == val
+
+
+def sh(command):
+    log.debug(command)
+    output = ''
+    try:
+        output = subprocess.check_output(command, stderr=subprocess.STDOUT,
+                                         shell=True)
+    except subprocess.CalledProcessError as e:
+        log.error(command + " error " + str(e.output))
+        raise e
+    log.debug(command + " output " + str(output))
+    return output.decode('utf-8')
