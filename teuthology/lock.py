@@ -13,7 +13,6 @@ import teuthology
 from . import misc
 from . import provision
 from .config import config
-from .lockstatus import get_status
 
 log = logging.getLogger(__name__)
 
@@ -112,7 +111,7 @@ def get_statuses(machines):
         statuses = []
         for machine in machines:
             machine = misc.canonicalize_hostname(machine)
-            status = get_status(machine)
+            status = misc.get_status(machine)
             if status:
                 statuses.append(status)
             else:

@@ -10,7 +10,6 @@ import pexpect
 import re
 import logging
 from cStringIO import StringIO
-from teuthology import lockstatus as ls
 import os
 import pwd
 import tempfile
@@ -103,7 +102,7 @@ class Remote(object):
     @property
     def machine_type(self):
         if not getattr(self, '_machine_type', None):
-            remote_info = ls.get_status(self.hostname)
+            remote_info = misc.get_status(self.hostname)
             if not remote_info:
                 return None
             self._machine_type = remote_info.get("machine_type", None)
@@ -562,7 +561,7 @@ class VirtualConsole():
             raise RuntimeError("libvirt not found")
 
         self.shortname = getShortName(name)
-        status_info = ls.get_status(self.shortname)
+        status_info = misc.get_status(self.shortname)
         try:
             if status_info.get('is_vm', False):
                 phys_host = status_info['vm_host']['name'].split('.')[0]
