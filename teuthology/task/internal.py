@@ -408,6 +408,7 @@ def fetch_binaries_for_coredumps(path, remote):
             dump_info = subprocess.Popen(['file', dump_path],
                                          stdout=subprocess.PIPE)
             dump_out = dump_info.communicate()
+            log.info("dump_out " + str(dump_out))
 
             # Parse file output to get program, Example output:
             # 1422917770.7450.core: ELF 64-bit LSB core file x86-64, version 1 (SYSV), SVR4-style, \
