@@ -99,10 +99,10 @@ class TestRun(object):
         assert excinfo.value.message.startswith("You cannot")
 
     def test_get_inital_tasks(self):
-        config = {"roles": range(2), "kernel": "the_kernel", "use_existing_cluster": False}
+        config = {"roles": range(2), "kernel": {"flavor": "basic"}, "use_existing_cluster": False}
         result = run.get_initial_tasks(True, config, "machine_type")
         assert {"internal.lock_machines": (2, "machine_type")} in result
-        assert {"kernel": "the_kernel"} in result
+        assert {"kernel": {"flavor": "basic"}} in result
         # added because use_existing_cluster == False
         assert {'internal.vm_setup': None} in result
 
