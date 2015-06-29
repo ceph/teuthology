@@ -194,7 +194,7 @@ def get_initial_tasks(lock, config, machine_type):
             {'internal.vm_setup': None},
         ])
 
-    if 'kernel' in config:
+    if 'kernel' in config and config['kernel'].get('flavor'):
         init_tasks.append({'kernel': config['kernel']})
 
     init_tasks.extend([
