@@ -9,6 +9,7 @@ import os
 import logging
 import configobj
 import getpass
+import requests
 import socket
 import sys
 import tarfile
@@ -32,12 +33,26 @@ log = logging.getLogger(__name__)
 
 import datetime
 stamp = datetime.datetime.now().strftime("%y%m%d%H%M")
-is_vm = lambda x: x.startswith('vpm') or x.startswith('ubuntu@vpm')
+
+def is_vm(name):
+    return get_status(name)['is_vm']
 
 is_arm = lambda x: x.startswith('tala') or x.startswith(
     'ubuntu@tala') or x.startswith('saya') or x.startswith('ubuntu@saya')
 
 hostname_expr_templ = '(?P<user>.*@)?(?P<shortname>.*)\.{lab_domain}'
+
+
+def get_status(name):
+    name = canonicalize_hostname(name, user=None)
+    uri = os.path.join(config.lock_server, 'nodes', name, '')
+    response = requests.get(uri)
+    success = response.ok
+    if success:
+        return response.json()
+    log.warning(
+        "Failed to query lock server for status of {name}".format(name=name))
+    return None
 
 
 def canonicalize_hostname(hostname, user='ubuntu'):

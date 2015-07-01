@@ -13,12 +13,8 @@ import teuthology
 from . import misc
 from . import provision
 from .config import config
-from .lockstatus import get_status
 
 log = logging.getLogger(__name__)
-
-is_vpm = lambda name: 'vpm' in name
-
 
 def get_distro_from_downburst():
     """
@@ -112,7 +108,7 @@ def get_statuses(machines):
         statuses = []
         for machine in machines:
             machine = misc.canonicalize_hostname(machine)
-            status = get_status(machine)
+            status = misc.get_status(machine)
             if status:
                 statuses.append(status)
             else:
@@ -311,7 +307,7 @@ def main(ctx):
         if ctx.owner is None and user is None:
             user = misc.get_user()
         # If none of them are vpm, do them all in one shot
-        if not filter(is_vpm, machines):
+        if not filter(misc.is_vm, machines):
             res = unlock_many(machines, user)
             return 0 if res else 1
         for machine in machines:
