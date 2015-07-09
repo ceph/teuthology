@@ -240,7 +240,10 @@ class Ansible(Task):
         fqdns = [r.hostname for r in self.cluster.remotes.keys()]
         # Assume all remotes use the same username
         user = self.cluster.remotes.keys()[0].user
-        extra_vars = dict(ansible_ssh_user=user)
+        extra_vars = dict(
+            ansible_ssh_user=user,
+            targets='all',
+        )
         extra_vars.update(self.config.get('vars', dict()))
         args = [
             'ansible-playbook', '-v',
