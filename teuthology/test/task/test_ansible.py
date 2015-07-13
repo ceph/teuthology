@@ -208,7 +208,11 @@ class TestAnsibleTask(TestTask):
         assert task.generated_inventory is True
         assert task.inventory == hosts_file_path
         hosts_file_obj.seek(0)
-        assert hosts_file_obj.readlines() == ['remote1\n', 'remote2\n']
+        assert hosts_file_obj.readlines() == [
+            '[testnodes]\n',
+            'remote1\n',
+            'remote2\n',
+        ]
 
     def test_generate_playbook(self):
         playbook = [

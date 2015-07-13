@@ -57,7 +57,9 @@ class Ansible(Task):
                     --inventory-file flag; useful for playbooks that also have
                     vars they need access to. If this is not set, we check for
                     /etc/ansible/hosts and use that if it exists. If it does
-                    not, we generate a temporary file to use.
+                    not, we generate a temporary file to use. If an inventory
+                    is generated for you all hosts will be added to a group
+                    called 'testnodes'.
         tags:       A string including any (comma-separated) tags to be passed
                     directly to ansible-playbook.
         vars:       A dict of vars to be passed to ansible-playbook via the
@@ -177,7 +179,9 @@ class Ansible(Task):
         hosts = self.cluster.remotes.keys()
         hostnames = [remote.hostname for remote in hosts]
         hostnames.sort()
-        hosts_str = '\n'.join(hostnames + [''])
+        inventory = ['[testnodes]']
+        inventory.extend(hostnames + [''])
+        hosts_str = '\n'.join(inventory)
         hosts_file = NamedTemporaryFile(prefix="teuth_ansible_hosts_",
                                         delete=False)
         hosts_file.write(hosts_str)
