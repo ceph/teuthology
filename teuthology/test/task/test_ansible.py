@@ -208,7 +208,11 @@ class TestAnsibleTask(TestTask):
         assert task.generated_inventory is True
         assert task.inventory == hosts_file_path
         hosts_file_obj.seek(0)
-        assert hosts_file_obj.readlines() == ['remote1\n', 'remote2\n']
+        assert hosts_file_obj.readlines() == [
+            '[testnodes]\n',
+            'remote1\n',
+            'remote2\n',
+        ]
 
     def test_generate_playbook(self):
         playbook = [
@@ -303,7 +307,8 @@ class TestAnsibleTask(TestTask):
         assert args.count('--extra-vars') == 1
         vars_str = args[args.index('--extra-vars') + 1].strip("'")
         extra_vars = json.loads(vars_str)
-        assert extra_vars.keys() == ['ansible_ssh_user']
+        assert 'ansible_ssh_user' in extra_vars
+        assert 'targets' in extra_vars
 
     def test_build_args_vars(self):
         extra_vars = dict(
