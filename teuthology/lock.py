@@ -367,6 +367,22 @@ def main(ctx):
     return ret
 
 
+def lock_many_openstack(ctx, num, machine_type, user=None, description=None,
+                        arch=None):
+    os_type = provision.get_distro(ctx)
+    os_version = provision.get_distro_version(ctx)
+    if hasattr(ctx, 'openstack') and ctx.openstack:
+        machines = provision.OpenStack(ctx.openstack).create(
+            num, os_type, os_version, arch)
+    else:
+        machines =  provision.OpenStack.create_anywhere(
+            num, os_type, os_version, arch)
+    result = {}
+    for machine in machines:
+        lock_one(machine, user, description)
+        result[machine] = None # we do not collect ssh host keys yet
+    return result
+
 def lock_many(ctx, num, machine_type, user=None, description=None,
               os_type=None, os_version=None, arch=None):
     if user is None:
@@ -383,6 +399,11 @@ def lock_many(ctx, num, machine_type, user=None, description=None,
     machine_types_list = misc.get_multi_machine_types(machine_type)
     if machine_types_list == ['vps']:
         machine_types = machine_types_list
+    elif machine_types_list == ['openstack']:
+        return lock_many_openstack(ctx, num, machine_type,
+                                   user=user,
+                                   description=description,
+                                   arch=arch)
     elif 'vps' in machine_types_list:
         machine_types_non_vps = list(machine_types_list)
         machine_types_non_vps.remove('vps')
@@ -486,7 +507,7 @@ def unlock_many(names, user):
 def unlock_one(ctx, name, user, description=None):
     name = misc.canonicalize_hostname(name, user=None)
     if not provision.destroy_if_vm(ctx, name, user, description):
-        log.error('downburst destroy failed for %s', name)
+        log.error('destroy failed for %s', name)
     request = dict(name=name, locked=False, locked_by=user,
                    description=description)
     uri = os.path.join(config.lock_server, 'nodes', name, 'lock', '')
@@ -647,33 +668,6 @@ def update_inventory(node_dict):
     return response.ok
 
 
-def ssh_keyscan(hostnames):
-    """
-    Fetch the SSH public key of one or more hosts
-    """
-    if isinstance(hostnames, basestring):
-        raise TypeError("'hostnames' must be a list")
-    hostnames = [misc.canonicalize_hostname(name, user=None) for name in
-                 hostnames]
-    args = ['ssh-keyscan', '-T', '1', '-t', 'rsa'] + hostnames
-    p = subprocess.Popen(
-        args=args,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    p.wait()
-
-    keys_dict = dict()
-    for line in p.stderr.readlines():
-        line = line.strip()
-        if line and not line.startswith('#'):
-            log.error(line)
-    for line in p.stdout.readlines():
-        host, key = line.strip().split(' ', 1)
-        keys_dict[host] = key
-    return keys_dict
-
-
 def updatekeys(args):
     loglevel = logging.DEBUG if args['--verbose'] else logging.INFO
     logging.basicConfig(
@@ -699,7 +693,7 @@ def do_update_keys(machines, all_=False):
     reference = list_locks(keyed_by_name=True)
     if all_:
         machines = reference.keys()
-    keys_dict = ssh_keyscan(machines)
+    keys_dict = misc.ssh_keyscan(machines)
     return push_new_keys(keys_dict, reference)
 
 

@@ -62,6 +62,7 @@ def main(args):
     filter_in = args['--filter']
     filter_out = args['--filter-out']
 
+    log.info("suite: " + suite)
     subset = None
     if args['--subset']:
         # take input string '2/3' and turn into (2, 3)
@@ -245,7 +246,8 @@ def create_initial_config(suite, suite_branch, ceph_branch, teuthology_branch,
         distro=distro,
     )
     conf_dict = substitute_placeholders(dict_templ, config_input)
-    conf_dict.update(kernel_dict)
+    if machine_type != 'openstack':
+        conf_dict.update(kernel_dict)
     job_config = JobConfig.from_dict(conf_dict)
     return job_config
 

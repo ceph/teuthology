@@ -317,6 +317,144 @@ specified in ``$HOME/.teuthology.yaml``::
 
     test_path: <directory>
 
+OpenStack backend
+=================
+
+Prerequistes
+------------
+
+An OpenStack tenant with access to the nova and cinder API (for
+instance http://entercloudsuite.com/). If the cinder API is not
+available (for instance https://www.ovh.com/fr/cloud/), some jobs
+won't run because they expect volumes attached to each instances.
+
+Setup OpenStack at Enter Cloud Suite
+------------------------------------
+
+* create an account and `login the dashboard <https://dashboard.entercloudsuite.com/>`_
+* `create an Ubuntu 14.04 instance
+  <https://dashboard.entercloudsuite.com/console/index#/launch-instance>`_
+  with 1GB RAM and a public IP
+* get $HOME/openrc.sh from `the horizon dashboard <https://horizon.entercloudsuite.com/project/access_and_security/?tab=access_security_tabs__api_access_tab>`_
+
+When creating an instance via the API or via horizon, the network,
+subnet and router must be explicitly created. When creating an
+instance using the `Enter Cloud Suite dashboard
+<https://dashboard.entercloudsuite.com/>`_, it will automagically
+create the necessary network, subnet and router.
+
+Setup OpenStack at OVH
+----------------------
+
+It is cheaper than EnterCloudSuite but does not provide volumes (as
+of July 2015) and is therefore unfit to run teuthology tests that
+require disks attached to the instance. Each instance has a public IP
+by default.
+
+* `create an account <https://www.ovh.com/fr/support/new_nic.xml>`_
+* get $HOME/openrc.sh from `the horizon dashboard <https://horizon.cloud.ovh.net/project/access_and_security/?tab=access_security_tabs__api_access_tab>`_
+
+Install and test the OpenStack client
+-------------------------------------
+
+* follow the `OpenStack API Quick Start <http://docs.openstack.org/api/quick-start/content/index.html#cli-intro>`_
+* source $HOME/openrc.sh
+* verify the OpenStack client works::
+
+    $ nova list
+    +--------------------------------------+------------+--------+------------+-------------+-------------------------+
+    | ID                                   | Name       | Status | Task State | Power State | Networks                |
+    +--------------------------------------+------------+--------+------------+-------------+-------------------------+
+    +--------------------------------------+------------+--------+------------+-------------+-------------------------+
+
+Setup
+-----
+
+* Bootstrap the teuthology instance::
+
+    $ git clone -b wip-6502-openstack http://github.com/dachary/teuthology
+    $ teuthology/openstack-bootstrap.sh ovh # or entercloudsuite
+
+* Wait for the teuthology instance to boot, get an IP address and
+  setup the ssh public key::
+
+    $ nova list
+    +--------------------------------------+------------+--------+------------+-------------+-------------------------+
+    | ID                                   | Name       | Status | Task State | Power State | Networks                |
+    +--------------------------------------+------------+--------+------------+-------------+-------------------------+
+    | f89c191e-3c1f-4c4f-a68c-013cb327d097 | teuthology | ACTIVE | -          | Running     | Ext-Net=167.114.240.138 |
+    +--------------------------------------+------------+--------+------------+-------------+-------------------------+
+
+* The installation of teuthology is automatically followed by a run of
+  integration tests that can take up to 30 minutes to complete, but
+  the instance can be access while it is running. The progress of the
+  tests can be monitored with::
+
+    $ ssh -i $HOME/teuthology-admin ubuntu@167.114.240.138 tail -n 2000000 -f /tmp/init.out
+    ...
+    ========================= 8 passed in 1845.59 seconds ==========================
+    ___________________________________ summary ____________________________________
+      openstack-integration: commands succeeded
+      congratulations :)
+
+  Where ``$HOME/teuthology-admin`` is the private key that was created
+  by ``teuthology/openstack-bootstrap.sh``. And ``167.114.240.138`` is
+  the IP that was assigned to the instance, as shown by ``nova list``
+  command above. If the integration test fail, please `file a bug
+  <http://tracker.ceph.com/projects/teuthology/issues/new>`_ and
+  attach the complete output.
+* Open ports TCP 8080, 8081, 81, UDP 53 in the default security group
+  (in the `Access & Security
+  <https://horizon.cloud.ovh.net/project/access_and_security/>`_ page
+  of the OVH dashboard for instance). 
+* Visit http://167.114.240.138:8081/ (assuming ``167.114.240.138`` is
+  the public IP assigned to the teuthology instance) and verify it
+  shows a pulpito panel similar to `the one from the sepia lab
+  <http://pulpito.ceph.com/>`_
+
+Running workers
+---------------
+
+To be able to run N simulataneous jobs, the instance created in
+``Setup`` must run N workers with::
+
+    $ ssh -i $HOME/teuthology-admin ubuntu@TEUTHOLOGY_IP
+    $ sudo chown $USER /usr/share/nginx/html
+    $ teuthology-worker --tube openstack -l /tmp --archive-dir /usr/share/nginx/html
+
+Note: run the ``teuthology-worker`` N times to get N workers.
+
+Manual testing and usage
+------------------------
+
+* Setup (see above)
+* Run at least one worker (see ``Running workers`` above)
+
+Run a suite that does nothing but verify everything works::
+
+   $ ssh -i $HOME/teuthology-admin ubuntu@TEUTHOLOGY_IP
+   $ cd $HOME/teuthology
+   $ . virtualenv/bin/activate
+   $ teuthology-suite --machine-type openstack \
+       --suite-dir $(pwd)/teuthology/test/integration \
+       --suite noop
+
+Visit the web interface to see how it progresses and download the logs when it is done.
+
+* firefox http://TEUTHOLOGY_IP:8081/
+
+The job archive (OSD logs, core dumps, etc.) are in /usr/share/nginx/html
+
+Run the hammer upgrade suite for Ubuntu 14.04::
+
+   teuthology-suite --filter=ubuntu_14.04 \
+      --suite upgrade/hammer \
+      --suite-branch hammer \
+      --machine-type openstack \
+      --ceph hammer \
+      $HOME/src/ceph-qa-suite_master/machine_types/vps.yaml \
+      $(pwd)/teuthology/test/integration/archive-on-error.yaml
+
 
 VIRTUAL MACHINE SUPPORT
 =======================

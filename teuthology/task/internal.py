@@ -132,7 +132,7 @@ def lock_machines(ctx, config):
                 while len(keys_dict) != len(vmlist):
                     loopcount += 1
                     time.sleep(10)
-                    keys_dict = lock.ssh_keyscan(vmlist)
+                    keys_dict = misc.ssh_keyscan(vmlist)
                     log.info('virtual machine is still unavailable')
                     if loopcount == 40:
                         loopcount = 0
@@ -408,6 +408,7 @@ def fetch_binaries_for_coredumps(path, remote):
             dump_info = subprocess.Popen(['file', dump_path],
                                          stdout=subprocess.PIPE)
             dump_out = dump_info.communicate()
+            log.info("dump_out " + str(dump_out))
 
             # Parse file output to get program, Example output:
             # 1422917770.7450.core: ELF 64-bit LSB core file x86-64, version 1 (SYSV), SVR4-style, \
