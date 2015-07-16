@@ -55,7 +55,8 @@ setup(
                       'pyopenssl>=0.13',
                       'ndg-httpsclient',
                       'pyasn1',
-                      ],
+                      'maestro-ng >= 0.2.6.2'
+                     ],
     tests_require=['nose >=1.0.0', 'fudge >=1.0.3'],
 
 
