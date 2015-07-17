@@ -314,6 +314,13 @@ class CephLab(Ansible):
                                           'ceph-cm-ansible.git')
         super(CephLab, self).__init__(ctx, config)
 
+    def begin(self):
+        super(CephLab, self).begin()
+        remotes = self.cluster.remotes.keys()
+        log.debug("Reconnecting to %s", remotes)
+        for remote in remotes:
+            remote.reconnect()
+
 
 task = Ansible
 cephlab = CephLab
