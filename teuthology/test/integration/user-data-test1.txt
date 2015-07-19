@@ -1,0 +1,5 @@
+#cloud-config
+system_info:
+  default_user:
+    name: ubuntu
+final_message: "teuthology is up and running after $UPTIME seconds, substituded variables nworkers=NWORKERS provider=PROVIDER openrc=OPENRC run_tests=RUN_TESTS"
