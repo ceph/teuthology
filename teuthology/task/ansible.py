@@ -230,6 +230,7 @@ class Ansible(Task):
         environ = os.environ
         environ['ANSIBLE_SSH_PIPELINING'] = '1'
         environ['ANSIBLE_ROLES_PATH'] = "%s/roles" % self.repo_path
+        environ['ANSIBLE_NOCOLOR'] = '1'
         args = self._build_args()
         command = ' '.join(args)
         log.debug("Running %s", command)
