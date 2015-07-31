@@ -7,7 +7,7 @@ usage:
   teuthology-nuke --help
   teuthology-nuke [-v] [--owner OWNER] [-n NAME] [-u] [-i] [-r] [-s]
                        [-p PID] [--dry-run] (-t CONFIG... | -a DIR)
-  teuthology-nuke [-v] [-u] [-i] [-r] [-s] [--dry-run] --owner OWNER --stale
+  teuthology-nuke [-v] [-u] [-i] [-r] [-s] (--dry-run | --owner OWNER) --stale
 
 Reset test machines
 
