@@ -578,10 +578,27 @@ def find_stale_locks(owner=None):
         if description in cache:
             return True
         (name, job_id) = description.split('/')[-2:]
+
+        # this job might happen to have two '/' in its desc, but
+        # not be a scheduled job; demand that the split resulted in
+        # an int
+        try:
+            int(job_id)
+        except ValueError:
+            cache.add(description)
+            return True
+
         url = os.path.join(config.results_server, 'runs', name, 'jobs', job_id,
                            '')
         resp = requests.get(url)
-        job_info = resp.json()
+
+        # paddles may not have heard of this job; if so, it's not one we want
+        try:
+            job_info = resp.json()
+        except ValueError:
+            cache.add(description)
+            return True
+
         if job_info['status'] in ('running', 'waiting'):
             cache.add(description)
             return True
