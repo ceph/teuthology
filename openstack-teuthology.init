@@ -1,0 +1,56 @@
+#!/bin/bash
+
+### BEGIN INIT INFO
+# Provides:        teuthology
+# Required-Start:  $network $remote_fs $syslog beanstalkd nginx
+# Required-Stop:   $network $remote_fs $syslog
+# Default-Start:   2 3 4 5
+# Default-Stop:
+# Short-Description: Start teuthology
+### END INIT INFO
+
+cd /home/ubuntu
+
+source /etc/default/teuthology
+
+case $1 in
+        start)
+                /etc/init.d/beanstalkd start
+                su - -c 'cd /home/ubuntu/paddles ; virtualenv/bin/pecan serve config.py' ubuntu  > /var/log/paddles.log 2>&1 &
+                su - -c 'cd /home/ubuntu/pulpito ; virtualenv/bin/python run.py' ubuntu  > /var/log/pulpito.log 2>&1 &
+                sleep 3
+                (
+                   cd teuthology
+                   . virtualenv/bin/activate
+                   teuthology-lock --list-targets --owner scheduled_ubuntu@teuthology > /tmp/t
+                   if test -s /tmp/t && ! grep -qq 'targets: {}' /tmp/t ; then
+		       teuthology-lock --unlock -t /tmp/t  --owner scheduled_ubuntu@teuthology
+		   fi
+		   mkdir -p /tmp/log
+		   chown ubuntu  /tmp/log
+                   for i in $(seq 1 $NWORKERS) ; do
+                       su - -c 'cd /home/ubuntu/teuthology ; LC_ALL=C virtualenv/bin/teuthology-worker --tube openstack -l /tmp/log --archive-dir /usr/share/nginx/html' ubuntu > /var/log/teuthology.$i 2>&1 &
+                   done
+                )
+                ;;
+        stop)
+                pkill -f 'pecan serve'
+                pkill -f 'python run.py'
+                pkill -f 'teuthology-worker'
+                pkill -f 'ansible'
+                /etc/init.d/beanstalkd stop
+                source /home/ubuntu/teuthology/virtualenv/bin/activate
+                source /home/ubuntu/teuthology/teuthology/test/integration/openrc.sh
+                ip=$(ip a show dev eth0 | sed -n "s:.*inet \(.*\)/.*:\1:p")
+                openstack server list --long -f json | \
+                    jq ".[] | select(.Properties | contains(\"owner='$ip'\")) | .ID" | \
+                    while read uuid ; do
+                    eval openstack server delete $uuid
+                done
+                ;;
+        restart)
+                $0 stop
+                $0 start
+                ;;
+        *)
+esac

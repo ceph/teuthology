@@ -149,6 +149,11 @@ def parse_args(argv):
         help='machines to operate on',
     )
     parser.add_argument(
+        '--openstack-cluster',
+        default=None,
+        help='OpenStack cluster as defined in .teuthology.yaml',
+    )
+    parser.add_argument(
         '--os-type',
         default=None,
         help='OS type (distro)',

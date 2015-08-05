@@ -1,0 +1,16 @@
+#cloud-config
+bootcmd:
+  - touch /tmp/init.out
+system_info:
+  default_user:
+    name: ubuntu
+packages:
+ - python-virtualenv
+ - git
+runcmd:
+ - su - -c '(set -x ; git clone -b wip-6502-openstack-v2 http://github.com/dachary/teuthology && cd teuthology && ./bootstrap install)' ubuntu >> /tmp/init.out 2>&1
+ - echo 'export OPENRC' | tee /home/ubuntu/teuthology/teuthology/test/integration/openrc.sh
+ - su - -c '(set -x ; cd teuthology ; source virtualenv/bin/activate ; source teuthology/test/integration/openrc.sh ; openstack keypair delete teuthology || true ; teuthology/test/integration/setup-openstack.sh --nworkers NWORKERS --openstack PROVIDER --key-file $HOME/.ssh/id_rsa --setup-all)' ubuntu >> /tmp/init.out 2>&1
+ - if test "RUN_TESTS" = yes ; then su - -c '(set -x ; cd teuthology ; source virtualenv/bin/activate ; pip install "tox>=1.9" ; tox -v -e openstack-integration)' ubuntu >> /tmp/init.out 2>&1 ; fi
+ - /etc/init.d/teuthology restart
+final_message: "teuthology is up and running after $UPTIME seconds"
