@@ -55,6 +55,7 @@ setup(
                       'pyopenssl>=0.13',
                       'ndg-httpsclient',
                       'pyasn1',
+                      'ansi2html',
                       ],
 
 

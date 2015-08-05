@@ -5,6 +5,7 @@ import contextlib
 import sys
 import logging
 from traceback import format_tb
+from ansi2html import Ansi2HTMLConverter
 
 import teuthology
 from . import report
@@ -243,11 +244,24 @@ def report_outcome(config, archive, summary, fake_ctx):
 
     report.try_push_job_info(config, summary)
 
+    teuth_log = os.path.join(archive, 'teuthology.log')
     if passed:
         log.info(status)
+        make_html_log(teuth_log)
     else:
         log.info(str(status).upper())
+        make_html_log(teuth_log)
         sys.exit(1)
+
+
+def make_html_log(teuth_log):
+    with open(teuth_log, 'r') as output:
+        conv = Ansi2HTMLConverter()
+        html = conv.convert(output.read())
+
+    if html:
+        with open("{0}.html".format(teuth_log), "w") as html_log:
+            html_log.write(html)
 
 
 def get_teuthology_command(args):

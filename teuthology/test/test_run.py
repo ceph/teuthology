@@ -119,9 +119,10 @@ class TestRun(object):
     @patch("yaml.safe_dump")
     @patch("teuthology.report.try_push_job_info")
     @patch("teuthology.run.email_results")
+    @patch("teuthology.run.make_html_log")
     @patch("__builtin__.file")
     @patch("sys.exit")
-    def test_report_outcome(self, m_sys_exit, m_file, m_email_results, m_try_push_job_info, m_safe_dump, m_nuke, m_get_status):
+    def test_report_outcome(self, m_sys_exit, m_file, m_email_results, m_make_html_log, m_try_push_job_info, m_safe_dump, m_nuke, m_get_status):
         config = {"nuke-on-error": True, "email-on-error": True}
         m_get_status.return_value = "fail"
         fake_ctx = Mock()
@@ -133,6 +134,7 @@ class TestRun(object):
         assert m_email_results.called
         assert m_file.called
         assert m_sys_exit.called
+        assert m_make_html_log.called
 
     @patch("teuthology.run.set_up_logging")
     @patch("teuthology.run.setup_config")
