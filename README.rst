@@ -2,7 +2,7 @@
 `Teuthology` -- The Ceph integration test framework
 ===================================================
 
-``teuthology`` is an automation framework for `Ceph
+``teuthology`` is an automation framework for `Ceph test
 <https://github.com/ceph/ceph>`__, written in `Python
 <https://www.python.org/>`__. It is used to run the vast majority of its tests
 and was developed because the unique requirements of testing such a highly
