@@ -223,7 +223,8 @@ class ProvisionOpenStack(OpenStack):
         It is responsible for setting up enough for ansible to take
         over.
         """
-        template_path = config['openstack']['user-data'].format(
+        openstack_config = config['openstack']
+        template_path = openstack_config['user-data'].format(
             os_type=os_type,
             os_version=os_version)
         nameserver = config['openstack'].get('nameserver', '8.8.8.8')
