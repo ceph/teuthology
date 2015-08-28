@@ -38,7 +38,7 @@ def create_key(keytype, key):
 
 
 def connect(user_at_host, host_key=None, keep_alive=False, timeout=60,
-            _SSHClient=None, _create_key=None):
+            _SSHClient=None, _create_key=None, port=22):
     """
     ssh connection routine.
 
@@ -74,7 +74,8 @@ def connect(user_at_host, host_key=None, keep_alive=False, timeout=60,
     connect_args = dict(
         hostname=host,
         username=user,
-        timeout=timeout
+        timeout=timeout,
+        port=port
     )
 
     ssh_config_path = os.path.expanduser("~/.ssh/config")
