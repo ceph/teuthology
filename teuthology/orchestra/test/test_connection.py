@@ -40,6 +40,7 @@ class TestConnection(object):
             hostname='orchestra.test.newdream.net.invalid',
             username='jdoe',
             timeout=60,
+            port=22
         )
         transport = ssh.expects('get_transport').with_args().returns_fake()
         transport.remember_order()
@@ -62,6 +63,7 @@ class TestConnection(object):
             hostname='orchestra.test.newdream.net.invalid',
             username='jdoe',
             timeout=60,
+            port=22
         )
         transport = ssh.expects('get_transport').with_args().returns_fake()
         transport.remember_order()
@@ -90,6 +92,7 @@ class TestConnection(object):
             hostname='orchestra.test.newdream.net.invalid',
             username='jdoe',
             timeout=60,
+            port=22
             )
         transport = ssh.expects('get_transport').with_args().returns_fake()
         transport.remember_order()

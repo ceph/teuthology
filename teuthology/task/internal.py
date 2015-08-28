@@ -296,6 +296,7 @@ def add_remotes(ctx, config):
     """
     remotes = []
     machs = []
+    ssh_port = ctx.config.get('ssh_port', 22)
     for name in ctx.config['targets'].iterkeys():
         machs.append(name)
     for t, key in ctx.config['targets'].iteritems():
@@ -305,7 +306,8 @@ def add_remotes(ctx, config):
                 key = None
         except (AttributeError, KeyError):
             pass
-        rem = remote.Remote(name=t, host_key=key, keep_alive=True)
+        rem = remote.Remote(name=t, host_key=key,
+                            keep_alive=True, ssh_port=ssh_port)
         remotes.append(rem)
     ctx.cluster = cluster.Cluster()
     if 'roles' in ctx.config:
@@ -361,6 +363,7 @@ def check_ceph_data(ctx, config):
     Check for old /var/lib/ceph directories and detect staleness.
     """
     log.info('Checking for old /var/lib/ceph...')
+
     processes = ctx.cluster.run(
         args=['test', '!', '-e', '/var/lib/ceph'],
         wait=False,
