@@ -35,7 +35,7 @@ class Remote(object):
     _runner = staticmethod(run.run)
 
     def __init__(self, name, ssh=None, shortname=None, console=None,
-                 host_key=None, keep_alive=True, ssh_port=22):
+                 host_key=None, keep_alive=True, port=22):
         self.name = name
         if '@' in name:
             (self.user, hostname) = name.split('@')
@@ -52,7 +52,7 @@ class Remote(object):
         self.keep_alive = keep_alive
         self.console = console
         self.ssh = ssh
-        self.ssh_port = ssh_port
+        self.ssh_port = port
 
     def connect(self, timeout=None):
         args = dict(user_at_host=self.name, host_key=self._host_key,
