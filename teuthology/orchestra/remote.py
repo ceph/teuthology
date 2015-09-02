@@ -314,13 +314,12 @@ class Remote(object):
     @property
     def os(self):
         if not hasattr(self, '_os'):
-            proc = self.run(
-                args=[
-                    'python', '-c',
-                    'import platform; print platform.linux_distribution()'],
-                stdout=StringIO(), stderr=StringIO(), check_status=False)
+            # try lsb_relase first as it typically has the most complete
+            # information about each distro
+            proc = self.run(args=['lsb_release', '-a'], stdout=StringIO(),
+                            stderr=StringIO())
             if proc.exitstatus == 0:
-                self._os = OS.from_python(proc.stdout.getvalue().strip())
+                self._os = OS.from_lsb_release(proc.stdout.getvalue().strip())
                 return self._os
 
             proc = self.run(args=['cat', '/etc/os-release'], stdout=StringIO(),
@@ -329,9 +328,14 @@ class Remote(object):
                 self._os = OS.from_os_release(proc.stdout.getvalue().strip())
                 return self._os
 
-            proc = self.run(args=['lsb_release', '-a'], stdout=StringIO(),
-                            stderr=StringIO())
-            self._os = OS.from_lsb_release(proc.stdout.getvalue().strip())
+            # if nothing else works, default to the python method
+            proc = self.run(
+                args=[
+                    'python', '-c',
+                    'import platform; print platform.linux_distribution()'],
+                stdout=StringIO(), stderr=StringIO(), check_status=False)
+            self._os = OS.from_python(proc.stdout.getvalue().strip())
+
         return self._os
 
     @property
