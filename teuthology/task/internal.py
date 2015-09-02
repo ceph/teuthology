@@ -367,7 +367,8 @@ def check_ceph_data(ctx, config):
     log.info('Checking for old /var/lib/ceph...')
 
     processes = ctx.cluster.run(
-        args=['test', '!', '-e', '/var/lib/ceph'],
+        args=['find', '/var/lib/ceph', '-maxdepth', '1',
+              run.Raw('|'), 'read', 'v'],
         wait=False,
     )
     failed = False
@@ -375,7 +376,9 @@ def check_ceph_data(ctx, config):
         try:
             proc.wait()
         except run.CommandFailedError:
-            log.error('Host %s has stale /var/lib/ceph, check lock and nuke/cleanup.', proc.remote.shortname)
+            log.error(('Host %s has stale /var/lib/ceph,'
+                       ' check lock and nuke/cleanup.'),
+                      proc.remote.shortname)
             failed = True
     if failed:
         raise RuntimeError('Stale /var/lib/ceph detected, aborting.')
