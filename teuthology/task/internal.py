@@ -296,18 +296,20 @@ def add_remotes(ctx, config):
     """
     remotes = []
     machs = []
-    ssh_port = ctx.config.get('ssh_port', 22)
     for name in ctx.config['targets'].iterkeys():
         machs.append(name)
     for t, key in ctx.config['targets'].iteritems():
+        port = 22
+        if ':' in t:
+            port = int(t.split(':')[1])
+            t = t.split(':')[0]
         t = misc.canonicalize_hostname(t)
         try:
             if ctx.config['sshkeys'] == 'ignore':
                 key = None
         except (AttributeError, KeyError):
             pass
-        rem = remote.Remote(name=t, host_key=key,
-                            keep_alive=True, ssh_port=ssh_port)
+        rem = remote.Remote(name=t, host_key=key, keep_alive=True, port=port)
         remotes.append(rem)
     ctx.cluster = cluster.Cluster()
     if 'roles' in ctx.config:
