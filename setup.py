@@ -60,7 +60,7 @@ setup(
                       'configobj',
                       'six >= 1.9', # python-openstackclient won't work properly with less
                       'httplib2',
-                      'paramiko',
+                      'paramiko >= 1.15.1',
                       'pexpect',
                       'requests',
                       'raven',
