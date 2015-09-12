@@ -873,23 +873,38 @@ def wait_until_healthy(ctx, remote):
     """
     testdir = get_testdir(ctx)
     with safe_while(tries=(900 / 6), action="wait_until_healthy") as proceed:
-        while proceed():
+        try:
+            while proceed():
+                r = remote.run(
+                    args=[
+                        'adjust-ulimits',
+                        'ceph-coverage',
+                        '{tdir}/archive/coverage'.format(tdir=testdir),
+                        'ceph',
+                        'health',
+                    ],
+                    stdout=StringIO(),
+                    logger=log.getChild('health'),
+                )
+                out = r.stdout.getvalue()
+                log.debug('Ceph health: %s', out.rstrip('\n'))
+                if out.split(None, 1)[0] == 'HEALTH_OK':
+                    break
+                time.sleep(1)
+        except:
             r = remote.run(
                 args=[
-                    'adjust-ulimits',
-                    'ceph-coverage',
-                    '{tdir}/archive/coverage'.format(tdir=testdir),
+                    'sudo',
                     'ceph',
-                    'health',
-                ],
+                    'pg',
+                    'dump',
+                    ],
                 stdout=StringIO(),
-                logger=log.getChild('health'),
+                logger=log.getChild('pg_dump'),
             )
             out = r.stdout.getvalue()
-            log.debug('Ceph health: %s', out.rstrip('\n'))
-            if out.split(None, 1)[0] == 'HEALTH_OK':
-                break
-            time.sleep(1)
+            log.info('dump: %s')
+            raise
 
 
 def wait_until_osds_up(ctx, cluster, remote):
