@@ -8,6 +8,7 @@ import collections
 import os
 import requests
 import urllib
+import random
 
 import teuthology
 from . import misc
@@ -16,21 +17,7 @@ from .config import config
 from .lockstatus import get_status
 
 log = logging.getLogger(__name__)
-
-
-def is_vm(name):
-    return get_status(name)['is_vm']
-
-
-def get_distro_from_downburst():
-    """
-    Return a table of valid distros.
-
-    If downburst is in path use it.  If either downburst is unavailable,
-    or if downburst is unable to produce a json list, then use a default
-    table.
-    """
-    default_table = {u'rhel_minimal': [u'6.4', u'6.5'],
+default_table = {u'rhel_minimal': [u'6.4', u'6.5'],
                      u'fedora': [u'17', u'18', u'19', u'20', u'22'],
                      u'centos': [u'6.3', u'6.4', u'6.5', u'7.0'],
                      u'opensuse': [u'12.2'],
@@ -44,6 +31,19 @@ def get_distro_from_downburst():
                                  u'14.04(trusty)', u'utopic(utopic)'],
                      u'sles': [u'11-sp2'],
                      u'debian': [u'6.0', u'7.0', u'8.0']}
+
+def is_vm(name):
+    return get_status(name)['is_vm']
+
+
+def get_distro_from_downburst():
+    """
+    Return a table of valid distros.
+
+    If downburst is in path use it.  If either downburst is unavailable,
+    or if downburst is unable to produce a json list, then use a default
+    table.
+    """
     executable_cmd = provision.downburst_executable()
     if not executable_cmd:
         log.warn("Downburst not found!")
@@ -226,6 +226,13 @@ def main(ctx):
     if ctx.num_to_lock:
         assert ctx.machine_type, \
             'must specify machine type to lock'
+    if ctx.machine_type == 'vps':
+        if ctx.os_type is None:
+            ctx.os_type=random.choice(default_table.keys())
+	    ctx.os_version=random.choice(default_table[ctx.os_type])
+        elif ctx.os_version is None:
+            ctx.os_version=random.choice(default_table[ctx.os_type])
+        log.info("Using {os} and {version}".format(os=ctx.os_type,version=ctx.os_version))
 
     if ctx.brief or ctx.list or ctx.list_targets:
         assert ctx.desc is None, '--desc does nothing with --list/--brief'
