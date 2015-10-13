@@ -706,6 +706,54 @@ def _upgrade_deb_packages(ctx, config, remote, debs):
     )
 
 
+
+@contextlib.contextmanager
+def enable_epel(ctx, enable_epel):
+    """
+    Enables epel repo on all rpm host type
+
+    :param ctx: the argparse.Namespace object
+    :param enable_epel: optional parameter passed to install task to determine
+                        whether to enable epel, defaults to 0 (not run)
+    """
+    if enable_epel ==  0:
+        yield
+    else:
+        epel_path = '/etc/yum.repos.d/epel.repo'
+        for remote in ctx.cluster.remotes.iterkeys():
+            system_type = teuthology.get_system_type(remote)
+            if system_type == "rpm":
+                log.info("Enabling epel on %s", remote)
+                r = remote.run(
+                     args=['sudo', 'sed', '-i', run.Raw("'s/^enabled=0$/enabled=1/1'"), epel_path]
+                     )
+        try:
+            yield
+        finally:
+            if system_type == "rpm":
+                log.info("Disabling epel on %s", remote)
+                r = remote.run(
+                      args=['sudo', 'sed', '-i', run.Raw("'s/^enabled=1$/enabled=0/1'"), epel_path]
+                     )
+
+def disable_epel(ctx, config):
+    """
+    Disables epel repo on all rpm host type
+
+    tasks:
+    - install.disable_epel:
+
+    :param ctx: the argparse.Namespace object
+    """
+    epel_path = '/etc/yum.repos.d/epel.repo'
+    for remote in ctx.cluster.remotes.iterkeys():
+        system_type = teuthology.get_system_type(remote)
+        if system_type == "rpm":
+            log.info("Disabling epel on %s", remote)
+            r = remote.run(
+                  args=['sudo', 'sed', '-i', run.Raw("'s/^enabled=1$/enabled=0/1'"), epel_path]
+                 )
+
 @contextlib.contextmanager
 def rh_install(ctx, config):
     """
@@ -1150,6 +1198,9 @@ def task(ctx, config):
         project: ceph
         branch: bar
     - install:
+        project: ceph
+        enable_epel: 1 #to resolve package dependency using epel
+    - install:
         project: samba
         branch: foo
         extra_packages: ['samba']
@@ -1208,6 +1259,7 @@ def task(ctx, config):
                 yield
     else:
         with contextutil.nested(
+            lambda: enable_epel(ctx=ctx, enable_epel=config.get('enable_epel',0)),
             lambda: install(ctx=ctx, config=dict(
                 branch=config.get('branch'),
                 tag=config.get('tag'),
