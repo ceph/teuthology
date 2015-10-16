@@ -174,6 +174,9 @@ def fetch_repo(url, branch, bootstrap=None, lock=True):
     if not os.path.exists(src_base_path):
         os.mkdir(src_base_path)
     dest_path = os.path.join(src_base_path, '%s_%s' % (name, branch))
+    if not config.fetch_repo_in_realtime and os.path.exists(dest_path):
+        log.info("fetch_repo_in_realtime is false, not fetch repo: %s ", url)
+        return dest_path
     # only let one worker create/update the checkout at a time
     lock_path = dest_path.rstrip('/') + '.lock'
     with FileLock(lock_path, noop=not lock):

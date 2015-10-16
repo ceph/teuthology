@@ -133,6 +133,7 @@ class TeuthologyConfig(YamlConfig):
         'ceph_git_base_url': 'https://github.com/ceph/',
         'ceph_git_url': None,
         'ceph_qa_suite_git_url': None,
+        'fetch_repo_in_realtime': True,
         'gitbuilder_host': 'gitbuilder.ceph.com',
         'check_package_signatures': True,
         'lab_domain': 'front.sepia.ceph.com',
