@@ -356,7 +356,7 @@ BUILDPACKAGES_NOTHING = 3
 def buildpackages_prep(ctx, config):
     """
     Make sure the 'buildpackages' task happens before
-    the 'install' task.
+    the 'install' and 'ceph-deploy' task.
 
     Return:
 
@@ -369,7 +369,7 @@ def buildpackages_prep(ctx, config):
     install_index = None
     buildpackages_index = None
     for task in ctx.config['tasks']:
-        if task.keys()[0] == 'install':
+        if task.keys()[0] in ('install', 'ceph-deploy'):
             install_index = index
         if task.keys()[0] == 'buildpackages':
             buildpackages_index = index
@@ -381,12 +381,12 @@ def buildpackages_prep(ctx, config):
             ctx.config['tasks'].insert(install_index, buildpackages)
             return BUILDPACKAGES_SWAPPED
         else:
-            log.info('buildpackages is before the install task')
+            log.info('buildpackages is before the install/ceph-deploy task')
             return BUILDPACKAGES_OK
     elif buildpackages_index is not None and install_index is None:
         ctx.config['tasks'].pop(buildpackages_index)
         all_tasks = [x.keys()[0] for x in ctx.config['tasks']]
-        log.info('buildpackages removed because no install task found in ' +
+        log.info('buildpackages removed because no install/ceph-deploy task found in ' +
                  str(all_tasks))
         return BUILDPACKAGES_REMOVED
     elif buildpackages_index is None:
