@@ -1047,9 +1047,7 @@ dict_templ = {
             'sha1': Placeholder('ceph_hash'),
         },
         'ceph-deploy': {
-            'branch': {
-                'dev-commit': Placeholder('ceph_hash'),
-            },
+            'sha1': Placeholder('ceph_hash'),
             'conf': {
                 'client': {
                     'log file': '/var/log/ceph/ceph-$name.$pid.log'
