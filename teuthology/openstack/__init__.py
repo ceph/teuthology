@@ -81,8 +81,11 @@ class OpenStack(object):
         :param field:   The name of the field whose value to retrieve. Case is
                         ignored.
         """
-        filter_func = lambda v: v['Field'].lower() == field.lower()
-        return filter(filter_func, result)[0]['Value']
+        if type(result) is types.ListType:
+            filter_func = lambda v: v['Field'].lower() == field.lower()
+            return filter(filter_func, result)[0]['Value']
+        else:
+            return result[field.lower()]
 
     def image_exists(self, image):
         """
