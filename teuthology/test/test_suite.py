@@ -719,6 +719,9 @@ class TestSuiteMain(object):
                 suite,
                 fetch_repos=DEFAULT,
                 prepare_and_schedule=prepare_and_schedule,
+                get_arch=lambda x: 'x86_64',
+                get_hash=lambda a, b, c, d, e: 'HHHHH',
+                package_version_for_hash=lambda a, b, c, d: 'fake-9.5',
                 ):
             main(['--suite', suite_name,
                   '--throttle', throttle,
@@ -734,6 +737,9 @@ class TestSuiteMain(object):
                 fetch_repos=DEFAULT,
                 teuthology_schedule=DEFAULT,
                 sleep=DEFAULT,
+                get_arch=lambda x: 'x86_64',
+                get_hash=lambda a, b, c, d, e: 'HHHHH',
+                package_version_for_hash=lambda a, b, c, d: 'fake-9.5',
                 ) as m:
             main(['--suite', suite_name,
                   '--suite-dir', 'teuthology/test',
