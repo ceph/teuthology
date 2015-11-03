@@ -288,8 +288,8 @@ class ProvisionOpenStack(OpenStack):
         """
         return the instance name suffixed with the /16 part of the IP.
         """
-        digits = map(int, re.findall('.*\.(\d+)\.(\d+)', ip)[0])
-        return prefix + "%03d%03d" % tuple(digits)
+        digits = map(int, re.findall('(\d+)\.(\d+)\.(\d+)\.(\d+)', ip)[0])
+        return prefix + "%03d%03d%03d%03d" % tuple(digits)
 
     def create(self, num, os_type, os_version, arch, resources_hint):
         """
