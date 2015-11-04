@@ -328,7 +328,7 @@ function subnet_names_and_ips() {
     local subnet=$1
     python -c 'import netaddr; print "\n".join([str(i) for i in netaddr.IPNetwork("'$subnet'")])' |
     sed -e 's/\./ /g' | while read a b c d ; do
-        printf "target%03d%03d " $c $d
+        printf "target%03d%03d%03d%03d " $a $b $c $d
         echo $a.$b.$c.$d
     done
 }
@@ -528,7 +528,7 @@ function main() {
 
     local provider=$(verify_openstack)
 
-    eval local default_subnet=$(neutron subnet-list -f json | jq '.[0].cidr')
+    eval local default_subnet=$(neutron subnet-list -f json -c cidr -c ip_version | jq '.[] | select(.ip_version == 4) | .cidr')
     if test -z "$default_subnet" ; then
         default_subnet=$(nova tenant-network-list | grep / | cut -f6 -d' ' | head -1)
     fi
