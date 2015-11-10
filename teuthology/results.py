@@ -103,7 +103,12 @@ def email_results(subject, from_, to, body):
     msg['From'] = from_
     msg['To'] = to
     log.debug('sending email %s', msg.as_string())
-    smtp = smtplib.SMTP('localhost')
+    smtpserver = config.smtpServer or 'localhost'
+    smtpuser = config.smtpUser
+    smtpasswd = config.smtpPasswd
+    smtp = smtplib.SMTP(smtpserver)
+    if smtpuser is not None and smtpasswd is not None:
+        smtp.login(smtpuser, smtpasswd)
     smtp.sendmail(msg['From'], [msg['To']], msg.as_string())
     smtp.quit()
 
