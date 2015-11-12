@@ -261,7 +261,7 @@ def _update_rpm_package_list_and_install(ctx, remote, rpm, config):
         args=[
             'sudo', 'yum', 'clean', 'all',
         ])
-
+    remote.run(args = ['sudo', 'yum', 'remove', 'librados2', 'libcephfs1', '-y',])
     ldir = _get_local_dir(config, remote)
     for cpack in rpm:
         pkg = None
@@ -274,16 +274,16 @@ def _update_rpm_package_list_and_install(ctx, remote, rpm, config):
                 args = ['if', 'test', '-e',
                         run.Raw(pkg), run.Raw(';'), 'then',
                         'sudo', 'yum', 'remove', pkg, '-y', run.Raw(';'),
-                        'sudo', 'yum', 'install', pkg, '-y',
+                        'sudo', 'yum', 'install', pkg, '-y', '-x', 'librbd1-devel', '-x', 'librados2-devel',
                         run.Raw(';'), 'fi']
             )
         if pkg is None:
-            remote.run(args=['sudo', 'yum', 'install', cpack, '-y'])
+            remote.run(args = ['sudo', 'yum', 'install', cpack, '-y', '-x', 'librbd1-devel', '-x', 'librados2-devel',])
         else:
             remote.run(
                 args = ['if', 'test', run.Raw('!'), '-e',
                         run.Raw(pkg), run.Raw(';'), 'then',
-                        'sudo', 'yum', 'install', cpack, '-y',
+                        'sudo', 'yum', 'install', cpack, '-y', '-x', 'librbd1-devel', '-x', 'librados2-devel',
                         run.Raw(';'), 'fi'])
 
 
