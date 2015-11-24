@@ -913,11 +913,14 @@ def build_matrix(path, _isfile=os.path.isfile,
     if subset:
         (index, outof) = subset
         mat = _build_matrix(path, _isfile, _isdir, _listdir, mincyclicity=outof)
-        first = (mat.size() / outof) * index
-        if index == outof or index == outof - 1:
+        index %= mat.cyclicity()
+        first = mat.minscanlen() * index
+        matlimit = mat.minscanlen() * (index + 1)
+        if mat.size() - matlimit < mat.minscanlen():
             matlimit = mat.size()
-        else:
-            matlimit = (mat.size() / outof) * (index + 1)
+        log.info("build_matrix: size = %d, cyclicity = %d, minscanlen = %d "
+                 " [%d,%d]" % (mat.size(), mat.cyclicity(), mat.minscanlen(),
+                               first, matlimit))
     else:
         first = 0
         mat = _build_matrix(path, _isfile, _isdir, _listdir)
