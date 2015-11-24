@@ -913,15 +913,18 @@ def build_matrix(path, _isfile=os.path.isfile,
     if subset:
         (index, outof) = subset
         mat = _build_matrix(path, _isfile, _isdir, _listdir, mincyclicity=outof)
-        first = (mat.size() / outof) * index
-        if index == outof or index == outof - 1:
+        index %= mat.cyclicity()
+        first = mat.minscanlen() * index
+        matlimit = mat.minscanlen() * (index + 1)
+        if mat.size() - matlimit < mat.minscanlen():
             matlimit = mat.size()
-        else:
-            matlimit = (mat.size() / outof) * (index + 1)
     else:
         first = 0
         mat = _build_matrix(path, _isfile, _isdir, _listdir)
         matlimit = mat.size()
+    log.info("build_matrix: size = %d, cyclicity = %d, minscanlen = %d "
+             " [%d,%d]" % (mat.size(), mat.cyclicity(), mat.minscanlen(),
+                           first, matlimit))
     return generate_combinations(path, mat, first, matlimit)
 
 def _build_matrix(path, _isfile=os.path.isfile,
@@ -969,6 +972,7 @@ def _build_matrix(path, _isfile=os.path.isfile,
         else:
             # list items
             submats = []
+            max_mincyclicity = 0
             for fn in sorted(files):
                 submat = _build_matrix(
                     os.path.join(path, fn),
@@ -979,12 +983,21 @@ def _build_matrix(path, _isfile=os.path.isfile,
                     fn)
                 if submat is None:
                     continue
-                if submat.cyclicity() < mincyclicity:
-                    submat = matrix.Cycle(
-                        int(math.ceil(
-                            mincyclicity / submat.cyclicity())),
-                        submat)
                 submats.append(submat)
+                max_mincyclicity = max(max_mincyclicity, submat.cyclicity())
+            if mincyclicity != min(mincyclicity, max_mincyclicity):
+                log.info("list items mincyclicity = %d adjusted to %d" % (
+                    mincyclicity,
+                    min(mincyclicity, max_mincyclicity)))
+            mincyclicity = min(mincyclicity, max_mincyclicity)
+            for i in range(0, len(submats)):
+                if submats[i].cyclicity() < mincyclicity:
+                    c = int(math.ceil(
+                        mincyclicity / submats[i].cyclicity()))
+                    log.info("repeat matrix of size " + str(submats[i].size()) + " " + str(c) + " times")
+                    submats[i] = matrix.Cycle(
+                        c,
+                        submats[i])
             return matrix.Sum(item, submats)
     assert False, "Invalid path %s seen in _build_matrix" % path
     return None
