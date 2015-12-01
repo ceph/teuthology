@@ -1,0 +1,3 @@
+teuthology:
+  tags: [ ceph-workbench ]
+  script: "./bootstrap install ; unset OS_AUTH_URL ; tox"
