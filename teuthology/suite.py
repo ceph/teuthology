@@ -670,11 +670,8 @@ def teuthology_schedule(args, verbose, dry_run, log_prefix=''):
     """
     Run teuthology-schedule to schedule individual jobs.
 
-    If --dry-run has been passed but --verbose has been passed just once, don't
-    actually run the command - only print what would be executed.
-
-    If --dry-run has been passed and --verbose has been passed multiple times,
-    do both.
+    If --dry-run has been passed don't actually run the
+    command - only print what would be executed.
     """
     exec_path = os.path.join(
         os.path.dirname(sys.argv[0]),
@@ -693,7 +690,7 @@ def teuthology_schedule(args, verbose, dry_run, log_prefix=''):
             log_prefix,
             ' '.join(printable_args),
         ))
-    if not dry_run or (dry_run and verbose > 1):
+    if not dry_run:
         subprocess.check_call(args=args)
 
 

@@ -20,9 +20,7 @@ runs the dumpling-x facet of the upgrade suite.
 Miscellaneous arguments:
   -h, --help                  Show this help message and exit
   -v, --verbose               Be more verbose
-  --dry-run                   Do a dry run; do not schedule anything. In
-                              combination with -vv, also call
-                              teuthology-schedule with --dry-run.
+  --dry-run                   Do a dry run; do not schedule anything.
 
 Standard arguments:
   <config_yaml>               Optional extra job yaml to include
