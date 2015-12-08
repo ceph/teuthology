@@ -5,6 +5,7 @@ bootcmd:
   - echo nameserver 8.8.8.8 | sudo tee -a /etc/resolv.conf # last resort, in case the DHCP server does not provide a resolver
   - apt-get update
   - apt-get install -y python-virtualenv git rsync
+manage_etc_hosts: true
 system_info:
   default_user:
     name: TEUTHOLOGY_USERNAME

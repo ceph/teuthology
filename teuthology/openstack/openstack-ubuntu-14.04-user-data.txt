@@ -10,6 +10,7 @@ bootcmd:
  - echo "MaxSessions 1000" >> /etc/ssh/sshd_config
  - apt-get update
  - apt-get install -y python wget git ntp
+manage_etc_hosts: true
 preserve_hostname: true
 system_info:
   default_user:
