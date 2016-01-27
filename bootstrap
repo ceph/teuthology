@@ -120,3 +120,5 @@ if [ -z "$NO_CLOBBER" ] || [ ! -e ./virtualenv ]; then
 fi
 
 ./virtualenv/bin/pip install --upgrade -r requirements.txt
+
+./virtualenv/bin/pip freeze
