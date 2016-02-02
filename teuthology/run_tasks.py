@@ -1,11 +1,8 @@
 import sys
 import logging
-from .sentry import get_client as get_sentry_client
+from .sentry import submit_event as submit_sentry_event
 from .job_status import set_status
-from .misc import get_http_log_path
-from .config import config as teuth_config
 from .exceptions import ConnectionLostError
-from copy import deepcopy
 
 log = logging.getLogger(__name__)
 
@@ -66,40 +63,7 @@ def run_tasks(tasks, ctx):
             ctx.summary['failure_reason'] = str(e)
         log.exception('Saw exception from tasks.')
 
-        sentry = get_sentry_client()
-        if sentry:
-            config = deepcopy(ctx.config)
-
-            tags = {
-                'task': taskname,
-                'owner': ctx.owner,
-            }
-            if 'teuthology_branch' in config:
-                tags['teuthology_branch'] = config['teuthology_branch']
-            if 'branch' in config:
-                tags['branch'] = config['branch']
-
-            # Remove ssh keys from reported config
-            if 'targets' in config:
-                targets = config['targets']
-                for host in targets.keys():
-                    targets[host] = '<redacted>'
-
-            job_id = ctx.config.get('job_id')
-            archive_path = ctx.config.get('archive_path')
-            extra = dict(config=config,
-                         )
-            if job_id:
-                extra['logs'] = get_http_log_path(archive_path, job_id)
-
-            exc_id = sentry.get_ident(sentry.captureException(
-                tags=tags,
-                extra=extra,
-            ))
-            event_url = "{server}/?q={id}".format(
-                server=teuth_config.sentry_server.strip('/'), id=exc_id)
-            log.exception(" Sentry event: %s" % event_url)
-            ctx.summary['sentry_event'] = event_url
+        submit_sentry_event(ctx, taskname)
 
         if ctx.config.get('interactive-on-error'):
             ctx.config['interactive-on-error'] = False
