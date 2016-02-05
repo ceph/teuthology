@@ -35,11 +35,7 @@ class SELinux(Task):
         super(SELinux, self).filter_hosts()
         new_cluster = Cluster()
         for (remote, roles) in self.cluster.remotes.iteritems():
-            status_info = get_status(remote.name)
-            if status_info and status_info.get('is_vm', False):
-                msg = "Excluding {host}: VMs are not yet supported"
-                log.info(msg.format(host=remote.shortname))
-            elif remote.os.package_type == 'rpm':
+            if remote.os.package_type == 'rpm':
                 new_cluster.add(remote, roles)
             else:
                 msg = "Excluding {host}: OS '{os}' does not support SELinux"
