@@ -81,13 +81,6 @@ case $1 in
                     xargs --no-run-if-empty --max-args 1 -P20 openstack volume delete
                 perl -pi -e 's/.*gitbuilder_host.*/gitbuilder_host: gitbuilder.ceph.com/' /home/$user/.teuthology.yaml
                 rm -fr /home/$user/src/*
-                mv /tmp/stampsdir /tmp/stampsdir.old
-                mkdir /tmp/stampsdir
-                chown $user /tmp/stampsdir
-                if test -f /tmp/stampsdir.old/packages-repository ; then
-                    mv /tmp/stampsdir.old/*packages-repository* /tmp/stampsdir
-                fi
-                rm -fr /tmp/stampsdir.old
                 ;;
         restart)
                 $0 stop
