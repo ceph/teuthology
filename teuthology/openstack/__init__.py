@@ -198,6 +198,7 @@ class OpenStack(object):
     }
 
     def __init__(self):
+        self.provider = None
         self.key_filename = None
         self.username = 'ubuntu'
         self.up_string = "UNKNOWN"
@@ -211,11 +212,16 @@ class OpenStack(object):
                      ('entercloudsuite.com', 'entercloudsuite'),
                      ('rackspacecloud.com', 'rackspace'),
                      ('dream.io', 'dreamhost'))
-        self.provider = None
+        self.provider = 'any'
         for (pattern, provider) in providers:
             if pattern in os.environ['OS_AUTH_URL']:
                 self.provider = provider
                 break
+        return self.provider
+
+    def get_provider(self):
+        if self.provider is None:
+            self.set_provider()
         return self.provider
 
     @staticmethod
@@ -266,15 +272,14 @@ class OpenStack(object):
         Upload an image into OpenStack
         """
         misc.sh("wget -c -O " + name + ".qcow2 " + self.image2url[name])
-        self.set_provider()
-        if self.provider == 'dreamhost':
+        if self.get_provider() == 'dreamhost':
             image = name + ".raw"
             disk_format = 'raw'
             misc.sh("qemu-img convert " + name + ".qcow2 " + image)
         else:
             image = name + ".qcow2"
             disk_format = 'qcow2'
-        if self.provider == 'runabove':
+        if self.get_provider() == 'runabove':
             properties = [
                 "--property architecture_restrict=" + arch,
                 "--property architecture=" + arch
@@ -474,8 +479,8 @@ class OpenStack(object):
     def get_ip(self, instance_id, network):
         return OpenStackInstance(instance_id).get_ip(network)
 
-    def get_available_arch(self):
-        if (self.provider == 'runabove' and
+    def get_available_archs(self):
+        if (self.get_provider() == 'runabove' and
             'HZ1' in os.environ.get('OS_REGION_NAME', '')):
             return ('aarch64',)
         else:
@@ -595,7 +600,7 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
     def setup(self):
         self.instance = OpenStackInstance(self.args.name)
         if not self.instance.exists():
-            if self.provider != 'rackspace':
+            if self.get_provider() != 'rackspace':
                 self.create_security_group()
             self.create_cluster()
 
@@ -647,7 +652,6 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
         except subprocess.CalledProcessError:
             log.exception("openstack flavor list")
             raise Exception("verify openrc.sh has been sourced")
-        self.set_provider()
 
     def flavor(self, arch):
         """
@@ -668,7 +672,7 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
             hint['ram'] = 4000 # MB
 
         select = None
-        if self.provider == 'ovh':
+        if self.get_provider() == 'ovh':
             select = '^(vps|eg)-'
         return super(TeuthologyOpenStack, self).flavor(hint, arch, select)
 
@@ -678,7 +682,7 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
         By default it should not be set. But some providers such as
         entercloudsuite require it is.
         """
-        if self.provider == 'entercloudsuite':
+        if self.get_provider() == 'entercloudsuite':
             return "--nic net-id=default"
         else:
             return ""
@@ -824,7 +828,7 @@ openstack security group rule create --proto udp --dst-port 16000:65535 teutholo
 
     def create_cluster(self):
         user_data = self.get_user_data()
-        if self.provider == 'rackspace':
+        if self.get_provider() == 'rackspace':
             security_group = ''
         else:
             security_group = " --security-group teuthology"
