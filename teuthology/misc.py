@@ -1348,6 +1348,7 @@ def sh(command, log_limit=1024):
     truncated = False
     with proc.stdout:
         for line in iter(proc.stdout.readline, b''):
+            line = line.decode('utf-8').encode('ascii', 'ignore')
             lines.append(line)
             line = line.strip()
             if len(line) > log_limit:
@@ -1369,4 +1370,4 @@ def sh(command, log_limit=1024):
             cmd=command,
             output=output
         )
-    return output.decode('utf-8')
+    return output
