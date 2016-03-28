@@ -132,7 +132,7 @@ function setup_paddles() {
         git clone https://github.com/ceph/paddles.git $paddles_dir || return 1
     fi
 
-    sudo apt-get -qq install -y beanstalkd postgresql postgresql-contrib postgresql-server-dev-all supervisor
+    sudo apt-get -qq install -y --force-yes beanstalkd postgresql postgresql-contrib postgresql-server-dev-all supervisor
 
     if ! sudo /etc/init.d/postgresql status ; then
         sudo mkdir -p /etc/postgresql
@@ -225,7 +225,7 @@ function setup_pulpito() {
         git clone https://github.com/ceph/pulpito.git $pulpito_dir || return 1
     fi
 
-    sudo apt-get -qq install -y nginx
+    sudo apt-get -qq install -y --force-yes nginx
     local nginx_conf=/etc/nginx/sites-available/default
     if ! grep -qq 'autoindex on' $nginx_conf ; then
         sudo perl -pi -e 's|location / {|location / { autoindex on;|' $nginx_conf
@@ -368,7 +368,7 @@ function setup_dnsmasq() {
 
     if ! test -f /etc/dnsmasq.d/resolv ; then
         resolver=$(grep nameserver /etc/resolv.conf | head -1 | perl -ne 'print $1 if(/\s*nameserver\s+([\d\.]+)/)')
-        sudo apt-get -qq install -y dnsmasq resolvconf
+        sudo apt-get -qq install -y --force-yes dnsmasq resolvconf
         echo resolv-file=/etc/dnsmasq-resolv.conf | sudo tee /etc/dnsmasq.d/resolv
         echo nameserver $resolver | sudo tee /etc/dnsmasq-resolv.conf
         # restart is not always picking up changes
@@ -455,8 +455,8 @@ function install_packages() {
         sudo apt-get update
     fi
 
-    local packages="jq realpath"
-    sudo apt-get -qq install -y $packages
+    local packages="jq realpath curl"
+    sudo apt-get -qq install -y --force-yes $packages
 
     echo "INSTALL required packages $packages"
 }
