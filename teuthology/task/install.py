@@ -186,6 +186,17 @@ def _yum_unset_check_obsoletes(remote):
                check_status=False)
 
 
+def _yum_enable_epel(remote):
+    """
+    Enable epel if centos or fedora
+    """
+    epel_path = '/etc/yum.repos.d/epel.repo'
+    if (remote.os.name == "centos" or remote.os.name == "fedora"):
+        log.info("Enabling epel on %s", remote)
+        remote.run(args=['sudo', 'sed', '-i', run.Raw("'s/^enabled=0$/enabled=1/1'"),
+                         epel_path])
+
+
 def _update_rpm_package_list_and_install(ctx, remote, rpm, config):
     """
     Installs the ceph-release package for the relevant branch, then installs
@@ -219,6 +230,7 @@ def _update_rpm_package_list_and_install(ctx, remote, rpm, config):
     remote.run(args=['rm', '-f', rpm_name])
 
     uri = gitbuilder.uri_reference
+    _yum_enable_epel(remote)
     _yum_fix_repo_priority(remote, project, uri)
     _yum_fix_repo_host(remote, project)
     _yum_set_check_obsoletes(remote)
