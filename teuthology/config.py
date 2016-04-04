@@ -137,6 +137,7 @@ class TeuthologyConfig(YamlConfig):
         'ceph_git_base_url': 'https://github.com/ceph/',
         'ceph_git_url': None,
         'ceph_qa_suite_git_url': None,
+        'ceph_cm_ansible_git_url': None,
         'gitbuilder_host': 'gitbuilder.ceph.com',
         'check_package_signatures': True,
         'lab_domain': 'front.sepia.ceph.com',
@@ -173,6 +174,10 @@ class TeuthologyConfig(YamlConfig):
 
     def __init__(self, yaml_path=None):
         super(TeuthologyConfig, self).__init__(yaml_path or self.yaml_path)
+
+    def get_ceph_cm_ansible_git_url(self):
+        return (self.ceph_cm_ansible_git_url or
+                self.ceph_git_base_url + 'ceph-cm-ansible.git')
 
     def get_ceph_qa_suite_git_url(self):
         return (self.ceph_qa_suite_git_url or
