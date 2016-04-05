@@ -194,7 +194,7 @@ class OpenStack(object):
         'centos-7.2-x86_64': 'http://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud-1511.qcow2',
         'ubuntu-12.04-x86_64': 'https://cloud-images.ubuntu.com/precise/current/precise-server-cloudimg-amd64-disk1.img',
         'ubuntu-14.04-x86_64': 'https://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-disk1.img',
-        'ubuntu-14.04-arm64': 'https://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-arm64-disk1.img',
+        'ubuntu-14.04-aarch64': 'https://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-arm64-disk1.img',
         'ubuntu-14.04-i686': 'https://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-i386-disk1.img',
         'debian-8.0-x86_64': 'http://cdimage.debian.org/cdimage/openstack/current/debian-8.3.0-openstack-amd64.qcow2',
     }
@@ -499,7 +499,7 @@ class OpenStack(object):
         if (self.get_provider() == 'cloudlab' or
             (self.get_provider() == 'runabove' and
              'HZ1' in os.environ.get('OS_REGION_NAME', ''))):
-            return ('arm64',)
+            return ('aarch64',)
         else:
             return ('x86_64', 'i686')
 
