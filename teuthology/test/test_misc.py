@@ -115,6 +115,19 @@ def test_expand_dm_devices():
     assert misc.expand_dm_devices(remote, TRANSLATED_USED_DEVICES) == EXPANDED_USED_DEVICES
 
 
+def test_get_root_device():
+    remote = FakeRemote()
+
+    class r():
+        class o:
+            def getvalue(self):
+                return PROC_CMDLINE
+        stdout = o()
+
+    remote.run = lambda **kwargs: r()
+    assert misc.get_root_device(remote) == ROOT_DEVICE_UUID
+
+
 def test_wait_until_osds_up():
     ctx = argparse.Namespace()
     remote = FakeRemote()
@@ -375,3 +388,9 @@ luks-daddc2c4-2345-2345-acb1-b15770b79fff <dm-1> (253:1)
 '''
 
 EXPANDED_USED_DEVICES = ['/dev/sda5', '/dev/sda1', '/dev/sda2']
+
+PROC_CMDLINE = '''
+BOOT_IMAGE=/vmlinuz-4.4.6-300.fc23.x86_64 root=UUID=4945724f-27de-48e3-937f-c767f92e86a6 ro rootflags=subvol=root rd.luks.uuid=luks-daddc2c4-1463-4d46-abc7-b15770b79f94 rhgb quiet LANG=fr_FR.UTF-8 "acpi_osi=!Windows 2013" nouveau.runpm=0 intel_iommu=on
+'''
+
+ROOT_DEVICE_UUID = '''UUID=4945724f-27de-48e3-937f-c767f92e86a6'''

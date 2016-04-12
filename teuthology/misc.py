@@ -863,6 +863,22 @@ def get_used_block_devices(remote):
     return devs
 
 
+def get_root_device(remote):
+    """
+    Extracting root device
+    """
+    r = remote.run(args=['cat', run.Raw('/proc/cmdline')],
+                   stdout=StringIO()
+                   )
+
+    cmdline = r.stdout.getvalue().strip()
+    matching_line = re.match('.*root=(\S+)\s+.*', cmdline, re.M | re.I)
+    if matching_line:
+        return matching_line.group(1)
+
+    return ""
+
+
 def translate_block_device_path(remote, device):
     """
     Extract the cannonized path of block devices
