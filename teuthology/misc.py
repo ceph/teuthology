@@ -818,6 +818,106 @@ def get_wwn_id_map(remote, devs):
     return devmap
 
 
+def get_block_devices(remote):
+    """
+    List the available block devices on the system
+    """
+    devs = []
+    try:
+        file_data = get_file(remote, "/scratch_devs")
+        devs = file_data.split()
+    except Exception:
+        r = remote.run(
+            args=['cat', run.Raw('/proc/partitions')],
+            stdout=StringIO()
+        )
+        devices = r.stdout.getvalue().strip().split('\n')
+        for device in devices:
+            # Let's split the /proc/partitions in fields
+            matching_line = re.match('\s+(\d+)\s+(\d+)\s+(\d+)\s+(.*)$', device, re.M | re.I)
+            if matching_line:
+                major = matching_line.group(1)
+                # We only accept major 8 (sdx) or 253 (dm, virtio)
+                if int(major) in [8, 253]:
+                    # Don't consider extended partitions which size = 1
+                    if int(matching_line.group(3)) > 1:
+                        devs.append(matching_line.group(4))
+    return devs
+
+
+def get_used_block_devices(remote):
+    """
+    From the actual mount points, let's found out
+    which block devices are used
+    """
+    devs = []
+    r = remote.run(args=['grep', run.Raw('"^/" /proc/mounts')],
+                   stdout=StringIO()
+                   )
+    devices = r.stdout.getvalue().strip().split('\n')
+    for device in devices:
+        used_device = device.split()[0]
+        if used_device not in devs:
+            devs.append(used_device)
+
+    return devs
+
+
+def translate_block_device_path(remote, device):
+    """
+    Extract the cannonized path of block devices
+    """
+    r = remote.run(args=['readlink', run.Raw('-f %s' % device)],
+                   stdout=StringIO()
+                   )
+    return r.stdout.getvalue().strip()
+
+
+def translate_block_devices_path(remote, devices):
+    """
+    Extract the cannonized path of block devices
+    """
+    devs = []
+    for device in devices:
+        device_path = translate_block_device_path(remote, device)
+        if device_path not in devs:
+            devs.append(device_path)
+
+    return devs
+
+
+def expand_dm_devices(remote, devices):
+    """
+    Extract the real device under the DM devices
+    """
+    devs = []
+    for device in devices:
+        if device.startswith("/dev/dm-"):
+            r = remote.run(args=['dmsetup', run.Raw('ls --tree -o blkdevname')],
+                           stdout=StringIO()
+                           )
+            found_dm = False
+            for line in r.stdout.getvalue().strip().split('\n'):
+                if found_dm is True:
+                    if "<dm" in line:
+                        found_dm = False
+                        break
+                    else:
+                        matching_line = re.match('.*<(.*)>.*', line, re.M | re.I)
+                        if matching_line:
+                            real_device = "/dev/%s" % matching_line.group(1)
+                            if real_device not in devs:
+                                devs.append(real_device)
+
+                if "<%s>" % device[5:] in line:
+                    found_dm = True
+
+        else:
+            devs.append(device)
+
+    return devs
+
+
 def get_scratch_devices(remote):
     """
     Read the scratch disk list from remote host

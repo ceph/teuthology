@@ -49,6 +49,72 @@ def test_sh_progress(caplog):
     t2 = datetime.strptime(records[2].asctime.split(',')[0], "%Y-%m-%d %H:%M:%S")
     assert (t2 - t1).total_seconds() > 2
 
+
+def test_get_block_devices():
+    remote = FakeRemote()
+    PASS_1 = PROC_PARTITIONS, BLOCK_DEVICES
+    PASS_2 = MIRA_PROC_PARTITIONS, MIRA_BLOCK_DEVICES
+    PASSES = PASS_1, PASS_2
+
+    for current_pass in PASSES:
+        class r():
+            class o:
+                def getvalue(self):
+                    return current_pass[0]
+            stdout = o()
+
+        remote.run = lambda **kwargs: r()
+
+        devices = misc.get_block_devices(remote)
+        assert devices == current_pass[1]
+
+
+def test_get_used_block_devices():
+    remote = FakeRemote()
+    PASS_1 = PROC_MOUNTS, USED_DEVICES
+    PASS_2 = PROC_MOUNTS_MIRA, USED_DEVICES_MIRA
+
+    for current_pass in PASS_1, PASS_2:
+        class r():
+            class o:
+                def getvalue(self):
+                    return current_pass[0]
+            stdout = o()
+
+        remote.run = lambda **kwargs: r()
+        devices = misc.get_used_block_devices(remote)
+        assert devices == current_pass[1]
+
+
+def test_translate_block_device_path():
+    remote = FakeRemote()
+    PASS_1 = USED_DEVICES, READLINK
+    PASS_2 = USED_DEVICES_MIRA, READLINK_MIRA
+    for current_pass in PASS_1, PASS_2:
+        for device in current_pass[0]:
+            class r():
+                class o:
+                    def getvalue(self):
+                        return current_pass[1][device]
+                stdout = o()
+
+            remote.run = lambda **kwargs: r()
+            assert misc.translate_block_device_path(remote, device) == current_pass[1][device]
+
+
+def test_expand_dm_devices():
+    remote = FakeRemote()
+
+    class r():
+        class o:
+            def getvalue(self):
+                return DMSETUP
+        stdout = o()
+
+    remote.run = lambda **kwargs: r()
+    assert misc.expand_dm_devices(remote, TRANSLATED_USED_DEVICES) == EXPANDED_USED_DEVICES
+
+
 def test_wait_until_osds_up():
     ctx = argparse.Namespace()
     remote = FakeRemote()
@@ -227,3 +293,85 @@ class TestIsInDict(object):
 
     def test_nonmembership_with_presence_at_lower_level(self):
         assert not misc.is_in_dict('a', 'foo', {'a':{'a': 'foo'}})
+
+PROC_PARTITIONS = '''
+major minor  #blocks  name
+
+   8        0  500107608 sda
+   8        1     204800 sda1
+   8        2  314574848 sda2
+   8        3   16777216 sda3
+   8        4          1 sda4
+   8        5  168548352 sda5
+  11        0    1048575 sr0
+ 253        0  168546304 dm-0
+'''
+BLOCK_DEVICES = ['sda', 'sda1', 'sda2', 'sda3', 'sda5', 'dm-0']
+
+MIRA_PROC_PARTITIONS = '''
+major minor  #blocks  name
+
+   1        0      65536 ram0
+   1        1      65536 ram1
+   1        2      65536 ram2
+   1        3      65536 ram3
+   1        4      65536 ram4
+   1        5      65536 ram5
+   1        6      65536 ram6
+   1        7      65536 ram7
+   1        8      65536 ram8
+   1        9      65536 ram9
+   1       10      65536 ram10
+   1       11      65536 ram11
+   1       12      65536 ram12
+   1       13      65536 ram13
+   1       14      65536 ram14
+   1       15      65536 ram15
+   8       16  976762584 sdb
+   8       17  976751303 sdb1
+   8       19      10240 sdb3
+   8       32  976762584 sdc
+   8       33    5242880 sdc1
+   8       48  976762584 sdd
+   8       64  976762584 sde
+   8       65  971518663 sde1
+   8       66    5241856 sde2
+   8       80  976762584 sdf
+   8       96  976762584 sdg
+   8      112  976762584 sdh
+   8        0  976762584 sda
+   8        1  976760832 sda1
+'''
+
+MIRA_BLOCK_DEVICES = ['sdb', 'sdb1', 'sdb3', 'sdc', 'sdc1', 'sdd', 'sde', 'sde1', 'sde2', 'sdf', 'sdg', 'sdh', 'sda', 'sda1']
+
+PROC_MOUNTS = '''
+/dev/mapper/luks-daddc2c4-1463-4d46-abc7-b15770b79f94 / btrfs rw,seclabel,relatime,ssd,space_cache,subvolid=257,subvol=/root 0 0
+/dev/sda1 /boot ext4 rw,seclabel,relatime,data=ordered 0 0
+/dev/sda2 /build btrfs rw,seclabel,relatime,ssd,space_cache,subvolid=257,subvol=/build 0 0
+'''
+
+PROC_MOUNTS_MIRA = '''
+/dev/disk/by-uuid/df552b84-1070-47da-aec3-946873ebdfba / ext4 rw,relatime,errors=remount-ro,data=ordered 0 0
+'''
+
+USED_DEVICES = ['/dev/mapper/luks-daddc2c4-1463-4d46-abc7-b15770b79f94', '/dev/sda1', '/dev/sda2']
+USED_DEVICES_MIRA = ['/dev/disk/by-uuid/df552b84-1070-47da-aec3-946873ebdfba']
+
+READLINK = {'/dev/mapper/luks-daddc2c4-1463-4d46-abc7-b15770b79f94': '/dev/dm-0',
+            '/dev/sda1': '/dev/sda1',
+            '/dev/sda2': '/dev/sda2'}
+
+READLINK_MIRA = {'dev/disk/by-uuid/df552b84-1070-47da-aec3-946873ebdfba': '/dev/sda1'}
+
+TRANSLATED_USED_DEVICES = ['/dev/dm-0', '/dev/sda1', '/dev/sda2']
+TRANSLATED_USED_DEVICES_MIRA = ['/dev/sda1']
+
+DMSETUP = '''
+luks-daddc2c4-1463-4d46-abc7-b15770b79f94 <dm-0> (253:0)
+ - <sda5> (8:5)
+luks-daddc2c4-2345-2345-acb1-b15770b79fff <dm-1> (253:1)
+ - <sdb5> (8:10)
+'''
+
+EXPANDED_USED_DEVICES = ['/dev/sda5', '/dev/sda1', '/dev/sda2']
