@@ -934,6 +934,29 @@ def expand_dm_devices(remote, devices):
     return devs
 
 
+def translate_block_UUID(remote, devices):
+    """
+    Extract the cannonized path of block devices
+    """
+    devs = []
+    r = remote.run(args=['blkid', run.Raw('')],
+                   stdout=StringIO()
+                   )
+
+    for device in devices:
+        matching_line = re.match('UUID=(.*)', device, re.M | re.I)
+        if matching_line:
+            for line in r.stdout.getvalue().strip().split('\n'):
+                if matching_line.group(1) in line:
+                    if line.split(': ')[0] not in devs:
+                        devs.append(line.split(': ')[0])
+        else:
+            if device not in devs:
+                devs.append(device)
+
+    return devs
+
+
 def get_scratch_devices(remote):
     """
     Read the scratch disk list from remote host

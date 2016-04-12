@@ -128,6 +128,21 @@ def test_get_root_device():
     assert misc.get_root_device(remote) == ROOT_DEVICE_UUID
 
 
+def test_translate_block_UUID():
+    remote = FakeRemote()
+    PASS_1 = BLKID, COMBINED_USED_DEVICES, NO_UUID_ROOT_DEVICE
+    PASS_2 = BLKID_MIRA, COMBINED_USED_DEVICES_MIRA, NO_UUID_ROOT_DEVICE_MIRA
+    for PASS in PASS_1, PASS_2, :
+        class r():
+            class o:
+                def getvalue(self):
+                    return PASS[0]
+            stdout = o()
+
+        remote.run = lambda **kwargs: r()
+        assert misc.translate_block_UUID(remote, PASS[1]) == PASS[2]
+
+
 def test_wait_until_osds_up():
     ctx = argparse.Namespace()
     remote = FakeRemote()
@@ -394,3 +409,32 @@ BOOT_IMAGE=/vmlinuz-4.4.6-300.fc23.x86_64 root=UUID=4945724f-27de-48e3-937f-c767
 '''
 
 ROOT_DEVICE_UUID = '''UUID=4945724f-27de-48e3-937f-c767f92e86a6'''
+COMBINED_USED_DEVICES = ['/dev/sda1', 'UUID=4945724f-27de-48e3-937f-c767f92e86a6']
+COMBINED_USED_DEVICES_MIRA = ['/dev/sda1', 'UUID=df552b84-1070-47da-aec3-946873ebdfba']
+
+BLKID = '''
+/dev/sda2: LABEL="buildgroup" UUID="c3d3ae17-1ece-432e-bb4b-f38bfa12e876" UUID_SUB="dd2b2031-6c8a-4f46-8f59-27153376e90d" TYPE="btrfs" PARTUUID="ee3a7940-02"
+/dev/sda3: UUID="51f0126d-0d7f-4708-b8b8-f122ac8dcf46" TYPE="swap" PARTUUID="ee3a7940-03"
+/dev/sda5: UUID="daddc2c4-1463-4d46-abc7-b15770b79f94" TYPE="crypto_LUKS" PARTUUID="ee3a7940-05"
+/dev/block/8:5: UUID="daddc2c4-1463-4d46-abc7-b15770b79f94" TYPE="crypto_LUKS" PARTUUID="ee3a7940-05"
+/dev/block/253:0: LABEL="fedora" UUID="4945724f-27de-48e3-937f-c767f92e86a6" UUID_SUB="ee1d1234-29bc-43b0-8e4f-7bfa2aa55981" TYPE="btrfs"
+/dev/block/8:1: UUID="71adc8ce-fc61-419d-82d5-0faec6d97f60" TYPE="ext4" PARTUUID="ee3a7940-01"
+/dev/dm-0: LABEL="fedora" UUID="4945724f-27de-48e3-937f-c767f92e86a6" UUID_SUB="ee1d1234-29bc-43b0-8e4f-7bfa2aa55981" TYPE="btrfs"
+/dev/mapper/luks-daddc2c4-1463-4d46-abc7-b15770b79f94: LABEL="fedora" UUID="4945724f-27de-48e3-937f-c767f92e86a6" UUID_SUB="ee1d1234-29bc-43b0-8e4f-7bfa2aa55981" TYPE="btrfs"
+/dev/sda1: UUID="71adc8ce-fc61-419d-82d5-0faec6d97f60" TYPE="ext4" PARTUUID="ee3a7940-01"
+'''
+
+NO_UUID_ROOT_DEVICE = ['/dev/sda1', '/dev/block/253:0', '/dev/dm-0', '/dev/mapper/luks-daddc2c4-1463-4d46-abc7-b15770b79f94']
+
+BLKID_MIRA = '''
+/dev/sdb1: UUID="37e3bde1-ef3a-4649-827e-acd8552ca803" TYPE="crypto_LUKS"
+/dev/sdb3: UUID="12164eb1-f0d2-4da0-b2cf-814300d4f420" TYPE="ext4"
+/dev/sdc1: UUID="e8e1fbb1-3230-43e0-be0c-1bfa88971666" TYPE="crypto_LUKS"
+/dev/sde1: UUID="2d61ce6d-edaf-4b29-839b-505b6c064474" TYPE="xfs"
+/dev/sdf: UUID="c222eb40-6083-47ec-aefb-09f1afb217c2" UUID_SUB="3da3ba22-df27-4691-bab0-79e7e26c605b" TYPE="btrfs"
+/dev/sdg: UUID="b98f1509-d729-476d-b901-d2acc760da26" UUID_SUB="c476c314-6abc-4d4b-94a4-de1a8cc007bd" TYPE="btrfs"
+/dev/sdh: UUID="57f503cf-05dd-429b-9957-3cd316db2bf0" UUID_SUB="50fe83f2-1e29-4107-82c1-319f2b935371" TYPE="btrfs"
+/dev/sdk1: UUID="df552b84-1070-47da-aec3-946873ebdfba" TYPE="ext4"
+'''
+
+NO_UUID_ROOT_DEVICE_MIRA = ['/dev/sda1', '/dev/sdk1']
