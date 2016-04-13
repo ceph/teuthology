@@ -834,6 +834,8 @@ def get_block_devices(remote):
         devices = r.stdout.getvalue().strip().split('\n')
         for device in devices:
             # Let's split the /proc/partitions in fields
+            #major minor  #blocks  name
+            #   8        0  500107608 sda
             matching_line = re.match('\s+(\d+)\s+(\d+)\s+(\d+)\s+(.*)$', device, re.M | re.I)
             if matching_line:
                 major = matching_line.group(1)
@@ -841,7 +843,16 @@ def get_block_devices(remote):
                 if int(major) in [8, 253]:
                     # Don't consider extended partitions which size = 1
                     if int(matching_line.group(3)) > 1:
-                        devs.append(matching_line.group(4))
+                        device_name = matching_line.group(4)
+                        # If we get a "dm-0", the device name should stay untouched
+                        if "-" not in device_name:
+                            # Keep only sda for sda1
+                            matching_device = re.match('([a-z]+)(\d?)', device_name, re.M | re.I)
+                            if matching_device:
+                                device_name = matching_device.group(1)
+                        if device_name not in devs:
+                            devs.append(matching_line.group(4))
+
     return devs
 
 

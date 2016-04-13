@@ -334,7 +334,7 @@ major minor  #blocks  name
   11        0    1048575 sr0
  253        0  168546304 dm-0
 '''
-BLOCK_DEVICES = ['sda', 'sda1', 'sda2', 'sda3', 'sda5', 'dm-0']
+BLOCK_DEVICES = ['sda', 'dm-0']
 
 MIRA_PROC_PARTITIONS = '''
 major minor  #blocks  name
@@ -371,7 +371,7 @@ major minor  #blocks  name
    8        1  976760832 sda1
 '''
 
-MIRA_BLOCK_DEVICES = ['sdb', 'sdb1', 'sdb3', 'sdc', 'sdc1', 'sdd', 'sde', 'sde1', 'sde2', 'sdf', 'sdg', 'sdh', 'sda', 'sda1']
+MIRA_BLOCK_DEVICES = ['sdb', 'sdc', 'sdd', 'sde', 'sdf', 'sdg', 'sdh', 'sda']
 
 PROC_MOUNTS = '''
 /dev/mapper/luks-daddc2c4-1463-4d46-abc7-b15770b79f94 / btrfs rw,seclabel,relatime,ssd,space_cache,subvolid=257,subvol=/root 0 0
