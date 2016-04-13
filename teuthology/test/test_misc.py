@@ -88,7 +88,7 @@ def test_get_used_block_devices():
 
 def test_translate_block_device_path():
     remote = FakeRemote()
-    PASS_1 = USED_DEVICES, READLINK
+    PASS_1 = USED_DEVICES_WITH_BLOCK, READLINK
     PASS_2 = USED_DEVICES_MIRA, READLINK_MIRA
     for current_pass in PASS_1, PASS_2:
         for device in current_pass[0]:
@@ -384,13 +384,15 @@ PROC_MOUNTS_MIRA = '''
 '''
 
 USED_DEVICES = ['/dev/mapper/luks-daddc2c4-1463-4d46-abc7-b15770b79f94', '/dev/sda1', '/dev/sda2']
+USED_DEVICES_WITH_BLOCK = ['/dev/block/8:1', '/dev/mapper/luks-daddc2c4-1463-4d46-abc7-b15770b79f94', '/dev/sda1', '/dev/sda2']
 USED_DEVICES_MIRA = ['/dev/disk/by-uuid/df552b84-1070-47da-aec3-946873ebdfba']
 
-READLINK = {'/dev/mapper/luks-daddc2c4-1463-4d46-abc7-b15770b79f94': '/dev/dm-0',
+READLINK = {'/dev/block/8:1': '/dev/sda1',
+            '/dev/mapper/luks-daddc2c4-1463-4d46-abc7-b15770b79f94': '/dev/dm-0',
             '/dev/sda1': '/dev/sda1',
             '/dev/sda2': '/dev/sda2'}
 
-READLINK_MIRA = {'dev/disk/by-uuid/df552b84-1070-47da-aec3-946873ebdfba': '/dev/sda1'}
+READLINK_MIRA = {'/dev/disk/by-uuid/df552b84-1070-47da-aec3-946873ebdfba': '/dev/sda1'}
 
 TRANSLATED_USED_DEVICES = ['/dev/dm-0', '/dev/sda1', '/dev/sda2']
 TRANSLATED_USED_DEVICES_MIRA = ['/dev/sda1']
