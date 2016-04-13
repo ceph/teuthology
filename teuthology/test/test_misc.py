@@ -143,6 +143,12 @@ def test_translate_block_UUID():
         assert misc.translate_block_UUID(remote, PASS[1]) == PASS[2]
 
 
+def test_partitions_to_block_device():
+    full_path = ["/dev/sda", "/dev/sdb1", "/dev/sdb", "/dev/dm-0"]
+    expected_devices = ["/dev/sda", "/dev/sdb", "/dev/dm-0"]
+    assert misc.partitions_to_block_device(full_path) == expected_devices
+
+
 def test_wait_until_osds_up():
     ctx = argparse.Namespace()
     remote = FakeRemote()

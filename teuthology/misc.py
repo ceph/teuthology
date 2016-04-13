@@ -985,6 +985,24 @@ def translate_block_UUID(remote, devices):
     return devs
 
 
+def partitions_to_block_device(devices):
+    """
+    From a list of used partitions, let's compute the list of used block devices
+    """
+    devs = []
+    for device_name in devices:
+        # /dev/dm-0 should not be touched
+        if "-" not in device_name:
+            # Extracting device name "/dev/sda1" -> "/dev/sda"
+            matching_device = re.match('(/dev/[a-z]+)(\d?)', device_name, re.M | re.I)
+            if matching_device:
+                device_name = matching_device.group(1)
+
+        if device_name not in devs:
+            devs.append(device_name)
+    return devs
+
+
 def get_scratch_devices(remote):
     """
     Read the scratch disk list from remote host
