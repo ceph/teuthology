@@ -334,7 +334,7 @@ major minor  #blocks  name
   11        0    1048575 sr0
  253        0  168546304 dm-0
 '''
-BLOCK_DEVICES = ['sda', 'dm-0']
+BLOCK_DEVICES = ['/dev/sda', '/dev/dm-0']
 
 BIG_PROC_PARTITIONS = '''
 major minor  #blocks  name
@@ -392,9 +392,15 @@ major minor  #blocks  name
   66   240    1048576 sdav
 '''
 
-BIG_BLOCK_DEVICES = ['sda','sdb','sdc','sdd','sde','sdf','sdg','sdh','sdi','sdj','sdk','sdl','sdm','sdn','sdo','sdp',
-'sdq','sdr','sds','sdt','sdu','sdv','sdw','sdx','sdy','sdz', 'sdaa','sdab','sdac','sdad','sdae','sdaf','sdag','sdah',
-'sdai','sdaj','sdak','sdal','sdam','sdan','sdao','sdap','sdaq','sdar','sdas','sdat','sdau','sdav']
+BIG_BLOCK_DEVICES = ['/dev/sda', '/dev/sdb', '/dev/sdc', '/dev/sdd', '/dev/sde', '/dev/sdf',
+                     '/dev/sdg', '/dev/sdh', '/dev/sdi', '/dev/sdj', '/dev/sdk', '/dev/sdl',
+                     '/dev/sdm', '/dev/sdn', '/dev/sdo', '/dev/sdp', '/dev/sdq', '/dev/sdr',
+                     '/dev/sds', '/dev/sdt', '/dev/sdu', '/dev/sdv', '/dev/sdw', '/dev/sdx',
+                     '/dev/sdy', '/dev/sdz',
+                     '/dev/sdaa', '/dev/sdab', '/dev/sdac', '/dev/sdad', '/dev/sdae', '/dev/sdaf',
+                     '/dev/sdag', '/dev/sdah', '/dev/sdai', '/dev/sdaj', '/dev/sdak', '/dev/sdal',
+                     '/dev/sdam', '/dev/sdan', '/dev/sdao', '/dev/sdap', '/dev/sdaq', '/dev/sdar',
+                     '/dev/sdas', '/dev/sdat', '/dev/sdau', '/dev/sdav']
 
 
 MIRA_PROC_PARTITIONS = '''
@@ -432,7 +438,7 @@ major minor  #blocks  name
    8        1  976760832 sda1
 '''
 
-MIRA_BLOCK_DEVICES = ['sdb', 'sdc', 'sdd', 'sde', 'sdf', 'sdg', 'sdh', 'sda']
+MIRA_BLOCK_DEVICES = ['/dev/sdb', '/dev/sdc', '/dev/sdd', '/dev/sde', '/dev/sdf', '/dev/sdg', '/dev/sdh', '/dev/sda']
 
 PROC_MOUNTS = '''
 /dev/mapper/luks-daddc2c4-1463-4d46-abc7-b15770b79f94 / btrfs rw,seclabel,relatime,ssd,space_cache,subvolid=257,subvol=/root 0 0

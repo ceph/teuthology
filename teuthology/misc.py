@@ -857,7 +857,7 @@ def get_block_devices(remote):
                 for num in itertools.chain(range(15, 18), range(20, 30), range(113, 117), range(240, 250), range(255, 260)):
                     exclude_list.append(num)
                 if int(major) not in exclude_list:
-                    # Don't consider extended partitions which size = 1
+                    # Only consider partitions that have a valid size
                     if int(matching_line.group(3)) > 1:
                         device_name = matching_line.group(4)
                         # If we get a "dm-0", the device name should stay untouched
@@ -866,8 +866,9 @@ def get_block_devices(remote):
                             matching_device = re.match('([a-z]+)(\d?)', device_name, re.M | re.I)
                             if matching_device:
                                 device_name = matching_device.group(1)
-                        if device_name not in devs:
-                            devs.append(matching_line.group(4))
+                        full_device_name = "/dev/%s" % device_name
+                        if full_device_name not in devs:
+                            devs.append(full_device_name)
 
     return devs
 
