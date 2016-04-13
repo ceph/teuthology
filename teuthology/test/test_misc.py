@@ -143,6 +143,13 @@ def test_translate_block_UUID():
         assert misc.translate_block_UUID(remote, PASS[1]) == PASS[2]
 
 
+def test_get_free_block_devices():
+    PASS_1 = BLOCK_DEVICES, TRANSLATED_USED_DEVICES, FREE_BLOCK_DEVICES
+    PASS_2 = MIRA_BLOCK_DEVICES, TRANSLATED_USED_DEVICES_MIRA, FREE_BLOCK_DEVICES_MIRA
+    for PASS in PASS_1, PASS_2:
+        assert sorted(misc.get_free_block_devices(PASS[0], misc.partitions_to_block_device(PASS[1]))) == sorted(PASS[2])
+
+
 def test_partitions_to_block_device():
     full_path = ["/dev/sda", "/dev/sdb1", "/dev/sdb", "/dev/dm-0"]
     expected_devices = ["/dev/sda", "/dev/sdb", "/dev/dm-0"]
@@ -513,3 +520,7 @@ BLKID_MIRA = '''
 '''
 
 NO_UUID_ROOT_DEVICE_MIRA = ['/dev/sda1', '/dev/sdk1']
+
+FREE_BLOCK_DEVICES = []
+FREE_BLOCK_DEVICES_MIRA = ['/dev/sdb', '/dev/sdc', '/dev/sdd', '/dev/sde',
+                           '/dev/sdf', '/dev/sdg', '/dev/sdh']

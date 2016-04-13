@@ -873,6 +873,14 @@ def get_block_devices(remote):
     return devs
 
 
+def get_free_block_devices(available_block_devices, used_block_devices):
+    """
+    Compute the list of free block devices by comparing the list
+    of block devices we have and the one we consider as used
+    """
+    return list(set(available_block_devices) - set(used_block_devices))
+
+
 def get_used_block_devices(remote):
     """
     From the actual mount points, let's found out
