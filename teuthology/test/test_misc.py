@@ -54,9 +54,9 @@ def test_get_block_devices():
     remote = FakeRemote()
     PASS_1 = PROC_PARTITIONS, BLOCK_DEVICES
     PASS_2 = MIRA_PROC_PARTITIONS, MIRA_BLOCK_DEVICES
-    PASSES = PASS_1, PASS_2
+    PASS_3 = BIG_PROC_PARTITIONS, BIG_BLOCK_DEVICES
 
-    for current_pass in PASSES:
+    for current_pass in PASS_1, PASS_2, PASS_3:
         class r():
             class o:
                 def getvalue(self):
@@ -335,6 +335,67 @@ major minor  #blocks  name
  253        0  168546304 dm-0
 '''
 BLOCK_DEVICES = ['sda', 'dm-0']
+
+BIG_PROC_PARTITIONS = '''
+major minor  #blocks  name
+
+   8     0   17774160 sda
+   8     1    1052226 sda1
+   8     2     208845 sda2
+   8     3   10490445 sda3
+   8    16     976576 sdb
+   8    32     976576 sdc
+   8    48     976576 sdd
+   8    64     976576 sde
+   8    80     976576 sdf
+   8    96     976576 sdg
+   8   112     976576 sdh
+   8   128     976576 sdi
+   8   144     976576 sdj
+   8   160     976576 sdk
+   8   176     976576 sdl
+   8   192     976576 sdm
+   8   208     976576 sdn
+   8   224     976576 sdo
+   8   240     976576 sdp
+  65     0     976576 sdq
+  65    16    1048576 sdr
+  65    32    1048576 sds
+  65    48    1048576 sdt
+  65    64    1048576 sdu
+  65    80    1048576 sdv
+  65    96    1048576 sdw
+  65   112    1048576 sdx
+  65   128    1048576 sdy
+  65   144    1048576 sdz
+  65   160    1048576 sdaa
+  65   176    1048576 sdab
+  65   192    1048576 sdac
+  65   208    1048576 sdad
+  65   224    1048576 sdae
+  65   240    1048576 sdaf
+  66     0    1048576 sdag
+  66    16    1048576 sdah
+  66    32    1048576 sdai
+  66    48    1048576 sdaj
+  66    64    1048576 sdak
+  66    80    1048576 sdal
+  66    96    1048576 sdam
+  66   112    1048576 sdan
+  66   128    1048576 sdao
+  66   144    1048576 sdap
+  66   160    1048576 sdaq
+  66   176    1048576 sdar
+  66   192    1048576 sdas
+  66   208    1048576 sdat
+  66   224    1048576 sdau
+  66   240    1048576 sdav
+'''
+
+BIG_BLOCK_DEVICES = ['sda','sdb','sdc','sdd','sde','sdf','sdg','sdh','sdi','sdj','sdk','sdl','sdm','sdn','sdo','sdp',
+'sdq','sdr','sds','sdt','sdu','sdv','sdw','sdx','sdy','sdz', 'sdaa','sdab','sdac','sdad','sdae','sdaf','sdag','sdah',
+'sdai','sdaj','sdak','sdal','sdam','sdan','sdao','sdap','sdaq','sdar','sdas','sdat','sdau','sdav']
+
 
 MIRA_PROC_PARTITIONS = '''
 major minor  #blocks  name

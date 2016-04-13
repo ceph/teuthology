@@ -21,6 +21,7 @@ import json
 import re
 import tempfile
 import pprint
+import itertools
 
 from teuthology import safepath
 from teuthology.exceptions import (CommandCrashedError, CommandFailedError,
@@ -839,8 +840,23 @@ def get_block_devices(remote):
             matching_line = re.match('\s+(\d+)\s+(\d+)\s+(\d+)\s+(.*)$', device, re.M | re.I)
             if matching_line:
                 major = matching_line.group(1)
-                # We only accept major 8 (sdx) or 253 (dm, virtio)
-                if int(major) in [8, 253]:
+                # We remove some major we are not interested in
+                # 1 = ram, 2 = floppy, 4 = virtual, 7 = loopback
+                # 11 = scsi cdrom, 15-18,20,23-30,32-34=cdroms
+                # 35 = slow ramdisk, 42 = sample, 43=nbd , 44=ftl
+                # 46,56,57=cdrom, 60-63:experimental, 88-91=cdrom
+                # 93:96=flash, 103=audit, 113=cdrom, 114=bios, 115=nwfs
+                # 116=nvram, 117=emvs, 120-127: experimental, 144-146=expension,
+                # 147=drbd, 179=mmc, 180=usb, 199=veritas, 240-254=experimental
+                # but 253 & 254 are known to have dm devices ...
+                # 255=reserved, 256-260)=flash
+                exclude_list = [1, 2, 4, 7, 11, 32, 33, 34, 35, 42,
+                                43, 44, 46, 56, 57, 60, 61, 62, 63, 88, 89, 90, 91, 93,
+                                96, 103, 120, 121, 122, 123, 124, 125, 126, 127, 144, 145,
+                                146, 147, 179, 180, 199]
+                for num in itertools.chain(range(15, 18), range(20, 30), range(113, 117), range(240, 250), range(255, 260)):
+                    exclude_list.append(num)
+                if int(major) not in exclude_list:
                     # Don't consider extended partitions which size = 1
                     if int(matching_line.group(3)) > 1:
                         device_name = matching_line.group(4)
