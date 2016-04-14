@@ -1011,6 +1011,32 @@ def partitions_to_block_device(devices):
     return devs
 
 
+def is_block_device_valid(remote, device):
+    """
+    Check if a block device is reachable
+    """
+    try:
+        remote.run(args=[  # readable
+                           'sudo', 'dd', 'if=%s' % device, 'of=/dev/null', 'bs=1M', 'count=1', 'iflag=direct']
+                   )
+        return True
+    except:
+        log.warn("is_block_device_valid: %s is not reachable" % device)
+        return False
+
+
+def remove_invalid_block_devices(remote, devices):
+    """
+    Remove the invalid block devices from a list of devices
+    """
+    devs = []
+    for device in devices:
+        if is_block_device_valid(remote, device) is True:
+            if device not in devs:
+                devs.append(device)
+    return devs
+
+
 def get_scratch_devices(remote):
     """
     Read the scratch disk list from remote host
