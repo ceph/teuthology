@@ -1039,51 +1039,49 @@ def remove_invalid_block_devices(remote, devices):
 
 def get_scratch_devices(remote):
     """
-    Read the scratch disk list from remote host
+    Extract the list of free block device from a host
     """
-    devs = []
-    try:
-        file_data = get_file(remote, "/scratch_devs")
-        devs = file_data.split()
-    except Exception:
-        r = remote.run(
-            args=['ls', run.Raw('/dev/[sv]d?')],
-            stdout=StringIO()
-        )
-        devs = r.stdout.getvalue().strip().split('\n')
+    # First let's find the used block devices
+    used_block_devices = get_used_block_devices(remote)
+    used_block_devices.append(get_root_device(remote))
+    translated_uuids = translate_block_UUID(remote, used_block_devices)
+    expanded_block_devices = expand_dm_devices(remote, translated_uuids)
+    translated_block_devices = translate_block_devices_path(remote, expanded_block_devices)
+    final_used_block_devices = partitions_to_block_device(translated_block_devices)
 
-    # Remove root device (vm guests) from the disk list
-    for dev in devs:
-        if 'vda' in dev:
-            devs.remove(dev)
-            log.warn("Removing root device: %s from device list" % dev)
+    # If we didn't got a single used device,
+    if len(final_used_block_devices) == 0:
+        log.error("Cannot detect any used device ! That will surely damage data so we report no free block devices.")
+        # We return an empty list to avoid listing a mis-detected used device
+        return []
 
-    log.debug('devs={d}'.format(d=devs))
+    # Then compute the list of available of block devices
+    all_block_devices = get_block_devices(remote)
+    expanded_all_block_devices = expand_dm_devices(remote, all_block_devices)
+    translated_all_block_devices = translate_block_devices_path(remote, expanded_all_block_devices)
+    final_all_block_devices = partitions_to_block_device(translated_all_block_devices)
 
-    retval = []
-    for dev in devs:
-        try:
-            # FIXME: Split this into multiple calls.
-            remote.run(
-                args=[
-                    # node exists
-                    'stat',
-                    dev,
-                    run.Raw('&&'),
-                    # readable
-                    'sudo', 'dd', 'if=%s' % dev, 'of=/dev/null', 'count=1',
-                    run.Raw('&&'),
-                    # not mounted
-                    run.Raw('!'),
-                    'mount',
-                    run.Raw('|'),
-                    'grep', '-q', dev,
-                ]
-            )
-            retval.append(dev)
-        except CommandFailedError:
-            log.debug("get_scratch_devices: %s is in use" % dev)
-    return retval
+    # Compute the intersection between the used & avail block devices.
+    # We shall have at lieast one intersection
+    if len(list(set(final_used_block_devices) &
+                set(final_all_block_devices))) == 0:
+        log.error("No used device cannot be found in the list of available\
+                devices. That's not a normal case, returning no free block\
+                devices to avoid any damage.")
+        log.error('block_device_list={d}'.format(d=final_all_block_devices))
+        log.error('used_block_device_list={d}'.format(d=final_used_block_devices))
+        # We return an empty list to avoid listing a mis-detected used device
+        return []
+
+    # Remove the used block devices from the list of available block
+    free_block_devices = get_free_block_devices(final_all_block_devices, final_used_block_devices)
+
+    # And remove any device which is not reachable
+    free_block_devices = remove_invalid_block_devices(remote, free_block_devices)
+
+    log.debug('devs={d}'.format(d=free_block_devices))
+
+    return sorted(free_block_devices)
 
 
 def wait_until_healthy(ctx, remote):
