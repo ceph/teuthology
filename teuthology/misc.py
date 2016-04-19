@@ -824,58 +824,54 @@ def get_block_devices(remote):
     List the available block devices on the system
     """
     devs = []
-    try:
-        file_data = get_file(remote, "/scratch_devs")
-        devs = file_data.split()
-    except Exception:
-        r = remote.run(
-            args=['cat', run.Raw('/proc/partitions')],
-            stdout=StringIO()
-        )
-        devices = r.stdout.getvalue().strip().split('\n')
-        for device in devices:
-            # Let's split the /proc/partitions in fields
-            #major minor  #blocks  name
-            #   8        0  500107608 sda
-            matching_line = re.match('\s+(\d+)\s+(\d+)\s+(\d+)\s+(.*)$', device, re.M | re.I)
-            if matching_line:
-                major = matching_line.group(1)
-                # We remove some major we are not interested in
-                # 1 = ram, 2 = floppy, 4 = virtual, 7 = loopback
-                # 11 = scsi cdrom, 15-18,20,23-30,32-34=cdroms
-                # 35 = slow ramdisk, 42 = sample, 43=nbd , 44=ftl
-                # 46,56,57=cdrom, 60-63:experimental, 88-91=cdrom
-                # 93:96=flash, 103=audit, 113=cdrom, 114=bios, 115=nwfs
-                # 116=nvram, 117=emvs, 120-127: experimental, 144-146=expension,
-                # 147=drbd, 179=mmc, 180=usb, 199=veritas, 240-254=experimental
-                # but 253 & 254 are known to have dm devices ...
-                # 255=reserved, 256-260)=flash
-                exclude_list = [1, 2, 4, 7, 11, 32, 33, 34, 35, 42,
-                                43, 44, 46, 56, 57, 60, 61, 62, 63, 88, 89, 90, 91, 93,
-                                96, 103, 120, 121, 122, 123, 124, 125, 126, 127, 144, 145,
-                                146, 147, 179, 180, 199]
-                for num in itertools.chain(range(15, 18), range(20, 30), range(113, 117), range(240, 250), range(255, 258)):
-                    exclude_list.append(num)
-                if int(major) not in exclude_list:
-                    # Only consider partitions that have a valid size
-                    if int(matching_line.group(3)) > 1:
-                        device_name = matching_line.group(4)
-                        # If we get a "dm-0", the device name should stay untouched
-                        if "-" not in device_name:
-                            # Search for nvme devices
-                            # Keep nvme0n0 for nvme0n1p1
-                            matching_device = re.match('(nvme\d*n\d*)(p\d*)?', device_name, re.M | re.I)
+    r = remote.run(
+        args=['cat', run.Raw('/proc/partitions')],
+        stdout=StringIO()
+    )
+    devices = r.stdout.getvalue().strip().split('\n')
+    for device in devices:
+        # Let's split the /proc/partitions in fields
+        #major minor  #blocks  name
+        #   8        0  500107608 sda
+        matching_line = re.match('\s+(\d+)\s+(\d+)\s+(\d+)\s+(.*)$', device, re.M | re.I)
+        if matching_line:
+            major = matching_line.group(1)
+            # We remove some major we are not interested in
+            # 1 = ram, 2 = floppy, 4 = virtual, 7 = loopback
+            # 11 = scsi cdrom, 15-18,20,23-30,32-34=cdroms
+            # 35 = slow ramdisk, 42 = sample, 43=nbd , 44=ftl
+            # 46,56,57=cdrom, 60-63:experimental, 88-91=cdrom
+            # 93:96=flash, 103=audit, 113=cdrom, 114=bios, 115=nwfs
+            # 116=nvram, 117=emvs, 120-127: experimental, 144-146=expension,
+            # 147=drbd, 179=mmc, 180=usb, 199=veritas, 240-254=experimental
+            # but 253 & 254 are known to have dm devices ...
+            # 255=reserved, 256-260)=flash
+            exclude_list = [1, 2, 4, 7, 11, 32, 33, 34, 35, 42,
+                            43, 44, 46, 56, 57, 60, 61, 62, 63, 88, 89, 90, 91, 93,
+                            96, 103, 120, 121, 122, 123, 124, 125, 126, 127, 144, 145,
+                            146, 147, 179, 180, 199]
+            for num in itertools.chain(range(15, 18), range(20, 30), range(113, 117), range(240, 250), range(255, 258)):
+                exclude_list.append(num)
+            if int(major) not in exclude_list:
+                # Only consider partitions that have a valid size
+                if int(matching_line.group(3)) > 1:
+                    device_name = matching_line.group(4)
+                    # If we get a "dm-0", the device name should stay untouched
+                    if "-" not in device_name:
+                        # Search for nvme devices
+                        # Keep nvme0n0 for nvme0n1p1
+                        matching_device = re.match('(nvme\d*n\d*)(p\d*)?', device_name, re.M | re.I)
+                        if matching_device:
+                            device_name = matching_device.group(1)
+                        else:
+                            # Keep only sda for sda1
+                            matching_device = re.match('([a-z]+)(\d?)', device_name, re.M | re.I)
                             if matching_device:
                                 device_name = matching_device.group(1)
-                            else:
-                                # Keep only sda for sda1
-                                matching_device = re.match('([a-z]+)(\d?)', device_name, re.M | re.I)
-                                if matching_device:
-                                    device_name = matching_device.group(1)
 
-                        full_device_name = "/dev/%s" % device_name
-                        if full_device_name not in devs:
-                            devs.append(full_device_name)
+                    full_device_name = "/dev/%s" % device_name
+                    if full_device_name not in devs:
+                        devs.append(full_device_name)
 
     return devs
 
@@ -1054,40 +1050,45 @@ def get_scratch_devices(remote):
     """
     Extract the list of free block device from a host
     """
-    # First let's find the used block devices
-    used_block_devices = get_used_block_devices(remote)
-    used_block_devices.append(get_root_device(remote))
-    translated_uuids = translate_block_UUID(remote, used_block_devices)
-    expanded_block_devices = expand_dm_devices(remote, translated_uuids)
-    translated_block_devices = translate_block_devices_path(remote, expanded_block_devices)
-    final_used_block_devices = partitions_to_block_device(translated_block_devices)
+    free_block_devices = []
+    try:
+        file_data = get_file(remote, "/scratch_devs")
+        free_block_devices = file_data.split()
+    except Exception:
+        # First let's find the used block devices
+        used_block_devices = get_used_block_devices(remote)
+        used_block_devices.append(get_root_device(remote))
+        translated_uuids = translate_block_UUID(remote, used_block_devices)
+        expanded_block_devices = expand_dm_devices(remote, translated_uuids)
+        translated_block_devices = translate_block_devices_path(remote, expanded_block_devices)
+        final_used_block_devices = partitions_to_block_device(translated_block_devices)
 
-    # If we didn't got a single used device,
-    if len(final_used_block_devices) == 0:
-        log.error("Cannot detect any used device ! That will surely damage data so we report no free block devices.")
-        # We return an empty list to avoid listing a mis-detected used device
-        return []
+        # If we didn't got a single used device,
+        if len(final_used_block_devices) == 0:
+            log.error("Cannot detect any used device ! That will surely damage data so we report no free block devices.")
+            # We return an empty list to avoid listing a mis-detected used device
+            return []
 
-    # Then compute the list of available of block devices
-    all_block_devices = get_block_devices(remote)
-    expanded_all_block_devices = expand_dm_devices(remote, all_block_devices)
-    translated_all_block_devices = translate_block_devices_path(remote, expanded_all_block_devices)
-    final_all_block_devices = partitions_to_block_device(translated_all_block_devices)
+        # Then compute the list of available of block devices
+        all_block_devices = get_block_devices(remote)
+        expanded_all_block_devices = expand_dm_devices(remote, all_block_devices)
+        translated_all_block_devices = translate_block_devices_path(remote, expanded_all_block_devices)
+        final_all_block_devices = partitions_to_block_device(translated_all_block_devices)
 
-    # Compute the intersection between the used & avail block devices.
-    # We shall have at lieast one intersection
-    if len(list(set(final_used_block_devices) &
-                set(final_all_block_devices))) == 0:
-        log.error("No used device cannot be found in the list of available\
-                devices. That's not a normal case, returning no free block\
-                devices to avoid any damage.")
-        log.error('block_device_list={d}'.format(d=final_all_block_devices))
-        log.error('used_block_device_list={d}'.format(d=final_used_block_devices))
-        # We return an empty list to avoid listing a mis-detected used device
-        return []
+        # Compute the intersection between the used & avail block devices.
+        # We shall have at lieast one intersection
+        if len(list(set(final_all_block_devices) &
+                    set(final_all_block_devices))) == 0:
+            log.error("No used device cannot be found in the list of available"\
+                      "devices. That's not a normal case, returning no free block"\
+                      "devices to avoid any damage.")
+            log.error('block_device_list={d}'.format(d=final_all_block_devices))
+            log.error('used_block_device_list={d}'.format(d=final_used_block_devices))
+            # We return an empty list to avoid listing a mis-detected used device
+            return []
 
-    # Remove the used block devices from the list of available block
-    free_block_devices = get_free_block_devices(final_all_block_devices, final_used_block_devices)
+        # Remove the used block devices from the list of available block
+        free_block_devices = get_free_block_devices(final_all_block_devices, final_used_block_devices)
 
     # And remove any device which is not reachable
     free_block_devices = remove_invalid_block_devices(remote, free_block_devices)
