@@ -55,8 +55,9 @@ def test_get_block_devices():
     PASS_1 = PROC_PARTITIONS, BLOCK_DEVICES
     PASS_2 = MIRA_PROC_PARTITIONS, MIRA_BLOCK_DEVICES
     PASS_3 = BIG_PROC_PARTITIONS, BIG_BLOCK_DEVICES
+    PASS_4 = NVME_PROC_PARTITIONS, NVME_BLOCK_DEVICES
 
-    for current_pass in PASS_1, PASS_2, PASS_3:
+    for current_pass in PASS_1, PASS_2, PASS_3, PASS_4:
         class r():
             class o:
                 def getvalue(self):
@@ -151,8 +152,8 @@ def test_get_free_block_devices():
 
 
 def test_partitions_to_block_device():
-    full_path = ["/dev/sda", "/dev/sdb1", "/dev/sdb", "/dev/dm-0"]
-    expected_devices = ["/dev/sda", "/dev/sdb", "/dev/dm-0"]
+    full_path = ["/dev/sda", "/dev/sdb1", "/dev/sdb", "/dev/dm-0", "/dev/nvme0n1p1", "/dev/nvme0n1"]
+    expected_devices = ["/dev/sda", "/dev/sdb", "/dev/dm-0", "/dev/nvme0n1"]
     assert misc.partitions_to_block_device(full_path) == expected_devices
 
 
@@ -348,6 +349,19 @@ major minor  #blocks  name
  253        0  168546304 dm-0
 '''
 BLOCK_DEVICES = ['/dev/sda', '/dev/dm-0']
+
+NVME_PROC_PARTITIONS = '''
+major minor  #blocks  name
+
+ 259        0  390711384 nvme0n1
+ 259        1   97677312 nvme0n1p1
+ 259        2   97677312 nvme0n1p2
+ 259        3   97678336 nvme0n1p3
+ 259        4   97677312 nvme0n1p4
+   8        0  976762584 sda
+   8        1  976760832 sda1
+'''
+NVME_BLOCK_DEVICES = ['/dev/nvme0n1', '/dev/sda']
 
 BIG_PROC_PARTITIONS = '''
 major minor  #blocks  name

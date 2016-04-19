@@ -854,7 +854,7 @@ def get_block_devices(remote):
                                 43, 44, 46, 56, 57, 60, 61, 62, 63, 88, 89, 90, 91, 93,
                                 96, 103, 120, 121, 122, 123, 124, 125, 126, 127, 144, 145,
                                 146, 147, 179, 180, 199]
-                for num in itertools.chain(range(15, 18), range(20, 30), range(113, 117), range(240, 250), range(255, 260)):
+                for num in itertools.chain(range(15, 18), range(20, 30), range(113, 117), range(240, 250), range(255, 258)):
                     exclude_list.append(num)
                 if int(major) not in exclude_list:
                     # Only consider partitions that have a valid size
@@ -862,10 +862,17 @@ def get_block_devices(remote):
                         device_name = matching_line.group(4)
                         # If we get a "dm-0", the device name should stay untouched
                         if "-" not in device_name:
-                            # Keep only sda for sda1
-                            matching_device = re.match('([a-z]+)(\d?)', device_name, re.M | re.I)
+                            # Search for nvme devices
+                            # Keep nvme0n0 for nvme0n1p1
+                            matching_device = re.match('(nvme\d*n\d*)(p\d*)?', device_name, re.M | re.I)
                             if matching_device:
                                 device_name = matching_device.group(1)
+                            else:
+                                # Keep only sda for sda1
+                                matching_device = re.match('([a-z]+)(\d?)', device_name, re.M | re.I)
+                                if matching_device:
+                                    device_name = matching_device.group(1)
+
                         full_device_name = "/dev/%s" % device_name
                         if full_device_name not in devs:
                             devs.append(full_device_name)
@@ -1001,10 +1008,16 @@ def partitions_to_block_device(devices):
     for device_name in devices:
         # /dev/dm-0 should not be touched
         if "-" not in device_name:
-            # Extracting device name "/dev/sda1" -> "/dev/sda"
-            matching_device = re.match('(/dev/[a-z]+)(\d?)', device_name, re.M | re.I)
+            # Search for nvme devices
+            # Keep /dev/nvme0n0 for /dev/nvme0n1p1
+            matching_device = re.match('(/dev/nvme\d*n\d*)(p\d*)?', device_name, re.M | re.I)
             if matching_device:
                 device_name = matching_device.group(1)
+            else:
+                # Extracting device name "/dev/sda1" -> "/dev/sda"
+                matching_device = re.match('(/dev/[a-z]+)(\d?)', device_name, re.M | re.I)
+                if matching_device:
+                    device_name = matching_device.group(1)
 
         if device_name not in devs:
             devs.append(device_name)
