@@ -117,6 +117,10 @@ Darwin)
     ;;
 esac
 
+# Before we use/setup virtualenv, make sure the version is latest
+# some old version might meet some problems like pip update check
+pip install --upgrade virtualenv
+
 # Forcibly remove old virtualenvs which used system site-packages
 if [ -e ./virtualenv ]  && [ ! -e ./virtualenv/lib/python2.7/no-global-site-packages.txt ]; then
     echo "Removing old virtualenv because it uses system site-packages"
