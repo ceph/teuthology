@@ -24,7 +24,6 @@ from .misc import decanonicalize_hostname
 from .misc import merge_configs
 from .misc import get_testdir
 from .misc import get_user
-from .misc import reconnect
 from .misc import sh
 from .parallel import parallel
 from .task import install as install_task
@@ -100,6 +99,26 @@ def kill_hadoop(ctx):
             ], check_status=False, timeout=60)
 
 
+def find_kernel_mounts(ctx):
+    log.info('Looking for kernel mounts to handle...')
+    remotes_with_kernel_mounts = list()
+    for remote in ctx.cluster.remotes.iterkeys():
+        try:
+            remote.run(
+                args=[
+                    'grep', '-q', ' ceph ', '/etc/mtab',
+                    run.Raw('||'),
+                    'grep', '-q', '^/dev/rbd', '/etc/mtab',
+                ], timeout=180
+            )
+            log.debug('kernel mount exists on %s', remote.name)
+            remotes_with_kernel_mounts.append(remote)
+        except run.CommandFailedError:  # no mounts!
+            log.debug('no kernel mount on %s', remote.name)
+
+    return remotes_with_kernel_mounts
+
+
 def remove_kernel_mounts(ctx):
     """
     properly we should be able to just do a forced unmount,
@@ -155,12 +174,11 @@ def remove_osd_tmpfs(ctx):
     )
 
 
-def reboot(ctx, remotes):
-    nodes = {}
+def reboot(ctx, remotes, consoles):
     for remote in remotes:
         log.info('rebooting %s', remote.name)
         try:
-            proc = remote.run(
+            remote.run(
                 args=[
                     'sync',
                     run.Raw('&'),
@@ -172,15 +190,30 @@ def reboot(ctx, remotes):
                 )
         except Exception:
             log.exception('ignoring exception during reboot command')
-        nodes[remote] = proc
-        # we just ignore these procs because reboot -f doesn't actually
-        # send anything back to the ssh client!
-        # for remote, proc in nodes.iteritems():
-        # proc.wait()
-    if remotes:
+    for remote in remotes:
+        starttime = time.time()
         log.info('waiting for nodes to reboot')
-        time.sleep(8)  # if we try and reconnect too quickly, it succeeds!
-        reconnect(ctx, 480)  # allow 8 minutes for the reboots
+        time.sleep(20)  # if we try and reconnect too quickly, it succeeds!
+        console_name = remote.name.split('@')[-1]
+        success = remote.reconnect(timeout=40)
+        timeout = 480
+        while not success:
+            if success:
+                log.info("Node %s is UP", console_name)
+                break
+            else:
+                if time.time() - starttime > timeout:
+                    log.info("Reboot failed on node, trying powercycle")
+                    log.info("Powercycle node %s", console_name)
+                    remote_console = consoles[console_name]
+                    remote_console.power_cycle()
+                    log.info("Reconnecting to node %s in 20 seconds after powercycle",
+                             console_name)
+                    time.sleep(20)  # bios to catchup
+                    remote.reconnect(timeout=480)
+            time.sleep(20)
+            log.info("Trying to reconnect to %s", console_name)
+            success = remote.reconnect(timeout=40)
 
 
 def reset_syslog_dir(ctx):
@@ -658,6 +691,7 @@ def nuke_helper(ctx, should_unlock):
             return
     log.debug('shortname: %s' % shortname)
     log.debug('{ctx}'.format(ctx=ctx))
+    consoles = dict()
     if (not ctx.noipmi and 'ipmi_user' in config and
             'vpm' not in shortname):
         console = orchestra.remote.getRemoteConsole(
@@ -665,6 +699,7 @@ def nuke_helper(ctx, should_unlock):
             ipmiuser=config['ipmi_user'],
             ipmipass=config['ipmi_password'],
             ipmidomain=config['ipmi_domain'])
+        consoles[host] = console
         cname = '{host}.{domain}'.format(
             host=shortname,
             domain=config['ipmi_domain'])
@@ -697,11 +732,20 @@ def nuke_helper(ctx, should_unlock):
     log.info('All daemons killed.')
 
     remotes = ctx.cluster.remotes.keys()
-    reboot(ctx, remotes)
-    #shutdown daemons again incase of startup
-    log.info('Stop daemons after restart...')
-    shutdown_daemons(ctx)
-    log.info('All daemons killed.')
+    remotes_with_kernel_mounts = find_kernel_mounts(ctx)
+
+    if ctx.reboot_all:
+        log.info("Rebooting nodes due to reboot-all flag")
+        reboot(ctx, remotes, consoles)
+        # shutdown daemons again incase of startup
+        log.info('Stop daemons after restart...')
+        shutdown_daemons(ctx)
+        log.info('All daemons killed.')
+    elif remotes_with_kernel_mounts:
+        log.info("Rebooting nodes which has kernel mounts")
+        reboot(ctx, remotes_with_kernel_mounts)
+    else:
+        log.info("Not rebooting nodes")
     log.info('Unmount any osd data directories...')
     remove_osd_mounts(ctx)
     log.info('Unmount any osd tmpfs dirs...')
