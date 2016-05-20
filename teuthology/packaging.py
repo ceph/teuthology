@@ -577,7 +577,7 @@ class GitbuilderProject(object):
         if distro in ('centos', 'rhel'):
             distro = "centos"
         elif distro == "fedora":
-            distro = "fc"
+            distro = "fedora"
         elif distro == "opensuse":
             distro = "opensuse"
         elif distro == "sle":
