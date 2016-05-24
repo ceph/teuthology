@@ -167,3 +167,7 @@ class SkipJob(Exception):
     be skipped.
     """
     pass
+
+
+class MaxWhileTries(Exception):
+    pass
