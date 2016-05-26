@@ -694,7 +694,7 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
 
         select = None
         if self.get_provider() == 'ovh':
-            select = '^(vps|eg)-'
+            select = '^(vps|hg)-.*-ssd'
         return super(TeuthologyOpenStack, self).flavor(hint, arch, select)
 
     def get_user_data(self):
