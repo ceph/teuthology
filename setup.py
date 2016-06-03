@@ -60,7 +60,9 @@ setup(
                       'configobj',
                       'six >= 1.9', # python-openstackclient won't work properly with less
                       'httplib2',
-                      'paramiko',
+                      # 2.0.0 switched to cryptography, which causes
+                      # http://tracker.ceph.com/issues/16142
+                      'paramiko == 1.17.0',
                       'pexpect',
                       'requests',
                       'raven',
