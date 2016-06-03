@@ -3,7 +3,7 @@
 Installation and setup
 ======================
 
-Ubuntu & Fedora
+Ubuntu & Debian & Redhat Enterprise Linux & CentOS & Fedora & SUSE Linux
 ---------------
 
 A bootstrap script is provided that will do everything for you assuming
