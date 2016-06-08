@@ -13,22 +13,22 @@ usage:
 Reset test machines
 
 optional arguments:
-  -h, --help            show this help message and exit
-  -v, --verbose         be more verbose
+  -h, --help            Show this help message and exit
+  -v, --verbose         Be more verbose
   -t CONFIG [CONFIG ...], --targets CONFIG [CONFIG ...]
-                        yaml config containing machines to nuke
+                        Yaml config containing machines to nuke
   -a DIR, --archive DIR
-                        archive path for a job to kill and nuke
-  --stale               attempt to find and nuke 'stale' machines
+                        Archive path for a job to kill and nuke
+  --stale               Attempt to find and nuke 'stale' machines
                         (e.g. locked by jobs that are no longer running)
-  --stale-openstack     nuke 'stale' OpenStack instances and volumes
+  --stale-openstack     Nuke 'stale' OpenStack instances and volumes
                         and unlock OpenStack targets with no instance
   --dry-run             Don't actually nuke anything; just print the list of
                         targets that would be nuked
-  --owner OWNER         job owner
-  -p PID, --pid PID     pid of the process to be killed
-  -r, --reboot-all      reboot all machines
-  -s, --synch-clocks    synchronize clocks on all machines
+  --owner OWNER         Job owner
+  -p PID, --pid PID     Pid of the process to be killed
+  -r, --reboot-all      Reboot all machines
+  -s, --synch-clocks    Synchronize clocks on all machines
   -u, --unlock          Unlock each successfully nuked machine, and output
                         targets thatcould not be nuked.
   -n NAME, --name NAME  Name of run to cleanup

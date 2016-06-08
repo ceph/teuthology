@@ -13,9 +13,9 @@ usage: teuthology-update-inventory -h
 Update the given nodes' inventory information on the lock server
 
 
-  -h, --help            show this help message and exit
-  -v, --verbose         be more verbose
-  REMOTE                hostnames of machines whose information to update
+  -h, --help            Show this help message and exit
+  -v, --verbose         Be more verbose
+  REMOTE                Hostnames of machines whose information to update
 
 """
 

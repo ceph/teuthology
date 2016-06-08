@@ -12,7 +12,7 @@ usage:
 Submit test results to a web service
 
 optional arguments:
-  -h, --help            show this help message and exit
+  -h, --help            Show this help message and exit
   -a ARCHIVE, --archive ARCHIVE
                         The base archive directory
                         [default: {archive_base}]
@@ -33,7 +33,7 @@ optional arguments:
                         behavior.
   -D, --dead            Mark all given jobs (or entire runs) with status
                         'dead'. Implies --refresh.
-  -v, --verbose         be more verbose
+  -v, --verbose         Be more verbose
 """.format(archive_base=teuthology.config.config.archive_base)
 
 

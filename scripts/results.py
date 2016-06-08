@@ -4,14 +4,14 @@ usage: teuthology-results [-h] [-v] [--dry-run] [--email EMAIL] [--timeout TIMEO
 Email teuthology suite results
 
 optional arguments:
-  -h, --help         show this help message and exit
-  -v, --verbose      be more verbose
+  -h, --help         Show this help message and exit
+  -v, --verbose      Se more verbose
   --dry-run          Instead of sending the email, just print it
-  --email EMAIL      address to email test failures to
-  --timeout TIMEOUT  how many seconds to wait for all tests to finish
+  --email EMAIL      Address to email test failures to
+  --timeout TIMEOUT  How many seconds to wait for all tests to finish
                      [default: 0]
-  --archive-dir DIR  path under which results for the suite are stored
-  --name NAME        name of the suite
+  --archive-dir DIR  Path under which results for the suite are stored
+  --name NAME        Name of the suite
 """
 import docopt
 import teuthology.results

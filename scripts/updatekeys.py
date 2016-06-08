@@ -11,7 +11,7 @@ Update any hostkeys that have changed. You can list specific machines to run
 on, or use -a to check all of them automatically.
 
 positional arguments:
-  MACHINES              hosts to check for updated keys
+  MACHINES              Hosts to check for updated keys
 
 optional arguments:
   -h, --help            Show this help message and exit

@@ -35,7 +35,7 @@ def parse_args(argv):
         '-v', '--verbose',
         action='store_true',
         default=False,
-        help='be more verbose',
+        help='Be more verbose',
     )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
@@ -63,59 +63,59 @@ def parse_args(argv):
         '--lock',
         action='store_true',
         default=False,
-        help='lock particular machines',
+        help='Lock particular machines',
     )
     group.add_argument(
         '--unlock',
         action='store_true',
         default=False,
-        help='unlock particular machines',
+        help='Unlock particular machines',
     )
     group.add_argument(
         '--lock-many',
         dest='num_to_lock',
         type=_positive_int,
-        help='lock this many machines',
+        help='Lock this many machines',
     )
     group.add_argument(
         '--update',
         action='store_true',
         default=False,
-        help='update the description or status of some machines',
+        help='Update the description or status of some machines',
     )
     group.add_argument(
         '--summary',
         action='store_true',
         default=False,
-        help='summarize locked-machine counts by owner',
+        help='Summarize locked-machine counts by owner',
     )
     parser.add_argument(
         '-a', '--all',
         action='store_true',
         default=False,
-        help='list all machines, not just those owned by you',
+        help='List all machines, not just those owned by you',
     )
     parser.add_argument(
         '--owner',
         default=None,
-        help='owner of the lock(s) (must match to unlock a machine)',
+        help='Owner of the lock(s) (must match to unlock a machine)',
     )
     parser.add_argument(
         '-f',
         action='store_true',
         default=False,
-        help="don't exit after the first error, continue locking or " +
+        help="Don't exit after the first error, continue locking or " +
         "unlocking other machines",
     )
     parser.add_argument(
         '--desc',
         default=None,
-        help='lock description',
+        help='Lock description',
     )
     parser.add_argument(
         '--desc-pattern',
         default=None,
-        help='lock description',
+        help='Lock description',
     )
     parser.add_argument(
         '--machine-type',
@@ -127,26 +127,26 @@ def parse_args(argv):
         '--status',
         default=None,
         choices=['up', 'down'],
-        help='whether a machine is usable for testing',
+        help='Whether a machine is usable for testing',
     )
     parser.add_argument(
         '--locked',
         default=None,
         choices=['true', 'false'],
-        help='whether a machine is locked',
+        help='Whether a machine is locked',
     )
     parser.add_argument(
         '-t', '--targets',
         dest='targets',
         default=None,
-        help='input yaml containing targets',
+        help='Input yaml containing targets',
     )
     parser.add_argument(
         'machines',
         metavar='MACHINE',
         default=[],
         nargs='*',
-        help='machines to operate on',
+        help='Machines to operate on',
     )
     parser.add_argument(
         '--os-type',
@@ -161,7 +161,7 @@ def parse_args(argv):
     parser.add_argument(
         '--arch',
         default=None,
-        help='architecture (x86_64, i386, armv7, arm64)',
+        help='Architecture (x86_64, i386, armv7, arm64)',
     )
     parser.add_argument(
         '--json-query',
