@@ -60,6 +60,7 @@ def main(args):
     priority = int(args['--priority'])
     num = int(args['--num'])
     owner = args['--owner']
+    user = args['--user']
     email = args['--email']
     if email:
         config.results_email = email
@@ -78,7 +79,7 @@ def main(args):
         log.info('Passed subset=%s/%s' % (str(subset[0]), str(subset[1])))
 
     name = make_run_name(suite, ceph_branch, kernel_branch, kernel_flavor,
-                         machine_type)
+                         machine_type, user)
 
     job_config = create_initial_config(suite, suite_branch, ceph_branch,
                                        ceph_sha1, teuthology_branch,
