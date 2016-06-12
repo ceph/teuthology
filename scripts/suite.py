@@ -59,6 +59,7 @@ Standard arguments:
 
 Scheduler arguments:
   --owner <owner>             Job owner
+  --user <user>               Job user
   -e <email>, --email <email>
                               When tests finish or time out, send an email
                               here. May also be specified in ~/.teuthology.yaml
