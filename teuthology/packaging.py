@@ -472,6 +472,7 @@ class GitbuilderProject(object):
         self.flavor = self.job_config.get("flavor")
         self.codename = self.job_config.get("codename")
         self.os_version = self._get_version()
+        self.branch = self.job_config.get("branch")
         self.ref = self.job_config.get("ref")
         self.distro = self._get_distro(
             distro=self.os_type,
@@ -645,6 +646,7 @@ class GitbuilderProject(object):
                                                 self.job_config, 'sha1')
         else:
             sha1 = self.sha1
+            branch = self.branch
 
         if tag:
             uri = 'ref/' + tag
