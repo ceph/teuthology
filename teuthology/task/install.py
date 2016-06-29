@@ -216,18 +216,13 @@ def _update_rpm_package_list_and_install(ctx, remote, rpm, config):
     rpm_name = "{rpm_nm}.rpm".format(rpm_nm=proj_release)
     base_url = "{start_of_url}/noarch/{rpm_name}".format(
         start_of_url=start_of_url, rpm_name=rpm_name)
-    # When this was one command with a pipe, it would sometimes
-    # fail with the message 'rpm: no packages given for install'
-    remote.run(args=['wget', base_url, ],)
     if dist_release in ['opensuse', 'sle']:
         remote.run(args=[
             'sudo', 'zypper', '--non-interactive', 'install', '--capability', 
             rpm_name
         ])
     else:
-        remote.run(args=['sudo', 'yum', '-y', 'localinstall', rpm_name])
-
-    remote.run(args=['rm', '-f', rpm_name])
+        remote.run(args=['sudo', 'yum', '-y', 'install', base_url])
 
     if dist_release not in ['opensuse', 'sle']:
         uri = gitbuilder.uri_reference
