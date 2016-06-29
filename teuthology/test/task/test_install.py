@@ -102,6 +102,15 @@ class TestInstall(object):
         )
         assert install.get_flavor(config) == 'notcmalloc'
 
+    def test_upgrade_is_downgrade(self):
+        assert_ok_vals = [
+	    ('9.0.0', '10.0.0'),
+	    ('10.2.2-63-g8542898-1trusty', '10.2.2-64-gabcdef1-1trusty'),
+	    ('11.0.0-918.g13c13c7', '11.0.0-2165.gabcdef1')
+	]
+	for t in assert_ok_vals:
+            assert install._upgrade_is_downgrade(t[0], t[1]) == False
+    
     @patch("teuthology.misc.get_system_type")
     @patch("teuthology.task.install.verify_package_version")
     def test_upgrade_common(self,
