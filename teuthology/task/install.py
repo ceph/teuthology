@@ -14,6 +14,7 @@ from teuthology import contextutil, packaging
 from teuthology.parallel import parallel
 from ..orchestra import run
 from . import ansible
+from distutils.version import LooseVersion
 
 log = logging.getLogger(__name__)
 
@@ -963,8 +964,22 @@ def upgrade_common(ctx, config, deploy_style):
             # FIXME: again, make extra_pkgs distro-agnostic
         pkgs += extra_pkgs
 
+        installed_version = packaging.get_package_version(remote, 'ceph-common')
+        upgrade_version = _get_gitbuilder_project(ctx, remote, node).version
+        log.info("Ceph {s} upgrade from {i} to {u}".format(
+            s=system_type,
+            i=installed_version,
+            u=upgrade_version
+        ))
+        if LooseVersion(installed_version) > LooseVersion(upgrade_version):
+            raise RuntimeError(
+                "An attempt to upgrade from a higher version to a lower one "
+                "will always fail. Hint: check tags in the target git branch."
+            )
+
         deploy_style(ctx, node, remote, pkgs, system_type)
         verify_package_version(ctx, node, remote)
+
     return len(remotes)
 
 docstring_for_upgrade = """"
