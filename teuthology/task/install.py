@@ -941,6 +941,10 @@ def upgrade_remote_to_config(ctx, config):
     return result
 
 
+def _upgrade_is_downgrade(installed_version, upgrade_version):
+    return LooseVersion(installed_version) > LooseVersion(upgrade_version)
+
+
 def upgrade_common(ctx, config, deploy_style):
     """
     Common code for upgrading
@@ -971,7 +975,7 @@ def upgrade_common(ctx, config, deploy_style):
             i=installed_version,
             u=upgrade_version
         ))
-        if LooseVersion(installed_version) > LooseVersion(upgrade_version):
+	if _upgrade_is_downgrade(installed_version, upgrade_version):
             raise RuntimeError(
                 "An attempt to upgrade from a higher version to a lower one "
                 "will always fail. Hint: check tags in the target git branch."
