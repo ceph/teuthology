@@ -948,6 +948,8 @@ def upgrade_remote_to_config(ctx, config):
 
 
 def _upgrade_is_downgrade(installed_version, upgrade_version):
+    assert installed_version, "installed_version is empty"
+    assert upgrade_version, "upgrade_version is empty"
     return LooseVersion(installed_version) > LooseVersion(upgrade_version)
 
 
