@@ -975,7 +975,7 @@ def upgrade_common(ctx, config, deploy_style):
         pkgs += extra_pkgs
 
         installed_version = packaging.get_package_version(remote, 'ceph-common')
-        upgrade_version = get_upgrade_version(ctx, remote, node).version
+        upgrade_version = get_upgrade_version(ctx, remote, node)
         log.info("Ceph {s} upgrade from {i} to {u}".format(
             s=system_type,
             i=installed_version,
