@@ -123,8 +123,10 @@ class TestInstall(object):
             assert install._upgrade_is_downgrade(t[0], t[1]) == False
     
     @patch("teuthology.misc.get_system_type")
+    @patch("teuthology.task.install.get_upgrade_version")
     @patch("teuthology.task.install.verify_package_version")
     def test_upgrade_common(self,
+                            m_get_upgrade_version,
                             m_verify_package_version,
                             m_get_system_type):
         expected_system_type = 'deb'
@@ -166,6 +168,7 @@ class TestInstall(object):
                 },
             ],
         }
+	m_get_upgrade_version.return_value = "11.0.0"
         m_get_system_type.return_value = "deb"
         def upgrade(ctx, node, remote, pkgs, system_type):
             assert system_type == expected_system_type
