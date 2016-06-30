@@ -122,9 +122,9 @@ class TestInstall(object):
 	for t in assert_ok_vals:
             assert install._upgrade_is_downgrade(t[0], t[1]) == False
     
-    @patch("teuthology.misc.get_system_type")
     @patch("teuthology.task.install.get_upgrade_version")
     @patch("teuthology.task.install.verify_package_version")
+    @patch("teuthology.misc.get_system_type")
     def test_upgrade_common(self,
                             m_get_upgrade_version,
                             m_verify_package_version,
