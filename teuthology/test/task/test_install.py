@@ -48,6 +48,17 @@ class TestInstall(object):
 
     @patch("teuthology.task.install._get_gitbuilder_project")
     @patch("teuthology.task.install.packaging.get_package_version")
+    def test_get_upgrade_version(self, m_get_package_version,
+                                         m_gitbuilder_project):
+        gb = Mock()
+        gb.version = "11.0.0"
+        gb.project = "ceph"
+        m_gitbuilder_project.return_value = gb
+        m_get_package_version.return_value = "11.0.0"
+        install.get_upgrade_version(Mock(), Mock(), Mock())
+
+    @patch("teuthology.task.install._get_gitbuilder_project")
+    @patch("teuthology.task.install.packaging.get_package_version")
     def test_verify_ceph_version_success(self, m_get_package_version,
                                          m_gitbuilder_project):
         gb = Mock()

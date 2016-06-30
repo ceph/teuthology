@@ -254,6 +254,12 @@ def _update_rpm_package_list_and_install(ctx, remote, rpm, config):
                         run.Raw(';'), 'fi'])
 
 
+def get_upgrade_version(ctx, config, remote):
+    gitbuilder = _get_gitbuilder_project(ctx, remote, config)
+    version = gitbuilder.version
+    return version
+
+
 def verify_package_version(ctx, config, remote):
     """
     Ensures that the version of package installed is what
@@ -969,7 +975,7 @@ def upgrade_common(ctx, config, deploy_style):
         pkgs += extra_pkgs
 
         installed_version = packaging.get_package_version(remote, 'ceph-common')
-        upgrade_version = _get_gitbuilder_project(ctx, remote, node).version
+        upgrade_version = get_upgrade_version(ctx, remote, node).version
         log.info("Ceph {s} upgrade from {i} to {u}".format(
             s=system_type,
             i=installed_version,
