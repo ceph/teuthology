@@ -125,7 +125,7 @@ def remove_beanstalk_jobs(run_name, tube_name):
 
     curjobs = beanstalk_conn.stats_tube(real_tube_name)['current-jobs-ready']
     if curjobs != 0:
-        x = 1
+        x = 0
         while x != curjobs:
             x += 1
             job = beanstalk_conn.reserve(timeout=20)
