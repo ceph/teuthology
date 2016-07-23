@@ -56,7 +56,7 @@ dict_templ = {
         'admin_socket': {
             'branch': Placeholder('ceph_branch'),
         },
-        'ceph-ansible': {
+        'ceph_ansible': {
             'vars': {
                 'ceph_dev': True,
                 'ceph_dev_key': 'https://download.ceph.com/keys/autobuild.asc',
