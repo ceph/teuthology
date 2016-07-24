@@ -6,7 +6,6 @@ import logging
 from cStringIO import StringIO
 
 from . import ansible
-
 from ..config import config as teuth_config
 from ..misc import get_scratch_devices
 from teuthology import contextutil
@@ -40,6 +39,11 @@ class CephAnsible(ansible.Ansible):
             roles=['ceph-rgw'],
         ),
         dict(
+            hosts='clients',
+            become=True,
+            roles=['ceph-client'],
+        ),
+        dict(
             hosts='restapis',
             become=True,
             roles=['ceph-restapi'],
@@ -70,10 +74,10 @@ class CephAnsible(ansible.Ansible):
         super(CephAnsible, self).__init__(ctx, config)
         config = config or dict()
         if 'playbook' not in config:
-            config['playbook'] = self._default_playbook
+            self.config['playbook'] = self._default_playbook
         if 'repo' not in config:
-            config['repo'] = os.path.join(teuth_config.ceph_git_base_url,
-                                          'ceph-ansible.git')
+            self.config['repo'] = os.path.join(teuth_config.ceph_git_base_url,
+                                               'ceph-ansible.git')
 
     def get_inventory(self):
         """
@@ -133,6 +137,7 @@ class CephAnsible(ansible.Ansible):
             mons='mon',
             mdss='mds',
             osds='osd',
+            clients='client',
         )
         hosts_dict = dict()
         for group in sorted(groups_to_roles.keys()):
@@ -189,7 +194,10 @@ class CephAnsible(ansible.Ansible):
         extra_vars = self.config.get('vars', dict())
         host_vars = dict()
         if not extra_vars.get('osd_auto_discovery', False):
-            host_vars['devices'] = get_scratch_devices(remote)
+            roles = self.ctx.cluster.remotes[remote]
+            dev_needed = len([role for role in roles
+                              if role.startswith('osd')])
+            host_vars['devices'] = get_scratch_devices(remote)[0:dev_needed]
         if 'monitor_interface' not in extra_vars:
             host_vars['monitor_interface'] = remote.interface
         if 'public_network' not in extra_vars:
