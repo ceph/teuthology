@@ -72,7 +72,7 @@ setup(
                       'pytest-capturelog',
                       'mock',
                       'fudge',
-                      'ansible>=2.0',
+                      'ansible>=2.1',
                       'pyopenssl>=0.13',
                       'ndg-httpsclient',
                       'pyasn1',
@@ -89,7 +89,6 @@ setup(
                       'libvirt-python',
                       'python-dateutil',
                       ],
-
 
     # to find the code associated with entry point
     # A.B:foo first cd into directory A, open file B
