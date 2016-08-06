@@ -259,12 +259,12 @@ class ProvisionOpenStack(OpenStack):
         for i in range(volumes['count']):
             volume_name = name + '-' + str(i)
             try:
-                misc.sh("openstack volume show -f json " +
+                misc.sh("openstack -q volume show -f json " +
                          volume_name)
             except subprocess.CalledProcessError as e:
                 if 'No volume with a name or ID' not in e.output:
                     raise e
-                misc.sh("openstack volume create -f json " +
+                misc.sh("openstack -q volume create -f json " +
                         config['openstack'].get('volume-create', '') + " " +
                         " --property ownedby=" + config.openstack['ip'] +
                         " --size " + str(volumes['size']) + " " +
@@ -272,7 +272,7 @@ class ProvisionOpenStack(OpenStack):
             with safe_while(sleep=2, tries=100,
                             action="volume " + volume_name) as proceed:
                 while proceed():
-                    r = misc.sh("openstack volume show  -f json " +
+                    r = misc.sh("openstack -q volume show  -f json " +
                                 volume_name)
                     status = self.get_value(json.loads(r), 'status')
                     if status == 'available':
@@ -280,7 +280,7 @@ class ProvisionOpenStack(OpenStack):
                     else:
                         log.info("volume " + volume_name +
                                  " not available yet")
-            misc.sh("openstack server add volume " +
+            misc.sh("openstack -q server add volume " +
                     name + " " + volume_name)
 
     @staticmethod
@@ -345,7 +345,7 @@ class ProvisionOpenStack(OpenStack):
             for instance in instances:
                 ip = instance.get_ip(network)
                 name = self.ip2name(self.basename, ip)
-                misc.sh("openstack server set " +
+                misc.sh("openstack -q server set " +
                         "--name " + name + " " +
                         instance['ID'])
                 fqdn = name + '.' + config.lab_domain

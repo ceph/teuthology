@@ -420,7 +420,7 @@ class TestOpenStack(object):
                 'hg-60-ssd',
                 'hg-120-ssd',
         ] == [ f['Name'] for f in flavors ]
-        m_sh.assert_called_with("openstack flavor list -f json")
+        m_sh.assert_called_with("openstack -q flavor list -f json")
 
     def test_flavor(self):
         def get_sorted_flavors(self, arch, select):
@@ -625,7 +625,7 @@ class TestTeuthologyOpenStack(object):
         ip = TeuthologyOpenStack.create_floating_ip()
         if ip:
             ip_id = TeuthologyOpenStack.get_floating_ip_id(ip)
-            misc.sh("openstack ip floating delete " + ip_id)
+            misc.sh("openstack -q ip floating delete " + ip_id)
             self.can_create_floating_ips = True
         else:
             self.can_create_floating_ips = False
@@ -722,4 +722,4 @@ openstack keypair delete {key_name} || true
         ip = TeuthologyOpenStack.get_unassociated_floating_ip()
         assert expected == ip
         ip_id = TeuthologyOpenStack.get_floating_ip_id(ip)
-        misc.sh("openstack ip floating delete " + ip_id)
+        misc.sh("openstack -q ip floating delete " + ip_id)
