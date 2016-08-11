@@ -1,10 +1,14 @@
 from __future__ import print_function
-import beanstalkc
-import yaml
 import logging
 import pprint
 import sys
 from collections import OrderedDict
+
+import yaml
+try:
+    import beanstalkc
+except ImportError:
+    import pystalkd.Beanstalkd as beanstalkc
 
 from .config import config
 from . import report

@@ -110,7 +110,12 @@ def main(ctx):
 
         # bury the job so it won't be re-run if it fails
         job.bury()
-        job_id = job.jid
+        try:
+            # beanstalkc
+            job_id = job.jid
+        except AttributeError:
+            # pystalkd
+            job_id = job.job_id
         log.info('Reserved job %d', job_id)
         log.info('Config is: %s', job.body)
         job_config = yaml.safe_load(job.body)

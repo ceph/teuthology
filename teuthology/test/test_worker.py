@@ -1,6 +1,12 @@
-import beanstalkc
+import sys
 import os
 import subprocess
+
+try:
+    import beanstalkc
+except ImportError:
+    import pystalkd.Beanstalkd as beanstalkc
+    sys.modules['beanstalkc'] = beanstalkc
 
 from mock import patch, Mock, MagicMock
 from datetime import datetime, timedelta
@@ -229,9 +235,18 @@ class TestWorker(object):
         job_id = 0
         for job_body in job_bodies:
             job_id += 1
-            job = m_job(conn=m_connection, jid=job_id, body=job_body)
-            job.jid = job_id
-            job.body = job_body
+            try:
+                # beanstalkc
+                job = m_job(conn=m_connection, jid=job_id, body=job_body)
+                job.jid = job_id
+                job.body = job_body
+            except TypeError:
+                # pystalkd
+                job = m_job(connection=m_connection, job_id=job_id,
+                            body=job_body, size=len(job_body))
+                job.job_id = job_id
+                job.body = job_body
+                job.size = len(job_body)
             jobs.append(job)
         return jobs
 

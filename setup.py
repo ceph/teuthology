@@ -1,5 +1,6 @@
 from setuptools import setup, find_packages
 import re
+import sys
 
 module_file = open("teuthology/__init__.py").read()
 metadata = dict(re.findall(r"__([a-z]+)__\s*=\s*['\"]([^'\"]*)['\"]", module_file))
@@ -51,10 +52,10 @@ setup(
     install_requires=['setuptools',
                       'gevent',
                       # For teuthology-coverage
-                      'MySQL-python == 1.2.3',
+                      'MySQL-python == 1.2.3' if sys.version_info < (3,) else 'mysqlclient',
                       'PyYAML',
                       'argparse >= 1.2.1',
-                      'beanstalkc >= 0.2.0',
+                      'beanstalkc >= 0.2.0' if sys.version_info < (3,) else 'pystalkd',
                       'boto >= 2.0b4',
                       'bunch >= 1.0.0',
                       'configobj',
@@ -64,7 +65,6 @@ setup(
                       'pexpect',
                       'requests',
                       'raven',
-                      'web.py',
                       'docopt',
                       'psutil >= 2.1.0',
                       'configparser',
@@ -88,7 +88,7 @@ setup(
                       'prettytable',
                       'libvirt-python',
                       'python-dateutil',
-                      ],
+                      ] + (['web.py'] if sys.version_info < (3,) else []),
 
 
     # to find the code associated with entry point
