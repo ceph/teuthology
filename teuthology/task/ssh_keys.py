@@ -8,7 +8,7 @@ import paramiko
 import re
 from datetime import datetime
 
-from cStringIO import StringIO
+from teuthology.compat import StringIO
 from teuthology import contextutil
 import teuthology.misc as misc
 from ..orchestra import run

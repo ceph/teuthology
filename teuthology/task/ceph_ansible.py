@@ -1,10 +1,9 @@
 import json
 import os
 
-from cStringIO import StringIO
-
 from . import ansible
 
+from ..compat import StringIO
 from ..config import config as teuth_config
 from ..misc import get_scratch_devices
 

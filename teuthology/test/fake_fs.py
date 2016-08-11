@@ -1,5 +1,7 @@
-from cStringIO import StringIO
 from contextlib import closing
+
+from teuthology.compat import StringIO
+
 
 try:
     FileNotFoundError, NotADirectoryError

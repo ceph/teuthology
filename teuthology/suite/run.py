@@ -470,7 +470,7 @@ class Run(object):
         if self.args.dry_run:
             log.debug("Base job config:\n%s" % self.base_config)
 
-        with open(base_yaml_path, 'w+b') as base_yaml:
+        with open(base_yaml_path, 'w') as base_yaml:
             base_yaml.write(str(self.base_config))
         self.schedule_jobs(jobs_missing_packages, jobs_to_schedule, name)
 

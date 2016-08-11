@@ -1,7 +1,6 @@
 from mock import patch, Mock, MagicMock
 
-from cStringIO import StringIO
-
+from teuthology.compat import BytesIO
 from .. import remote
 from .. import opsys
 from ..run import RemoteProcess
@@ -74,7 +73,7 @@ class TestRemote(object):
             'hostname',
             '--fqdn',
             ]
-        stdout = StringIO('test_hostname')
+        stdout = BytesIO(b'test_hostname')
         stdout.seek(0)
         proc = RemoteProcess(
             client=self.m_ssh,
@@ -97,7 +96,7 @@ class TestRemote(object):
             'uname',
             '-m',
             ]
-        stdout = StringIO('test_arch')
+        stdout = BytesIO(b'test_arch')
         stdout.seek(0)
         proc = RemoteProcess(
             client=self.m_ssh,
@@ -116,7 +115,7 @@ class TestRemote(object):
         assert m_run.called_once_with(
             client=self.m_ssh,
             args=args,
-            stdout=StringIO(),
+            stdout=BytesIO(),
             name=r.shortname,
         )
         assert r.arch == 'test_arch'

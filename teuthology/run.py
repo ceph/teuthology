@@ -1,12 +1,12 @@
 import os
 import yaml
-import StringIO
 import contextlib
 import sys
 import logging
 from traceback import format_tb
 
 import teuthology
+from teuthology.compat import StringIO
 from . import report
 from .job_status import get_status
 from .misc import get_user, merge_configs
@@ -243,11 +243,11 @@ def report_outcome(config, archive, summary, fake_ctx):
         with open(os.path.join(archive, 'summary.yaml'), 'w') as f:
             yaml.safe_dump(summary, f, default_flow_style=False)
 
-    with contextlib.closing(StringIO.StringIO()) as f:
+    with contextlib.closing(StringIO()) as f:
         yaml.safe_dump(summary, f)
         log.info('Summary data:\n%s' % f.getvalue())
 
-    with contextlib.closing(StringIO.StringIO()) as f:
+    with contextlib.closing(StringIO()) as f:
         if ('email-on-error' in config
                 and not passed):
             yaml.safe_dump(summary, f)

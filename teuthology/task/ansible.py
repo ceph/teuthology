@@ -6,9 +6,9 @@ import pexpect
 import yaml
 import shutil
 
-from cStringIO import StringIO
 from tempfile import NamedTemporaryFile
 
+from teuthology.compat import StringIO
 from teuthology.config import config as teuth_config
 from teuthology.exceptions import CommandFailedError, AnsibleFailedError
 from teuthology.job_status import set_status
@@ -207,7 +207,7 @@ class Ansible(Task):
         """
         Actually write the hosts file
         """
-        hosts_file = NamedTemporaryFile(prefix="teuth_ansible_hosts_",
+        hosts_file = NamedTemporaryFile('w', prefix="teuth_ansible_hosts_",
                                         delete=False)
         hosts_file.write(content)
         hosts_file.flush()
@@ -222,7 +222,7 @@ class Ansible(Task):
         pb_buffer.write('---\n')
         yaml.safe_dump(self.playbook, pb_buffer)
         pb_buffer.seek(0)
-        playbook_file = NamedTemporaryFile(
+        playbook_file = NamedTemporaryFile('w+',
             prefix="teuth_ansible_playbook_",
             dir=self.repo_path,
             delete=False,

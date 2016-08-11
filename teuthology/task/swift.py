@@ -1,13 +1,13 @@
 """
 Test Swfit api.
 """
-from cStringIO import StringIO
 from configobj import ConfigObj
 import base64
 import contextlib
 import logging
 import os
 
+from teuthology.compat import StringIO
 from teuthology import misc as teuthology
 from teuthology import contextutil
 from ..config import config as teuth_config

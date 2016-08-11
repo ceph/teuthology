@@ -18,15 +18,17 @@ import logging
 import os
 import subprocess
 
+from .compat import stringify
+
 __version__ = '1.0.0'
 
 # do our best, but if it fails, continue with above
 
 try:
-    __version__ += '-' + subprocess.check_output(
+    __version__ += '-' + stringify(subprocess.check_output(
         'git rev-parse --short HEAD'.split(),
         cwd=os.path.dirname(os.path.realpath(__file__))
-    ).strip()
+    ).strip())
 except Exception as e:
     # before logging; should be unusual
     print('Can\'t get version from git rev-parse', e, file=sys.stderr)

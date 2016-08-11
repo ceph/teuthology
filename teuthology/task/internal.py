@@ -3,7 +3,6 @@ Internal tasks are tasks that are started from the teuthology infrastructure.
 Note that there is no corresponding task defined for this module.  All of
 the calls are made from other modules, most notably teuthology/run.py
 """
-from cStringIO import StringIO
 import contextlib
 import logging
 import os
@@ -11,6 +10,7 @@ import time
 import yaml
 import subprocess
 
+from teuthology.compat import StringIO, BytesIO, stringify
 from teuthology import lockstatus
 from teuthology import lock
 from teuthology import misc
@@ -483,8 +483,8 @@ def fetch_binaries_for_coredumps(path, remote):
             dump_program = dump_out.split("from '")[1].split(' ')[0]
 
             # Find path on remote server:
-            r = remote.run(args=['which', dump_program], stdout=StringIO())
-            remote_path = r.stdout.getvalue()
+            r = remote.run(args=['which', dump_program], stdout=BytesIO())
+            remote_path = stringify(r.stdout.getvalue())
 
             # Pull remote program into coredump folder:
             remote._sftp_get_file(remote_path, os.path.join(coredump_path,
@@ -621,9 +621,9 @@ def coredump(ctx, config):
                     'echo', 'OK', run.Raw(';'),
                     'fi',
                 ],
-                stdout=StringIO(),
+                stdout=BytesIO(),
             )
-            if r.stdout.getvalue() != 'OK\n':
+            if r.stdout.getvalue() != b'OK\n':
                 log.warning('Found coredumps on %s, flagging run as failed', rem)
                 set_status(ctx.summary, 'fail')
                 if 'failure_reason' not in ctx.summary:
@@ -771,15 +771,16 @@ def syslog(ctx, config):
                     run.Raw('|'),
                     'head', '-n', '1',
                 ],
-                stdout=StringIO(),
+                stdout=BytesIO(),
             )
             stdout = r.stdout.getvalue()
-            if stdout != '':
-                log.error('Error in syslog on %s: %s', rem.name, stdout)
+            if stdout:
+                log.error('Error in syslog on %s: %s',
+                          rem.name, stringify(stdout))
                 set_status(ctx.summary, 'fail')
                 if 'failure_reason' not in ctx.summary:
                     ctx.summary['failure_reason'] = \
-                        "'{error}' in syslog".format(error=stdout)
+                        "'{error}' in syslog".format(error=stringify(stdout))
 
         log.info('Compressing syslogs...')
         run.wait(
@@ -819,7 +820,7 @@ def vm_setup(ctx, config):
             if misc.is_vm(rem.shortname):
                 ansible_hosts.add(rem.shortname)
                 r = rem.run(args=['test', '-e', '/ceph-qa-ready'],
-                            stdout=StringIO(), check_status=False)
+                            stdout=BytesIO(), check_status=False)
                 if r.returncode != 0:
                     p1 = subprocess.Popen(['cat', editinfo],
                                           stdout=subprocess.PIPE)
@@ -836,7 +837,8 @@ def vm_setup(ctx, config):
                     )
                     _, err = p2.communicate()
                     if err:
-                        log.error("Edit of /etc/sudoers failed: %s", err)
+                        log.error("Edit of /etc/sudoers failed: %s",
+                                  stringify(err))
     if need_ansible and ansible_hosts:
         log.info("Running ansible on %s", list(ansible_hosts))
         ansible_config = dict(

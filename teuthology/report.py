@@ -1,11 +1,13 @@
 import os
-import yaml
 import json
 import re
 import requests
 import logging
 import socket
 from datetime import datetime
+
+import yaml
+from six import string_types as basestring
 
 import teuthology
 from .config import config

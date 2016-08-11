@@ -1,5 +1,3 @@
-from cStringIO import StringIO
-
 import contextlib
 import copy
 import logging
@@ -8,6 +6,7 @@ import os
 import subprocess
 import yaml
 
+from teuthology.compat import BytesIO, stringify
 from teuthology.config import config as teuth_config
 from teuthology import misc as teuthology
 from teuthology import contextutil, packaging
@@ -40,7 +39,8 @@ def _get_local_dir(config, remote):
         remote.run(args=['sudo', 'mkdir', '-p', ldir,])
         for fyle in os.listdir(ldir):
             fname = "%s/%s" % (ldir, fyle)
-            teuthology.sudo_write_file(remote, fname, open(fname).read(), '644')
+            teuthology.sudo_write_file(remote, fname,
+                                       open(fname, 'rb').read(), '644')
     return ldir
 
 
@@ -62,10 +62,10 @@ def _update_deb_package_list_and_install(ctx, remote, debs, config):
         args=[
             'sudo', 'apt-key', 'list', run.Raw('|'), 'grep', 'Ceph',
         ],
-        stdout=StringIO(),
+        stdout=BytesIO(),
         check_status=False,
     )
-    if r.stdout.getvalue().find('Ceph automated package') == -1:
+    if r.stdout.getvalue().find(b'Ceph automated package') == -1:
         # if it doesn't exist, add it
         remote.run(
             args=[
@@ -74,7 +74,7 @@ def _update_deb_package_list_and_install(ctx, remote, debs, config):
                 run.Raw('|'),
                 'sudo', 'apt-key', 'add', '-',
             ],
-            stdout=StringIO(),
+            stdout=BytesIO(),
         )
 
     gitbuilder = _get_gitbuilder_project(ctx, remote, config)
@@ -94,7 +94,7 @@ def _update_deb_package_list_and_install(ctx, remote, debs, config):
             'sudo', 'tee', '/etc/apt/sources.list.d/{proj}.list'.format(
                 proj=config.get('project', 'ceph')),
         ],
-        stdout=StringIO(),
+        stdout=BytesIO(),
     )
     remote.run(args=['sudo', 'apt-get', 'update'], check_status=False)
     remote.run(
@@ -630,10 +630,10 @@ def _upgrade_deb_packages(ctx, config, remote, debs):
         args=[
             'sudo', 'apt-key', 'list', run.Raw('|'), 'grep', 'Ceph',
         ],
-        stdout=StringIO(),
+        stdout=BytesIO(),
         check_status=False,
     )
-    if r.stdout.getvalue().find('Ceph automated package') == -1:
+    if r.stdout.getvalue().find(b'Ceph automated package') == -1:
         # if it doesn't exist, add it
         remote.run(
             args=[
@@ -642,7 +642,7 @@ def _upgrade_deb_packages(ctx, config, remote, debs):
                 run.Raw('|'),
                 'sudo', 'apt-key', 'add', '-',
             ],
-            stdout=StringIO(),
+            stdout=BytesIO(),
         )
 
     gitbuilder = _get_gitbuilder_project(ctx, remote, config)
@@ -661,7 +661,7 @@ def _upgrade_deb_packages(ctx, config, remote, debs):
             'sudo', 'tee', '/etc/apt/sources.list.d/{proj}.list'.format(
                 proj=config.get('project', 'ceph')),
         ],
-        stdout=StringIO(),
+        stdout=BytesIO(),
     )
     remote.run(args=['sudo', 'apt-get', 'update'], check_status=False)
     remote.run(
@@ -742,10 +742,10 @@ def rh_install_pkgs(ctx, remote, installed_version):
         remote.run(args=['sudo', 'yum', 'clean', 'metadata'])
         r = remote.run(
              args=['yum', 'list', 'installed', run.Raw(pkg)],
-             stdout=StringIO(),
+             stdout=BytesIO(),
              check_status=False,
             )
-        if r.stdout.getvalue().find(pkg) == -1:
+        if stringify(r.stdout.getvalue()).find(pkg) == -1:
             log.info("Installing %s " % pkg)
             remote.run(args=['sudo', 'yum', 'install', pkg, '-y'])
         else:
@@ -756,11 +756,11 @@ def rh_install_pkgs(ctx, remote, installed_version):
     log.info("Check if ceph is already installed on %s", remote.shortname)
     r = remote.run(
           args=['yum', 'list', 'installed','ceph'],
-          stdout=StringIO(),
+          stdout=BytesIO(),
           check_status=False,
         )
     host = r.hostname
-    if r.stdout.getvalue().find('ceph') == -1:
+    if r.stdout.getvalue().find(b'ceph') == -1:
         log.info("Install ceph using ceph-deploy on %s", remote.shortname)
         remote.run(args=['sudo', 'ceph-deploy', 'install', run.Raw('--no-adjust-repos'), host])
         remote.run(args=['sudo', 'yum', 'install', 'ceph-test', '-y'])

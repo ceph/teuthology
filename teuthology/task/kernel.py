@@ -1,13 +1,12 @@
 """
 Kernel installation task
 """
-from cStringIO import StringIO
-
 import logging
 import os
 import re
 import shlex
 
+from teuthology.compat import StringIO, BytesIO, stringify
 from teuthology import misc as teuthology
 from ..orchestra import run
 from ..config import config as teuth_config
@@ -177,7 +176,7 @@ def need_to_install(ctx, role, version):
     ret = True
     log.info('Checking kernel version of {role}, want {ver}...'.format(
              role=role, ver=version))
-    uname_fp = StringIO()
+    uname_fp = BytesIO()
     ctx.cluster.only(role).run(
         args=[
             'uname',
@@ -185,7 +184,7 @@ def need_to_install(ctx, role, version):
             ],
         stdout=uname_fp,
         )
-    cur_version = uname_fp.getvalue().rstrip('\n')
+    cur_version = stringify(uname_fp.getvalue()).rstrip('\n')
     log.debug('current kernel version is {ver}'.format(ver=cur_version))
 
     if '.' in str(version):
@@ -496,7 +495,7 @@ def install_and_reboot(ctx, config):
         # it's actually nested under that submenu.  If it gets more
         # complex this will totally break.
 
-        cmdout = StringIO()
+        cmdout = BytesIO()
         proc = role_remote.run(
             args=[
                 'egrep',
@@ -507,8 +506,8 @@ def install_and_reboot(ctx, config):
             )
         submenu_title = ''
         default_title = ''
-        for l in cmdout.getvalue().split('\n'):
-            fields = shlex.split(l)
+        for l in cmdout.getvalue().split(b'\n'):
+            fields = shlex.split(stringify(l))
             if len(fields) >= 2:
                 command, title = fields[:2]
                 if command == 'submenu':
@@ -656,16 +655,16 @@ def need_to_install_distro(remote):
               the newest if it is not running.
     """
     package_type = remote.os.package_type
-    output, err_mess = StringIO(), StringIO()
+    output, err_mess = BytesIO(), BytesIO()
     remote.run(args=['uname', '-r'], stdout=output)
-    current = output.getvalue().strip()
+    current = stringify(output.getvalue().strip())
     log.info("Running kernel on {node}: {version}".format(
         node=remote.shortname, version=current))
     installed_version = None
     if package_type == 'rpm':
         remote.run(args=['sudo', 'yum', 'install', '-y', 'kernel'],
                    stdout=output)
-        install_stdout = output.getvalue()
+        install_stdout = stringify(output.getvalue())
         match = re.search(
             "Package (.*) already installed",
             install_stdout, flags=re.MULTILINE)
@@ -675,7 +674,7 @@ def need_to_install_distro(remote):
             remote.run(args=['echo', 'no', run.Raw('|'), 'sudo', 'yum',
                              'reinstall', 'kernel', run.Raw('||'), 'true'],
                        stderr=err_mess)
-            reinstall_stderr = err_mess.getvalue()
+            reinstall_stderr = stringify(err_mess.getvalue())
             if 'Skipping the running kernel' in reinstall_stderr:
                 running_version = re.search(
                     "Skipping the running kernel: (.*)",
@@ -721,8 +720,8 @@ def maybe_generate_initrd_rpm(remote, path, version):
             '-qp',
             path,
         ],
-        stdout=StringIO())
-    out = proc.stdout.getvalue()
+        stdout=BytesIO())
+    out = stringify(proc.stdout.getvalue())
     if 'bin/installkernel' in out or 'bin/kernel-install' in out:
         return
 
@@ -924,7 +923,7 @@ def get_image_version(remote, path):
                 '-qlp',
                 path
             ],
-            stdout=StringIO())
+            stdout=BytesIO())
     elif remote.os.package_type == 'deb':
         proc = remote.run(
             args=[
@@ -932,14 +931,14 @@ def get_image_version(remote, path):
                 '-c',
                 path
             ],
-            stdout=StringIO())
+            stdout=BytesIO())
     else:
         raise UnsupportedPackageTypeError(remote)
 
     files = proc.stdout.getvalue()
-    for file in files.split('\n'):
-        if '/boot/vmlinuz-' in file:
-            version = file.split('/boot/vmlinuz-')[1]
+    for file in files.split(b'\n'):
+        if b'/boot/vmlinuz-' in file:
+            version = stringify(file.split(b'/boot/vmlinuz-')[1])
             break
 
     log.debug("get_image_version: %s", version)
@@ -957,11 +956,11 @@ def get_latest_image_version_rpm(remote):
             '-q',
             'kernel',
             '--last',  # order by install time
-        ], stdout=StringIO())
+        ], stdout=BytesIO())
     for kernel in proc.stdout.getvalue().split():
-        if kernel.startswith('kernel'):
-            if 'ceph' not in kernel:
-                version = kernel.split('kernel-')[1]
+        if kernel.startswith(b'kernel'):
+            if b'ceph' not in kernel:
+                version = stringify(kernel.split(b'kernel-')[1])
     log.debug("get_latest_image_version_rpm: %s", version)
     return version
 
@@ -976,14 +975,14 @@ def get_latest_image_version_deb(remote, ostype):
     """
     remote.run(args=['sudo', 'apt-get', 'clean'])
     remote.run(args=['sudo', 'apt-get', 'update'])
-    output = StringIO()
+    output = BytesIO()
     newest = ''
     # Depend of virtual package has uname -r output in package name. Grab that.
     if 'debian' in ostype:
         remote.run(args=['sudo', 'apt-get', '-y', 'install',
                          'linux-image-amd64'], stdout=output)
         remote.run(args=['dpkg', '-s', 'linux-image-amd64'], stdout=output)
-        for line in output.getvalue().split('\n'):
+        for line in stringify(output.getvalue()).split('\n'):
             if 'Depends:' in line:
                 newest = line.split('linux-image-')[1]
                 output.close()
@@ -995,7 +994,7 @@ def get_latest_image_version_deb(remote, ostype):
                              'linux-image-current-generic'])
             remote.run(args=['dpkg', '-s', 'linux-image-current-generic'],
                        stdout=output)
-            for line in output.getvalue().split('\n'):
+            for line in stringify(output.getvalue()).split('\n'):
                 if 'Depends:' in line:
                     depends = line.split('Depends: ')[1]
                     remote.run(args=['sudo', 'apt-get', '-y', 'install',
@@ -1008,7 +1007,7 @@ def get_latest_image_version_deb(remote, ostype):
                              'linux-image-generic'], stdout=output)
             remote.run(args=['dpkg', '-s', 'linux-image-generic'],
                        stdout=output)
-        for line in output.getvalue().split('\n'):
+        for line in stringify(output.getvalue()).split('\n'):
             if 'Depends:' in line:
                 newest = line.split('linux-image-')[1]
                 if ',' in newest:

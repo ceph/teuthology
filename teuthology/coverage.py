@@ -7,6 +7,7 @@ import MySQLdb
 import yaml
 
 import teuthology
+from teuthology.compat import stringify
 from teuthology.config import config
 
 log = logging.getLogger(__name__)
@@ -171,7 +172,7 @@ def analyze(test_dir, cov_tools_dir, lcov_output, html_output, skip_init):
         )
         output, _ = proc.communicate()
         desc = summary.get('description', test)
-        test_coverage[desc] = read_coverage(output)
+        test_coverage[desc] = read_coverage(stringify(output))
 
         log.info('adding %s data to total', test)
         proc = subprocess.Popen(
@@ -190,7 +191,7 @@ def analyze(test_dir, cov_tools_dir, lcov_output, html_output, skip_init):
             os.path.join(lcov_output, 'total.lcov')
         )
 
-    coverage = read_coverage(output)
+    coverage = read_coverage(stringify(output))
     test_coverage['total for {suite}'.format(suite=suite)] = coverage
     log.debug('total coverage is %s', str(coverage))
 

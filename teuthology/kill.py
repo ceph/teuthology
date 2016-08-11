@@ -9,6 +9,7 @@ import tempfile
 import logging
 import getpass
 
+from teuthology.compat import stringify
 from . import beanstalk
 from . import report
 from .config import config
@@ -223,7 +224,7 @@ def nuke_targets(targets_dict, owner):
         to_nuke.append(misc.decanonicalize_hostname(target))
 
     target_file = tempfile.NamedTemporaryFile(delete=False)
-    target_file.write(yaml.safe_dump(targets_dict))
+    target_file.write(yaml.safe_dump(targets_dict, encoding='utf-8'))
     target_file.close()
 
     log.info("Nuking machines: " + str(to_nuke))
@@ -240,9 +241,9 @@ def nuke_targets(targets_dict, owner):
         nuke_args,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT)
-    for line in iter(proc.stdout.readline, ''):
-        line = line.replace('\r', '').replace('\n', '')
-        log.info(line)
+    for line in iter(proc.stdout.readline, b''):
+        line = line.rstrip()
+        log.info(stringify(line))
         sys.stdout.flush()
 
     os.unlink(target_file.name)

@@ -9,6 +9,7 @@ import yaml
 from datetime import datetime
 
 from teuthology import setup_log_file
+from teuthology.compat import stringify
 from . import beanstalk
 from . import report
 from . import safepath
@@ -247,7 +248,7 @@ def run_job(job_config, teuth_bin_path, archive_dir, verbose):
 
     with tempfile.NamedTemporaryFile(prefix='teuthology-worker.',
                                      suffix='.tmp',) as tmp:
-        yaml.safe_dump(data=job_config, stream=tmp)
+        yaml.safe_dump(data=job_config, stream=tmp, encoding='utf-8')
         tmp.flush()
         arg.append(tmp.name)
         env = os.environ.copy()
@@ -324,7 +325,7 @@ def run_with_watchdog(process, job_config):
                                            stderr=subprocess.STDOUT)
             while report_proc.poll() is None:
                 for line in report_proc.stdout.readlines():
-                    log.info(line.strip())
+                    log.info(stringify(line.strip()))
                 time.sleep(1)
             log.info("Reported results via the teuthology-report command")
         except Exception:

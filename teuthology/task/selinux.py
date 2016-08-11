@@ -1,8 +1,7 @@
 import logging
 import os
 
-from cStringIO import StringIO
-
+from teuthology.compat import BytesIO, stringify
 from teuthology.exceptions import SELinuxError
 from teuthology.misc import get_archive_dir
 from teuthology.orchestra.cluster import Cluster
@@ -84,9 +83,9 @@ class SELinux(Task):
         for remote in self.cluster.remotes:
             result = remote.run(
                 args=['/usr/sbin/getenforce'],
-                stdout=StringIO(),
+                stdout=BytesIO(),
             )
-            modes[remote.name] = result.stdout.getvalue().strip().lower()
+            modes[remote.name] = stringify(result.stdout.getvalue().strip()).lower()
         log.debug("Existing SELinux modes: %s", modes)
         return modes
 
@@ -126,12 +125,12 @@ class SELinux(Task):
                 args=['sudo', 'grep', 'avc: .*denied',
                       '/var/log/audit/audit.log', run.Raw('|'), 'grep', '-v',
                       run.Raw(ignore_known_denials)],
-                stdout=StringIO(),
+                stdout=BytesIO(),
                 check_status=False,
             )
             output = proc.stdout.getvalue()
             if output:
-                denials = output.strip().split('\n')
+                denials = stringify(output.strip()).split('\n')
                 log.debug("%s has %s denials", remote.name, len(denials))
             else:
                 denials = []

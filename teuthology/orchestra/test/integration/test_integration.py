@@ -1,9 +1,8 @@
 from teuthology.orchestra import monkey
 monkey.patch_all()
 
-from cStringIO import StringIO
-
 import os
+from teuthology.compat import BytesIO
 from teuthology.orchestra import connection, remote, run
 from teuthology.orchestra.test.util import assert_raises
 from teuthology.exceptions import CommandCrashedError, ConnectionLostError
@@ -54,27 +53,27 @@ class TestIntegration():
             client=ssh,
             args=['cat'],
             stdin=run.PIPE,
-            stdout=StringIO(),
+            stdout=BytesIO(),
             wait=False,
             )
-        assert r.stdout.getvalue() == ''
-        r.stdin.write('foo\n')
-        r.stdin.write('bar\n')
+        assert r.stdout.getvalue() == b''
+        r.stdin.write(b'foo\n')
+        r.stdin.write(b'bar\n')
         r.stdin.close()
 
         r.wait()
         got = r.exitstatus
         assert got == 0
-        assert r.stdout.getvalue() == 'foo\nbar\n'
+        assert r.stdout.getvalue() == b'foo\nbar\n'
 
     def test_and(self):
         ssh = connection.connect(HOST)
         r = run.run(
             client=ssh,
             args=['true', run.Raw('&&'), 'echo', 'yup'],
-            stdout=StringIO(),
+            stdout=BytesIO(),
             )
-        assert r.stdout.getvalue() == 'yup\n'
+        assert r.stdout.getvalue() == b'yup\n'
 
     def test_os(self):
         rem = remote.Remote(HOST)

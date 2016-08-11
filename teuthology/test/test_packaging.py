@@ -138,7 +138,7 @@ class TestPackaging(object):
         m_proc = Mock()
         expected = dict(foo="bar")
         m_proc.exitstatus = 0
-        m_proc.stdout.getvalue.return_value = str(expected)
+        m_proc.stdout.getvalue.return_value = b"{'foo': 'bar'}"
         m_remote = Mock()
         m_remote.run.return_value = m_proc
         result = packaging.get_koji_build_info(1, m_remote, dict())
@@ -170,7 +170,7 @@ class TestPackaging(object):
         m_proc = Mock()
         expected = dict(foo="bar")
         m_proc.exitstatus = 0
-        m_proc.stdout.getvalue.return_value = str(expected)
+        m_proc.stdout.getvalue.return_value = b"{'foo': 'bar'}"
         m_remote = Mock()
         m_remote.run.return_value = m_proc
         result = packaging.get_koji_task_result(1, m_remote, dict())
@@ -219,7 +219,7 @@ class TestPackaging(object):
         remote.os.package_type = "deb"
         proc = Mock()
         proc.exitstatus = 0
-        proc.stdout.getvalue.return_value = "2.2"
+        proc.stdout.getvalue.return_value = b"2.2"
         remote.run.return_value = proc
         result = packaging.get_package_version(remote, "apache2")
         assert result == "2.2"
@@ -237,7 +237,7 @@ class TestPackaging(object):
         remote.os.package_type = "rpm"
         proc = Mock()
         proc.exitstatus = 0
-        proc.stdout.getvalue.return_value = "2.2"
+        proc.stdout.getvalue.return_value = b"2.2"
         remote.run.return_value = proc
         result = packaging.get_package_version(remote, "httpd")
         assert result == "2.2"
@@ -255,7 +255,7 @@ class TestPackaging(object):
         remote.os.package_type = "rpm"
         proc = Mock()
         proc.exitstatus = 1
-        proc.stdout.getvalue.return_value = "not installed"
+        proc.stdout.getvalue.return_value = b"not installed"
         remote.run.return_value = proc
         result = packaging.get_package_version(remote, "httpd")
         assert result is None
@@ -268,7 +268,7 @@ class TestPackaging(object):
         remote.os.package_type = "rpm"
         proc = Mock()
         proc.exitstatus = 0
-        proc.stdout.getvalue.return_value = "not installed"
+        proc.stdout.getvalue.return_value = b"not installed"
         remote.run.return_value = proc
         result = packaging.get_package_version(remote, "httpd")
         assert result is None

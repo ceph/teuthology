@@ -1,7 +1,7 @@
 from mock import patch, MagicMock
 from pytest import skip
-from StringIO import StringIO
 
+from teuthology.compat import PyStringIO as StringIO
 from teuthology.config import FakeNamespace
 from teuthology.orchestra.cluster import Cluster
 from teuthology.orchestra.remote import Remote
@@ -91,7 +91,7 @@ class TestCephAnsibleTask(TestAnsibleTask):
         with patch.object(ansible, 'NamedTemporaryFile') as m_NTF:
             m_NTF.return_value = hosts_file_obj
             task.generate_hosts_file()
-            m_NTF.assert_called_once_with(prefix="teuth_ansible_hosts_",
+            m_NTF.assert_called_once_with('w', prefix="teuth_ansible_hosts_",
                                           delete=False)
         assert task.generated_inventory is True
         assert task.inventory == hosts_file_path
@@ -122,7 +122,7 @@ class TestCephAnsibleTask(TestAnsibleTask):
         with patch.object(ansible, 'NamedTemporaryFile') as m_NTF:
             m_NTF.return_value = hosts_file_obj
             task.generate_hosts_file()
-            m_NTF.assert_called_once_with(prefix="teuth_ansible_hosts_",
+            m_NTF.assert_called_once_with('w', prefix="teuth_ansible_hosts_",
                                           delete=False)
         assert task.generated_inventory is True
         assert task.inventory == hosts_file_path
@@ -152,7 +152,7 @@ class TestCephAnsibleTask(TestAnsibleTask):
         with patch.object(ansible, 'NamedTemporaryFile') as m_NTF:
             m_NTF.return_value = hosts_file_obj
             task.generate_hosts_file()
-            m_NTF.assert_called_once_with(prefix="teuth_ansible_hosts_",
+            m_NTF.assert_called_once_with('w', prefix="teuth_ansible_hosts_",
                                           delete=False)
         assert task.generated_inventory is True
         assert task.inventory == hosts_file_path

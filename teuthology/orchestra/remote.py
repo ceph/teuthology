@@ -5,7 +5,6 @@ import time
 import pexpect
 import re
 import logging
-from cStringIO import StringIO
 import os
 import pwd
 import tempfile
@@ -16,6 +15,7 @@ try:
 except ImportError:
     libvirt = None
 
+from teuthology.compat import BytesIO, stringify
 from teuthology import misc
 from teuthology import lockstatus as ls
 from . import run
@@ -120,13 +120,13 @@ class Remote(object):
     def _set_iface_and_cidr(self):
         proc = self.run(
             args=['PATH=/sbin:/usr/sbin', 'ip', 'addr', 'show'],
-            stdout=StringIO(),
+            stdout=BytesIO(),
         )
         proc.wait()
         regexp = 'inet.? %s' % self.ip_address
         proc.stdout.seek(0)
         for line in proc.stdout.readlines():
-            line = line.strip()
+            line = stringify(line.strip())
             if re.match(regexp, line):
                 items = line.split()
                 self._interface = items[-1]
@@ -137,9 +137,9 @@ class Remote(object):
     @property
     def hostname(self):
         if not hasattr(self, '_hostname'):
-            proc = self.run(args=['hostname', '--fqdn'], stdout=StringIO())
+            proc = self.run(args=['hostname', '--fqdn'], stdout=BytesIO())
             proc.wait()
-            self._hostname = proc.stdout.getvalue().strip()
+            self._hostname = stringify(proc.stdout.getvalue().strip())
         return self._hostname
 
     @property
@@ -218,9 +218,9 @@ class Remote(object):
             ]
         proc = self.run(
             args=args,
-            stdout=StringIO(),
+            stdout=BytesIO(),
             )
-        data = proc.stdout.getvalue()
+        data = stringify(proc.stdout.getvalue())
         return data
 
     def chmod(self, file_path, permissions):
@@ -382,28 +382,28 @@ class Remote(object):
                 args=[
                     'python', '-c',
                     'import platform; print(platform.linux_distribution())'],
-                stdout=StringIO(), stderr=StringIO(), check_status=False)
+                stdout=BytesIO(), stderr=BytesIO(), check_status=False)
             if proc.exitstatus == 0:
-                self._os = OS.from_python(proc.stdout.getvalue().strip())
+                self._os = OS.from_python(stringify(proc.stdout.getvalue().strip()))
                 return self._os
 
-            proc = self.run(args=['cat', '/etc/os-release'], stdout=StringIO(),
-                            stderr=StringIO(), check_status=False)
+            proc = self.run(args=['cat', '/etc/os-release'], stdout=BytesIO(),
+                            stderr=BytesIO(), check_status=False)
             if proc.exitstatus == 0:
-                self._os = OS.from_os_release(proc.stdout.getvalue().strip())
+                self._os = OS.from_os_release(stringify(proc.stdout.getvalue().strip()))
                 return self._os
 
-            proc = self.run(args=['lsb_release', '-a'], stdout=StringIO(),
-                            stderr=StringIO())
-            self._os = OS.from_lsb_release(proc.stdout.getvalue().strip())
+            proc = self.run(args=['lsb_release', '-a'], stdout=BytesIO(),
+                            stderr=BytesIO())
+            self._os = OS.from_lsb_release(stringify(proc.stdout.getvalue().strip()))
         return self._os
 
     @property
     def arch(self):
         if not hasattr(self, '_arch'):
-            proc = self.run(args=['uname', '-m'], stdout=StringIO())
+            proc = self.run(args=['uname', '-m'], stdout=BytesIO())
             proc.wait()
-            self._arch = proc.stdout.getvalue().strip()
+            self._arch = stringify(proc.stdout.getvalue()).strip()
         return self._arch
 
     @property

@@ -6,8 +6,8 @@ import contextlib
 
 from datetime import datetime
 from mock import patch, call, ANY, DEFAULT
-from StringIO import StringIO
 
+from teuthology.compat import PyStringIO as StringIO
 from teuthology.config import config, YamlConfig
 from teuthology.exceptions import ScheduleFailError
 from teuthology.suite import run

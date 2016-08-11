@@ -1,12 +1,12 @@
 """
 Start mpi processes (and allow commands to be run inside process)
 """
-from StringIO import StringIO
 import logging
 import re
 
 from six import string_types as basestring
 
+from teuthology.compat import BytesIO, stringify
 from teuthology import misc as teuthology
 
 log = logging.getLogger(__name__)
@@ -19,7 +19,8 @@ def _check_mpi_version(remotes):
     """
     versions = set()
     for remote in remotes:
-        version_str = remote.run(args=["mpiexec", "--version"], stdout=StringIO()).stdout.getvalue()
+        proc = remote.run(args=["mpiexec", "--version"], stdout=BytesIO())
+        version_str = stringify(proc.stdout.getvalue())
         try:
             version = re.search("^\s+Version:\s+(.+)$", version_str, re.MULTILINE).group(1)
         except AttributeError:

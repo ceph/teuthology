@@ -3,6 +3,8 @@ import yaml
 import logging
 import collections
 
+from teuthology.compat import stringify
+
 
 def init_logging():
     log = logging.getLogger(__name__)
@@ -84,7 +86,7 @@ class YamlConfig(collections.MutableMapping):
         return self._conf.get(key, default)
 
     def __str__(self):
-        return yaml.safe_dump(self._conf, default_flow_style=False).strip()
+        return stringify(yaml.safe_dump(self._conf, default_flow_style=False)).strip()
 
     def __repr__(self):
         return self.__str__()

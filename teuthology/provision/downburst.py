@@ -4,6 +4,7 @@ import subprocess
 import tempfile
 import yaml
 
+from ..compat import stringify
 from ..config import config
 from ..contextutil import safe_while
 from ..misc import decanonicalize_hostname
@@ -71,13 +72,13 @@ class Downburst(object):
             while proceed():
                 (returncode, stdout, stderr) = self._run_create()
                 if returncode == 0:
-                    log.info("Downburst created %s: %s" % (self.name,
-                                                           stdout.strip()))
+                    log.info("Downburst created %s: %s" % (self.name, stringify(
+                                                           stdout.strip())))
                     success = True
                     break
                 elif stderr:
                     # If the guest already exists first destroy then re-create:
-                    if 'exists' in stderr:
+                    if b'exists' in stderr:
                         success = False
                         log.info("Guest files exist. Re-creating guest: %s" %
                                  (self.name))
@@ -85,7 +86,7 @@ class Downburst(object):
                     else:
                         success = False
                         log.info("Downburst failed on %s: %s" % (
-                            self.name, stderr.strip()))
+                            self.name, stringify(stderr.strip())))
                         break
             return success
 
@@ -170,7 +171,7 @@ class Downburst(object):
             'downburst': file_info,
             'local-hostname': fqdn,
         }
-        yaml.safe_dump(file_out, config_fd)
+        yaml.safe_dump(file_out, config_fd, encoding='utf-8')
         self.config_path = config_fd.name
 
         user_info = {
@@ -195,7 +196,7 @@ class Downburst(object):
                 'python',
             ])
         user_fd = tempfile.NamedTemporaryFile(delete=False)
-        yaml.safe_dump(user_info, user_fd)
+        yaml.safe_dump(user_info, user_fd, encoding='utf-8')
         self.user_path = user_fd.name
         return True
 

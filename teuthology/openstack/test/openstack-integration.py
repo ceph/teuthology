@@ -38,6 +38,7 @@ import teuthology.openstack
 import scripts.schedule
 import scripts.lock
 import scripts.suite
+from teuthology.compat import stringify
 from teuthology.config import config as teuth_config
 from teuthology.config import set_config_attr
 
@@ -82,8 +83,8 @@ class Integration(object):
             return
 
         (stdoutdata, stderrdata) = self.worker.communicate()
-        stdoutdata = stdoutdata.decode('utf-8')
-        stderrdata = stderrdata.decode('utf-8')
+        stdoutdata = stringify(stdoutdata)
+        stderrdata = stringify(stderrdata)
         logging.info(self.worker_cmd + ":" +
                      " stdout " + stdoutdata +
                      " stderr " + stderrdata + " end ")

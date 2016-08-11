@@ -2,7 +2,6 @@
 Miscellaneous teuthology functions.
 Used by other modules, but mostly called from tasks.
 """
-from cStringIO import StringIO
 
 import argparse
 import os
@@ -28,6 +27,7 @@ from six import string_types as basestring, iteritems, reraise
 from teuthology import safepath
 from teuthology.exceptions import (CommandCrashedError, CommandFailedError,
                                    ConnectionLostError)
+from .compat import StringIO, BytesIO, stringify
 from .orchestra import run
 from .config import config
 from .contextutil import safe_while
@@ -232,7 +232,7 @@ def get_ceph_binary_url(package=None,
 
         try:
             sha1_fp = urllib_request.urlopen(sha1_url)
-            sha1 = sha1_fp.read().rstrip('\n')
+            sha1 = stringify(sha1_fp.read().rstrip(b'\n'))
             sha1_fp.close()
         except urllib_error.HTTPError as e:
             log.error('Failed to get url %s', sha1_url)
@@ -513,9 +513,9 @@ def create_simple_monmap(ctx, remote, conf, path=None):
 
     r = remote.run(
         args=args,
-        stdout=StringIO()
+        stdout=BytesIO()
     )
-    monmap_output = r.stdout.getvalue()
+    monmap_output = stringify(r.stdout.getvalue())
     fsid = re.search("generated fsid (.+)$",
                      monmap_output, re.MULTILINE).group(1)
     return fsid
@@ -600,9 +600,9 @@ def move_file(remote, from_path, to_path, sudo=False):
     ])
     proc = remote.run(
         args=args,
-        stdout=StringIO(),
+        stdout=BytesIO(),
     )
-    perms = proc.stdout.getvalue().rstrip().strip('\"')
+    perms = stringify(proc.stdout.getvalue()).rstrip().strip('\"')
 
     args = []
     if sudo:
@@ -615,7 +615,7 @@ def move_file(remote, from_path, to_path, sudo=False):
     ])
     proc = remote.run(
         args=args,
-        stdout=StringIO(),
+        stdout=BytesIO(),
     )
 
     # reset the file back to the original permissions
@@ -629,7 +629,7 @@ def move_file(remote, from_path, to_path, sudo=False):
     ])
     proc = remote.run(
         args=args,
-        stdout=StringIO(),
+        stdout=BytesIO(),
     )
 
 
@@ -649,7 +649,7 @@ def delete_file(remote, path, sudo=False, force=False):
     ])
     remote.run(
         args=args,
-        stdout=StringIO(),
+        stdout=BytesIO(),
     )
 
 
@@ -663,21 +663,21 @@ def remove_lines_from_file(remote, path, line_is_valid_test,
     """
     # read in the specified file
     in_data = get_file(remote, path, False)
-    out_data = ""
+    out_data = b""
 
     first_line = True
     # use the 'line_is_valid_test' function to remove unwanted lines
-    for line in in_data.split('\n'):
-        if line_is_valid_test(line, string_to_test_for):
+    for line in in_data.split(b'\n'):
+        if line_is_valid_test(stringify(line), string_to_test_for):
             if not first_line:
-                out_data += '\n'
+                out_data += b'\n'
             else:
                 first_line = False
 
-            out_data += '{line}'.format(line=line)
+            out_data += line
 
         else:
-            log.info('removing line: {bad_line}'.format(bad_line=line))
+            log.info('removing line: {bad_line}'.format(bad_line=stringify(line)))
 
     # get a temp file path on the remote host to write to,
     # we don't want to blow away the remote file and then have the
@@ -754,7 +754,7 @@ def create_file(remote, path, data="", permissions=str(644), sudo=False):
     ])
     remote.run(
         args=args,
-        stdout=StringIO(),
+        stdout=BytesIO(),
     )
     # now write out the data if any was passed in
     if "" != data:
@@ -783,7 +783,7 @@ def pull_directory(remote, remotedir, localdir):
         os.mkdir(localdir)
     _, local_tarfile = tempfile.mkstemp(dir=localdir)
     remote.get_tar(remotedir, local_tarfile, sudo=True)
-    with open(local_tarfile, 'r+') as fb1:
+    with open(local_tarfile, 'rb+') as fb1:
         tar = tarfile.open(mode='r|gz', fileobj=fb1)
         while True:
             ti = tar.next()
@@ -836,9 +836,9 @@ def get_wwn_id_map(remote, devs):
                 '-l',
                 '/dev/disk/by-id/wwn-*',
             ],
-            stdout=StringIO(),
+            stdout=BytesIO(),
         )
-        stdout = r.stdout.getvalue()
+        stdout = stringify(r.stdout.getvalue())
     except Exception:
         log.info('Failed to get wwn devices! Using /dev/sd* devices...')
         return dict((d, d) for d in devs)
@@ -877,9 +877,9 @@ def get_scratch_devices(remote):
     except Exception:
         r = remote.run(
             args=['ls', run.Raw('/dev/[sv]d?')],
-            stdout=StringIO()
+            stdout=BytesIO()
         )
-        devs = r.stdout.getvalue().strip().split('\n')
+        devs = stringify(r.stdout.getvalue().strip()).split('\n')
 
     # Remove root device (vm guests) from the disk list
     for dev in devs:
@@ -931,10 +931,10 @@ def wait_until_healthy(ctx, remote, ceph_cluster='ceph'):
                     '--cluster', ceph_cluster,
                     'health',
                 ],
-                stdout=StringIO(),
+                stdout=BytesIO(),
                 logger=log.getChild('health'),
             )
-            out = r.stdout.getvalue()
+            out = stringify(r.stdout.getvalue())
             log.debug('Ceph health: %s', out.rstrip('\n'))
             if out.split(None, 1)[0] == 'HEALTH_OK':
                 break
@@ -955,10 +955,10 @@ def wait_until_osds_up(ctx, cluster, remote, ceph_cluster='ceph'):
                 '--cluster', ceph_cluster,
                 'osd', 'dump', '--format=json'
             ],
-            stdout=StringIO(),
+            stdout=BytesIO(),
             logger=log.getChild('health'),
         )
-        out = r.stdout.getvalue()
+        out = stringify(r.stdout.getvalue())
         j = json.loads('\n'.join(out.split('\n')[1:]))
         up = len([o for o in j['osds'] if 'up' in o['state']])
         log.debug('%d of %d OSDs are up' % (up, num_osds))
@@ -1172,11 +1172,11 @@ def ssh_keyscan(hostnames):
 
     keys_dict = dict()
     for line in p.stderr.readlines():
-        line = line.strip()
+        line = stringify(line.strip())
         if line and not line.startswith('#'):
             log.error(line)
     for line in p.stdout.readlines():
-        host, key = line.strip().split(' ', 1)
+        host, key = stringify(line.strip()).split(' ', 1)
         keys_dict[host] = key
     return keys_dict
 
@@ -1228,13 +1228,13 @@ def get_system_type(remote, distro=False, version=False):
         args=[
             'sudo', 'lsb_release', '-is',
         ],
-        stdout=StringIO(),
+        stdout=BytesIO(),
     )
-    system_value = r.stdout.getvalue().strip()
+    system_value = stringify(r.stdout.getvalue().strip())
     log.debug("System to be installed: %s" % system_value)
     if version:
-        v = remote.run(args=['sudo', 'lsb_release', '-rs'], stdout=StringIO())
-        version = v.stdout.getvalue().strip()
+        v = remote.run(args=['sudo', 'lsb_release', '-rs'], stdout=BytesIO())
+        version = stringify(v.stdout.getvalue().strip())
     if distro and version:
         return system_value.lower(), version
     if distro:
@@ -1355,18 +1355,18 @@ def sh(command, log_limit=1024):
             line = line.strip()
             if len(line) > log_limit:
                 truncated = True
-                log.debug(str(line)[:log_limit] +
+                log.debug(stringify(line[:log_limit]) +
                           "... (truncated to the first " + str(log_limit) +
                           " characters)")
             else:
-                log.debug(str(line))
-    output = "".join(lines)
+                log.debug(stringify(line))
+    output = b"".join(lines)
     if proc.wait() != 0:
         if truncated:
             log.error(command + " replay full stdout/stderr"
                       " because an error occurred and some of"
                       " it was truncated")
-            log.error(output)
+            log.error(stringify(output))
         raise subprocess.CalledProcessError(
             returncode=proc.returncode,
             cmd=command,

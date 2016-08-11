@@ -1,6 +1,7 @@
-from cStringIO import StringIO
 import contextlib
 import logging
+
+from teuthology.compat import StringIO
 from teuthology import misc as teuthology
 from teuthology import contextutil
 from ..orchestra import run

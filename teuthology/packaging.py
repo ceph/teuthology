@@ -3,8 +3,7 @@ import ast
 import re
 import requests
 
-from cStringIO import StringIO
-
+from .compat import BytesIO, stringify
 from .config import config
 from .contextutil import safe_while
 from .exceptions import VersionNotFoundError
@@ -274,18 +273,18 @@ def _run_python_command(py_cmd, remote, ctx):
         args=[
             'python', '-c', py_cmd
         ],
-        stdout=StringIO(), stderr=StringIO(), check_status=False
+        stdout=BytesIO(), stderr=BytesIO(), check_status=False
     )
     if proc.exitstatus == 0:
         # returns the __repr__ of a python dict
-        stdout = proc.stdout.getvalue().strip()
+        stdout = stringify(proc.stdout.getvalue().strip())
         # take the __repr__ and makes it a python dict again
         result = ast.literal_eval(stdout)
     else:
         msg = "Error running the following on {0}: {1}".format(remote, py_cmd)
         log.error(msg)
-        log.error("stdout: {0}".format(proc.stdout.getvalue().strip()))
-        log.error("stderr: {0}".format(proc.stderr.getvalue().strip()))
+        log.error("stdout: {0}".format(stringify(proc.stdout.getvalue().strip())))
+        log.error("stderr: {0}".format(stringify(proc.stderr.getvalue().strip())))
         ctx.summary["failure_reason"] = msg
         ctx.summary["status"] = "dead"
         raise RuntimeError(msg)
@@ -342,17 +341,17 @@ def get_package_version(remote, package):
             args=[
                 'dpkg-query', '-W', '-f', '${Version}', package
             ],
-            stdout=StringIO(),
+            stdout=BytesIO(),
         )
     else:
         proc = remote.run(
             args=[
                 'rpm', '-q', package, '--qf', '%{VERSION}'
             ],
-            stdout=StringIO(),
+            stdout=BytesIO(),
         )
     if proc.exitstatus == 0:
-        installed_ver = proc.stdout.getvalue().strip()
+        installed_ver = stringify(proc.stdout.getvalue().strip())
         # Does this look like a version string?
         # this assumes a version string starts with non-alpha characters
         if installed_ver and re.match('^[^a-zA-Z]', installed_ver):
@@ -367,7 +366,7 @@ def get_package_version(remote, package):
         log.warning(
             "Unable to determine if {pkg} is installed: {stdout}".format(
                 pkg=package,
-                stdout=proc.stdout.getvalue().strip(),
+                stdout=stringify(proc.stdout.getvalue().strip()),
             )
         )
 

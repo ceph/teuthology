@@ -1,7 +1,6 @@
 """
 Paramiko run support
 """
-from cStringIO import StringIO
 from paramiko import ChannelFile
 
 import gevent
@@ -13,6 +12,7 @@ import shutil
 
 from six import string_types as basestring
 
+from teuthology.compat import BytesIO, TextIO
 from ..contextutil import safe_while
 from ..exceptions import (CommandCrashedError, CommandFailedError,
                           ConnectionLostError)
@@ -250,8 +250,9 @@ def copy_to_log(f, logger, loglevel=logging.INFO):
         line = line.rstrip()
         # Second part of work-around for http://tracker.ceph.com/issues/8313
         try:
-            line = unicode(line, 'utf-8', 'replace').encode('utf-8')
-            logger.log(loglevel, line.decode('utf-8'))
+            if isinstance(line, bytes):
+                line = line.decode('utf-8', 'replace')
+            logger.log(loglevel, line)
         except (UnicodeDecodeError, UnicodeEncodeError):
             logger.exception("Encountered unprintable line in command output")
 
@@ -261,8 +262,10 @@ def copy_and_close(src, fdst):
     copyfileobj call wrapper.
     """
     if src is not None:
-        if isinstance(src, basestring):
-            src = StringIO(src)
+        if isinstance(src, TextIO):
+            src = src.getvalue().encode('utf-8')
+        if isinstance(src, bytes):
+            src = BytesIO(src)
         shutil.copyfileobj(src, fdst)
     fdst.close()
 

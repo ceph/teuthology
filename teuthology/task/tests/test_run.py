@@ -1,8 +1,7 @@
 import logging
 import pytest
 
-from StringIO import StringIO
-
+from teuthology.compat import BytesIO
 from teuthology.exceptions import CommandFailedError
 
 log = logging.getLogger(__name__)
@@ -32,9 +31,9 @@ class TestRun(object):
             )
 
     def test_command_success(self, ctx, config):
-        result = StringIO()
+        result = BytesIO()
         ctx.cluster.run(
             args=["python", "-c", "print('hi')"],
             stdout=result
         )
-        assert result.getvalue().strip() == "hi"
+        assert result.getvalue().strip() == b"hi"
