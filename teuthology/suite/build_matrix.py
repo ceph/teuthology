@@ -1,5 +1,8 @@
 import logging
 import os
+# Directly imported for easy patching
+from os import listdir
+from os.path import exists, isfile, isdir
 
 from . import matrix
 
@@ -71,16 +74,16 @@ def _get_matrix(path, subset=None):
 
 
 def _build_matrix(path, mincyclicity=0, item=''):
-    if not os.path.exists(path):
+    if not exists(path):
         raise IOError('%s does not exist (abs %s)' % (path, os.path.abspath(path)))
-    if os.path.isfile(path):
+    if isfile(path):
         if path.endswith('.yaml'):
             return matrix.Base(item)
         return None
-    if os.path.isdir(path):
+    if isdir(path):
         if path.endswith('.disable'):
             return None
-        files = sorted(os.listdir(path))
+        files = sorted(listdir(path))
         if len(files) == 0:
             return None
         if '+' in files:

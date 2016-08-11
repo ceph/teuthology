@@ -70,7 +70,7 @@ setup(
                       'configparser',
                       'pytest',
                       'pytest-capturelog',
-                      'mock',
+                      'mock >= 1.1.0',
                       'fudge',
                       'ansible>=2.0',
                       'pyopenssl>=0.13',

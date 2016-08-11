@@ -20,11 +20,11 @@ class TestBuildMatrixSimple(object):
 class TestBuildMatrix(object):
 
     patchpoints = [
-        'os.path.exists',
-        'os.listdir',
-        'os.path.isfile',
-        'os.path.isdir',
-        '__builtin__.open',
+        'teuthology.suite.build_matrix.exists',
+        'teuthology.suite.build_matrix.listdir',
+        'teuthology.suite.build_matrix.isfile',
+        'teuthology.suite.build_matrix.isdir',
+        'teuthology.suite.open',
     ]
 
     def setup(self):
@@ -367,11 +367,11 @@ class TestBuildMatrix(object):
 
 class TestSubset(object):
     patchpoints = [
-        'os.path.exists',
-        'os.listdir',
-        'os.path.isfile',
-        'os.path.isdir',
-        '__builtin__.open',
+        'teuthology.suite.build_matrix.exists',
+        'teuthology.suite.build_matrix.listdir',
+        'teuthology.suite.build_matrix.isfile',
+        'teuthology.suite.build_matrix.isdir',
+        'teuthology.suite.open',
     ]
 
     def setup(self):

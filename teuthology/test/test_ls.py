@@ -1,6 +1,6 @@
 import pytest
 
-from mock import patch, Mock
+from mock import patch, Mock, mock_open
 
 from teuthology import ls
 
@@ -17,14 +17,14 @@ class TestLs(object):
         assert results == ["1", "3"]
 
     @patch("yaml.safe_load_all")
-    @patch("__builtin__.file")
+    @patch("teuthology.ls.open")
     @patch("teuthology.ls.get_jobs")
     def test_ls(self, m_get_jobs, m_file, m_safe_load_all):
         m_get_jobs.return_value = ["1", "2"]
         m_safe_load_all.return_value = [{"failure_reason": "reasons"}]
         ls.ls("some/archive/div", True)
 
-    @patch("__builtin__.file")
+    @patch("teuthology.ls.open")
     @patch("teuthology.ls.get_jobs")
     def test_ls_ioerror(self, m_get_jobs, m_file):
         m_get_jobs.return_value = ["1", "2"]
@@ -32,15 +32,12 @@ class TestLs(object):
         with pytest.raises(IOError):
             ls.ls("some/archive/dir", True)
 
-    @patch("__builtin__.open")
+    @patch("teuthology.ls.open", mock_open(read_data='... some/archive/dir'))
     @patch("os.popen")
     @patch("os.path.isdir")
     @patch("os.path.isfile")
-    def test_print_debug_info(self, m_isfile, m_isdir, m_popen, m_open):
+    def test_print_debug_info(self, m_isfile, m_isdir, m_popen):
         m_isfile.return_value = True
         m_isdir.return_value = True
         m_popen.return_value = Mock()
-        cmdline = Mock()
-        cmdline.find.return_value = True
-        m_open.return_value = cmdline
         ls.print_debug_info("the_job", "job/dir", "some/archive/dir")

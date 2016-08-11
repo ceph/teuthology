@@ -1,6 +1,6 @@
 from teuthology import timer
 
-from mock import MagicMock, patch
+from mock import MagicMock, patch, mock_open
 from time import time
 
 
@@ -52,8 +52,7 @@ class TestTimer(object):
         _path = '/path'
         _safe_dump = MagicMock(name='safe_dump')
         with patch('teuthology.timer.yaml.safe_dump', _safe_dump):
-            with patch('teuthology.timer.file') as _file:
-                _file.return_value = MagicMock(spec=file)
+            with patch('teuthology.timer.open', mock_open(), create=True) as _file:
                 self.timer = timer.Timer(path=_path)
                 assert self.timer.path == _path
                 self.timer.write()
@@ -68,8 +67,7 @@ class TestTimer(object):
         _path = '/path'
         _safe_dump = MagicMock(name='safe_dump')
         with patch('teuthology.timer.yaml.safe_dump', _safe_dump):
-            with patch('teuthology.timer.file') as _file:
-                _file.return_value = MagicMock(spec=file)
+            with patch('teuthology.timer.open', mock_open(), create=True) as _file:
                 self.timer = timer.Timer(path=_path, sync=True)
                 assert self.timer.path == _path
                 assert self.timer.sync is True

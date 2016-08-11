@@ -7,6 +7,9 @@ from prettytable import PrettyTable, FRAME, ALL
 import os
 import sys
 import yaml
+# Directly imported for easy patching
+from os import listdir
+from os.path import isdir
 
 from teuthology.exceptions import ParseError
 from teuthology.suite.build_matrix import build_matrix, combine_path
@@ -195,7 +198,7 @@ def extract_info(file_name, fields):
     message and raises ParseError.
     """
     empty_result = {f: '' for f in fields}
-    if os.path.isdir(file_name) or not file_name.endswith('.yaml'):
+    if isdir(file_name) or not file_name.endswith('.yaml'):
         return empty_result
 
     with open(file_name, 'r') as f:
@@ -240,7 +243,7 @@ def tree_with_info(cur_dir, fields, include_facet, prefix, rows,
     3) the values of the provided fields in the path ('' is used for
        missing values) in the same order as the provided fields
     """
-    files = sorted(os.listdir(cur_dir))
+    files = sorted(listdir(cur_dir))
     has_yamls = any([x.endswith('.yaml') for x in files])
     facet = os.path.basename(cur_dir) if has_yamls else ''
     for i, f in enumerate(files):
@@ -260,7 +263,7 @@ def tree_with_info(cur_dir, fields, include_facet, prefix, rows,
         if include_facet:
             row.append(facet)
         rows.append(row + meta)
-        if os.path.isdir(path):
+        if isdir(path):
             tree_with_info(path, fields, include_facet,
                            prefix + dir_pad, rows, output_format)
     return rows

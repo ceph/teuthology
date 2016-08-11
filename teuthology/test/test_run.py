@@ -45,7 +45,7 @@ class TestRun(object):
         with pytest.raises(AssertionError):
             run.setup_config(["some/config.yaml"])
 
-    @patch("__builtin__.file")
+    @patch("teuthology.run.open")
     def test_write_initial_metadata(self, m_file):
         config = {"job_id": "123", "foo": "bar"}
         run.write_initial_metadata(
@@ -121,7 +121,7 @@ class TestRun(object):
     @patch("yaml.safe_dump")
     @patch("teuthology.report.try_push_job_info")
     @patch("teuthology.run.email_results")
-    @patch("__builtin__.file")
+    @patch("teuthology.run.open")
     @patch("sys.exit")
     def test_report_outcome(self, m_sys_exit, m_file, m_email_results, m_try_push_job_info, m_safe_dump, m_nuke, m_get_status):
         config = {"nuke-on-error": True, "email-on-error": True}

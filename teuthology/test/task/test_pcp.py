@@ -1,7 +1,7 @@
 import os
 import requests
 
-from mock import patch, DEFAULT, Mock, MagicMock, call
+from mock import patch, DEFAULT, Mock, call, mock_open
 from pytest import raises
 
 import six.moves.urllib.parse as urllib_parse
@@ -171,8 +171,7 @@ class TestGraphiteGrapher(TestPCPGrapher):
             m_resp = Mock()
             m_resp.ok = True
             m_get.return_value = m_resp
-            with patch('teuthology.task.pcp.open', create=True) as m_open:
-                m_open.return_value = MagicMock(spec=file)
+            with patch('teuthology.task.pcp.open', mock_open(), create=True):
                 obj.download_graphs()
         expected_filenames = []
         for metric in obj.metrics:
@@ -200,8 +199,7 @@ class TestGraphiteGrapher(TestPCPGrapher):
             m_resp = Mock()
             m_resp.ok = True
             m_get.return_value = m_resp
-            with patch('teuthology.task.pcp.open', create=True) as m_open:
-                m_open.return_value = MagicMock(spec=file)
+            with patch('teuthology.task.pcp.open', mock_open(), create=True):
                 obj.download_graphs()
         html = obj.generate_html(mode='static')
         assert config.pcp_host not in html
