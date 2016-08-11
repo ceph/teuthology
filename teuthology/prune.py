@@ -37,10 +37,7 @@ def prune_archive(archive_dir, pass_days, remotes_days, dry_run=False):
     log.debug("Archive {archive} has {count} children".format(
         archive=archive_dir, count=len(os.listdir(archive_dir))))
     # Use full paths
-    children = map(
-        lambda p: os.path.join(archive_dir, p),
-        listdir(archive_dir)
-    )
+    children = [os.path.join(archive_dir, p) for p in listdir(archive_dir)]
     run_dirs = list()
     for child in children:
         # Ensure that the path is not a symlink, is a directory, and is old
@@ -123,7 +120,7 @@ def maybe_remove_passes(run_dir, days, dry_run=False):
             continue
         # Is it a passed job?
         summary_lines = [line.strip() for line in
-                         file(summary_path).readlines()]
+                         open(summary_path).readlines()]
         if 'success: true' in summary_lines:
             log.info("{job} is a {days}-day old passed job; removing".format(
                 job=item, days=days))
@@ -152,7 +149,7 @@ def maybe_remove_remotes(run_dir, days, dry_run=False):
         if (should_preserve(item) or not os.path.isdir(item) or not
                 is_old_enough(item, days)):
             continue
-        for (subdir, description) in subdirs.iteritems():
+        for (subdir, description) in subdirs.items():
             _maybe_remove_subdir(item, subdir, days, description, dry_run)
 
 

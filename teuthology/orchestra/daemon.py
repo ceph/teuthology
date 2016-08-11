@@ -191,7 +191,7 @@ class DaemonGroup(object):
         :param type_: type of daemon (osd, mds, mon, rgw,  for example)
         """
         role = cluster + '.' + type_
-        return self.daemons.get(role, {}).values()
+        return list(self.daemons.get(role, {}).values())
 
     def resolve_role_list(self, roles, types, cluster_aware=False):
         """

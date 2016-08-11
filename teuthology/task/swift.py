@@ -72,7 +72,7 @@ def create_users(ctx, config):
     users = {'': 'foo', '2': 'bar'}
     for client in config['clients']:
         testswift_conf = config['testswift_conf'][client]
-        for suffix, user in users.iteritems():
+        for suffix, user in users.items():
             _config_user(testswift_conf, '{user}.{client}'.format(user=user, client=client), user, suffix)
             ctx.cluster.only(client).run(
                 args=[
@@ -94,7 +94,7 @@ def create_users(ctx, config):
         yield
     finally:
         for client in config['clients']:
-            for user in users.itervalues():
+            for user in users.values():
                 uid = '{user}.{client}'.format(user=user, client=client)
                 ctx.cluster.only(client).run(
                     args=[
@@ -117,13 +117,13 @@ def configure(ctx, config):
     assert isinstance(config, dict)
     log.info('Configuring testswift...')
     testdir = teuthology.get_testdir(ctx)
-    for client, properties in config['clients'].iteritems():
+    for client, properties in config['clients'].items():
         log.info('client={c}'.format(c=client))
         log.info('config={c}'.format(c=config))
         testswift_conf = config['testswift_conf'][client]
         if properties is not None and 'rgw_server' in properties:
             host = None
-            for target, roles in zip(ctx.config['targets'].iterkeys(), ctx.config['roles']):
+            for target, roles in zip(ctx.config['targets'], ctx.config['roles']):
                 log.info('roles: ' + str(roles))
                 log.info('target: ' + str(target))
                 if properties['rgw_server'] in roles:
@@ -160,7 +160,7 @@ def run_tests(ctx, config):
     """
     assert isinstance(config, dict)
     testdir = teuthology.get_testdir(ctx)
-    for client, client_config in config.iteritems():
+    for client, client_config in config.items():
         args = [
                 'SWIFT_TEST_CONFIG_FILE={tdir}/archive/testswift.{client}.conf'.format(tdir=testdir, client=client),
                 '{tdir}/swift/virtualenv/bin/nosetests'.format(tdir=testdir),
@@ -225,7 +225,7 @@ def task(ctx, config):
         config = all_clients
     if isinstance(config, list):
         config = dict.fromkeys(config)
-    clients = config.keys()
+    clients = list(config)
 
     log.info('clients={c}'.format(c=clients))
 

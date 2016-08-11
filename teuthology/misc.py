@@ -14,15 +14,16 @@ import subprocess
 import sys
 import tarfile
 import time
-import urllib2
-import urlparse
 import yaml
 import json
 import re
 import tempfile
 import pprint
 
-from six import reraise
+import six.moves.urllib.request as urllib_request
+import six.moves.urllib.error as urllib_error
+import six.moves.urllib.parse as urllib_parse
+from six import string_types as basestring, iteritems, reraise
 
 from teuthology import safepath
 from teuthology.exceptions import (CommandCrashedError, CommandFailedError,
@@ -87,7 +88,7 @@ def config_file(string):
     """
     config_dict = {}
     try:
-        with file(string) as f:
+        with open(string) as f:
             g = yaml.safe_load_all(f)
             for new in g:
                 config_dict.update(new)
@@ -119,7 +120,7 @@ def merge_configs(config_paths):
         if not os.path.exists(conf_path):
             log.debug("The config path {0} does not exist, skipping.".format(conf_path))
             continue
-        with file(conf_path) as partial_file:
+        with open(conf_path) as partial_file:
             partial_dict = yaml.safe_load(partial_file)
         try:
             conf_dict = deep_merge(conf_dict, partial_dict)
@@ -226,19 +227,19 @@ def get_ceph_binary_url(package=None,
                 branch = 'master'
             ref = branch
 
-        sha1_url = urlparse.urljoin(BASE, 'ref/{ref}/sha1'.format(ref=ref))
+        sha1_url = urllib_parse.urljoin(BASE, 'ref/{ref}/sha1'.format(ref=ref))
         log.debug('Translating ref to sha1 using url %s', sha1_url)
 
         try:
-            sha1_fp = urllib2.urlopen(sha1_url)
+            sha1_fp = urllib_request.urlopen(sha1_url)
             sha1 = sha1_fp.read().rstrip('\n')
             sha1_fp.close()
-        except urllib2.HTTPError as e:
+        except urllib_error.HTTPError as e:
             log.error('Failed to get url %s', sha1_url)
             raise e
 
     log.debug('Using %s %s sha1 %s', package, format, sha1)
-    bindir_url = urlparse.urljoin(BASE, 'sha1/{sha1}/'.format(sha1=sha1))
+    bindir_url = urllib_parse.urljoin(BASE, 'sha1/{sha1}/'.format(sha1=sha1))
     return (sha1, bindir_url)
 
 
@@ -334,7 +335,7 @@ def skeleton_config(ctx, roles, ips, cluster='ceph'):
     skconf = t.read().format(testdir=get_testdir(ctx))
     conf = configobj.ConfigObj(StringIO(skconf), file_error=True)
     mons = get_mons(roles=roles, ips=ips)
-    for role, addr in mons.iteritems():
+    for role, addr in mons.items():
         mon_cluster, _, _ = split_role(role)
         if mon_cluster != cluster:
             continue
@@ -409,7 +410,7 @@ def all_roles(cluster):
 
     :param cluster: Cluster extracted from the ctx.
     """
-    for _, roles_for_host in cluster.remotes.iteritems():
+    for _, roles_for_host in cluster.remotes.items():
         for name in roles_for_host:
             yield name
 
@@ -422,7 +423,7 @@ def all_roles_of_type(cluster, type_):
     :param cluster: Cluster extracted from the ctx.
     :type_: role type
     """
-    for _, roles_for_host in cluster.remotes.iteritems():
+    for _, roles_for_host in cluster.remotes.items():
         for id_ in roles_of_type(roles_for_host, type_):
             yield id_
 
@@ -455,7 +456,7 @@ def num_instances_of_type(cluster, type_, ceph_cluster='ceph'):
     :param type_: role
     :param ceph_cluster: filter for ceph cluster name
     """
-    remotes_and_roles = cluster.remotes.items()
+    remotes_and_roles = list(cluster.remotes.items())
     roles = [roles for (remote, roles) in remotes_and_roles]
     is_ceph_type = is_type(type_, ceph_cluster)
     num = sum(sum(1 for role in hostroles if is_ceph_type(role))
@@ -480,7 +481,7 @@ def create_simple_monmap(ctx, remote, conf, path=None):
 
         Each invocation returns the next monitor address
         """
-        for section, data in conf.iteritems():
+        for section, data in conf.items():
             PREFIX = 'mon.'
             if not section.startswith(PREFIX):
                 continue
@@ -532,7 +533,7 @@ def write_file(remote, path, data):
         args=[
             'python',
             '-c',
-            'import shutil, sys; shutil.copyfileobj(sys.stdin, file(sys.argv[1], "wb"))',
+            'import shutil, sys; shutil.copyfileobj(sys.stdin, open(sys.argv[1], "wb"))',
             path,
         ],
         stdin=data,
@@ -562,7 +563,7 @@ def sudo_write_file(remote, path, data, perms=None, owner=None):
             'sudo',
             'python',
             '-c',
-            'import shutil, sys; shutil.copyfileobj(sys.stdin, file(sys.argv[1], "wb"))',
+            'import shutil, sys; shutil.copyfileobj(sys.stdin, open(sys.argv[1], "wb"))',
             path,
         ] + owner_args + permargs,
         stdin=data,
@@ -959,7 +960,7 @@ def wait_until_osds_up(ctx, cluster, remote, ceph_cluster='ceph'):
         )
         out = r.stdout.getvalue()
         j = json.loads('\n'.join(out.split('\n')[1:]))
-        up = len(filter(lambda o: 'up' in o['state'], j['osds']))
+        up = len([o for o in j['osds'] if 'up' in o['state']])
         log.debug('%d of %d OSDs are up' % (up, num_osds))
         if up == num_osds:
             break
@@ -1011,7 +1012,7 @@ def reconnect(ctx, timeout, remotes=None):
     if remotes:
         need_reconnect = remotes
     else:
-        need_reconnect = ctx.cluster.remotes.keys()
+        need_reconnect = list(ctx.cluster.remotes)
 
     while need_reconnect:
         for remote in need_reconnect:
@@ -1037,7 +1038,7 @@ def get_clients(ctx, roles):
         assert isinstance(role, basestring)
         assert 'client.' in role
         _, _, id_ = split_role(role)
-        (remote,) = ctx.cluster.only(role).remotes.iterkeys()
+        (remote,) = ctx.cluster.only(role).remotes.keys()
         yield (id_, remote)
 
 
@@ -1102,7 +1103,7 @@ def deep_merge(a, b):
         return a
     if isinstance(a, dict):
         assert isinstance(b, dict)
-        for (k, v) in b.iteritems():
+        for (k, v) in iteritems(b):
             if k in a:
                 a[k] = deep_merge(a[k], v)
             else:
@@ -1325,7 +1326,7 @@ def is_in_dict(searchkey, searchval, d):
     """
     val = d.get(searchkey, None)
     if isinstance(val, dict) and isinstance(searchval, dict):
-        for foundkey, foundval in searchval.iteritems():
+        for foundkey, foundval in iteritems(searchval):
             if not is_in_dict(foundkey, foundval, val):
                 return False
         return True

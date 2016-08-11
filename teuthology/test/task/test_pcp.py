@@ -1,9 +1,10 @@
 import os
 import requests
-import urlparse
 
 from mock import patch, DEFAULT, Mock, MagicMock, call
 from pytest import raises
+
+import six.moves.urllib.parse as urllib_parse
 
 from teuthology.config import config, FakeNamespace
 from teuthology.orchestra.cluster import Cluster
@@ -87,7 +88,7 @@ class TestPCPGrapher(TestPCPDataSource):
         assert obj.hosts == hosts
         assert obj.time_from == time_from
         assert obj.time_until == time_until
-        expected_url = urlparse.urljoin(config.pcp_host, self.klass._endpoint)
+        expected_url = urllib_parse.urljoin(config.pcp_host, self.klass._endpoint)
         assert obj.base_url == expected_url
 
 
@@ -103,13 +104,13 @@ class TestGrafanaGrapher(TestPCPGrapher):
             time_from=time_from,
             time_until=time_until,
         )
-        base_url = urlparse.urljoin(
+        base_url = urllib_parse.urljoin(
             config.pcp_host,
             'grafana/index.html#/dashboard/script/index.js',
         )
         assert obj.base_url == base_url
         got_url = obj.build_graph_url()
-        parsed_query = urlparse.parse_qs(got_url.split('?')[1])
+        parsed_query = urllib_parse.parse_qs(got_url.split('?')[1])
         assert parsed_query['hosts'] == hosts
         assert len(parsed_query['time_from']) == 1
         assert parsed_query['time_from'][0] == time_from
@@ -212,7 +213,7 @@ class TestGraphiteGrapher(TestPCPGrapher):
             'foo.bar baz': 'foo.bar_baz',
             'foo.*.bar baz': 'foo._all_.bar_baz',
         }
-        for in_, out in sanitized_metrics.iteritems():
+        for in_, out in sanitized_metrics.items():
             assert self.klass._sanitize_metric_name(in_) == out
 
     def test_get_target_globs(self):

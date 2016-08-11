@@ -211,7 +211,7 @@ def task(ctx, config):
     for one image being tested at any one time.
     """
     try:
-        pairs = config.items()
+        pairs = list(config.items())
     except AttributeError:
         pairs = [('client.0', 'client.0')]
     with contextutil.nested(

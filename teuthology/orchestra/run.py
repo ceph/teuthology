@@ -11,6 +11,8 @@ import pipes
 import logging
 import shutil
 
+from six import string_types as basestring
+
 from ..contextutil import safe_while
 from ..exceptions import (CommandCrashedError, CommandFailedError,
                           ConnectionLostError)

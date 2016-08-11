@@ -71,8 +71,7 @@ def normalize_config(ctx, config):
     :param config: Configuration
     """
     if not config or \
-            len(filter(lambda x: x in VERSION_KEYS + ['kdb', 'flavor'],
-                       config.keys())) == len(config.keys()):
+            len([x for x in config.keys() if x in VERSION_KEYS + ['kdb', 'flavor']]) == len(config):
         new_config = {}
         if not config:
             config = CONFIG_DEFAULT
@@ -81,7 +80,7 @@ def normalize_config(ctx, config):
         return new_config
 
     new_config = {}
-    for role, role_config in config.iteritems():
+    for role, role_config in config.items():
         if role_config is None:
             role_config = CONFIG_DEFAULT
         if '.' in role:
@@ -123,7 +122,7 @@ def normalize_and_apply_overrides(ctx, config, overrides):
         # (e.g. 'branch: foo' is overridden with 'tag: bar').  To be able to
         # use deep_merge(), drop all version keys from the original config if
         # the corresponding override has a version key.
-        for role, role_config in config.iteritems():
+        for role, role_config in config.items():
             if (role in overrides and
                     any(k in overrides[role] for k in VERSION_KEYS)):
                 for k in VERSION_KEYS:
@@ -140,7 +139,7 @@ def validate_config(ctx, config):
     :param ctx: Context
     :param config: Configuration
     """
-    for _, roles_for_host in ctx.cluster.remotes.iteritems():
+    for _, roles_for_host in ctx.cluster.remotes.items():
         kernel = None
         for role in roles_for_host:
             role_kernel = config.get(role, kernel)
@@ -227,7 +226,7 @@ def install_firmware(ctx, config):
     uri = teuth_config.linux_firmware_git_url or linux_firmware_git_upstream
     fw_dir = '/lib/firmware/updates'
 
-    for role in config.iterkeys():
+    for role in config:
         if isinstance(config[role], str) and config[role].find('distro') >= 0:
             log.info('Skipping firmware on distro kernel');
             return
@@ -312,7 +311,7 @@ def download_kernel(ctx, config):
     :param config: Configuration
     """
     procs = {}
-    for role, src in config.iteritems():
+    for role, src in config.items():
         needs_download = False
 
         if src == 'distro':
@@ -351,7 +350,7 @@ def download_kernel(ctx, config):
             proc = role_remote.run(
                 args=[
                     'python', '-c',
-                    'import shutil, sys; shutil.copyfileobj(sys.stdin, file(sys.argv[1], "wb"))',
+                    'import shutil, sys; shutil.copyfileobj(sys.stdin, open(sys.argv[1], "wb"))',
                     remote_pkg_path(role_remote),
                     ],
                 wait=False,
@@ -396,7 +395,7 @@ def download_kernel(ctx, config):
                 wait=False)
             procs[role_remote.name] = proc
 
-    for name, proc in procs.iteritems():
+    for name, proc in procs.items():
         log.debug('Waiting for download/copy to %s to complete...', name)
         proc.wait()
 
@@ -435,7 +434,7 @@ def install_and_reboot(ctx, config):
     """
     procs = {}
     kernel_title = ''
-    for role, src in config.iteritems():
+    for role, src in config.items():
         (role_remote,) = ctx.cluster.only(role).remotes.keys()
         if isinstance(src, str) and src.find('distro') >= 0:
             log.info('Installing distro kernel on {role}...'.format(role=role))
@@ -568,7 +567,7 @@ def install_and_reboot(ctx, config):
             )
         procs[role_remote.name] = proc
 
-    for name, proc in procs.iteritems():
+    for name, proc in procs.items():
         log.debug('Waiting for install on %s to complete...', name)
         proc.wait()
 
@@ -580,7 +579,7 @@ def enable_disable_kdb(ctx, config):
     :param ctx: Context
     :param config: Configuration
     """
-    for role, enable in config.iteritems():
+    for role, enable in config.items():
         (role_remote,) = ctx.cluster.only(role).remotes.keys()
         if "mira" in role_remote.name:
             serialdev = "ttyS2"
@@ -1150,7 +1149,7 @@ def task(ctx, config):
 
     remove_old_kernels(ctx)
 
-    for role, role_config in config.iteritems():
+    for role, role_config in config.items():
         # gather information about this remote
         (role_remote,) = ctx.cluster.only(role).remotes.keys()
         system_type = role_remote.os.name

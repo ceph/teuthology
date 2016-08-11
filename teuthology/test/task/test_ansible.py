@@ -171,7 +171,7 @@ class TestAnsibleTask(TestTask):
             playbook='~/fake/playbook',
         ))
         task = self.klass(self.ctx, self.task_config)
-        with patch('teuthology.task.ansible.file', create=True) as m_file:
+        with patch('teuthology.task.ansible.open', create=True) as m_file:
             m_file.return_value = fake_playbook_obj
             task.get_playbook()
         assert task.playbook == fake_playbook
@@ -274,7 +274,7 @@ class TestAnsibleTask(TestTask):
         fake_playbook_obj.name = playbook
 
         task = self.klass(self.ctx, self.task_config)
-        with patch('teuthology.task.ansible.file', create=True) as m_file:
+        with patch('teuthology.task.ansible.open', create=True) as m_file:
             m_file.return_value = fake_playbook_obj
             task.setup()
         args = task._build_args()
@@ -339,7 +339,7 @@ class TestAnsibleTask(TestTask):
         assert args.count('--extra-vars') == 1
         vars_str = args[args.index('--extra-vars') + 1].strip("'")
         extra_vars = json.loads(vars_str)
-        assert extra_vars.keys() == ['ansible_ssh_user']
+        assert list(extra_vars) == ['ansible_ssh_user']
 
     def test_build_args_vars(self):
         extra_vars = dict(
@@ -467,7 +467,7 @@ class TestCephLabTask(TestTask):
         fake_playbook_obj.name = playbook
         task = self.klass(self.ctx, dict())
         task.repo_path = '/tmp/fake/repo'
-        with patch('teuthology.task.ansible.file', create=True) as m_file:
+        with patch('teuthology.task.ansible.open', create=True) as m_file:
             m_file.return_value = fake_playbook_obj
             task.get_playbook()
         assert task.playbook_file.name == playbook

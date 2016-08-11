@@ -184,7 +184,7 @@ def reboot(ctx, remotes):
 
 def reset_syslog_dir(ctx):
     nodes = {}
-    for remote in ctx.cluster.remotes.iterkeys():
+    for remote in ctx.cluster.remotes:
         proc = remote.run(
             args=[
                 'if', 'test', '-e', '/etc/rsyslog.d/80-cephtest.conf',
@@ -201,13 +201,13 @@ def reset_syslog_dir(ctx):
         )
         nodes[remote.name] = proc
 
-    for name, proc in nodes.iteritems():
+    for name, proc in nodes.items():
         log.info('Waiting for %s to restart syslog...', name)
         proc.wait()
 
 
 def dpkg_configure(ctx):
-    for remote in ctx.cluster.remotes.iterkeys():
+    for remote in ctx.cluster.remotes:
         if remote.os.package_type != 'deb':
             continue
         log.info(
@@ -229,7 +229,7 @@ def dpkg_configure(ctx):
 def remove_yum_timedhosts(ctx):
     # Workaround for https://bugzilla.redhat.com/show_bug.cgi?id=1233329
     log.info("Removing yum timedhosts files...")
-    for remote in ctx.cluster.remotes.iterkeys():
+    for remote in ctx.cluster.remotes:
         if remote.os.package_type != 'rpm':
             continue
         remote.run(
@@ -253,7 +253,7 @@ def remove_ceph_packages(ctx):
                                'ceph-deploy', 'libapache2-mod-fastcgi'
                                ]
     pkgs = str.join(' ', ceph_packages_to_remove)
-    for remote in ctx.cluster.remotes.iterkeys():
+    for remote in ctx.cluster.remotes:
         if remote.os.package_type == 'rpm':
             log.info("Remove any broken repos")
             remote.run(
@@ -361,7 +361,7 @@ def undo_multipath(ctx):
     remove the packages/daemon that manages them so they don't
     come back unless specifically requested by the test.
     """
-    for remote in ctx.cluster.remotes.iterkeys():
+    for remote in ctx.cluster.remotes:
         remote.run(
             args=[
                 'sudo', 'multipath', '-F',
@@ -390,8 +390,7 @@ def synch_clocks(remotes):
 
 
 def stale_openstack(ctx):
-    targets = dict(map(lambda i: (i['ID'], i),
-                       OpenStack.list_instances()))
+    targets = dict((i['ID'], i) for i in OpenStack.list_instances())
     nodes = list_locks(keyed_by_name=True, locked=True)
     stale_openstack_instances(ctx, targets, nodes)
     stale_openstack_nodes(ctx, targets, nodes)
@@ -407,7 +406,7 @@ OPENSTACK_DELAY = 30 * 60
 
 
 def stale_openstack_instances(ctx, instances, locked_nodes):
-    for (instance_id, instance) in instances.iteritems():
+    for (instance_id, instance) in instances.items():
         i = OpenStackInstance(instance_id)
         if not i.exists():
             log.debug("stale-openstack: {instance} disappeared, ignored"
@@ -481,7 +480,7 @@ def stale_openstack_volumes(ctx, volumes):
 
 def stale_openstack_nodes(ctx, instances, locked_nodes):
     names = set([ i['Name'] for i in instances.values() ])
-    for (name, node) in locked_nodes.iteritems():
+    for (name, node) in locked_nodes.items():
         name = decanonicalize_hostname(name)
         if node['machine_type'] != 'openstack':
             continue
@@ -528,7 +527,7 @@ def main(args):
         ctx.config = config_file(ctx.archive + '/config.yaml')
         ifn = os.path.join(ctx.archive, 'info.yaml')
         if os.path.exists(ifn):
-            with file(ifn, 'r') as fd:
+            with open(ifn, 'r') as fd:
                 info = yaml.load(fd.read())
         if not ctx.pid:
             ctx.pid = info.get('pid')
@@ -597,7 +596,7 @@ def nuke(ctx, should_unlock, sync_clocks=True, reboot_all=True, noipmi=False):
                             "Not nuking %s because description doesn't match",
                             lock['name'])
     with parallel() as p:
-        for target, hostkey in ctx.config['targets'].iteritems():
+        for target, hostkey in ctx.config['targets'].items():
             p.spawn(
                 nuke_one,
                 ctx,
@@ -640,7 +639,7 @@ def nuke_one(ctx, target, should_unlock, synch_clocks, reboot_all,
         ret = target
     else:
         if should_unlock:
-            unlock_one(ctx, target.keys()[0], ctx.owner)
+            unlock_one(ctx, list(target)[0], ctx.owner)
     return ret
 
 
@@ -695,7 +694,7 @@ def nuke_helper(ctx, should_unlock):
     shutdown_daemons(ctx)
     log.info('All daemons killed.')
 
-    remotes = ctx.cluster.remotes.keys()
+    remotes = list(ctx.cluster.remotes)
     reboot(ctx, remotes)
     #shutdown daemons again incase of startup
     log.info('Stop daemons after restart...')

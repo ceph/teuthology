@@ -32,7 +32,7 @@ class TestRun(object):
 
     @patch("teuthology.run.merge_configs")
     def test_setup_config_targets_ok(self, m_merge_configs):
-        config = {"targets": range(4), "roles": range(2)}
+        config = {"targets": list(range(4)), "roles": list(range(2))}
         m_merge_configs.return_value = config
         result = run.setup_config(["some/config.yaml"])
         assert result["targets"] == [0, 1, 2, 3]
@@ -40,7 +40,7 @@ class TestRun(object):
 
     @patch("teuthology.run.merge_configs")
     def test_setup_config_targets_invalid(self, m_merge_configs):
-        config = {"targets": range(2), "roles": range(4)}
+        config = {"targets": list(range(2)), "roles": list(range(4))}
         m_merge_configs.return_value = config
         with pytest.raises(AssertionError):
             run.setup_config(["some/config.yaml"])
@@ -77,7 +77,7 @@ class TestRun(object):
         config = {"tasks": [{"kernel": "can't be here"}]}
         with pytest.raises(AssertionError) as excinfo:
             run.validate_tasks(config)
-        assert excinfo.value.message.startswith("kernel installation")
+        assert str(excinfo.value).startswith("kernel installation")
 
     def test_validate_task_no_tasks(self):
         result = run.validate_tasks({})
@@ -91,16 +91,16 @@ class TestRun(object):
     def test_validate_tasks_is_list(self):
         with pytest.raises(AssertionError) as excinfo:
             run.validate_tasks({"tasks": {"foo": "bar"}})
-        assert excinfo.value.message.startswith("Expected list")
+        assert str(excinfo.value).startswith("Expected list")
 
     def test_get_initial_tasks_invalid(self):
         with pytest.raises(AssertionError) as excinfo:
             run.get_initial_tasks(True, {"targets": "can't be here",
                                          "roles": "roles" }, "machine_type")
-        assert excinfo.value.message.startswith("You cannot")
+        assert str(excinfo.value).startswith("You cannot")
 
     def test_get_inital_tasks(self):
-        config = {"roles": range(2), "kernel": "the_kernel", "use_existing_cluster": False}
+        config = {"roles": list(range(2)), "kernel": "the_kernel", "use_existing_cluster": False}
         result = run.get_initial_tasks(True, config, "machine_type")
         assert {"internal.lock_machines": (2, "machine_type")} in result
         assert {"kernel": "the_kernel"} in result

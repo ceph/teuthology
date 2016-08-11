@@ -9,7 +9,8 @@ import re
 import collections
 import os
 import requests
-import urllib
+
+import six.moves.urllib.parse as urllib_parse
 
 import teuthology
 from . import misc
@@ -147,7 +148,7 @@ def json_matching_statuses(json_file_or_str, statuses):
 
     return_statuses = list()
     for status in statuses:
-        for k, v in query.iteritems():
+        for k, v in query.items():
             if not misc.is_in_dict(k, v, status):
                 break
         else:
@@ -196,11 +197,11 @@ def main(ctx):
 
     if ctx.targets:
         try:
-            with file(ctx.targets) as f:
+            with open(ctx.targets) as f:
                 g = yaml.safe_load_all(f)
                 for new in g:
                     if 'targets' in new:
-                        for t in new['targets'].iterkeys():
+                        for t in new['targets']:
                             machines.append(t)
         except IOError as e:
             raise argparse.ArgumentTypeError(str(e))
@@ -323,7 +324,7 @@ def main(ctx):
         if ctx.owner is None and user is None:
             user = misc.get_user()
         # If none of them are vpm, do them all in one shot
-        if not filter(is_vm, machines):
+        if not any(is_vm(machine) for machine in machines):
             res = unlock_many(machines, user)
             return 0 if res else 1
         for machine in machines:
@@ -339,7 +340,7 @@ def main(ctx):
         if not result:
             ret = 1
         else:
-            machines_to_update = result.keys()
+            machines_to_update = list(result)
             if ctx.machine_type == 'vps':
                 shortnames = ' '.join(
                     [misc.decanonicalize_hostname(name) for name in
@@ -549,7 +550,7 @@ def locked_since_seconds(node):
 
 def list_locks(keyed_by_name=False, **kwargs):
     uri = os.path.join(config.lock_server, 'nodes', '')
-    for key, value in kwargs.iteritems():
+    for key, value in kwargs.items():
         if kwargs[key] is False:
             kwargs[key] = '0'
         if kwargs[key] is True:
@@ -557,7 +558,7 @@ def list_locks(keyed_by_name=False, **kwargs):
     if kwargs:
         if 'machine_type' in kwargs:
             kwargs['machine_type'] = kwargs['machine_type'].replace(',','|')
-        uri += '?' + urllib.urlencode(kwargs)
+        uri += '?' + urllib_parse.urlencode(kwargs)
     try:
         response = requests.get(uri)
     except requests.ConnectionError:
@@ -605,7 +606,7 @@ def find_stale_locks(owner=None):
     nodes = list_locks(locked=True)
     if owner is not None:
         nodes = [node for node in nodes if node['locked_by'] == owner]
-    nodes = filter(might_be_stale, nodes)
+    nodes = list(filter(might_be_stale, nodes))
 
     def node_job_is_active(node, cache):
         """
@@ -703,10 +704,10 @@ def updatekeys(args):
                     for m in args['<machine>']]
     elif args['--targets']:
         targets = args['--targets']
-        with file(targets) as f:
+        with open(targets) as f:
             docs = yaml.safe_load_all(f)
             for doc in docs:
-                machines = [n for n in doc.get('targets', dict()).iterkeys()]
+                machines = list(doc.get('targets', {}))
 
     return do_update_keys(machines, all_)
 
@@ -714,14 +715,14 @@ def updatekeys(args):
 def do_update_keys(machines, all_=False):
     reference = list_locks(keyed_by_name=True)
     if all_:
-        machines = reference.keys()
+        machines = list(reference)
     keys_dict = misc.ssh_keyscan(machines)
     return push_new_keys(keys_dict, reference)
 
 
 def push_new_keys(keys_dict, reference):
     ret = 0
-    for hostname, pubkey in keys_dict.iteritems():
+    for hostname, pubkey in keys_dict.items():
         log.info('Checking %s', hostname)
         if reference[hostname]['ssh_pub_key'] != pubkey:
             log.info('New key found. Updating...')
@@ -744,8 +745,8 @@ def do_summary(ctx):
         lockd[who][1] += 1 if l['up'] else 0
         lockd[who][2] = l['machine_type']
 
-    locks = sorted([p for p in lockd.iteritems()
-                    ], key=lambda sort: (sort[1][2], sort[1][0]))
+    locks = sorted(lockd.items(),
+                   key=lambda sort: (sort[1][2] or '', sort[1][0]))
     total_count, total_up = 0, 0
     print("TYPE     COUNT  UP  OWNER")
 
@@ -753,7 +754,7 @@ def do_summary(ctx):
             # if machinetype == spectype:
             print("{machinetype:8s} {count:3d}  {up:3d}  {owner}".format(
                 count=count, up=upcount, owner=owner[0],
-                machinetype=machinetype))
+                machinetype=machinetype or "None"))
             total_count += count
             total_up += upcount
 

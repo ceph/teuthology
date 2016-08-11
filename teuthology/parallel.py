@@ -93,7 +93,7 @@ class parallel(object):
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         if not self.any_spawned or self.iteration_stopped:
             raise StopIteration()
         result = self.results.get()
@@ -105,6 +105,8 @@ class parallel(object):
             raise
 
         return result
+
+    next = __next__
 
     def _finish(self, greenlet):
         if greenlet.successful():

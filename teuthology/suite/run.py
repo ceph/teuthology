@@ -283,7 +283,7 @@ class Run(object):
                 util.strip_fragment_path(x) for x in fragment_paths
             ]
             limit = self.args.limit
-            if limit > 0 and len(jobs_to_schedule) >= limit:
+            if limit and limit > 0 and len(jobs_to_schedule) >= limit:
                 log.info(
                     'Stopped after {limit} jobs due to --limit={limit}'.format(
                         limit=limit))
@@ -315,7 +315,7 @@ class Run(object):
                 if all_filt_val:
                     continue
 
-            raw_yaml = '\n'.join([file(a, 'r').read() for a in fragment_paths])
+            raw_yaml = '\n'.join(open(a, 'r').read() for a in fragment_paths)
 
             parsed_yaml = yaml.load(raw_yaml)
             os_type = parsed_yaml.get('os_type') or self.base_config.os_type

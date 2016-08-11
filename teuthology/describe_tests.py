@@ -35,7 +35,7 @@ def describe_tests(args):
             filter_out = [f.strip() for f in args['--filter-out'].split(',')]
         subset = None
         if args['--subset']:
-            subset = map(int, args['--subset'].split('/'))
+            subset = [int(args) for arg in args['--subset'].split('/')]
         headers, rows = get_combinations(suite_dir, fields, subset,
                                          limit, filter_in,
                                          filter_out, include_facet)

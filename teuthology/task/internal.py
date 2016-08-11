@@ -149,7 +149,7 @@ def lock_machines(ctx, config):
                         log.info('virtual machine(s) still not up, ' +
                                  'recreating unresponsive ones.')
                         for guest in vmlist:
-                            if guest not in keys_dict.keys():
+                            if guest not in keys_dict:
                                 log.info('recreating: ' + guest)
                                 full_name = misc.canonicalize_hostname(guest)
                                 provision.destroy_if_vm(ctx, full_name)
@@ -157,7 +157,7 @@ def lock_machines(ctx, config):
                 if lock.do_update_keys(keys_dict):
                     log.info("Error in virtual machine keys")
                 newscandict = {}
-                for dkey in all_locked.iterkeys():
+                for dkey in all_locked:
                     stats = lockstatus.get_status(dkey)
                     newscandict[dkey] = stats['ssh_pub_key']
                 ctx.config['targets'] = newscandict
@@ -195,7 +195,7 @@ def lock_machines(ctx, config):
         )
         if get_status(ctx.summary) == 'pass' or unlock_on_failure:
             log.info('Unlocking machines...')
-            for machine in ctx.config['targets'].iterkeys():
+            for machine in ctx.config['targets']:
                 lock.unlock_one(ctx, machine, ctx.owner, ctx.archive)
 
 
@@ -205,7 +205,7 @@ def save_config(ctx, config):
     """
     log.info('Saving configuration')
     if ctx.archive is not None:
-        with file(os.path.join(ctx.archive, 'config.yaml'), 'w') as f:
+        with open(os.path.join(ctx.archive, 'config.yaml'), 'w') as f:
             yaml.safe_dump(ctx.config, f, default_flow_style=False)
 
 
@@ -217,7 +217,7 @@ def check_lock(ctx, config, check_up=True):
         log.info('Lock checking disabled.')
         return
     log.info('Checking locks...')
-    for machine in ctx.config['targets'].iterkeys():
+    for machine in ctx.config['targets']:
         status = lockstatus.get_status(machine)
         log.debug('machine status is %s', repr(status))
         assert status is not None, \
@@ -243,7 +243,7 @@ def check_packages(ctx, config):
     If there are missing packages, fail the job.
     """
     for task in ctx.config['tasks']:
-        if task.keys()[0] == 'buildpackages':
+        if list(task)[0] == 'buildpackages':
             log.info("Checking packages skipped because "
                      "the task buildpackages was found.")
             return
@@ -310,9 +310,9 @@ def add_remotes(ctx, config):
     """
     remotes = []
     machs = []
-    for name in ctx.config['targets'].iterkeys():
+    for name in ctx.config['targets']:
         machs.append(name)
-    for t, key in ctx.config['targets'].iteritems():
+    for t, key in ctx.config['targets'].items():
         t = misc.canonicalize_hostname(t)
         try:
             if ctx.config['sshkeys'] == 'ignore':
@@ -338,7 +338,7 @@ def connect(ctx, config):
     Connect to all remotes in ctx.cluster
     """
     log.info('Opening connections...')
-    for rem in ctx.cluster.remotes.iterkeys():
+    for rem in ctx.cluster.remotes:
         log.debug('connecting to %s', rem.name)
         rem.connect()
 
@@ -378,11 +378,11 @@ def buildpackages_prep(ctx, config):
     buildpackages_index = None
     buildpackages_prep_index = None
     for task in ctx.config['tasks']:
-        if task.keys()[0] == 'install':
+        if list(task)[0] == 'install':
             install_index = index
-        if task.keys()[0] == 'buildpackages':
+        if list(task)[0] == 'buildpackages':
             buildpackages_index = index
-        if task.keys()[0] == 'internal.buildpackages_prep':
+        if list(task)[0] == 'internal.buildpackages_prep':
             buildpackages_prep_index = index
         index += 1
     if (buildpackages_index is not None and
@@ -398,7 +398,7 @@ def buildpackages_prep(ctx, config):
             return BUILDPACKAGES_OK
     elif buildpackages_index is not None and install_index is None:
         ctx.config['tasks'].pop(buildpackages_index)
-        all_tasks = [x.keys()[0] for x in ctx.config['tasks']]
+        all_tasks = [list(x)[0] for x in ctx.config['tasks']]
         log.info('buildpackages removed because no install task found in ' +
                  str(all_tasks))
         return BUILDPACKAGES_REMOVED
@@ -413,10 +413,11 @@ def serialize_remote_roles(ctx, config):
     So that other software can be loosely coupled to teuthology
     """
     if ctx.archive is not None:
-        with file(os.path.join(ctx.archive, 'info.yaml'), 'r+') as info_file:
+        with open(os.path.join(ctx.archive, 'info.yaml'), 'r+') as info_file:
             info_yaml = yaml.safe_load(info_file)
             info_file.seek(0)
-            info_yaml['cluster'] = dict([(rem.name, {'roles': roles}) for rem, roles in ctx.cluster.remotes.iteritems()])
+            info_yaml['cluster'] = dict((rem.name, {'roles': roles})
+                                         for rem, roles in ctx.cluster.remotes.items())
             yaml.safe_dump(info_yaml, info_file, default_flow_style=False)
 
 
@@ -528,7 +529,7 @@ def archive(ctx, config):
             logdir = os.path.join(ctx.archive, 'remote')
             if (not os.path.exists(logdir)):
                 os.mkdir(logdir)
-            for rem in ctx.cluster.remotes.iterkeys():
+            for rem in ctx.cluster.remotes:
                 path = os.path.join(logdir, rem.shortname)
                 misc.pull_directory(rem, archive_dir, path)
                 # Check for coredumps and pull binaries
@@ -613,7 +614,7 @@ def coredump(ctx, config):
 
         # set status = 'fail' if the dir is still there = coredumps were
         # seen
-        for rem in ctx.cluster.remotes.iterkeys():
+        for rem in ctx.cluster.remotes:
             r = rem.run(
                 args=[
                     'if', 'test', '!', '-e', '{adir}/coredump'.format(adir=archive_dir), run.Raw(';'), 'then',
@@ -686,7 +687,7 @@ def syslog(ctx, config):
     ]
     conf_fp = StringIO('\n'.join(conf_lines))
     try:
-        for rem in ctx.cluster.remotes.iterkeys():
+        for rem in ctx.cluster.remotes:
             log_context = 'system_u:object_r:var_log_t:s0'
             for log_path in (kern_log, misc_log):
                 rem.run(args='touch %s' % log_path)
@@ -736,7 +737,7 @@ def syslog(ctx, config):
         # flush the file fully. oh well.
 
         log.info('Checking logs for errors...')
-        for rem in ctx.cluster.remotes.iterkeys():
+        for rem in ctx.cluster.remotes:
             log.debug('Checking %s', rem.name)
             r = rem.run(
                 args=[
@@ -807,14 +808,14 @@ def vm_setup(ctx, config):
     """
     Look for virtual machines and handle their initialization
     """
-    all_tasks = [x.keys()[0] for x in ctx.config['tasks']]
+    all_tasks = [list(x)[0] for x in ctx.config['tasks']]
     need_ansible = False
     if 'kernel' in all_tasks and 'ansible.cephlab' not in all_tasks:
         need_ansible = True
     ansible_hosts = set()
     with parallel():
         editinfo = os.path.join(os.path.dirname(__file__), 'edit_sudoers.sh')
-        for rem in ctx.cluster.remotes.iterkeys():
+        for rem in ctx.cluster.remotes:
             if misc.is_vm(rem.shortname):
                 ansible_hosts.add(rem.shortname)
                 r = rem.run(args=['test', '-e', '/ceph-qa-ready'],

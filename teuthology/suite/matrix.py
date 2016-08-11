@@ -1,6 +1,7 @@
 import os
 import heapq
 from fractions import gcd
+from functools import reduce
 
 def lcm(a, b):
     return a*b // gcd(a, b)
@@ -104,8 +105,8 @@ class Product(Matrix):
         self.item = item
 
         submats = sorted(
-            [((i.size(), ind), i) for (i, ind) in
-             zip(_submats, range(len(_submats)))], reverse=True)
+            [((i.size(), ind), i) for (ind, i) in
+             enumerate(_submats)], reverse=True)
         self.submats = []
         self._size = 1
         for ((size, _), submat) in submats:
@@ -229,7 +230,7 @@ class Sum(Matrix):
         self._size = sum((i.size() for i in _submats))
         self._submats = [
             ((i, self._pseudo_size // s.size()), s) for (i, s) in
-            zip(range(len(_submats)), _submats)
+            enumerate(_submats)
         ]
 
         def sm_to_pmsl(submat):
@@ -319,12 +320,13 @@ def generate_desc(joinf, result):
     """
     Generates the text description of the test represented by result
     """
-    if type(result) is frozenset:
+    if isinstance(result, frozenset):
         ret = []
-        for i in sorted(result):
+        # Go over the strings first, then tuples
+        for i in sorted(result, key=lambda x: (isinstance(x, tuple), x)):
             ret.append(generate_desc(joinf, i))
         return '{' + ' '.join(ret) + '}'
-    elif type(result) is tuple:
+    elif isinstance(result, tuple):
         (item, children) = result
         cdesc = generate_desc(joinf, children)
         return joinf(str(item), cdesc)

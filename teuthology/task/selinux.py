@@ -50,7 +50,7 @@ class SELinux(Task):
         """
         super(SELinux, self).filter_hosts()
         new_cluster = Cluster()
-        for (remote, roles) in self.cluster.remotes.iteritems():
+        for (remote, roles) in self.cluster.remotes.items():
             status_info = get_status(remote.name)
             if status_info and status_info.get('is_vm', False):
                 msg = "Excluding {host}: VMs are not yet supported"
@@ -81,7 +81,7 @@ class SELinux(Task):
 
         log.debug("Getting current SELinux state")
         modes = dict()
-        for remote in self.cluster.remotes.iterkeys():
+        for remote in self.cluster.remotes:
             result = remote.run(
                 args=['/usr/sbin/getenforce'],
                 stdout=StringIO(),
@@ -95,7 +95,7 @@ class SELinux(Task):
         Set the requested SELinux mode
         """
         log.info("Putting SELinux into %s mode", self.mode)
-        for remote in self.cluster.remotes.iterkeys():
+        for remote in self.cluster.remotes:
             remote.run(
                 args=['sudo', '/usr/sbin/setenforce', self.mode],
             )
@@ -121,7 +121,7 @@ class SELinux(Task):
         if se_whitelist:
             known_denials.extend(se_whitelist)
         ignore_known_denials = '\'\(' + str.join('\|', known_denials) + '\)\''
-        for remote in self.cluster.remotes.iterkeys():
+        for remote in self.cluster.remotes:
             proc = remote.run(
                 args=['sudo', 'grep', 'avc: .*denied',
                       '/var/log/audit/audit.log', run.Raw('|'), 'grep', '-v',
@@ -151,7 +151,7 @@ class SELinux(Task):
         if not set(self.old_modes.values()).difference(set([self.mode])):
             return
         log.info("Restoring old SELinux modes")
-        for remote in self.cluster.remotes.iterkeys():
+        for remote in self.cluster.remotes:
             mode = self.old_modes[remote.name]
             if mode != self.mode:
                 remote.run(
@@ -178,7 +178,7 @@ class SELinux(Task):
         """
         all_denials = self.get_denials()
         new_denials = dict()
-        for remote in self.cluster.remotes.iterkeys():
+        for remote in self.cluster.remotes:
             old_host_denials = self.old_denials[remote.name]
             all_host_denials = all_denials[remote.name]
             new_host_denials = set(all_host_denials).difference(
@@ -186,7 +186,7 @@ class SELinux(Task):
             )
             new_denials[remote.name] = list(new_host_denials)
 
-        for remote in self.cluster.remotes.iterkeys():
+        for remote in self.cluster.remotes:
             if len(new_denials[remote.name]):
                 raise SELinuxError(node=remote,
                                    denials=new_denials[remote.name])

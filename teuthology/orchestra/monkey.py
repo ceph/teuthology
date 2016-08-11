@@ -49,8 +49,7 @@ def patch_all():
     """
     Run all the patch_* functions in this module.
     """
-    monkeys = [(k, v) for (k, v) in globals().iteritems() if k.startswith('patch_') and k != 'patch_all']
-    monkeys.sort()
-    for k, v in monkeys:
-        log.debug('Patching %s', k)
-        v()
+    for name, value in sorted(globals().items()):
+        if name.startswith('patch_') and name != 'patch_all':
+            log.debug('Patching %s', name)
+            value()

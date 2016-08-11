@@ -6,8 +6,9 @@ import logging
 import os
 import requests
 import time
-import urllib
-import urlparse
+
+import six.moves.urllib.parse as urllib_parse
+from six import string_types as basestring
 
 from teuthology.config import config as teuth_config
 from teuthology.orchestra import run
@@ -59,7 +60,7 @@ class PCPGrapher(PCPDataSource):
 
     def __init__(self, hosts, time_from, time_until='now'):
         super(PCPGrapher, self).__init__(hosts, time_from, time_until)
-        self.base_url = urlparse.urljoin(
+        self.base_url = urllib_parse.urljoin(
             teuth_config.pcp_host,
             self._endpoint)
 
@@ -78,7 +79,7 @@ class GrafanaGrapher(PCPGrapher):
         )
         if self.time_until:
             config['time_to'] = self._format_time(self.time_until)
-        args = urllib.urlencode(config)
+        args = urllib_parse.urlencode(config)
         template = "{base_url}?{args}"
         return template.format(base_url=self.base_url, args=args)
 
@@ -178,7 +179,7 @@ class GraphiteGrapher(PCPGrapher):
             # 'target=' arg
             'target': self.get_target_globs(metric),
         })
-        args = urllib.urlencode(config, doseq=True)
+        args = urllib_parse.urlencode(config, doseq=True)
         template = "{base_url}?{args}"
         return template.format(base_url=self.base_url, args=args)
 

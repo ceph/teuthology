@@ -51,7 +51,7 @@ def task(ctx, config):
     log.info('Mounting nfs clients...')
     assert isinstance(config, dict)
 
-    clients = list(teuthology.get_clients(ctx=ctx, roles=config.keys()))
+    clients = list(teuthology.get_clients(ctx=ctx, roles=list(config)))
 
     testdir = teuthology.get_testdir(ctx)
     for id_, remote in clients:

@@ -249,7 +249,7 @@ class TestNuke(Integration):
                         '--machine-type', 'openstack']
 
     def test_nuke(self):
-        image = teuthology.openstack.OpenStack.image2url.keys()[0]
+        image = list(teuthology.openstack.OpenStack.image2url)[0]
 
         (os_type, os_version) = image.split('-')
         args = scripts.lock.parse_args(self.options +

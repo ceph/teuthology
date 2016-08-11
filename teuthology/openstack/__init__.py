@@ -32,7 +32,6 @@ import socket
 import subprocess
 import tempfile
 import teuthology
-import types
 
 from subprocess import CalledProcessError
 
@@ -45,7 +44,7 @@ from teuthology import misc
 log = logging.getLogger(__name__)
 
 def enforce_json_dictionary(something):
-    if type(something) is not types.DictType:
+    if not isinstance(something, dict):
         raise Exception(
             'Please pip uninstall --yes cliff-tablib and try again.'
             ' Details about this error can be found at'
@@ -61,7 +60,7 @@ class OpenStackInstance(object):
         if info is None:
             self.set_info()
         else:
-            self.info = dict((k.lower(), v) for k, v in info.iteritems())
+            self.info = dict((k.lower(), v) for k, v in info.items())
 
     def set_info(self):
         try:
@@ -323,7 +322,7 @@ class OpenStack(object):
         result = copy.deepcopy(defaults)
         if not hints:
             return result
-        if type(hints) is types.DictType:
+        if isinstance(hints, dict):
             raise TypeError("openstack: " + str(hints) +
                             " must be an array, not a dict")
         for hint in hints:
@@ -331,7 +330,7 @@ class OpenStack(object):
                 if resource in hint:
                     new = hint[resource]
                     current = result[resource]
-                    for key, value in hint[resource].iteritems():
+                    for key, value in hint[resource].items():
                         current[key] = max(current[key], new[key])
         return result
 
@@ -340,7 +339,7 @@ class OpenStack(object):
         ownedby = "ownedby='" + teuth_config.openstack['ip'] + "'"
         all = json.loads(misc.sh(
             "openstack -q server list -f json --long --name 'target'"))
-        return filter(lambda instance: ownedby in instance['Properties'], all)
+        return [instance for instance in all if ownedby in instance['Properties']]
 
     @staticmethod
     def list_volumes():
@@ -350,7 +349,7 @@ class OpenStack(object):
         def select(volume):
             return (ownedby in volume['Properties'] and
                     volume['Display Name'].startswith('target'))
-        return filter(select, all)
+        return list(filter(select, all))
 
     def cloud_init_wait(self, instance):
         """
@@ -515,7 +514,7 @@ class TeuthologyOpenStack(OpenStack):
         command = (
             "source ~/.bashrc_teuthology ; " + self.teuthology_suite + " " +
             " --machine-type openstack " +
-            " ".join(map(lambda x: "'" + x + "'", argv))
+            " ".join("'" + x + "'" for x in argv)
         )
         return self.ssh(command)
 
@@ -641,7 +640,7 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
                                      '../..', self.user_data)
         template = open(user_data).read()
         openrc = ''
-        for (var, value) in os.environ.iteritems():
+        for (var, value) in os.environ.items():
             if var.startswith('OS_'):
                 openrc += ' ' + var + '=' + value
         if self.args.upload:

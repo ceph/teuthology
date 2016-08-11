@@ -91,7 +91,7 @@ class ResultsSerializer(object):
             yaml_path = os.path.join(job_archive_dir, yaml_name)
             if not os.path.exists(yaml_path):
                 continue
-            with file(yaml_path) as yaml_file:
+            with open(yaml_path) as yaml_file:
                 partial_info = yaml.safe_load(yaml_file)
                 if partial_info is not None:
                     job_info.update(partial_info)
@@ -157,7 +157,7 @@ class ResultsSerializer(object):
         :returns:        A dict like: {'1': '/path/to/1', '2': 'path/to/2'}
         """
         jobs = self.jobs_for_run(run_name)
-        for job_id in jobs.keys():
+        for job_id in list(jobs):
             if os.path.exists(os.path.join(jobs[job_id], 'summary.yaml')):
                 jobs.pop(job_id)
         return jobs
@@ -329,14 +329,14 @@ class ResultsReporter(object):
         if hasattr(self, '__last_run'):
             return self.__last_run
         elif os.path.exists(self.last_run_file):
-            with file(self.last_run_file) as f:
+            with open(self.last_run_file) as f:
                 self.__last_run = f.read().strip()
             return self.__last_run
 
     @last_run.setter
     def last_run(self, run_name):
         self.__last_run = run_name
-        with file(self.last_run_file, 'w') as f:
+        with open(self.last_run_file, 'w') as f:
             f.write(run_name)
 
     @last_run.deleter

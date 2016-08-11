@@ -31,7 +31,7 @@ class YamlConfig(collections.MutableMapping):
 
     def load(self):
         if os.path.exists(self.yaml_path):
-            self._conf = yaml.safe_load(file(self.yaml_path))
+            self._conf = yaml.safe_load(open(self.yaml_path))
         else:
             log.debug("%s not found", self.yaml_path)
             self._conf = dict()
@@ -209,7 +209,7 @@ class FakeNamespace(YamlConfig):
         correctly.
         """
         result = dict()
-        for key, value in config_dict.iteritems():
+        for key, value in config_dict.items():
             new_key = key
             if new_key.startswith("--"):
                 new_key = new_key[2:]

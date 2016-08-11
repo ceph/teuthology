@@ -291,7 +291,7 @@ def purge_data(ctx):
     :param ctx: the argparse.Namespace object
     """
     with parallel() as p:
-        for remote in ctx.cluster.remotes.iterkeys():
+        for remote in ctx.cluster.remotes:
             p.spawn(_purge_data, remote)
 
 
@@ -335,13 +335,13 @@ def install_packages(ctx, pkgs, config):
         "rpm": _update_rpm_package_list_and_install,
     }
     with parallel() as p:
-        for remote in ctx.cluster.remotes.iterkeys():
+        for remote in ctx.cluster.remotes:
             system_type = teuthology.get_system_type(remote)
             p.spawn(
                 install_pkgs[system_type],
                 ctx, remote, pkgs[system_type], config)
 
-    for remote in ctx.cluster.remotes.iterkeys():
+    for remote in ctx.cluster.remotes:
         # verifies that the install worked as expected
         verify_package_version(ctx, config, remote)
 
@@ -454,7 +454,7 @@ def remove_packages(ctx, config, pkgs):
         "rpm": _remove_rpm,
     }
     with parallel() as p:
-        for remote in ctx.cluster.remotes.iterkeys():
+        for remote in ctx.cluster.remotes:
             system_type = teuthology.get_system_type(remote)
             p.spawn(remove_pkgs[
                     system_type], ctx, config, remote, pkgs[system_type])
@@ -520,7 +520,7 @@ def remove_sources(ctx, config):
         project = config.get('project', 'ceph')
         log.info("Removing {proj} sources lists".format(
             proj=project))
-        for remote in ctx.cluster.remotes.iterkeys():
+        for remote in ctx.cluster.remotes:
             remove_fn = remove_sources_pkgs[remote.os.package_type]
             p.spawn(remove_fn, remote, project)
 
@@ -528,7 +528,7 @@ def remove_sources(ctx, config):
         project = 'calamari'
         log.info("Removing {proj} sources lists".format(
             proj=project))
-        for remote in ctx.cluster.remotes.iterkeys():
+        for remote in ctx.cluster.remotes:
             remove_fn = remove_sources_pkgs[remote.os.package_type]
             p.spawn(remove_fn, remote, project)
 
@@ -562,8 +562,8 @@ def get_package_list(ctx, config):
     rpms = config.get('packages', dict()).get('rpm', default_rpms)
     # Optionally include or exclude debug packages
     if not debug:
-        debs = filter(lambda p: not p.endswith('-dbg'), debs)
-        rpms = filter(lambda p: not p.endswith('-debuginfo'), rpms)
+        debs = [p for p in debs if not p.endswith('-dbg')]
+        rpms = [p for p in rpms if not p.endswith('-debuginfo')]
     package_list = dict(deb=debs, rpm=rpms)
     log.debug("Package list is: {}".format(package_list))
     return package_list
@@ -690,7 +690,7 @@ def rh_install(ctx, config):
         raise RuntimeError("Unsupported RH Ceph version %s", version)
 
     with parallel() as p:
-        for remote in ctx.cluster.remotes.iterkeys():
+        for remote in ctx.cluster.remotes:
             if remote.os.name == 'rhel':
                 log.info("Installing on RHEL node: %s", remote.shortname)
                 p.spawn(rh_install_pkgs, ctx, remote, version)
@@ -715,7 +715,7 @@ def rh_uninstall(ctx, config):
     :param config: the config dict
     """
     with parallel() as p:
-        for remote in ctx.cluster.remotes.iterkeys():
+        for remote in ctx.cluster.remotes:
             p.spawn(rh_uninstall_pkgs, ctx, remote)
 
 
@@ -901,7 +901,7 @@ def upgrade_remote_to_config(ctx, config):
     # build a normalized remote -> config dict
     remotes = {}
     if 'all' in config:
-        for remote in ctx.cluster.remotes.iterkeys():
+        for remote in ctx.cluster.remotes:
             remotes[remote] = config.get('all')
     else:
         for role in config.keys():
@@ -909,14 +909,14 @@ def upgrade_remote_to_config(ctx, config):
             if not remotes_dict:
                 # This is a regular config argument, not a role
                 continue
-            remote = remotes_dict.keys()[0]
+            remote = list(remotes_dict)[0]
             if remote in remotes:
                 log.warn('remote %s came up twice (role %s)', remote, role)
                 continue
             remotes[remote] = config.get(role)
 
     result = {}
-    for remote, node in remotes.iteritems():
+    for remote, node in remotes.items():
         if not node:
             node = {}
 
@@ -946,7 +946,7 @@ def upgrade_common(ctx, config, deploy_style):
     extra_pkgs = config.get('extra_packages', [])
     log.info('extra packages: {packages}'.format(packages=extra_pkgs))
 
-    for remote, node in remotes.iteritems():
+    for remote, node in remotes.items():
 
         system_type = teuthology.get_system_type(remote)
         assert system_type in ('deb', 'rpm')
@@ -1040,10 +1040,10 @@ def ship_utilities(ctx, config):
     filenames = []
 
     log.info('Shipping valgrind.supp...')
-    with file(os.path.join(os.path.dirname(__file__), 'valgrind.supp'), 'rb') as f:
+    with open(os.path.join(os.path.dirname(__file__), 'valgrind.supp'), 'rb') as f:
         fn = os.path.join(testdir, 'valgrind.supp')
         filenames.append(fn)
-        for rem in ctx.cluster.remotes.iterkeys():
+        for rem in ctx.cluster.remotes:
             teuthology.sudo_write_file(
                 remote=rem,
                 path=fn,
@@ -1058,8 +1058,8 @@ def ship_utilities(ctx, config):
         src = os.path.join(os.path.dirname(__file__), filename)
         dst = os.path.join(destdir, filename)
         filenames.append(dst)
-        with file(src, 'rb') as f:
-            for rem in ctx.cluster.remotes.iterkeys():
+        with open(src, 'rb') as f:
+            for rem in ctx.cluster.remotes:
                 teuthology.sudo_write_file(
                     remote=rem,
                     path=dst,

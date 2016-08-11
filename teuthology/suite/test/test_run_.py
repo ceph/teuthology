@@ -2,6 +2,7 @@ import os
 import pytest
 import requests
 import yaml
+import contextlib
 
 from datetime import datetime
 from mock import patch, call, ANY, DEFAULT
@@ -290,11 +291,11 @@ class TestScheduleSuite(object):
             (build_matrix_desc, build_matrix_frags),
         ]
         m_build_matrix.return_value = build_matrix_output
-        m_file.side_effect = [StringIO('field: val\n') for i in xrange(11)]
+        m_open.side_effect = [StringIO('field: val\n') for i in range(11)]
         m_get_install_task_flavor.return_value = 'basic'
         m_get_package_versions.return_value = dict()
         m_has_packages_for_distro.side_effect = [
-            False for i in xrange(11)
+            False for i in range(11)
         ]
 
         m_find_git_parent.side_effect = lambda proj, sha1: sha1 + '^'
@@ -306,7 +307,7 @@ class TestScheduleSuite(object):
             runobj.schedule_suite()
         assert 'Exceeded 10 backtracks' in str(exc.value)
         m_find_git_parent.assert_has_calls(
-            [call('ceph', 'ceph_sha1' + i * '^') for i in xrange(10)]
+            [call('ceph', 'ceph_sha1' + i * '^') for i in range(10)]
         )
 
     @patch('teuthology.suite.util.find_git_parent')
@@ -344,14 +345,14 @@ class TestScheduleSuite(object):
             (build_matrix_desc, build_matrix_frags),
         ]
         m_build_matrix.return_value = build_matrix_output
-        m_file.side_effect = [
-            StringIO('field: val\n') for i in xrange(NUM_FAILS+1)
+        m_open.side_effect = [
+            StringIO('field: val\n') for i in range(NUM_FAILS+1)
         ]
         m_get_install_task_flavor.return_value = 'basic'
         m_get_package_versions.return_value = dict()
         # NUM_FAILS, then success
         m_has_packages_for_distro.side_effect = \
-            [False for i in xrange(NUM_FAILS)] + [True]
+            [False for i in range(NUM_FAILS)] + [True]
 
         m_find_git_parent.side_effect = lambda proj, sha1: sha1 + '^'
 
@@ -362,8 +363,8 @@ class TestScheduleSuite(object):
         assert count == 1
         m_has_packages_for_distro.assert_has_calls(
             [call('ceph_sha1' + '^' * i, 'ubuntu', '14.04', 'basic', {})
-             for i in xrange(NUM_FAILS+1)]
+             for i in range(NUM_FAILS+1)]
         )
         m_find_git_parent.assert_has_calls(
-            [call('ceph', 'ceph_sha1' + i * '^') for i in xrange(NUM_FAILS)]
+            [call('ceph', 'ceph_sha1' + i * '^') for i in range(NUM_FAILS)]
         )

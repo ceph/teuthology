@@ -28,7 +28,7 @@ def process_args(args):
         '<config_yaml>': 'base_yaml_paths',
         'filter': 'filter_in',
     }
-    for (key, value) in args.iteritems():
+    for (key, value) in args.items():
         # Translate --foo-bar to foo_bar
         key = key.lstrip('--').replace('-', '_')
         # Rename the key if necessary
@@ -107,7 +107,7 @@ def wait(name, max_job_time, upload_url):
     jobs = reporter.get_jobs(name, fields=['job_id', 'status',
                                            'description', 'log_href'])
     # dead, fail, pass : show fail/dead jobs first
-    jobs = sorted(jobs, lambda a, b: cmp(a['status'], b['status']))
+    jobs = sorted(jobs, key=lambda j: j['status'])
     for job in jobs:
         if upload_url:
             url = os.path.join(upload_url, name, job['job_id'])

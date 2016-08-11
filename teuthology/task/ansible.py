@@ -164,7 +164,7 @@ class Ansible(Task):
                     pb_in_repo = os.path.join(self.repo_path, playbook_path)
                     if os.path.exists(pb_in_repo):
                         playbook_path = pb_in_repo
-                self.playbook_file = file(playbook_path)
+                self.playbook_file = open(playbook_path)
                 playbook_yaml = yaml.safe_load(self.playbook_file)
                 self.playbook = playbook_yaml
             except Exception:
@@ -264,7 +264,7 @@ class Ansible(Task):
             self._handle_failure(command, status)
 
         if self.config.get('reconnect', True) is True:
-            remotes = self.cluster.remotes.keys()
+            remotes = list(self.cluster.remotes)
             log.debug("Reconnecting to %s", remotes)
             for remote in remotes:
                 remote.reconnect()
@@ -312,7 +312,7 @@ class Ansible(Task):
         """
         fqdns = [r.hostname for r in self.cluster.remotes.keys()]
         # Assume all remotes use the same username
-        user = self.cluster.remotes.keys()[0].user
+        user = list(self.cluster.remotes)[0].user
         extra_vars = dict(ansible_ssh_user=user)
         extra_vars.update(self.config.get('vars', dict()))
         args = [

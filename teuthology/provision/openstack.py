@@ -135,9 +135,8 @@ class ProvisionOpenStack(OpenStack):
             if "quota exceeded" in exc.output.lower():
                 raise QuotaExceededError(message=exc.output)
             raise
-        instances = filter(
-            lambda instance: self.property in instance['Properties'],
-            self.list_instances())
+        instances = [inst for inst in self.list_instances()
+                     if self.property in inst['Properties']]
         instances = [OpenStackInstance(i['ID']) for i in instances]
         fqdns = []
         try:

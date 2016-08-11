@@ -658,8 +658,7 @@ class GitbuilderProject(object):
         def warn(attrname):
             names = ('ref', 'tag', 'branch', 'sha1')
             vars = (ref, tag, branch, sha1)
-            # filter(None,) filters for truth
-            if len(filter(None, vars)) > 1:
+            if len([v for v in vars if v]) > 1:
                 log.warning(
                     'More than one of ref, tag, branch, or sha1 supplied; using %s',
                      attrname

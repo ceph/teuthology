@@ -12,7 +12,7 @@ HADOOP_2x_URL = "http://apache.osuosl.org/hadoop/common/hadoop-2.5.2/hadoop-2.5.
 
 def dict_to_hadoop_conf(items):
     out = "<configuration>\n"
-    for key, value in items.iteritems():
+    for key, value in items.items():
         out += "  <property>\n"
         out += "    <name>" + key + "</name>\n"
         out += "    <value>" + value + "</value>\n"
@@ -171,7 +171,7 @@ def configure(ctx, config, hadoops):
         hadoop_dir = "{tdir}/hadoop/".format(tdir=testdir)
         masters = ctx.cluster.only(is_hadoop_type('master'))
         assert len(masters.remotes) == 1
-        master = masters.remotes.keys()[0]
+        master = list(masters.remotes)[0]
         master.run(
             args = [
                 hadoop_dir + "bin/hadoop",
@@ -340,7 +340,7 @@ def start_hadoop(ctx, config):
     hadoop_dir = "{tdir}/hadoop/".format(tdir=testdir)
     masters = ctx.cluster.only(is_hadoop_type('master'))
     assert len(masters.remotes) == 1
-    master = masters.remotes.keys()[0]
+    master = list(masters.remotes)[0]
 
     log.info("Stopping Hadoop daemons")
     master.run(

@@ -76,7 +76,7 @@ def task(ctx, config):
     elif isinstance(config, list):
         config = dict((name, None) for name in config)
 
-    clients = list(teuthology.get_clients(ctx=ctx, roles=config.keys()))
+    clients = list(teuthology.get_clients(ctx=ctx, roles=list(config)))
 
     for id_, remote in clients:
         mnt = os.path.join(teuthology.get_testdir(ctx), 'mnt.{id}'.format(id=id_))

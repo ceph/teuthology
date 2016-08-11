@@ -145,51 +145,53 @@ class TestDescribeTests(object):
 
     def test_single_filter(self):
         rows = tree_with_info('basic', ['desc'], False, '', [])
-        assert rows == map(list, zip(expected_tree, expected_desc))
+        assert rows == [list(exp) for exp in zip(expected_tree, expected_desc)]
 
         rows = tree_with_info('basic', ['rbd_features'], False, '', [])
-        assert rows == map(list, zip(expected_tree, expected_rbd_features))
+        assert rows == [list(exp) for exp in zip(expected_tree,
+                                                 expected_rbd_features)]
 
     def test_single_filter_with_facets(self):
         rows = tree_with_info('basic', ['desc'], True, '', [])
-        assert rows == map(list, zip(expected_tree, expected_facets,
-                                     expected_desc))
+        assert rows == [list(exp) for exp in zip(expected_tree, expected_facets,
+                                                 expected_desc)]
 
         rows = tree_with_info('basic', ['rbd_features'], True, '', [])
-        assert rows == map(list, zip(expected_tree, expected_facets,
-                                     expected_rbd_features))
+        assert rows == [list(exp) for exp in zip(expected_tree, expected_facets,
+                                                 expected_rbd_features)]
 
     def test_no_matching(self):
         rows = tree_with_info('basic', ['extra'], False, '', [])
-        assert rows == map(list, zip(expected_tree, [''] * len(expected_tree)))
+        assert rows == [list(exp) for exp in zip(expected_tree,
+                                                 [''] * len(expected_tree))]
 
         rows = tree_with_info('basic', ['extra'], True, '', [])
-        assert rows == map(list, zip(expected_tree, expected_facets,
-                                     [''] * len(expected_tree)))
+        assert rows == [list(exp) for exp in zip(expected_tree, expected_facets,
+                                                 [''] * len(expected_tree))]
 
     def test_multiple_filters(self):
         rows = tree_with_info('basic', ['desc', 'rbd_features'], False, '', [])
-        assert rows == map(list, zip(expected_tree,
-                                     expected_desc,
-                                     expected_rbd_features))
+        assert rows == [list(exp) for exp in zip(expected_tree,
+                                                 expected_desc,
+                                                 expected_rbd_features)]
 
         rows = tree_with_info('basic', ['rbd_features', 'desc'], False, '', [])
-        assert rows == map(list, zip(expected_tree,
-                                     expected_rbd_features,
-                                     expected_desc))
+        assert rows == [list(exp) for exp in zip(expected_tree,
+                                                 expected_rbd_features,
+                                                 expected_desc)]
 
     def test_multiple_filters_with_facets(self):
         rows = tree_with_info('basic', ['desc', 'rbd_features'], True, '', [])
-        assert rows == map(list, zip(expected_tree,
-                                     expected_facets,
-                                     expected_desc,
-                                     expected_rbd_features))
+        assert rows == [list(exp) for exp in zip(expected_tree,
+                                                 expected_facets,
+                                                 expected_desc,
+                                                 expected_rbd_features)]
 
         rows = tree_with_info('basic', ['rbd_features', 'desc'], True, '', [])
-        assert rows == map(list, zip(expected_tree,
-                                     expected_facets,
-                                     expected_rbd_features,
-                                     expected_desc))
+        assert rows == [list(exp) for exp in zip(expected_tree,
+                                                 expected_facets,
+                                                 expected_rbd_features,
+                                                 expected_desc)]
 
     def test_combinations_only_facets(self):
         headers, rows = get_combinations('basic', [], None, 1, None, None, True)
