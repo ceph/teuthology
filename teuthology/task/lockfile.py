@@ -221,10 +221,10 @@ def lock_one(op, ctx):
     except gevent.Timeout as tout:
         if tout is not timeout:
             raise
-        if bool(op["expectfail"]):
+        if op["expectfail"]:
             result = 1
-        if result is 1:
-            if bool(op["expectfail"]):
+        if result == 1:
+            if op["expectfail"]:
                 log.info("failed as expected for op {op_}".format(op_=op))
             else:
                 raise Exception("Unexpectedly failed to lock {op_} within given timeout!".format(op_=op))
@@ -234,6 +234,6 @@ def lock_one(op, ctx):
         if proc is not None:
             proc.stdin.close()
 
-    ret = (result == 0 and not bool(op["expectfail"])) or (result == 1 and bool(op["expectfail"]))
+    ret = (result == 0 and not op["expectfail"]) or (result == 1 and op["expectfail"])
 
     return ret  #we made it through

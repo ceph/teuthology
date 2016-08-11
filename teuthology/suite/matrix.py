@@ -161,7 +161,7 @@ class Product(Matrix):
         off = (i // clen) % cycles
 
         def combine(r, s=frozenset()):
-            if type(r) is frozenset:
+            if isinstance(r, frozenset):
                 return s | r
             return s | frozenset([r])
 
@@ -292,12 +292,12 @@ def generate_lists(result):
     """
     Generates a set of tuples representing paths to concatenate
     """
-    if type(result) is frozenset:
+    if isinstance(result, frozenset):
         ret = []
         for i in result:
             ret.extend(generate_lists(i))
         return frozenset(ret)
-    elif type(result) is tuple:
+    elif isinstance(result, tuple):
         ret = []
         (item, children) = result
         for f in generate_lists(children):
