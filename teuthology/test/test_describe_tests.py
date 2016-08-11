@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import pytest
 
-from fake_fs import make_fake_fstools
+from .fake_fs import make_fake_fstools
 from teuthology.describe_tests import (tree_with_info, extract_info,
                                        get_combinations)
 from teuthology.exceptions import ParseError

@@ -1,16 +1,11 @@
 """
 Support for paramiko remote objects.
 """
-from . import run
-from .opsys import OS
-import connection
-from teuthology import misc
 import time
 import pexpect
 import re
 import logging
 from cStringIO import StringIO
-from teuthology import lockstatus as ls
 import os
 import pwd
 import tempfile
@@ -20,6 +15,13 @@ try:
     import libvirt
 except ImportError:
     libvirt = None
+
+from teuthology import misc
+from teuthology import lockstatus as ls
+from . import run
+from .opsys import OS
+from . import connection
+
 
 log = logging.getLogger(__name__)
 
@@ -379,7 +381,7 @@ class Remote(object):
             proc = self.run(
                 args=[
                     'python', '-c',
-                    'import platform; print platform.linux_distribution()'],
+                    'import platform; print(platform.linux_distribution())'],
                 stdout=StringIO(), stderr=StringIO(), check_status=False)
             if proc.exitstatus == 0:
                 self._os = OS.from_python(proc.stdout.getvalue().strip())

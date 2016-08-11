@@ -1,6 +1,7 @@
 import logging
 import sys
 
+from six import reraise
 import gevent.pool
 import gevent.queue
 
@@ -28,7 +29,7 @@ def resurrect_traceback(exc):
     else:
         return
 
-    raise exc_info[0], exc_info[1], exc_info[2]
+    reraise(*exc_info)
 
 class parallel(object):
     """
@@ -46,7 +47,7 @@ class parallel(object):
             for foo in bar:
                 p.spawn(quux, foo, baz=True)
             for result in p:
-                print result
+                print(result)
 
     If one of the spawned functions throws an exception, it will be thrown
     when iterating over the results, or when the with block ends.

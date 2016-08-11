@@ -8,8 +8,8 @@ import time
 import yaml
 
 import teuthology
+import teuthology.orchestra.remote
 from . import orchestra
-import orchestra.remote
 from .openstack import OpenStack, OpenStackInstance, enforce_json_dictionary
 from .orchestra import run
 from .config import config, FakeNamespace

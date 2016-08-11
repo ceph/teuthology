@@ -148,7 +148,7 @@ class TestPackaging(object):
             'python', '-c',
             'import koji; '
             'hub = koji.ClientSession("http://kojihub.com"); '
-            'print hub.getBuild(1)',
+            'print(hub.getBuild(1))',
         ]
         assert expected_args == kwargs['args']
 
@@ -180,7 +180,7 @@ class TestPackaging(object):
             'python', '-c',
             'import koji; '
             'hub = koji.ClientSession("http://kojihub.com"); '
-            'print hub.getTaskResult(1)',
+            'print(hub.getTaskResult(1))',
         ]
         assert expected_args == kwargs['args']
 

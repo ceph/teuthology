@@ -22,6 +22,8 @@ import re
 import tempfile
 import pprint
 
+from six import reraise
+
 from teuthology import safepath
 from teuthology.exceptions import (CommandCrashedError, CommandFailedError,
                                    ConnectionLostError)
@@ -1210,7 +1212,7 @@ def stop_daemons_of_type(ctx, type_, cluster='ceph'):
             exc_info = sys.exc_info()
             log.exception('Saw exception from %s.%s', daemon.role, daemon.id_)
     if exc_info != (None, None, None):
-        raise exc_info[0], exc_info[1], exc_info[2]
+        reraise(*exc_info)
 
 
 def get_system_type(remote, distro=False, version=False):

@@ -61,7 +61,7 @@ class OpenStackInstance(object):
         if info is None:
             self.set_info()
         else:
-            self.info = dict(map(lambda (k,v): (k.lower(), v), info.iteritems()))
+            self.info = dict((k.lower(), v) for k, v in info.iteritems())
 
     def set_info(self):
         try:

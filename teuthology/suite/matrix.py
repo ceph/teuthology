@@ -41,7 +41,7 @@ class Matrix:
         A cyclicity of N means that the set represented by the Matrix
         can be chopped into N good subsets of sequential indices.
         """
-        return self.size() / self.minscanlen()
+        return self.size() // self.minscanlen()
 
     def tostr(self, depth):
         pass
@@ -156,8 +156,8 @@ class Product(Matrix):
         rsize = submats[0][0]
 
         cycles = gcd(rsize, lsize)
-        clen = (rsize * lsize) / cycles
-        off = (i / clen) % cycles
+        clen = (rsize * lsize) // cycles
+        off = (i // clen) % cycles
 
         def combine(r, s=frozenset()):
             if type(r) is frozenset:
@@ -228,14 +228,15 @@ class Sum(Matrix):
         self._pseudo_size = lcml((i.size() for i in _submats)) * len(_submats)
         self._size = sum((i.size() for i in _submats))
         self._submats = [
-            ((i, self._pseudo_size / s.size()), s) for (i, s) in \
+            ((i, self._pseudo_size // s.size()), s) for (i, s) in
             zip(range(len(_submats)), _submats)
         ]
 
-        def sm_to_pmsl(((offset, multiple), submat)):
+        def sm_to_pmsl(submat):
             """
             submat tuple to pseudo minscanlen
             """
+            ((offset, multiple), submat) = submat
             return submat.minscanlen() * multiple
 
         def index_to_pindex_generator(submats):
@@ -257,13 +258,14 @@ class Sum(Matrix):
         self._minscanlen = self.pseudo_index_to_index(
             max(map(sm_to_pmsl, self._submats)))
 
-    def pi_to_sis(self, pi, (offset, multiple)):
+    def pi_to_sis(self, pi, offset_multiple):
         """
         max(i) s.t. offset + i*multiple <= pi
         """
+        (offset, multiple) = offset_multiple
         if pi < offset:
             return -1
-        return (pi - offset) / multiple
+        return (pi - offset) // multiple
 
     def pseudo_index_to_index(self, pi):
         """

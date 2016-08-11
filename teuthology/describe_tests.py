@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import print_function
 
 import csv
 import json
@@ -207,9 +208,9 @@ def extract_info(file_name, fields):
     if not (isinstance(meta, list) and
             len(meta) == 1 and
             isinstance(meta[0], dict)):
-        print 'Error in meta format in', file_name
-        print 'Meta must be a list containing exactly one dict.'
-        print 'Meta is:', meta
+        print('Error in meta format in', file_name)
+        print('Meta must be a list containing exactly one dict.')
+        print('Meta is:', meta)
         raise ParseError()
 
     return {field: meta[0].get(field, '') for field in fields}

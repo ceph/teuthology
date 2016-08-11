@@ -1,6 +1,6 @@
 import yaml
 import json
-import fake_archive
+from . import fake_archive
 from .. import report
 
 

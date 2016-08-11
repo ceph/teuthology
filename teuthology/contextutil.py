@@ -4,6 +4,8 @@ import logging
 import time
 import itertools
 
+from six import reraise
+
 from .config import config
 from .exceptions import MaxWhileTries
 
@@ -51,7 +53,7 @@ def nested(*managers):
             # Don't rely on sys.exc_info() still containing
             # the right information. Another exception may
             # have been raised and caught by an exit method
-            raise exc[0], exc[1], exc[2]
+            reraise(*exc)
 
 
 class safe_while(object):
@@ -66,7 +68,7 @@ class safe_while(object):
         >>> with safe_while() as proceed:
         ...    while proceed():
         ...        # repetitive code here
-        ...        print "hello world"
+        ...        print("hello world")
         ...
         Traceback (most recent call last):
         ...

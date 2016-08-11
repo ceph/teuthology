@@ -1,3 +1,4 @@
+from __future__ import print_function
 import random
 
 from mock import patch, MagicMock
@@ -475,12 +476,12 @@ class TestSubset(object):
                     found = True
                     break
             if not found:
-                print "tree\n{tree}\ngenerated list\n{desc}\n\nfrom matrix\n\n{matrix}\nsubset {subset} without facet {fac}".format(
+                print("tree\n{tree}\ngenerated list\n{desc}\n\nfrom matrix\n\n{matrix}\nsubset {subset} without facet {fac}".format(
                     tree=pptree(tree),
                     desc='\n'.join(description_list),
                     subset=subset,
                     matrix=str(mat),
-                    fac=facet)
+                    fac=facet))
                 all_desc = build_matrix.generate_combinations(
                     'root',
                     mat,
@@ -488,10 +489,10 @@ class TestSubset(object):
                     mat.size())
                 for i, desc in zip(xrange(mat.size()), all_desc):
                     if i == first:
-                        print '=========='
-                    print i, desc
+                        print('==========')
+                    print(i, desc)
                     if i + 1 == matlimit:
-                        print '=========='
+                        print('==========')
             assert found
 
     def test_random(self):

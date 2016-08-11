@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import sys
 import time
@@ -59,10 +60,10 @@ def results(archive_dir, name, email, timeout, dry_run):
 
     try:
         if email and dry_run:
-            print "From: %s" % (config.results_sending_email or 'teuthology')
-            print "To: %s" % email
-            print "Subject: %s" % subject
-            print body
+            print("From: %s" % (config.results_sending_email or 'teuthology'))
+            print("To: %s" % email)
+            print("Subject: %s" % subject)
+            print(body)
         elif email:
             email_results(
                 subject=subject,

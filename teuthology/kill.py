@@ -1,4 +1,5 @@
 #!/usr/bin/python
+from __future__ import print_function
 import os
 import sys
 import yaml
@@ -143,7 +144,7 @@ def remove_beanstalk_jobs(run_name, tube_name):
                 log.info(msg)
                 job.delete()
     else:
-        print "No jobs in Beanstalk Queue"
+        print("No jobs in Beanstalk Queue")
     beanstalk_conn.close()
 
 

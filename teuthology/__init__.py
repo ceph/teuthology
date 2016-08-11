@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from gevent import monkey
 monkey.patch_all(
     dns=False,
@@ -27,7 +29,7 @@ try:
     ).strip()
 except Exception as e:
     # before logging; should be unusual
-    print >>sys.stderr, 'Can\'t get version from git rev-parse', e
+    print('Can\'t get version from git rev-parse', e, file=sys.stderr)
 
 # If we are running inside a virtualenv, ensure we have its 'bin' directory in
 # our PATH. This doesn't happen automatically if scripts are called without
