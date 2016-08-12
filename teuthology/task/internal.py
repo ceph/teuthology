@@ -768,6 +768,8 @@ def syslog(ctx, config):
                     run.Raw('|'),
                     'grep', '-v', 'ceph-create-keys: INFO',
                     run.Raw('|'),
+                    'grep', '-v', 'INFO: possible circular locking dependency detected', # xfs bug?
+                    run.Raw('|'),
                     'head', '-n', '1',
                 ],
                 stdout=StringIO(),
