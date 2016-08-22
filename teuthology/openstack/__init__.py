@@ -746,6 +746,8 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
         template = open(user_data).read()
         openrc = ''
         for (var, value) in os.environ.iteritems():
+            if var in ('OS_AUTH_TYPE', 'OS_TOKEN', 'OS_TOKEN_EXPIRES'):
+                continue
             if var.startswith('OS_'):
                 openrc += ' ' + var + '=' + value
         if self.args.upload:
