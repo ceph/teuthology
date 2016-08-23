@@ -234,6 +234,8 @@ class OpenStack(object):
         if OpenStack.token is None:
             if os.environ.get('OS_AUTH_TYPE') == 'v2token':
                 del os.environ['OS_AUTH_TYPE']
+            if 'OS_TOKEN' in os.environ:
+                del os.environ['OS_TOKEN']
             OpenStack.token = misc.sh("openstack -q token issue -c id -f value").strip()
             os.environ['OS_AUTH_TYPE'] = 'v2token'
             os.environ['OS_TOKEN'] = OpenStack.token
