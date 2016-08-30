@@ -18,10 +18,10 @@ archive-on-error: true
 tasks:
    - buildpackages:
        good_machine:
-         disk: 40 # GB
+         disk: 100 # GB
          ram: 15000 # MB
          cpus: 16
        min_machine:
-         disk: 40 # GB
+         disk: 100 # GB
          ram: 8000 # MB
          cpus: 1
