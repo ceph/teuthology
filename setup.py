@@ -78,8 +78,7 @@ setup(
                       # Babel, and installs 2.3.3, which is forbidden by
                       # python-novaclient 4.0.0
                       'python-novaclient',
-                      # python-openstackclient == 3.0.0 fails when using a token
-                      'python-openstackclient == 2.2.0',
+                      'python-openstackclient',
                       # with openstacklient >= 2.1.0, neutronclient no longer is
                       # a dependency but we need it anyway.
                       'python-neutronclient',
