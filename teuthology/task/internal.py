@@ -752,6 +752,8 @@ def syslog(ctx, config):
                     run.Raw('|'),
                     'grep', '-v', 'DEBUG: fsize',  # xfs_fsr
                     run.Raw('|'),
+                    'grep', '-v', 'INFO: possible circular locking dependency detected', # sadly, there is an xfs vs vfs splice locking issue
+                    run.Raw('|'),
                     'grep', '-v', 'CRON',  # ignore cron noise
                     run.Raw('|'),
                     'grep', '-v', 'BUG: bad unlock balance detected',  # #6097
