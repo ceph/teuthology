@@ -14,7 +14,7 @@ repo_utils.log.setLevel(logging.WARNING)
 class TestRepoUtils(object):
     src_path = '/tmp/empty_src'
     # online_repo_url = 'https://github.com/ceph/teuthology.git'
-    # online_repo_url = 'git://ceph.newdream.net/git/teuthology.git'
+    # online_repo_url = 'git://ceph.com/git/teuthology.git'
     online_repo_url = 'https://github.com/ceph/empty.git'
     offline_repo_url = 'file://' + src_path
     repo_url = None
