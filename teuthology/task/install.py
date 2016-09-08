@@ -220,7 +220,10 @@ def _update_rpm_package_list_and_install(ctx, remote, rpm, config):
     # fail with the message 'rpm: no packages given for install'
     remote.run(args=['wget', base_url, ],)
     if dist_release == 'opensuse':
-        remote.run(args=['sudo', 'zypper', '--non-interactive', 'install', rpm_name])
+        remote.run(args=[
+            'sudo', 'zypper', '--non-interactive', 'install', '--capability', 
+            rpm_name
+        ])
     else:
         remote.run(args=['sudo', 'yum', '-y', 'localinstall', rpm_name])
 
@@ -248,9 +251,11 @@ def _update_rpm_package_list_and_install(ctx, remote, rpm, config):
     if dist_release == 'opensuse':
         pkg_mng_opts = '--non-interactive'
         pkg_mng_cmd = 'zypper'
+        pkg_mng_subcommand_opts = '--capability'
     else:
         pkg_mng_opts = '-y'
         pkg_mng_cmd = 'yum'
+        pkg_mng_subcommand_opts = ''
 
     for cpack in rpm:
         pkg = None
@@ -262,18 +267,24 @@ def _update_rpm_package_list_and_install(ctx, remote, rpm, config):
             remote.run(
                 args = ['if', 'test', '-e',
                         run.Raw(pkg), run.Raw(';'), 'then',
-                        'sudo', pkg_mng_cmd, pkg_mng_opts, 'remove', pkg, run.Raw(';'),
-                        'sudo', pkg_mng_cmd, pkg_mng_opts, 'install', pkg,
-                        run.Raw(';'), 'fi']
+                        'sudo', pkg_mng_cmd, pkg_mng_opts, 'remove', 
+                        pkg_mng_subcommand_opts, pkg, run.Raw(';'),
+                        'sudo', pkg_mng_cmd, pkg_mng_opts, 'install', 
+                        pkg_mng_subcommand_opts, pkg, run.Raw(';'),
+                        'fi']
             )
         if pkg is None:
-            remote.run(args=['sudo', pkg_mng_cmd, pkg_mng_opts, 'install', cpack])
+            remote.run(args=[
+                'sudo', pkg_mng_cmd, pkg_mng_opts, 'install', 
+                pkg_mng_subcommand_opts, cpack
+            ])
         else:
             remote.run(
                 args = ['if', 'test', run.Raw('!'), '-e',
                         run.Raw(pkg), run.Raw(';'), 'then',
-                        'sudo', pkg_mng_cmd, pkg_mng_opts, 'install', cpack,
-                        run.Raw(';'), 'fi'])
+                        'sudo', pkg_mng_cmd, pkg_mng_opts, 'install', 
+                        pkg_mng_subcommand_opts, cpack, run.Raw(';'), 
+                        'fi'])
 
 
 def verify_package_version(ctx, config, remote):
@@ -446,9 +457,11 @@ def _remove_rpm(ctx, config, remote, rpm):
     if dist_release == 'opensuse':
         pkg_mng_opts = '--non-interactive'
         pkg_mng_cmd = 'zypper'
+        pkg_mng_subcommand_opts = '--capability'
     else:
         pkg_mng_opts = '-y'
         pkg_mng_cmd = 'yum'
+        pkg_mng_subcommand_opts = ''
 
     remote.run(
         args=[
@@ -456,11 +469,9 @@ def _remove_rpm(ctx, config, remote, rpm):
         ] + rpm + [
             run.Raw(';'),
             'do',
-            'sudo', pkg_mng_cmd, pkg_mng_opts, 'remove',
-            run.Raw('$d'),
-            run.Raw('||'),
-            'true',
-            run.Raw(';'),
+            'sudo', 
+            pkg_mng_cmd, pkg_mng_opts, 'remove', pkg_mng_subcommand_opts,
+            run.Raw('$d'), run.Raw('||'), 'true', run.Raw(';'),
             'done',
         ])
     if dist_release == 'opensuse':
@@ -919,9 +930,11 @@ def _upgrade_rpm_packages(ctx, config, remote, pkgs):
     # Actually upgrade the project packages
     if gitbuilder.dist_release == 'opensuse':
         pkg_mng_opts = '--non-interactive'
+        pkg_mng_subcommand_opts = '--capability'
     else:
         pkg_mng_opts = '-y'
-    args = ['sudo', pkg_mng_cmd, pkg_mng_opts, 'install']
+        pkg_mng_subcommand_opts = ''
+    args = ['sudo', pkg_mng_cmd, pkg_mng_opts, 'install', pkg_mng_subcommand_opts]
     args += pkgs
     remote.run(args=args)
 
