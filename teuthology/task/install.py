@@ -262,12 +262,12 @@ def _update_rpm_package_list_and_install(ctx, remote, rpm, config):
     ldir = _get_local_dir(config, remote)
 
     if dist_release in ['opensuse', 'sle']:
-        pkg_mng_opts = '-n'
         pkg_mng_cmd = 'zypper'
+        pkg_mng_opts = '-n'
         pkg_mng_subcommand_opts = '--capability'
     else:
-        pkg_mng_opts = '-y'
         pkg_mng_cmd = 'yum'
+        pkg_mng_opts = '-y'
         pkg_mng_subcommand_opts = ''
 
     for cpack in rpm:
@@ -469,12 +469,12 @@ def _remove_rpm(ctx, config, remote, rpm):
     dist_release = gitbuilder.dist_release
 
     if dist_release in ['opensuse', 'sle']:
-        pkg_mng_opts = '-n'
         pkg_mng_cmd = 'zypper'
+        pkg_mng_opts = '-n'
         pkg_mng_subcommand_opts = '--capability'
     else:
-        pkg_mng_opts = '-y'
         pkg_mng_cmd = 'yum'
+        pkg_mng_opts = '-y'
         pkg_mng_subcommand_opts = ''
 
     remote.run(
@@ -930,11 +930,11 @@ def _upgrade_rpm_packages(ctx, config, remote, pkgs):
         _yum_set_check_obsoletes(remote)
 
     if gitbuilder.dist_release in ['opensuse', 'sle']:
-        pkg_mng_opts = '-a'
         pkg_mng_cmd = 'zypper'
+        pkg_mng_opts = '-a'
     else:
-        pkg_mng_opts = 'all'
         pkg_mng_cmd = 'yum'
+        pkg_mng_opts = 'all'
 
     remote.run(
         args=[
