@@ -237,8 +237,7 @@ def _update_rpm_package_list_and_install(ctx, remote, rpm, config):
         start_of_url=start_of_url, rpm_name=rpm_name)
     if dist_release in ['opensuse', 'sle']:
         remote.run(args=[
-            'sudo', 'zypper', '--non-interactive', 'install', '--capability', 
-            rpm_name
+            'sudo', 'zypper', '-n', 'install', '--capability', rpm_name
         ])
     else:
         remote.run(args=['sudo', 'yum', '-y', 'install', base_url])
@@ -263,7 +262,7 @@ def _update_rpm_package_list_and_install(ctx, remote, rpm, config):
     ldir = _get_local_dir(config, remote)
 
     if dist_release in ['opensuse', 'sle']:
-        pkg_mng_opts = '--non-interactive'
+        pkg_mng_opts = '-n'
         pkg_mng_cmd = 'zypper'
         pkg_mng_subcommand_opts = '--capability'
     else:
@@ -470,7 +469,7 @@ def _remove_rpm(ctx, config, remote, rpm):
     dist_release = gitbuilder.dist_release
 
     if dist_release in ['opensuse', 'sle']:
-        pkg_mng_opts = '--non-interactive'
+        pkg_mng_opts = '-n'
         pkg_mng_cmd = 'zypper'
         pkg_mng_subcommand_opts = '--capability'
     else:
@@ -504,7 +503,7 @@ def _remove_rpm(ctx, config, remote, rpm):
         projRelease = '%s-release-%s.%s.noarch' % (
             config.get('project', 'ceph'), RELEASE, dist_release)
     if dist_release in ['opensuse', 'sle']:
-        remote.run(args=['sudo', 'zypper', '--non-interactive', 'remove', projRelease])
+        remote.run(args=['sudo', 'zypper', '-n', 'remove', projRelease])
     else:
         remote.run(args=['sudo', 'yum', 'erase', projRelease, '-y'])
 
@@ -944,7 +943,7 @@ def _upgrade_rpm_packages(ctx, config, remote, pkgs):
 
     # Actually upgrade the project packages
     if gitbuilder.dist_release in ['opensuse', 'sle']:
-        pkg_mng_opts = '--non-interactive'
+        pkg_mng_opts = '-n'
         pkg_mng_subcommand_opts = '--capability'
     else:
         pkg_mng_opts = '-y'
