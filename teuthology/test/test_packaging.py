@@ -82,6 +82,22 @@ class TestPackaging(object):
             'yum',
             '-y',
             'install',
+            '',
+            'httpd'
+        ]
+        packaging.install_package('httpd', m_remote)
+        m_remote.run.assert_called_with(args=expected)
+
+    def test_install_package_rpm_opensuse(self):
+        m_remote = Mock()
+        m_remote.os.package_type = "rpm"
+        m_remote.os.name = "opensuse"
+        expected = [
+            'sudo',
+            'zypper',
+            '-n',
+            'install',
+            '--capability',
             'httpd'
         ]
         packaging.install_package('httpd', m_remote)
@@ -110,6 +126,20 @@ class TestPackaging(object):
             'yum',
             '-y',
             'erase',
+            'httpd'
+        ]
+        packaging.remove_package('httpd', m_remote)
+        m_remote.run.assert_called_with(args=expected)
+
+    def test_remove_package_rpm_opensuse(self):
+        m_remote = Mock()
+        m_remote.os.package_type = "rpm"
+        m_remote.os.name = "opensuse"
+        expected = [
+            'sudo',
+            'zypper',
+            '-n',
+            'remove',
             'httpd'
         ]
         packaging.remove_package('httpd', m_remote)

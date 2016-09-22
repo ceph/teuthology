@@ -69,10 +69,20 @@ def install_package(package, remote):
                   'install',
                   '{package}'.format(package=package)]
     elif flavor == 'rpm':
+        if remote.os.name != 'opensuse':
+            pkg_mng_cmd = 'yum'
+            pkg_mng_opts = '-y'
+            pkg_mng_subcommand_opts = ''
+        else:
+            pkg_mng_cmd = 'zypper'
+            pkg_mng_opts = '-n'
+            pkg_mng_subcommand_opts = '--capability'
+
         pkgcmd = ['sudo',
-                  'yum',
-                  '-y',
+                  pkg_mng_cmd,
+                  pkg_mng_opts,
                   'install',
+                  pkg_mng_subcommand_opts,
                   '{package}'.format(package=package)]
     else:
         log.error('install_package: bad flavor ' + flavor + '\n')
@@ -94,10 +104,19 @@ def remove_package(package, remote):
                   'purge',
                   '{package}'.format(package=package)]
     elif flavor == 'rpm':
+        if remote.os.name != 'opensuse':
+            pkg_mng_cmd = 'yum'
+            pkg_mng_opts = '-y'
+            pkg_mng_action = 'erase'
+        else:
+            pkg_mng_cmd = 'zypper'
+            pkg_mng_opts = '-n'
+            pkg_mng_action = 'remove'
+
         pkgcmd = ['sudo',
-                  'yum',
-                  '-y',
-                  'erase',
+                  pkg_mng_cmd,
+                  pkg_mng_opts,
+                  pkg_mng_action,
                   '{package}'.format(package=package)]
     else:
         log.error('remove_package: bad flavor ' + flavor + '\n')
