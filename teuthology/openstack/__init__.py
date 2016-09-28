@@ -211,8 +211,21 @@ class OpenStack(object):
     token_expires = None
     token_cache_duration = 3600
 
+    @staticmethod
+    def clear_token_class():
+        OpenStack.token = None
+        OpenStack.token_expires = None
+        OpenStack.token_cache_duration = 3600
+
+    def clear_token(self):
+        self.clear_token_class()
+        if os.environ.get('OS_TOKEN_VALUE') is not None:
+            del os.environ['OS_TOKEN_VALUE']
+        if os.environ.get('OS_TOKEN_EXPIRES') is not None:
+            del os.environ['OS_TOKEN_EXPIRES']
+
     def cache_token(self):
-        if self.provider != 'ovh':
+        if self.get_provider() != 'ovh':
             return False
         if (OpenStack.token is None and
             'OS_TOKEN_VALUE' in os.environ and
@@ -236,7 +249,7 @@ class OpenStack(object):
         return True
 
     def get_os_url(self, cmd, type=None):
-        if self.provider != 'ovh':
+        if self.get_provider() != 'ovh':
             return ""
         url = ""
         if (type == 'compute' or
