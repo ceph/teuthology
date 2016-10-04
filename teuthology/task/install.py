@@ -14,6 +14,7 @@ from teuthology import contextutil, packaging
 from teuthology.parallel import parallel
 from ..orchestra import run
 from . import ansible
+from ..packaging import (install_package, clean_repo_caches)
 
 log = logging.getLogger(__name__)
 
@@ -234,12 +235,8 @@ def _update_rpm_package_list_and_install(ctx, remote, rpm, config):
     rpm_name = "{rpm_nm}.rpm".format(rpm_nm=proj_release)
     base_url = "{start_of_url}/noarch/{rpm_name}".format(
         start_of_url=start_of_url, rpm_name=rpm_name)
-    if dist_release == 'opensuse':
-        remote.run(args=[
-            'sudo', 'zypper', '-n', 'install', '--capability', rpm_name
-        ])
-    else:
-        remote.run(args=['sudo', 'yum', '-y', 'install', base_url])
+
+    install_package(base_url, remote)
 
     if dist_release != 'opensuse':
         uri = gitbuilder.uri_reference
@@ -248,15 +245,11 @@ def _update_rpm_package_list_and_install(ctx, remote, rpm, config):
         _yum_set_check_obsoletes(remote)
 
     if dist_release == 'opensuse':
-        remote.run(
-            args=[
-                'sudo', 'zypper', 'clean', '-a',
-            ])
+        clean_repo_args = '-a'
     else:
-        remote.run(
-            args=[
-                'sudo', 'yum', 'clean', 'all',
-            ])
+        clean_repo_args = 'all'
+
+    clean_repo_caches(clean_repo_args, remote)
 
     ldir = _get_local_dir(config, remote)
 
@@ -487,14 +480,13 @@ def _remove_rpm(ctx, config, remote, rpm):
             run.Raw('$d'), run.Raw('||'), 'true', run.Raw(';'),
             'done',
         ])
+
     if dist_release == 'opensuse':
-        pkg_mng_opts = '-a'
+        clean_repo_args = '-a'
     else:
-        pkg_mng_opts = 'all'
-    remote.run(
-        args=[
-            'sudo', pkg_mng_cmd, 'clean', pkg_mng_opts,
-        ])
+        clean_repo_args = 'all'
+    clean_repo_caches(clean_repo_args, remote)
+    
     if dist_release == 'opensuse':
         projRelease = '%s-release-%s.noarch' % (
             config.get('project', 'ceph'), RELEASE)
@@ -507,12 +499,8 @@ def _remove_rpm(ctx, config, remote, rpm):
         remote.run(args=['sudo', 'yum', 'erase', projRelease, '-y'])
 
     if dist_release != 'opensuse':
-        pkg_mng_opts = 'expire-cache'
-    remote.run(
-        args=[
-            'sudo', pkg_mng_cmd, 'clean', pkg_mng_opts,
-        ])
-
+        clean_repo_args = 'expire-cache'
+    clean_repo_caches(clean_repo_args, remote)
 
 def remove_packages(ctx, config, pkgs):
     """
@@ -929,22 +917,19 @@ def _upgrade_rpm_packages(ctx, config, remote, pkgs):
         _yum_set_check_obsoletes(remote)
 
     if gitbuilder.dist_release == 'opensuse':
-        pkg_mng_cmd = 'zypper'
-        pkg_mng_opts = '-a'
+        clean_repo_args = '-a'
     else:
-        pkg_mng_cmd = 'yum'
-        pkg_mng_opts = 'all'
+        clean_repo_args = 'all'
 
-    remote.run(
-        args=[
-            'sudo', pkg_mng_cmd, 'clean', pkg_mng_opts,
-        ])
+    clean_repo_caches(clean_repo_args, remote)
 
     # Actually upgrade the project packages
     if gitbuilder.dist_release == 'opensuse':
+        pkg_mng_cmd = 'zypper'
         pkg_mng_opts = '-n'
         pkg_mng_subcommand_opts = '--capability'
     else:
+        pkg_mng_cmd = 'yum'
         pkg_mng_opts = '-y'
         pkg_mng_subcommand_opts = ''
     args = ['sudo', pkg_mng_cmd, pkg_mng_opts, 'install', pkg_mng_subcommand_opts]

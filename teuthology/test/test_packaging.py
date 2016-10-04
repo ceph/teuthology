@@ -82,6 +82,22 @@ class TestPackaging(object):
             'yum',
             '-y',
             'install',
+            '',
+            'httpd'
+        ]
+        packaging.install_package('httpd', m_remote)
+        m_remote.run.assert_called_with(args=expected)
+
+    def test_install_package_rpm_opensuse(self):
+        m_remote = Mock()
+        m_remote.os.package_type = "rpm"
+        m_remote.os.name = "opensuse"
+        expected = [
+            'sudo',
+            'zypper',
+            '-n',
+            'install',
+            '--capability',
             'httpd'
         ]
         packaging.install_package('httpd', m_remote)
@@ -113,6 +129,60 @@ class TestPackaging(object):
             'httpd'
         ]
         packaging.remove_package('httpd', m_remote)
+        m_remote.run.assert_called_with(args=expected)
+
+    def test_remove_package_rpm_opensuse(self):
+        m_remote = Mock()
+        m_remote.os.package_type = "rpm"
+        m_remote.os.name = "opensuse"
+        expected = [
+            'sudo',
+            'zypper',
+            '-n',
+            'remove',
+            'httpd'
+        ]
+        packaging.remove_package('httpd', m_remote)
+        m_remote.run.assert_called_with(args=expected)
+
+    def test_clean_repo_caches_deb(self):
+        m_remote = Mock()
+        m_remote.os.package_type = "deb"
+        expected = [
+            'DEBIAN_FRONTEND=noninteractive',
+            'sudo',
+            'apt-get',
+            '-y',
+            'clean'
+        ]
+        packaging.clean_repo_caches('', m_remote)
+        m_remote.run.assert_called_with(args=expected)
+
+    def test_clean_repo_caches_rpm(self):
+        m_remote = Mock()
+        m_remote.os.package_type = "rpm"
+        expected = [
+            'sudo',
+            'yum',
+            '-y',
+            'clean',
+            'all'
+        ]
+        packaging.clean_repo_caches('all', m_remote)
+        m_remote.run.assert_called_with(args=expected)
+
+    def test_clean_repo_caches_rpm_opensuse(self):
+        m_remote = Mock()
+        m_remote.os.package_type = "rpm"
+        m_remote.os.name = 'opensuse'
+        expected = [
+            'sudo',
+            'zypper',
+            '-n',
+            'clean',
+            '-a'
+        ]
+        packaging.clean_repo_caches('-a', m_remote)
         m_remote.run.assert_called_with(args=expected)
 
     def test_get_koji_package_name(self):

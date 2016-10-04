@@ -69,10 +69,20 @@ def install_package(package, remote):
                   'install',
                   '{package}'.format(package=package)]
     elif flavor == 'rpm':
+        if remote.os.name != 'opensuse':
+            pkg_mng_cmd = 'yum'
+            pkg_mng_opts = '-y'
+            pkg_mng_subcommand_opts = ''
+        else:
+            pkg_mng_cmd = 'zypper'
+            pkg_mng_opts = '-n'
+            pkg_mng_subcommand_opts = '--capability'
+
         pkgcmd = ['sudo',
-                  'yum',
-                  '-y',
+                  pkg_mng_cmd,
+                  pkg_mng_opts,
                   'install',
+                  pkg_mng_subcommand_opts,
                   '{package}'.format(package=package)]
     else:
         log.error('install_package: bad flavor ' + flavor + '\n')
@@ -94,16 +104,53 @@ def remove_package(package, remote):
                   'purge',
                   '{package}'.format(package=package)]
     elif flavor == 'rpm':
+        if remote.os.name != 'opensuse':
+            pkg_mng_cmd = 'yum'
+            pkg_mng_opts = '-y'
+            pkg_mng_action = 'erase'
+        else:
+            pkg_mng_cmd = 'zypper'
+            pkg_mng_opts = '-n'
+            pkg_mng_action = 'remove'
+
         pkgcmd = ['sudo',
-                  'yum',
-                  '-y',
-                  'erase',
+                  pkg_mng_cmd,
+                  pkg_mng_opts,
+                  pkg_mng_action,
                   '{package}'.format(package=package)]
     else:
         log.error('remove_package: bad flavor ' + flavor + '\n')
         return False
     return remote.run(args=pkgcmd)
 
+def clean_repo_caches(clean_args, remote):
+    """
+    Clean repository cache
+    """
+    flavor = remote.os.package_type
+    if flavor == 'deb':
+        pkgcmd = ['DEBIAN_FRONTEND=noninteractive',
+                  'sudo',
+                  'apt-get',
+                  '-y',
+                  'clean']
+    elif flavor == 'rpm':
+        if remote.os.name != 'opensuse':
+            pkg_mng_cmd = 'yum'
+            pkg_mng_opts = '-y'
+        else:
+            pkg_mng_cmd = 'zypper'
+            pkg_mng_opts = '-n'
+
+        pkgcmd = ['sudo',
+                  pkg_mng_cmd,
+                  pkg_mng_opts,
+                  'clean',
+                  clean_args]
+    else:
+        log.error('clean_repo_caches: bad flavor ' + flavor + '\n')
+        return False
+    return remote.run(args=pkgcmd)
 
 def get_koji_task_result(task_id, remote, ctx):
     """
