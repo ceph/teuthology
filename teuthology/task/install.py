@@ -14,6 +14,7 @@ from teuthology import contextutil, packaging
 from teuthology.parallel import parallel
 from ..orchestra import run
 from . import ansible
+from distutils.version import LooseVersion
 
 log = logging.getLogger(__name__)
 
@@ -301,6 +302,12 @@ def _update_rpm_package_list_and_install(ctx, remote, rpm, config):
                         'sudo', pkg_mng_cmd, pkg_mng_opts, 'install',
                         pkg_mng_subcommand_opts, cpack, run.Raw(';'),
                         'fi'])
+
+
+def get_upgrade_version(ctx, config, remote):
+    gitbuilder = _get_gitbuilder_project(ctx, remote, config)
+    version = gitbuilder.version
+    return version
 
 
 def verify_package_version(ctx, config, remote):
@@ -1034,6 +1041,12 @@ def upgrade_remote_to_config(ctx, config):
     return result
 
 
+def _upgrade_is_downgrade(installed_version, upgrade_version):
+    assert installed_version, "installed_version is empty"
+    assert upgrade_version, "upgrade_version is empty"
+    return LooseVersion(installed_version) > LooseVersion(upgrade_version)
+
+
 def upgrade_common(ctx, config, deploy_style):
     """
     Common code for upgrading
@@ -1057,8 +1070,22 @@ def upgrade_common(ctx, config, deploy_style):
             # FIXME: again, make extra_pkgs distro-agnostic
         pkgs += extra_pkgs
 
+        installed_version = packaging.get_package_version(remote, 'ceph-common')
+        upgrade_version = get_upgrade_version(ctx, remote, node)
+        log.info("Ceph {s} upgrade from {i} to {u}".format(
+            s=system_type,
+            i=installed_version,
+            u=upgrade_version
+        ))
+	if _upgrade_is_downgrade(installed_version, upgrade_version):
+            raise RuntimeError(
+                "An attempt to upgrade from a higher version to a lower one "
+                "will always fail. Hint: check tags in the target git branch."
+            )
+
         deploy_style(ctx, node, remote, pkgs, system_type)
         verify_package_version(ctx, node, remote)
+
     return len(remotes)
 
 docstring_for_upgrade = """"
