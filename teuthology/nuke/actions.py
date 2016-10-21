@@ -245,8 +245,9 @@ def remove_ceph_packages(ctx):
     """
     log.info("Force remove ceph packages")
     ceph_packages_to_remove = ['ceph-common', 'ceph-mon', 'ceph-osd',
-                               'libcephfs1', 'librados2', 'librgw2', 'librbd1',
-                               'ceph-selinux', 'python-cephfs', 'ceph-base',
+                               'libcephfs1', 'libcephfs2', 'librados2',
+                               'librgw2', 'librbd1', 'ceph-selinux',
+                               'python-cephfs', 'ceph-base',
                                'python-rbd', 'python-rados', 'ceph-mds',
                                'ceph-mgr', 'libcephfs-java', 'libcephfs-jni',
                                'ceph-deploy', 'libapache2-mod-fastcgi'
