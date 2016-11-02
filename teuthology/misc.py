@@ -775,8 +775,7 @@ def pull_directory(remote, remotedir, localdir):
                     type_ = 'hard link'
                 else:
                     type_ = 'unknown'
-                    log.info('Ignoring tar entry: %r type %r', ti.name, type_)
-                    continue
+                log.info('Ignoring tar entry: %r type %r', ti.name, type_)
     os.remove(local_tarfile)
 
 
