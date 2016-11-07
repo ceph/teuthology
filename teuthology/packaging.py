@@ -45,8 +45,8 @@ DEFAULT_OS_VERSION = dict(
     ubuntu="14.04",
     fedora="20",
     centos="7.0",
-    opensuse="12.2",
-    sles="11-sp2",
+    opensuse="42.1",
+    sle="12.2",
     rhel="7.0",
     debian='7.0'
 )
@@ -601,6 +601,8 @@ class GitbuilderProject(object):
             distro = "fc"
         elif distro == "opensuse":
             distro = "opensuse"
+        elif distro == "sle":
+            distro = "sle"
         else:
             # deb based systems use codename instead of a distro/version combo
             if not codename:

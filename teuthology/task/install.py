@@ -207,7 +207,7 @@ def _update_rpm_package_list_and_install(ctx, remote, rpm, config):
     dist_release = gitbuilder.dist_release
     project = gitbuilder.project
     start_of_url = gitbuilder.base_url
-    if dist_release == 'opensuse':
+    if dist_release in ['opensuse', 'sle']:
         proj_release = '{proj}-release-{release}.noarch'.format(
             proj=project, release=RELEASE)
     else:
@@ -219,7 +219,7 @@ def _update_rpm_package_list_and_install(ctx, remote, rpm, config):
     # When this was one command with a pipe, it would sometimes
     # fail with the message 'rpm: no packages given for install'
     remote.run(args=['wget', base_url, ],)
-    if dist_release == 'opensuse':
+    if dist_release in ['opensuse', 'sle']:
         remote.run(args=[
             'sudo', 'zypper', '--non-interactive', 'install', '--capability', 
             rpm_name
@@ -229,13 +229,13 @@ def _update_rpm_package_list_and_install(ctx, remote, rpm, config):
 
     remote.run(args=['rm', '-f', rpm_name])
 
-    if dist_release != 'opensuse':
+    if dist_release not in ['opensuse', 'sle']:
         uri = gitbuilder.uri_reference
         _yum_fix_repo_priority(remote, project, uri)
         _yum_fix_repo_host(remote, project)
         _yum_set_check_obsoletes(remote)
 
-    if dist_release == 'opensuse':
+    if dist_release in ['opensuse', 'sle']:
         remote.run(
             args=[
                 'sudo', 'zypper', 'clean', '-a',
@@ -248,7 +248,7 @@ def _update_rpm_package_list_and_install(ctx, remote, rpm, config):
 
     ldir = _get_local_dir(config, remote)
 
-    if dist_release == 'opensuse':
+    if dist_release in ['opensuse', 'sle']:
         pkg_mng_opts = '--non-interactive'
         pkg_mng_cmd = 'zypper'
         pkg_mng_subcommand_opts = '--capability'
@@ -454,7 +454,7 @@ def _remove_rpm(ctx, config, remote, rpm):
     gitbuilder = _get_gitbuilder_project(ctx, remote, config)
     dist_release = gitbuilder.dist_release
 
-    if dist_release == 'opensuse':
+    if dist_release in ['opensuse', 'sle']:
         pkg_mng_opts = '--non-interactive'
         pkg_mng_cmd = 'zypper'
         pkg_mng_subcommand_opts = '--capability'
@@ -474,7 +474,7 @@ def _remove_rpm(ctx, config, remote, rpm):
             run.Raw('$d'), run.Raw('||'), 'true', run.Raw(';'),
             'done',
         ])
-    if dist_release == 'opensuse':
+    if dist_release in ['opensuse', 'sle']:
         pkg_mng_opts = '-a'
     else:
         pkg_mng_opts = 'all'
@@ -482,18 +482,18 @@ def _remove_rpm(ctx, config, remote, rpm):
         args=[
             'sudo', pkg_mng_cmd, 'clean', pkg_mng_opts,
         ])
-    if dist_release == 'opensuse':
+    if dist_release in ['opensuse', 'sle']:
         projRelease = '%s-release-%s.noarch' % (
             config.get('project', 'ceph'), RELEASE)
     else:
         projRelease = '%s-release-%s.%s.noarch' % (
             config.get('project', 'ceph'), RELEASE, dist_release)
-    if dist_release == 'opensuse':
+    if dist_release in ['opensuse', 'sle']:
         remote.run(args=['sudo', 'zypper', '--non-interactive', 'remove', projRelease])
     else:
         remote.run(args=['sudo', 'yum', 'erase', projRelease, '-y'])
 
-    if dist_release != 'opensuse':
+    if dist_release not in ['opensuse', 'sle']:
         pkg_mng_opts = 'expire-cache'
     remote.run(
         args=[
@@ -546,7 +546,7 @@ def _remove_sources_list_rpm(remote, proj):
     :param remote: the teuthology.orchestra.remote.Remote object
     :param proj: the project whose .repo needs removing
     """
-    if remote.os.name != 'opensuse':
+    if remote.os.name not in ['opensuse', 'sle']:
         remote.run(
             args=['sudo', 'rm', '/etc/yum.repos.d/{proj}.repo'.format(proj=proj)],
             check_status=False,
@@ -563,7 +563,7 @@ def _remove_sources_list_rpm(remote, proj):
         args=['sudo', 'rm', '-r', '/var/log/{proj}'.format(proj=proj)],
         check_status=False,
     )
-    if remote.os.name != 'opensuse':
+    if remote.os.name not in ['opensuse', 'sle']:
         _yum_unset_check_obsoletes(remote)
 
 
@@ -891,7 +891,7 @@ def _upgrade_rpm_packages(ctx, config, remote, pkgs):
     remote.run(args=args)
 
     # Build the new -release package path
-    if (gitbuilder.dist_release == 'opensuse'):
+    if gitbuilder.dist_release in ['opensuse', 'sle']:
         release_rpm = "{base}/noarch/{proj}-release-{release}.noarch.rpm".format(
             base=base_url,
             proj=project,
@@ -909,13 +909,13 @@ def _upgrade_rpm_packages(ctx, config, remote, pkgs):
     args = ['sudo', 'rpm', '-Uv', release_rpm]
     remote.run(args=args)
 
-    if gitbuilder.dist_release != 'opensuse':
+    if gitbuilder.dist_release not in ['opensuse', 'sle']:
         uri = gitbuilder.uri_reference
         _yum_fix_repo_priority(remote, project, uri)
         _yum_fix_repo_host(remote, project)
         _yum_set_check_obsoletes(remote)
 
-    if gitbuilder.dist_release == 'opensuse':
+    if gitbuilder.dist_release in ['opensuse', 'sle']:
         pkg_mng_opts = '-a'
         pkg_mng_cmd = 'zypper'
     else:
@@ -928,7 +928,7 @@ def _upgrade_rpm_packages(ctx, config, remote, pkgs):
         ])
 
     # Actually upgrade the project packages
-    if gitbuilder.dist_release == 'opensuse':
+    if gitbuilder.dist_release in ['opensuse', 'sle']:
         pkg_mng_opts = '--non-interactive'
         pkg_mng_subcommand_opts = '--capability'
     else:

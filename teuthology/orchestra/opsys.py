@@ -13,7 +13,7 @@ class OS(object):
     __slots__ = ['name', 'version', 'codename', 'package_type']
 
     _deb_distros = ('debian', 'ubuntu')
-    _rpm_distros = ('fedora', 'rhel', 'centos', 'opensuse')
+    _rpm_distros = ('fedora', 'rhel', 'centos', 'opensuse', 'sle')
 
     def __init__(self, name=None, version=None, codename=None):
         self.name = name
@@ -49,6 +49,8 @@ class OS(object):
             name = 'fedora'
         elif name.startswith('opensuse'):
             name = 'opensuse'
+        elif name.startswith('suse'):
+            name = 'sle'
 
         obj = cls(name=name, version=version, codename=codename.lower())
 
@@ -79,6 +81,8 @@ class OS(object):
             name = 'rhel'
         elif name.startswith('openSUSE'):
             name = 'opensuse'
+        elif name.startswith('SUSE'):
+            name = 'sle'
         name = name.lower()
 
         obj._set_package_type()
