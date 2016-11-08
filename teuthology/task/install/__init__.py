@@ -15,81 +15,12 @@ from teuthology.orchestra import run
 from teuthology.task import ansible
 
 from .util import (
-    _get_builder_project, get_flavor, ship_utilities, _get_local_dir
+    _get_builder_project, get_flavor, ship_utilities,
 )
 
-from . import rpm
+from . import rpm, deb
 
 log = logging.getLogger(__name__)
-
-
-def _update_deb_package_list_and_install(ctx, remote, debs, config):
-    """
-    Runs ``apt-get update`` first, then runs ``apt-get install``, installing
-    the requested packages on the remote system.
-
-    TODO: split this into at least two functions.
-
-    :param ctx: the argparse.Namespace object
-    :param remote: the teuthology.orchestra.remote.Remote object
-    :param debs: list of packages names to install
-    :param config: the config dict
-    """
-
-    # check for ceph release key
-    r = remote.run(
-        args=[
-            'sudo', 'apt-key', 'list', run.Raw('|'), 'grep', 'Ceph',
-        ],
-        stdout=StringIO(),
-        check_status=False,
-    )
-    if r.stdout.getvalue().find('Ceph automated package') == -1:
-        # if it doesn't exist, add it
-        remote.run(
-            args=[
-                'wget', '-q', '-O-',
-                'http://git.ceph.com/?p=ceph.git;a=blob_plain;f=keys/autobuild.asc',
-                run.Raw('|'),
-                'sudo', 'apt-key', 'add', '-',
-            ],
-            stdout=StringIO(),
-        )
-
-    builder = util._get_builder_project(ctx, remote, config)
-    log.info("Installing packages: {pkglist} on remote deb {arch}".format(
-        pkglist=", ".join(debs), arch=builder.arch)
-    )
-    # get baseurl
-    log.info('Pulling from %s', builder.base_url)
-
-    version = builder.version
-    log.info('Package version is %s', version)
-
-    remote.run(
-        args=[
-            'echo', 'deb', builder.base_url, builder.codename, 'main',
-            run.Raw('|'),
-            'sudo', 'tee', '/etc/apt/sources.list.d/{proj}.list'.format(
-                proj=config.get('project', 'ceph')),
-        ],
-        stdout=StringIO(),
-    )
-    remote.run(args=['sudo', 'apt-get', 'update'], check_status=False)
-    remote.run(
-        args=[
-            'sudo', 'DEBIAN_FRONTEND=noninteractive', 'apt-get', '-y',
-            '--force-yes',
-            '-o', run.Raw('Dpkg::Options::="--force-confdef"'), '-o', run.Raw(
-                'Dpkg::Options::="--force-confold"'),
-            'install',
-        ] + ['%s=%s' % (d, version) for d in debs],
-    )
-    ldir = util._get_local_dir(config, remote)
-    if ldir:
-        for fyle in os.listdir(ldir):
-            fname = "%s/%s" % (ldir, fyle)
-            remote.run(args=['sudo', 'dpkg', '-i', fname],)
 
 
 def verify_package_version(ctx, config, remote):
@@ -175,7 +106,7 @@ def install_packages(ctx, pkgs, config):
     :param config: the config dict
     """
     install_pkgs = {
-        "deb": _update_deb_package_list_and_install,
+        "deb": deb._update_package_list_and_install,
         "rpm": rpm._update_package_list_and_install,
     }
     with parallel() as p:
@@ -190,57 +121,617 @@ def install_packages(ctx, pkgs, config):
         verify_package_version(ctx, config, remote)
 
 
-def _remove_deb(ctx, config, remote, debs):
+def remove_packages(ctx, config, pkgs):
     """
-    Removes Debian packages from remote, rudely
-
-    TODO: be less rude (e.g. using --force-yes)
+    Removes packages from each remote in ctx.
 
     :param ctx: the argparse.Namespace object
     :param config: the config dict
-    :param remote: the teuthology.orchestra.remote.Remote object
-    :param debs: list of packages names to install
+    :param pkgs: list of packages names to remove
     """
-    log.info("Removing packages: {pkglist} on Debian system.".format(
-        pkglist=", ".join(debs)))
-    # first ask nicely
+    remove_pkgs = {
+        "deb": deb._remove,
+        "rpm": rpm._remove,
+    }
+    with parallel() as p:
+        for remote in ctx.cluster.remotes.iterkeys():
+            system_type = teuthology.get_system_type(remote)
+            p.spawn(remove_pkgs[
+                    system_type], ctx, config, remote, pkgs[system_type])
+
+
+def remove_sources(ctx, config):
+    """
+    Removes repo source files from each remote in ctx.
+
+    :param ctx: the argparse.Namespace object
+    :param config: the config dict
+    """
+    remove_sources_pkgs = {
+        'deb': deb._remove_sources_list,
+        'rpm': rpm._remove_sources_list,
+    }
+    with parallel() as p:
+        project = config.get('project', 'ceph')
+        log.info("Removing {proj} sources lists".format(
+            proj=project))
+        for remote in ctx.cluster.remotes.iterkeys():
+            remove_fn = remove_sources_pkgs[remote.os.package_type]
+            p.spawn(remove_fn, remote, project)
+
+    with parallel() as p:
+        project = 'calamari'
+        log.info("Removing {proj} sources lists".format(
+            proj=project))
+        for remote in ctx.cluster.remotes.iterkeys():
+            remove_fn = remove_sources_pkgs[remote.os.package_type]
+            p.spawn(remove_fn, remote, project)
+
+
+def get_package_list(ctx, config):
+    debug = config.get('debuginfo', False)
+    project = config.get('project', 'ceph')
+    yaml_path = None
+    # Look for <suite_path>/packages/packages.yaml
+    if hasattr(ctx, 'config') and 'suite_path' in ctx.config:
+        suite_packages_path = os.path.join(
+            ctx.config['suite_path'],
+            'packages',
+            'packages.yaml',
+        )
+        if os.path.exists(suite_packages_path):
+            yaml_path = suite_packages_path
+    # If packages.yaml isn't found in the suite_path, potentially use
+    # teuthology's
+    yaml_path = yaml_path or os.path.join(
+        os.path.dirname(__file__),
+        'packages.yaml',
+    )
+    default_packages = yaml.safe_load(open(yaml_path))
+    default_debs = default_packages.get(project, dict()).get('deb', [])
+    default_rpms = default_packages.get(project, dict()).get('rpm', [])
+    # If a custom deb and/or rpm list is provided via the task config, use
+    # that. Otherwise, use the list from whichever packages.yaml was found
+    # first
+    debs = config.get('packages', dict()).get('deb', default_debs)
+    rpms = config.get('packages', dict()).get('rpm', default_rpms)
+    # Optionally include or exclude debug packages
+    if not debug:
+        debs = filter(lambda p: not p.endswith('-dbg'), debs)
+        rpms = filter(lambda p: not p.endswith('-debuginfo'), rpms)
+
+    excluded_packages = config.get('exclude_packages', list())
+    if excluded_packages:
+        log.debug("Excluding packages: {}".format(excluded_packages))
+
+        def exclude(pkgs):
+            return list(set(pkgs).difference(set(excluded_packages)))
+
+        debs = exclude(debs)
+        rpms = exclude(rpms)
+
+    package_list = dict(deb=debs, rpm=rpms)
+    log.debug("Package list is: {}".format(package_list))
+    return package_list
+
+
+@contextlib.contextmanager
+def install(ctx, config):
+    """
+    The install task. Installs packages for a given project on all hosts in
+    ctx. May work for projects besides ceph, but may not. Patches welcomed!
+
+    :param ctx: the argparse.Namespace object
+    :param config: the config dict
+    """
+
+    project = config.get('project', 'ceph')
+
+    package_list = get_package_list(ctx, config)
+    debs = package_list['deb']
+    rpm = package_list['rpm']
+
+    # pull any additional packages out of config
+    extra_pkgs = config.get('extra_packages')
+    log.info('extra packages: {packages}'.format(packages=extra_pkgs))
+    debs += extra_pkgs
+    rpm += extra_pkgs
+
+    # When extras is in the config we want to purposely not install ceph.
+    # This is typically used on jobs that use ceph-deploy to install ceph
+    # or when we are testing ceph-deploy directly.  The packages being
+    # installed are needed to properly test ceph as ceph-deploy won't
+    # install these. 'extras' might not be the best name for this.
+    extras = config.get('extras')
+    if extras is not None:
+        debs = ['ceph-test', 'ceph-fuse',
+                'librados2', 'librbd1',
+                'python-ceph']
+        rpm = ['ceph-fuse', 'librbd1', 'librados2', 'ceph-test', 'python-ceph']
+    package_list = dict(deb=debs, rpm=rpm)
+    install_packages(ctx, package_list, config)
+    try:
+        yield
+    finally:
+        remove_packages(ctx, config, package_list)
+        remove_sources(ctx, config)
+        if project == 'ceph':
+            purge_data(ctx)
+
+
+@contextlib.contextmanager
+def rh_install(ctx, config):
+    """
+    Installs rh ceph on all hosts in ctx.
+
+    :param ctx: the argparse.Namespace object
+    :param config: the config dict
+    """
+    version = config['rhbuild']
+    rh_versions = ['1.3.0', '1.3.1', '1.3.2', '2.0']
+    if version in rh_versions:
+        log.info("%s is a supported version", version)
+    else:
+        raise RuntimeError("Unsupported RH Ceph version %s", version)
+
+    with parallel() as p:
+        for remote in ctx.cluster.remotes.iterkeys():
+            if remote.os.name == 'rhel':
+                log.info("Installing on RHEL node: %s", remote.shortname)
+                p.spawn(rh_install_pkgs, ctx, remote, version)
+            else:
+                log.info("Node %s is not RHEL", remote.shortname)
+                raise RuntimeError("Test requires RHEL nodes")
+    try:
+        yield
+    finally:
+        if config.get('skip_uninstall'):
+            log.info("Skipping uninstall of Ceph")
+        else:
+            rh_uninstall(ctx=ctx, config=config)
+
+
+def rh_uninstall(ctx, config):
+    """
+     Uninstalls rh ceph on all hosts.
+     It actually spawns rh_uninstall_pkgs() on the remotes for uninstall.
+
+    :param ctx: the argparse.Namespace object
+    :param config: the config dict
+    """
+    with parallel() as p:
+        for remote in ctx.cluster.remotes.iterkeys():
+            p.spawn(rh_uninstall_pkgs, ctx, remote)
+
+
+def rh_install_pkgs(ctx, remote, installed_version):
+    """
+    Installs RH build using ceph-deploy.
+
+    :param ctx: the argparse.Namespace object
+    :param remote: the teuthology.orchestra.remote.Remote object
+    """
+    pkgs = ['ceph-deploy']
+    # install ceph-selinux for 1.3.2 as its not dependency of any core packages
+    if (installed_version == '1.3.2'):
+        pkgs.append('ceph-selinux')
+    # install ceph-fuse for 2.0 as its not dependency of any core packages
+    if (installed_version == '2.0'):
+        pkgs.append('ceph-fuse')
+    rh_version_check = {'0.94.1': '1.3.0', '0.94.3': '1.3.1',
+                        '0.94.5': '1.3.2', '10.1.0': '2.0'}
+    log.info("Remove any epel packages installed on node %s", remote.shortname)
     remote.run(
-        args=[
-            'for', 'd', 'in',
-        ] + debs + [
-            run.Raw(';'),
-            'do',
-            'sudo', 'DEBIAN_FRONTEND=noninteractive', 'apt-get', '-y', '--force-yes',
-            '-o', run.Raw('Dpkg::Options::="--force-confdef"'), '-o', run.Raw(
-                'Dpkg::Options::="--force-confold"'), 'purge',
-            run.Raw('$d'),
-            run.Raw('||'),
-            'true',
-            run.Raw(';'),
-            'done',
-        ])
-    # mop up anything that is broken
+        args=['sudo', 'yum', 'remove',
+              run.Raw("leveldb xmlstarlet fcgi"), '-y'],
+        check_status=False
+    )
+    for pkg in pkgs:
+        log.info("Check if %s is already installed on node %s",
+                 pkg, remote.shortname)
+        remote.run(args=['sudo', 'yum', 'clean', 'metadata'])
+        r = remote.run(
+            args=['yum', 'list', 'installed', run.Raw(pkg)],
+            stdout=StringIO(),
+            check_status=False,
+        )
+        if r.stdout.getvalue().find(pkg) == -1:
+            log.info("Installing %s " % pkg)
+            remote.run(args=['sudo', 'yum', 'install', pkg, '-y'])
+        else:
+            log.info("Removing and reinstalling %s on %s",
+                     pkg, remote.shortname)
+            remote.run(args=['sudo', 'yum', 'remove', pkg, '-y'])
+            remote.run(args=['sudo', 'yum', 'install', pkg, '-y'])
+
+    log.info("Check if ceph is already installed on %s", remote.shortname)
+    r = remote.run(
+        args=['yum', 'list', 'installed', 'ceph'],
+        stdout=StringIO(),
+        check_status=False,
+    )
+    host = r.hostname
+    if r.stdout.getvalue().find('ceph') == -1:
+        log.info("Install ceph using ceph-deploy on %s", remote.shortname)
+        remote.run(args=[
+            'sudo', 'ceph-deploy', 'install',
+            run.Raw('--no-adjust-repos'), host]
+        )
+        remote.run(args=['sudo', 'yum', 'install', 'ceph-test', '-y'])
+    else:
+        log.info("Removing and reinstalling Ceph on %s", remote.shortname)
+        remote.run(args=['sudo', 'ceph-deploy', 'uninstall', host])
+        remote.run(args=['sudo', 'ceph-deploy', 'purgedata', host])
+        remote.run(args=['sudo', 'ceph-deploy', 'install', host])
+        remote.run(args=['sudo', 'yum', 'remove', 'ceph-test', '-y'])
+        remote.run(args=['sudo', 'yum', 'install', 'ceph-test', '-y'])
+
+    # check package version
+    version = packaging.get_package_version(remote, 'ceph-common')
+    log.info(
+        "Node: {n} Ceph version installed is {v}".format(
+            n=remote.shortname, v=version)
+    )
+    if rh_version_check[version] == installed_version:
+        log.info("Installed version matches on %s", remote.shortname)
+    else:
+        raise RuntimeError("Version check failed on node %s", remote.shortname)
+
+
+def rh_uninstall_pkgs(ctx, remote):
+    """
+    Removes Ceph from all RH hosts
+
+    :param ctx: the argparse.Namespace object
+    :param remote: the teuthology.orchestra.remote.Remote object
+    """
+    log.info(
+        "uninstalling packages using ceph-deploy on node %s",
+        remote.shortname
+    )
+    r = remote.run(args=['date'], check_status=False)
+    host = r.hostname
+    remote.run(args=['sudo', 'ceph-deploy', 'uninstall', host])
+    time.sleep(4)
+    remote.run(args=['sudo', 'ceph-deploy', 'purgedata', host])
+    log.info("Uninstalling ceph-deploy")
     remote.run(
-        args=[
-            'dpkg', '-l',
-            run.Raw('|'),
-            # Any package that is unpacked or half-installed and also requires
-            # reinstallation
-            'grep', '^.\(U\|H\)R',
-            run.Raw('|'),
-            'awk', '{print $2}',
-            run.Raw('|'),
-            'sudo',
-            'xargs', '--no-run-if-empty',
-            'dpkg', '-P', '--force-remove-reinstreq',
-        ])
-    # then let apt clean up
+        args=['sudo', 'yum', 'remove', 'ceph-deploy', '-y'],
+        check_status=False
+    )
     remote.run(
-        args=[
-            'sudo', 'DEBIAN_FRONTEND=noninteractive', 'apt-get', '-y', '--force-yes',
-            '-o', run.Raw('Dpkg::Options::="--force-confdef"'), '-o', run.Raw(
-                'Dpkg::Options::="--force-confold"'),
-            'autoremove',
-        ],
+        args=['sudo', 'yum', 'remove', 'ceph-test', '-y'],
+        check_status=False
     )
 
+
+def upgrade_old_style(ctx, node, remote, pkgs, system_type):
+    """
+    Handle the upgrade using methods in use prior to ceph-deploy.
+    """
+    if system_type == 'deb':
+        deb._upgrade_packages(ctx, node, remote, pkgs)
+    elif system_type == 'rpm':
+        rpm._upgrade_packages(ctx, node, remote, pkgs)
+
+
+def upgrade_with_ceph_deploy(ctx, node, remote, pkgs, sys_type):
+    """
+    Upgrade using ceph-deploy
+    """
+    dev_table = ['branch', 'tag', 'dev']
+    ceph_dev_parm = ''
+    ceph_rel_parm = ''
+    for entry in node.keys():
+        if entry in dev_table:
+            ceph_dev_parm = node[entry]
+        if entry == 'release':
+            ceph_rel_parm = node[entry]
+    params = []
+    if ceph_dev_parm:
+        params += ['--dev', ceph_dev_parm]
+    if ceph_rel_parm:
+        params += ['--release', ceph_rel_parm]
+    params.append(remote.name)
+    subprocess.call(['ceph-deploy', 'install'] + params)
+    remote.run(args=['sudo', 'restart', 'ceph-all'])
+
+
+def upgrade_remote_to_config(ctx, config):
+    assert config is None or isinstance(config, dict), \
+        "install.upgrade only supports a dictionary for configuration"
+
+    project = config.get('project', 'ceph')
+
+    # use 'install' overrides here, in case the upgrade target is left
+    # unspecified/implicit.
+    install_overrides = ctx.config.get(
+        'overrides', {}).get('install', {}).get(project, {})
+    log.info('project %s config %s overrides %s', project, config,
+             install_overrides)
+
+    # build a normalized remote -> config dict
+    remotes = {}
+    if 'all' in config:
+        for remote in ctx.cluster.remotes.iterkeys():
+            remotes[remote] = config.get('all')
+    else:
+        for role in config.keys():
+            remotes_dict = ctx.cluster.only(role).remotes
+            if not remotes_dict:
+                # This is a regular config argument, not a role
+                continue
+            remote = remotes_dict.keys()[0]
+            if remote in remotes:
+                log.warn('remote %s came up twice (role %s)', remote, role)
+                continue
+            remotes[remote] = config.get(role)
+
+    result = {}
+    for remote, node in remotes.iteritems():
+        if not node:
+            node = {}
+
+        this_overrides = copy.deepcopy(install_overrides)
+        if 'sha1' in node or 'tag' in node or 'branch' in node:
+            log.info("config contains sha1|tag|branch, "
+                     "removing those keys from override")
+            this_overrides.pop('sha1', None)
+            this_overrides.pop('tag', None)
+            this_overrides.pop('branch', None)
+        teuthology.deep_merge(node, this_overrides)
+        log.info('remote %s config %s', remote, node)
+        node['project'] = project
+
+        result[remote] = node
+
+    return result
+
+
+def upgrade_common(ctx, config, deploy_style):
+    """
+    Common code for upgrading
+    """
+    remotes = upgrade_remote_to_config(ctx, config)
+    project = config.get('project', 'ceph')
+
+    # FIXME: extra_pkgs is not distro-agnostic
+    extra_pkgs = config.get('extra_packages', [])
+    log.info('extra packages: {packages}'.format(packages=extra_pkgs))
+
+    for remote, node in remotes.iteritems():
+
+        system_type = teuthology.get_system_type(remote)
+        assert system_type in ('deb', 'rpm')
+        pkgs = get_package_list(ctx, config)[system_type]
+        log.info("Upgrading {proj} {system_type} packages: {pkgs}".format(
+            proj=project, system_type=system_type, pkgs=', '.join(pkgs)))
+        # FIXME: again, make extra_pkgs distro-agnostic
+        pkgs += extra_pkgs
+
+        deploy_style(ctx, node, remote, pkgs, system_type)
+        verify_package_version(ctx, node, remote)
+    return len(remotes)
+
+docstring_for_upgrade = """"
+    Upgrades packages for a given project.
+
+    For example::
+
+        tasks:
+        - install.{cmd_parameter}:
+             all:
+                branch: end
+
+    or specify specific roles::
+
+        tasks:
+        - install.{cmd_parameter}:
+             mon.a:
+                branch: end
+             osd.0:
+                branch: other
+
+    or rely on the overrides for the target version::
+
+        overrides:
+          install:
+            ceph:
+              sha1: ...
+        tasks:
+        - install.{cmd_parameter}:
+            all:
+
+    (HACK: the overrides will *only* apply the sha1/branch/tag if those
+    keys are not present in the config.)
+
+    It is also possible to attempt to exclude packages from the upgrade set:
+
+        tasks:
+        - install.{cmd_parameter}:
+            exclude_packages: ['ceph-test', 'ceph-test-dbg']
+
+    :param ctx: the argparse.Namespace object
+    :param config: the config dict
+    """
+
+#
+# __doc__ strings for upgrade and ceph_deploy_upgrade are set from
+# the same string so that help(upgrade) and help(ceph_deploy_upgrade)
+# look the same.
+#
+
+
+@contextlib.contextmanager
+def upgrade(ctx, config):
+    upgrade_common(ctx, config, upgrade_old_style)
+    yield
+
+upgrade.__doc__ = docstring_for_upgrade.format(cmd_parameter='upgrade')
+
+
+@contextlib.contextmanager
+def ceph_deploy_upgrade(ctx, config):
+    upgrade_common(ctx, config, upgrade_with_ceph_deploy)
+    yield
+
+ceph_deploy_upgrade.__doc__ = docstring_for_upgrade.format(
+    cmd_parameter='ceph_deploy_upgrade')
+
+
+@contextlib.contextmanager
+def task(ctx, config):
+    """
+    Install packages for a given project.
+
+    tasks:
+    - install:
+        project: ceph
+        branch: bar
+    - install:
+        project: samba
+        branch: foo
+        extra_packages: ['samba']
+    - install:
+        rhbuild: 1.3.0
+        playbook: downstream_setup.yml
+        vars:
+           yum_repos:
+             - url: "http://location.repo"
+               name: "ceph_repo"
+
+    Overrides are project specific:
+
+    overrides:
+      install:
+        ceph:
+          sha1: ...
+
+
+    Debug packages may optionally be installed:
+
+    overrides:
+      install:
+        ceph:
+          debuginfo: true
+
+
+    Default package lists (which come from packages.yaml) may be overridden:
+
+    overrides:
+      install:
+        ceph:
+          packages:
+            deb:
+            - ceph-osd
+            - ceph-mon
+            rpm:
+            - ceph-devel
+            - rbd-fuse
+
+    When tag, branch and sha1 do not reference the same commit hash, the
+    tag takes precedence over the branch and the branch takes precedence
+    over the sha1.
+
+    When the overrides have a sha1 that is different from the sha1 of
+    the project to be installed, it will be a noop if the project has
+    a branch or tag, because they take precedence over the sha1. For
+    instance:
+
+    overrides:
+      install:
+        ceph:
+          sha1: 1234
+
+    tasks:
+    - install:
+        project: ceph
+          sha1: 4567
+          branch: foobar # which has sha1 4567
+
+    The override will transform the tasks as follows:
+
+    tasks:
+    - install:
+        project: ceph
+          sha1: 1234
+          branch: foobar # which has sha1 4567
+
+    But the branch takes precedence over the sha1 and foobar
+    will be installed. The override of the sha1 has no effect.
+
+    When passed 'rhbuild' as a key, it will attempt to install an rh ceph build
+    using ceph-deploy
+
+    Reminder regarding teuthology-suite side effects:
+
+    The teuthology-suite command always adds the following:
+
+    overrides:
+      install:
+        ceph:
+          sha1: 1234
+
+    where sha1 matches the --ceph argument. For instance if
+    teuthology-suite is called with --ceph master, the sha1 will be
+    the tip of master. If called with --ceph v0.94.1, the sha1 will be
+    the v0.94.1 (as returned by git rev-parse v0.94.1 which is not to
+    be confused with git rev-parse v0.94.1^{commit})
+
+    :param ctx: the argparse.Namespace object
+    :param config: the config dict
+    """
+    if config is None:
+        config = {}
+    assert isinstance(config, dict), \
+        "task install only supports a dictionary for configuration"
+
+    project, = config.get('project', 'ceph'),
+    log.debug('project %s' % project)
+    overrides = ctx.config.get('overrides')
+    if overrides:
+        install_overrides = overrides.get('install', {})
+        teuthology.deep_merge(config, install_overrides.get(project, {}))
+    log.debug('config %s' % config)
+
+    rhbuild = None
+    if config.get('rhbuild'):
+        rhbuild = config.get('rhbuild')
+        log.info("Build is %s " % rhbuild)
+
+    flavor = get_flavor(config)
+    log.info("Using flavor: %s", flavor)
+
+    ctx.summary['flavor'] = flavor
+    nested_tasks = [lambda: rh_install(ctx=ctx, config=config),
+                    lambda: ship_utilities(ctx=ctx, config=None)]
+
+    if config.get('rhbuild'):
+        if config.get('playbook'):
+            ansible_config = dict(config)
+            # remove key not required by ansible task
+            del ansible_config['rhbuild']
+            nested_tasks.insert(
+                0,
+                lambda: ansible.CephLab(ctx, config=ansible_config)
+            )
+        with contextutil.nested(*nested_tasks):
+                yield
+    else:
+        with contextutil.nested(
+            lambda: install(ctx=ctx, config=dict(
+                branch=config.get('branch'),
+                tag=config.get('tag'),
+                sha1=config.get('sha1'),
+                debuginfo=config.get('debuginfo'),
+                flavor=flavor,
+                extra_packages=config.get('extra_packages', []),
+                exclude_packages=config.get('exclude_packages', []),
+                extras=config.get('extras', None),
+                wait_for_package=config.get('wait_for_package', False),
+                project=project,
+                packages=config.get('packages', dict()),
+            )),
+            lambda: ship_utilities(ctx=ctx, config=None),
+        ):
+            yield
