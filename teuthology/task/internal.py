@@ -685,12 +685,14 @@ def syslog(ctx, config):
             misc_log=misc_log),
     ]
     conf_fp = StringIO('\n'.join(conf_lines))
+    os_type = ctx.config.get("os_type")
     try:
         for rem in ctx.cluster.remotes.iterkeys():
-            log_context = 'system_u:object_r:var_log_t:s0'
-            for log_path in (kern_log, misc_log):
-                rem.run(args='touch %s' % log_path)
-                rem.chcon(log_path, log_context)
+            if os_type not in ('opensuse', 'sle'):
+                log_context = 'system_u:object_r:var_log_t:s0'
+                for log_path in (kern_log, misc_log):
+                    rem.run(args='touch %s' % log_path)
+                    rem.chcon(log_path, log_context)
             misc.sudo_write_file(
                 remote=rem,
                 path=CONF,
