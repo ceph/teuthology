@@ -9,6 +9,7 @@ bootcmd:
 # See https://github.com/ceph/ceph-cm-ansible/blob/master/roles/cobbler/templates/snippets/cephlab_user
  - ( echo 'Defaults !requiretty' ; echo 'Defaults visiblepw' ) | tee /etc/sudoers.d/cephlab_sudo ; chmod 0440 /etc/sudoers.d/cephlab_sudo
  - SUSEConnect -p sle-sdk/12.2/x86_64
+ - SuSEfirewall2 stop
 preserve_hostname: true
 users:
   - name: {username}
