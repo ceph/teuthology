@@ -1,5 +1,6 @@
 import beanstalkc
 import os
+import pytest
 import subprocess
 
 from mock import patch, Mock, MagicMock
@@ -185,14 +186,24 @@ class TestWorker(object):
             stderr=subprocess.STDOUT
         )
 
+    COLOCATED_SUITE_ARGS = [
+        None,
+        'qa',
+    ]
+
+    @pytest.mark.parametrize('colocated_suite_path', COLOCATED_SUITE_ARGS)
     @patch("os.path.isdir")
     @patch("teuthology.worker.fetch_teuthology")
     @patch("teuthology.worker.fetch_qa_suite")
-    def test_prep_job(self, m_fetch_qa_suite,
-                      m_fetch_teuthology, m_isdir):
+    def test_prep_job(
+        self, m_fetch_qa_suite, m_fetch_teuthology, m_isdir,
+        colocated_suite_path,
+    ):
         config = dict(
             name="the_name",
             job_id="1",
+            colocated_suite=(colocated_suite_path is not None),
+            colocated_suite_path=colocated_suite_path or '',
         )
         archive_dir = '/archive/dir'
         log_file_path = '/worker/log'
@@ -210,11 +221,16 @@ class TestWorker(object):
             config['name'],
             config['job_id'],
         )
-        assert got_config['teuthology_branch'] == 'master'
-        assert m_fetch_teuthology.called_once_with_args(branch='master')
+        teuth_branch = config.get('teuthology_branch', 'master')
+        assert got_config['teuthology_branch'] == teuth_branch
+        assert m_fetch_teuthology.called_once_with_args(branch=teuth_branch)
         assert teuth_bin_path == '/teuth/path/virtualenv/bin'
-        assert m_fetch_qa_suite.called_once_with_args(branch='master')
-        assert got_config['suite_path'] == '/suite/path'
+        suite_branch = config.get('suite_branch', 'master')
+        assert m_fetch_qa_suite.called_once_with_args(branch=suite_branch)
+        assert got_config['suite_path'] == os.path.normpath(os.path.join(
+            '/suite/path',
+            config['colocated_suite_path'],
+        ))
 
     def build_fake_jobs(self, m_connection, m_job, job_bodies):
         """

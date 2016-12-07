@@ -267,14 +267,21 @@ def fetch_repo(url, branch, bootstrap=None, lock=True):
     return dest_path
 
 
-def fetch_qa_suite(branch, lock=True):
+def fetch_qa_suite(branch, lock=True, colocated_suite=False):
     """
     Make sure ceph-qa-suite is checked out.
 
-    :param branch: The branch to fetch
-    :returns:      The destination path
+    :param branch:           The branch to fetch
+    :param lock:             See fetch_repo()
+    :param colocated_suite:  Whether to fetch the ceph repo instead of
+                             ceph-qa-suite
+    :returns:                The destination path
     """
-    return fetch_repo(config.get_ceph_qa_suite_git_url(),
+    if colocated_suite:
+        suite_url = config.get_ceph_git_url()
+    else:
+        suite_url = config.get_ceph_qa_suite_git_url()
+    return fetch_repo(suite_url,
                       branch, lock=lock)
 
 
