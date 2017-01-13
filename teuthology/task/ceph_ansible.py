@@ -3,15 +3,17 @@ import os
 import re
 import logging
 import yaml
+import time
 
 from cStringIO import StringIO
 
 from . import Task
 from tempfile import NamedTemporaryFile
 from ..config import config as teuth_config
-from ..misc import get_scratch_devices
+from ..misc import get_scratch_devices,  reconnect
 from teuthology import contextutil
 from teuthology.orchestra import run
+from teuthology.nuke import remove_osd_mounts, remove_ceph_packages
 from teuthology import misc
 log = logging.getLogger(__name__)
 
@@ -210,6 +212,56 @@ class CephAnsible(Task):
         os.remove(self.inventory)
         os.remove(self.playbook_file)
         os.remove(self.extra_vars_file)
+        machine_type = self.ctx.config('machine_type')
+        if not machine_type == 'vps':
+            self.ctx.cluster.run(args=['sudo', 'systemctl', 'stop',
+                                       'ceph.target'],
+                                 check_status=False)
+            time.sleep(4)
+            self.ctx.cluster.run(args=['sudo', 'stop', 'ceph-all'],
+                                 check_status=False)
+            installer_node = self.installer_node
+            installer_node.run(args=['rm', '-rf', 'ceph-ansible'])
+            remove_osd_mounts(self.ctx)
+            remove_ceph_packages(self.ctx)
+            if self.config.get('rhbuild'):
+                if installer_node.os.package_type == 'rpm':
+                    installer_node.run(args=[
+                        'sudo',
+                        'yum',
+                        'remove',
+                        '-y',
+                        'ceph-ansible'
+                    ])
+                else:
+                    installer_node.run(args=[
+                        'sudo',
+                        'apt-get',
+                        'remove',
+                        '-y',
+                        'ceph-ansible'
+                    ])
+            self.ctx.cluster.run(args=['sudo', 'reboot'], wait=False)
+            time.sleep(30)
+            log.info("Waiting for reconnect after reboot")
+            reconnect(self.ctx, 480)
+            self.ctx.cluster.run(args=['sudo', 'rm', '-rf', '/var/lib/ceph'],
+                                 check_status=False)
+            # remove old systemd files, known issue
+            self.ctx.cluster.run(
+                args=[
+                    'sudo',
+                    'rm',
+                    '-rf',
+                    run.Raw('/etc/systemd/system/ceph*')],
+                check_status=False)
+            self.ctx.cluster.run(
+                args=[
+                    'sudo',
+                    'rm',
+                    '-rf',
+                    run.Raw('/etc/systemd/system/multi-user.target.wants/ceph*')],
+                check_status=False)
 
     def wait_for_ceph_health(self):
         with contextutil.safe_while(sleep=15, tries=6,
