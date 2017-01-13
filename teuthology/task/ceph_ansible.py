@@ -61,6 +61,9 @@ class CephAnsible(Task):
         repo: {git_base}ceph-ansible.git
         branch: mybranch # defaults to master
         ansible-version: 2.2 # defaults to 2.1
+        # for old ansible version where clients roles
+        # doesn't exist, use setup-clients options
+        setup-clients: true
         vars:
           ceph_dev: True ( default)
           ceph_conf_overrides:
@@ -327,6 +330,11 @@ class CephAnsible(Task):
         if re.search(r'all hosts have already failed', out.getvalue()):
             log.error("Failed during ceph-ansible execution")
             raise CephAnsibleError("Failed during ceph-ansible execution")
+        # old ansible doesn't have clients role, setup clients for those
+        # cases
+        if self.config.get('setup-client'):
+            self.setup_client_node()
+        self.wait_for_ceph_health()
 
     def run_playbook(self):
         # setup ansible on first mon node
@@ -409,6 +417,45 @@ class CephAnsible(Task):
         # for the teuthology workunits to work we
         # need to fix the permission on keyring to be readable by them
         self.fix_keyring_permission()
+
+    def setup_client_node(self):
+        ceph_conf_contents = StringIO()
+        ceph_admin_keyring = StringIO()
+        self.ctx.cluster.only('mon.a').run(args=['sudo', 'cat',
+                                                 '/etc/ceph/ceph.conf'],
+                                           stdout=ceph_conf_contents)
+        self.ctx.cluster.only('mon.a').run(args=['sudo', 'ceph', 'auth',
+                                                 'get', 'client.admin'],
+                                           stdout=ceph_admin_keyring)
+        for remote, roles in self.ctx.cluster.remotes.iteritems():
+            for role in roles:
+                if role.startswith('client'):
+                    if remote.os.package_type == 'rpm':
+                        remote.run(args=[
+                            'sudo',
+                            'yum',
+                            'install',
+                            '-y',
+                            'ceph-common',
+                            'ceph-test'
+                        ])
+                    else:
+                        remote.run(args=[
+                            'sudo',
+                            'apt-get'
+                            '-y',
+                            'install',
+                            'ceph-common',
+                            'ceph-test'
+                        ])
+                    misc.sudo_write_file(
+                        remote,
+                        '/etc/ceph/ceph.conf',
+                        ceph_conf_contents.getvalue())
+                    misc.sudo_write_file(
+                        remote,
+                        '/etc/ceph/ceph.client.admin.keyring',
+                        ceph_admin_keyring.getvalue())
 
     def fix_keyring_permission(self):
         clients_only = lambda role: role.startswith('client')
