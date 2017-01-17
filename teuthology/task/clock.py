@@ -35,22 +35,13 @@ def task(ctx, config):
         rem.run(
             args = [
                 'sudo', 'service', 'ntp', 'stop', run.Raw('||'),
-                'sudo', 'systemctl', 'stop', 'ntp.service'
-            ]
-        )
-        rem.run(
-            args = [
+                'sudo', 'systemctl', 'stop', 'ntp.service',
+                run.Raw(';'),
                 'sudo', 'ntpd', '-gq',
-            ]
-        )
-        rem.run(
-            args = [
+                run.Raw(';'),
                 'sudo', 'service', 'ntp', 'start', run.Raw('||'),
-                'sudo', 'systemctl', 'start', 'ntp.service'
-            ]
-        )
-        rem.run(
-            args = [
+                'sudo', 'systemctl', 'start', 'ntp.service',
+                run.Raw(';'),
                 'PATH=/usr/bin:/usr/sbin', 'ntpq', '-p',
             ],
         )
