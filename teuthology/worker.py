@@ -93,7 +93,6 @@ def main(ctx):
 
     if teuth_config.teuthology_path is None:
         fetch_teuthology('master')
-    fetch_qa_suite('master')
 
     keep_running = True
     while keep_running:
