@@ -906,8 +906,7 @@ def wait_until_healthy(ctx, remote, ceph_cluster='ceph'):
             time.sleep(1)
 
 
-def wait_until_osds_up(ctx, cluster, remote, ceph_cluster='ceph'):
-    """Wait until all Ceph OSDs are booted."""
+def wait_until_osds(ctx, cluster, remote, ceph_cluster='ceph', state):
     num_osds = num_instances_of_type(cluster, 'osd', ceph_cluster)
     testdir = get_testdir(ctx)
     while True:
@@ -925,11 +924,19 @@ def wait_until_osds_up(ctx, cluster, remote, ceph_cluster='ceph'):
         )
         out = r.stdout.getvalue()
         j = json.loads('\n'.join(out.split('\n')[1:]))
-        up = len(filter(lambda o: 'up' in o['state'], j['osds']))
-        log.debug('%d of %d OSDs are up' % (up, num_osds))
-        if up == num_osds:
+        in_state = len(filter(lambda o: state in o['state'], j['osds']))
+        log.debug('%d of %d OSDs are %s' % (in_state, num_osds, state))
+        if in_state == num_osds:
             break
         time.sleep(1)
+
+
+def wait_until_osds_up(ctx, cluster, remote, ceph_cluster='ceph'):
+    return wait_until_osds(ctx, cluster, remote, ceph_cluster, 'up')
+
+
+def wait_until_osds_down(ctx, cluster, remote, ceph_cluster='ceph'):
+    return wait_until_osds(ctx, cluster, remote, ceph_cluster, 'down')
 
 
 def reboot(node, timeout=300, interval=30):
