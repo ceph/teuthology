@@ -146,6 +146,8 @@ def stale_kernel_mount(remote):
 
 
 def reboot(ctx, remotes):
+    # Take note of when we initiated reboots
+    start_time = time.time()
     for remote in remotes:
         if stale_kernel_mount(remote):
             log.warn('Stale kernel mount on %s!', remote.name)
@@ -166,6 +168,24 @@ def reboot(ctx, remotes):
         log.info('waiting for nodes to reboot')
         time.sleep(8)  # if we try and reconnect too quickly, it succeeds!
         reconnect(ctx, 480)  # allow 8 minutes for the reboots
+    for remote in remotes:
+        if remote.uptime > (time.time() - start_time):
+            log.info(
+                "%s did not actually reboot; will attempt a power cycle",
+                remote
+            )
+            power_cycle(remote)
+            remote.reconnect()
+
+
+def power_cycle(remote):
+    """
+    Power cycles a remote via its console. Does not currently work with VMs.
+    """
+    if not getattr(remote.console, 'has_ipmi_credentials', False):
+        log.debug("Skipping power cycle on %s because it lacks IPMI", remote)
+        return False
+    return remote.console.power_cycle()
 
 
 def reset_syslog_dir(ctx):
