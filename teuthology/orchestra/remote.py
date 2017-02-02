@@ -444,6 +444,12 @@ class Remote(object):
             self._console = getRemoteConsole(self.name)
         return self._console
 
+    @property
+    def uptime(self):
+        proc = self.run(args=['cat', '/proc/uptime'], stdout=StringIO())
+        proc.wait()
+        return float(proc.stdout.read().split(' ')[0])
+
     def __del__(self):
         if self.ssh is not None:
             self.ssh.close()
