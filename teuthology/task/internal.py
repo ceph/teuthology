@@ -7,6 +7,7 @@ from cStringIO import StringIO
 import contextlib
 import logging
 import os
+import pprint
 import time
 import yaml
 import subprocess
@@ -63,6 +64,7 @@ def lock_machines(ctx, config):
     new machines.  This is not called if the one has teuthology-locked
     machines and placed those keys in the Targets section of a yaml file.
     """
+    log.debug("lock_machines")
     # It's OK for os_type and os_version to be None here.  If we're trying
     # to lock a bare metal machine, we'll take whatever is available.  If
     # we want a vps, defaults will be provided by misc.get_distro and
@@ -73,11 +75,13 @@ def lock_machines(ctx, config):
     log.info('Locking machines...')
     assert isinstance(config[0], int), 'config[0] must be an integer'
     machine_type = config[1]
+    assert (machine_type == 'openstack')
     total_requested = config[0]
     # We want to make sure there are always this many machines available
     reserved = teuth_config.reserve_machines
     assert isinstance(reserved, int), 'reserve_machines must be integer'
     assert (reserved >= 0), 'reserve_machines should >= 0'
+    log.debug("reserved is " + pprint.pformat(reserved))
 
     # change the status during the locking process
     report.try_push_job_info(ctx.config, dict(status='waiting'))
@@ -95,6 +99,7 @@ def lock_machines(ctx, config):
                 continue
             else:
                 raise RuntimeError('Error listing machines')
+        log.debug("We have " + len(machines) + " candidate machines")
 
         # make sure there are machines for non-automated jobs to run
         if len(machines) < reserved + requested and ctx.owner.startswith('scheduled'):
