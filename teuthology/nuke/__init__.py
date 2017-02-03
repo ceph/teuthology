@@ -321,6 +321,7 @@ def nuke_helper(ctx, should_unlock):
     shutdown_daemons(ctx)
     kill_valgrind(ctx)
     # Try to remove packages before reboot
+    remove_ceph_packages(ctx)
     remove_installed_packages(ctx)
     remotes = ctx.cluster.remotes.keys()
     reboot(ctx, remotes)
