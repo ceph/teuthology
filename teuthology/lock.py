@@ -7,6 +7,7 @@ import yaml
 import re
 import collections
 import os
+import pprint
 import requests
 import urllib
 
@@ -550,7 +551,9 @@ def locked_since_seconds(node):
     return (now - since).total_seconds()
 
 def list_locks(keyed_by_name=False, **kwargs):
+    log.debug("list_locks")
     uri = os.path.join(config.lock_server, 'nodes', '')
+    log.debug("uri is " + pprint.pformat(uri))
     for key, value in kwargs.iteritems():
         if kwargs[key] is False:
             kwargs[key] = '0'
@@ -560,6 +563,7 @@ def list_locks(keyed_by_name=False, **kwargs):
         if 'machine_type' in kwargs:
             kwargs['machine_type'] = kwargs['machine_type'].replace(',','|')
         uri += '?' + urllib.urlencode(kwargs)
+    log.debug("uri is " + pprint.pformat(uri))
     try:
         response = requests.get(uri)
     except requests.ConnectionError:
