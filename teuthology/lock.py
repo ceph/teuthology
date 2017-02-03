@@ -377,6 +377,7 @@ def main(ctx):
 
 def lock_many_openstack(ctx, num, machine_type, user=None, description=None,
                         arch=None):
+    log.debug('lock_many_openstack')
     os_type = provision.get_distro(ctx)
     os_version = provision.get_distro_version(ctx)
     if hasattr(ctx, 'config'):
@@ -393,6 +394,7 @@ def lock_many_openstack(ctx, num, machine_type, user=None, description=None,
 
 def lock_many(ctx, num, machine_type, user=None, description=None,
               os_type=None, os_version=None, arch=None):
+    log.debug('lock_many')
     if user is None:
         user = misc.get_user()
 
@@ -405,6 +407,7 @@ def lock_many(ctx, num, machine_type, user=None, description=None,
     # all in one shot. If we are passed 'plana,mira,burnupi,vps', do one query
     # for 'plana,mira,burnupi' and one for 'vps'
     machine_types_list = misc.get_multi_machine_types(machine_type)
+    log.debug("machine_types_list is " + pprint.pformat(machine_types_list))
     if machine_types_list == ['vps']:
         machine_types = machine_types_list
     elif machine_types_list == ['openstack']:
