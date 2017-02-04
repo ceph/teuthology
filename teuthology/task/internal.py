@@ -99,7 +99,6 @@ def lock_machines(ctx, config):
                 continue
             else:
                 raise RuntimeError('Error listing machines')
-        log.debug("We have " + len(machines) + " candidate machines")
 
         # make sure there are machines for non-automated jobs to run
         if len(machines) < reserved + requested and ctx.owner.startswith('scheduled'):
