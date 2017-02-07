@@ -110,6 +110,11 @@ class TestOpenStackInstance(object):
 }
     """
 
+    @classmethod
+    def setup_class(self):
+        if 'OS_AUTH_URL' not in os.environ:
+            pytest.skip('no OS_AUTH_URL environment variable')
+
     def test_init(self):
         with patch.multiple(
                 misc,
@@ -405,6 +410,11 @@ class TestOpenStack(object):
             "ID": "fa3cc551-0358-4170-be64-56ea432b064c"
           }
     ]"""
+
+    @classmethod
+    def setup_class(self):
+        if 'OS_AUTH_URL' not in os.environ:
+            pytest.skip('no OS_AUTH_URL environment variable')
 
     @patch('teuthology.misc.sh')
     def test_sorted_flavors(self, m_sh):
