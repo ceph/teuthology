@@ -80,14 +80,14 @@ setup(
                       # redundant, because python-openstackclient requires
                       # Babel, and installs 2.3.3, which is forbidden by
                       # python-novaclient 4.0.0
-                      'python-novaclient',
-                      'python-openstackclient',
+                      #'python-novaclient',
+                      #'python-openstackclient',
                       # Copy the below from python-openstackclient's
                       # requirements to avoid a conflict
-                      'openstacksdk!=0.9.11,!=0.9.12,>=0.9.10',
+                      #'openstacksdk!=0.9.11,!=0.9.12,>=0.9.10',
                       # with openstacklient >= 2.1.0, neutronclient no longer is
                       # a dependency but we need it anyway.
-                      'python-neutronclient',
+                      #'python-neutronclient',
                       'prettytable',
                       'libvirt-python',
                       'python-dateutil',
