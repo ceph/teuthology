@@ -16,10 +16,5 @@ users:
     groups: users
 runcmd:
  - ( MYHOME=/home/{username} ; mkdir $MYHOME/.ssh ; chmod 700 $MYHOME/.ssh ; cp /root/.ssh/authorized_keys $MYHOME/.ssh ; chown -R {username}.users $MYHOME/.ssh )
-packages:
- - python
- - wget
- - git
- - ntp
- - rsyslog
+ - zypper --non-interactive install --no-recommends python wget git ntp rsyslog lsb-release
 final_message: "{up}, after $UPTIME seconds"
