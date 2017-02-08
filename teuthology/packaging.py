@@ -2,12 +2,21 @@ import logging
 import ast
 import re
 import requests
+import urllib
+import urlparse
 
+from collections import OrderedDict
 from cStringIO import StringIO
+
+from . import repo_utils
 
 from .config import config
 from .contextutil import safe_while
-from .exceptions import VersionNotFoundError
+from .exceptions import (VersionNotFoundError, CommitNotFoundError,
+                         NoRemoteError)
+from .misc import sudo_write_file
+from .orchestra.opsys import OS, DEFAULT_OS_VERSION
+from .orchestra.run import Raw
 
 log = logging.getLogger(__name__)
 
@@ -27,30 +36,6 @@ Map 'generic' service name to 'flavor-specific' service name.
 _SERVICE_MAP = {
     'httpd': {'deb': 'apache2', 'rpm': 'httpd'}
 }
-
-DISTRO_CODENAME_MAP = {
-    "ubuntu": {
-        "16.04": "xenial",
-        "14.04": "trusty",
-        "12.04": "precise",
-        "15.04": "vivid",
-    },
-    "debian": {
-        "7": "wheezy",
-        "8": "jessie",
-    },
-}
-
-DEFAULT_OS_VERSION = dict(
-    ubuntu="14.04",
-    fedora="20",
-    centos="7.0",
-    opensuse="42.1",
-    sle="12.2",
-    rhel="7.0",
-    debian='7.0'
-)
-
 
 def get_package_name(pkg, rem):
     """
@@ -369,7 +354,7 @@ def get_package_version(remote, package):
     else:
         proc = remote.run(
             args=[
-                'rpm', '-q', package, '--qf', '%{VERSION}'
+                'rpm', '-q', package, '--qf', '%{VERSION}-%{RELEASE}'
             ],
             stdout=StringIO(),
         )
@@ -415,7 +400,7 @@ def _get_config_value_for_remote(ctx, remote, config, key):
     :param config: the config dict
     :param key: the name of the value to retrieve
     """
-    roles = ctx.cluster.remotes[remote]
+    roles = ctx.cluster.remotes[remote] if ctx else None
     if 'all' in config:
         return config['all'].get(key)
     elif roles:
@@ -453,6 +438,8 @@ class GitbuilderProject(object):
     """
     Represents a project that is built by gitbuilder.
     """
+    # gitbuilder always uses this value
+    rpm_release = "1-0"
 
     def __init__(self, project, job_config, ctx=None, remote=None):
         self.project = project
@@ -476,6 +463,7 @@ class GitbuilderProject(object):
         self.arch = self.remote.arch
         self.os_type = self.remote.os.name
         self.os_version = self.remote.os.version
+        self.codename = self.remote.os.codename
         self.pkg_type = self.remote.system_type
         self.distro = self._get_distro(
             distro=self.remote.os.name,
@@ -485,29 +473,41 @@ class GitbuilderProject(object):
         # when we're initializing with a remote we most likely have
         # a task config, not the entire teuthology job config
         self.flavor = self.job_config.get("flavor", "basic")
+        self.tag = self.job_config.get("tag")
 
     def _init_from_config(self):
         """
         Initializes the class from a teuthology job config
         """
-        # a bad assumption, but correct for most situations I believe
-        self.arch = "x86_64"
+        self.arch = self.job_config.get('arch', 'x86_64')
         self.os_type = self.job_config.get("os_type")
+        self.flavor = self.job_config.get("flavor")
+        self.codename = self.job_config.get("codename")
         self.os_version = self._get_version()
+        # if os_version is given, prefer version/codename derived from it
+        if self.os_version:
+            self.os_version, self.codename = \
+                OS.version_codename(self.os_type, self.os_version)
+        self.branch = self.job_config.get("branch")
+        self.tag = self.job_config.get("tag")
+        self.ref = self.job_config.get("ref")
         self.distro = self._get_distro(
             distro=self.os_type,
             version=self.os_version,
+            codename=self.codename,
         )
         self.pkg_type = "deb" if self.os_type.lower() in (
             "ubuntu",
             "debian",
         ) else "rpm"
-        # avoiding circular imports
-        from teuthology.suite import get_install_task_flavor
-        # when we're initializing from a full teuthology config, not just a
-        # task config we need to make sure we're looking at the flavor for
-        # the install task
-        self.flavor = get_install_task_flavor(self.job_config)
+
+        if not getattr(self, 'flavor'):
+            # avoiding circular imports
+            from teuthology.suite.util import get_install_task_flavor
+            # when we're initializing from a full teuthology config, not just a
+            # task config we need to make sure we're looking at the flavor for
+            # the install task
+            self.flavor = get_install_task_flavor(self.job_config)
 
     @property
     def sha1(self):
@@ -576,7 +576,8 @@ class GitbuilderProject(object):
             # debian and ubuntu just use the distro name
             return self.os_type
 
-    def _parse_version(self, version):
+    @staticmethod
+    def _parse_version(version):
         """
         Parses a distro version string and returns a modified string
         that matches the format needed for the gitbuilder url.
@@ -585,7 +586,8 @@ class GitbuilderProject(object):
         """
         return version.split(".")[0]
 
-    def _get_distro(self, distro=None, version=None, codename=None):
+    @classmethod
+    def _get_distro(cls, distro=None, version=None, codename=None):
         """
         Given a distro and a version, returned the combined string
         to use in a gitbuilder url.
@@ -598,7 +600,7 @@ class GitbuilderProject(object):
         if distro in ('centos', 'rhel'):
             distro = "centos"
         elif distro == "fedora":
-            distro = "fc"
+            distro = "fedora"
         elif distro == "opensuse":
             distro = "opensuse"
         elif distro == "sle":
@@ -607,7 +609,7 @@ class GitbuilderProject(object):
             # deb based systems use codename instead of a distro/version combo
             if not codename:
                 # lookup codename based on distro string
-                codename = self._get_codename(distro, version)
+                codename = OS._version_to_codename(distro, version)
                 if not codename:
                     msg = "No codename found for: {distro} {version}".format(
                         distro=distro,
@@ -619,29 +621,8 @@ class GitbuilderProject(object):
 
         return "{distro}{version}".format(
             distro=distro,
-            version=self._parse_version(version),
+            version=cls._parse_version(version),
         )
-
-    def _get_codename(self, distro, version):
-        """
-        Attempts to find the codename for a given distro / version
-        pair.  Will first attempt to find the codename for the full
-        version and if not found will look again using only the major
-        version.  If a codename is not found, None is returned.
-
-        The constant DISTRO_CODENAME_MAP is used to provide this mapping.
-
-        :returns: The codename as string or None if not found.
-        """
-        major_version = version.split(".")[0]
-        distro_codes = DISTRO_CODENAME_MAP.get(distro)
-        if not distro_codes:
-            return None
-        codename = distro_codes.get(version)
-        if not codename:
-            codename = distro_codes.get(major_version)
-
-        return codename
 
     def _get_version(self):
         """
@@ -672,6 +653,21 @@ class GitbuilderProject(object):
 
         :returns: A string URI. Ex: ref/master
         """
+        ref_name, ref_val = self._choose_reference().items()[0]
+        if ref_name == 'sha1':
+            return 'sha1/%s' % ref_val
+        else:
+            return 'ref/%s' % ref_val
+
+    def _choose_reference(self):
+        """
+        Since it's only meaningful to search for one of:
+            ref, tag, branch, sha1
+        Decide which to use.
+
+        :returns: a single-key dict containing the name and value of the
+                  reference to use, e.g. {'branch': 'master'}
+        """
         tag = branch = sha1 = None
         if self.remote:
             tag = _get_config_value_for_remote(self.ctx, self.remote,
@@ -680,20 +676,41 @@ class GitbuilderProject(object):
                                                   self.job_config, 'branch')
             sha1 = _get_config_value_for_remote(self.ctx, self.remote,
                                                 self.job_config, 'sha1')
+            ref = None
         else:
+            ref = self.ref
+            tag = self.tag
+            branch = self.branch
             sha1 = self.sha1
 
-        if tag:
-            uri = 'ref/' + tag
+        def warn(attrname):
+            names = ('ref', 'tag', 'branch', 'sha1')
+            vars = (ref, tag, branch, sha1)
+            # filter(None,) filters for truth
+            if len(filter(None, vars)) > 1:
+                log.warning(
+                    "More than one of ref, tag, branch, or sha1 supplied; "
+                    "using %s",
+                    attrname
+                )
+                for n, v in zip(names, vars):
+                    log.info('%s: %s' % (n, v))
+
+        if ref:
+            warn('ref')
+            return dict(ref=ref)
+        elif tag:
+            warn('tag')
+            return dict(tag=tag)
         elif branch:
-            uri = 'ref/' + branch
+            warn('branch')
+            return dict(branch=branch)
         elif sha1:
-            uri = 'sha1/' + sha1
+            warn('sha1')
+            return dict(sha1=sha1)
         else:
-            # FIXME: Should master be the default?
-            log.debug("defaulting to master branch")
-            uri = 'ref/master'
-        return uri
+            log.warning("defaulting to master branch")
+            return dict(branch='master')
 
     def _get_base_url(self):
         """
@@ -724,20 +741,7 @@ class GitbuilderProject(object):
 
         if not resp.ok:
             raise VersionNotFoundError(url)
-        version = resp.text.strip()
-        if self.pkg_type == "rpm" and self.project == "ceph":
-            # TODO: move this parsing into a different function for
-            # easier testing
-            # FIXME: 'version' as retreived from the repo is actually the
-            # RPM version PLUS *part* of the release. Example:
-            # Right now, ceph master is given the following version in the
-            # repo file: v0.67-rc3.164.gd5aa3a9 - whereas in reality the RPM
-            # version is 0.61.7 and the release is 37.g1243c97.el6 (centos6).
-            # Point being, I have to mangle a little here.
-            if version[0] == 'v':
-                version = version[1:]
-            if '-' in version:
-                version = version.split('-')[0]
+        version = resp.text.strip().lstrip('v')
         log.info("Found version: {0}".format(version))
         return version
 
@@ -760,3 +764,240 @@ class GitbuilderProject(object):
             log.info("Found sha1: {0}".format(sha1))
 
         return sha1
+
+    def install_repo(self):
+        """
+        Install the .repo file or sources.list fragment on self.remote if there
+        is one. If not, raises an exception
+        """
+        if not self.remote:
+            raise NoRemoteError()
+        if self.remote.os.package_type == 'rpm':
+            self._install_rpm_repo()
+        elif self.remote.os.package_type == 'deb':
+            self._install_deb_repo()
+
+    def _install_rpm_repo(self):
+        dist_release = self.dist_release
+        project = self.project
+        if dist_release in ['opensuse', 'sle']:
+            proj_release = '{proj}-release-{release}.noarch'.format(
+                proj=project, release=self.rpm_release)
+        else:
+            proj_release = \
+                '{proj}-release-{release}.{dist_release}.noarch'.format(
+                    proj=project, release=self.rpm_release,
+                    dist_release=dist_release
+                )
+        rpm_name = "{rpm_nm}.rpm".format(rpm_nm=proj_release)
+        url = "{base_url}/noarch/{rpm_name}".format(
+            base_url=self.base_url, rpm_name=rpm_name)
+        if dist_release in ['opensuse', 'sle']:
+            self.remote.run(args=[
+                'sudo', 'zypper', '-n', 'install', '--capability', rpm_name
+            ])
+        else:
+            self.remote.run(args=['sudo', 'yum', '-y', 'install', url])
+
+    def _install_deb_repo(self):
+        self.remote.run(
+            args=[
+                'echo', 'deb', self.base_url, self.codename, 'main',
+                Raw('|'),
+                'sudo', 'tee',
+                '/etc/apt/sources.list.d/{proj}.list'.format(
+                    proj=self.project),
+            ],
+            stdout=StringIO(),
+        )
+
+    def remove_repo(self):
+        """
+        Remove the .repo file or sources.list fragment on self.remote if there
+        is one. If not, raises an exception
+        """
+        if not self.remote:
+            raise NoRemoteError()
+        if self.remote.os.package_type == 'rpm':
+            self._remove_rpm_repo()
+        elif self.remote.os.package_type == 'deb':
+            self._remove_deb_repo()
+
+    def _remove_rpm_repo(self):
+        remove_package('%s-release' % self.project, self.remote)
+
+    def _remove_deb_repo(self):
+        self.remote.run(
+            args=[
+                'sudo',
+                'rm', '-f',
+                '/etc/apt/sources.list.d/{proj}.list'.format(
+                    proj=self.project),
+            ]
+        )
+
+
+class ShamanProject(GitbuilderProject):
+    def __init__(self, project, job_config, ctx=None, remote=None):
+        super(ShamanProject, self).__init__(project, job_config, ctx, remote)
+        self.query_url = 'https://%s/api/' % config.shaman_host
+
+    def _get_base_url(self):
+        self.assert_result()
+        return self._result.json()[0]['url']
+
+    @property
+    def _result(self):
+        if getattr(self, '_result_obj', None) is None:
+            self._result_obj = self._search()
+        return self._result_obj
+
+    def _search(self):
+        uri = self._search_uri
+        log.debug("Querying %s", uri)
+        resp = requests.get(
+            uri,
+            headers={'content-type': 'application/json'},
+        )
+        resp.raise_for_status()
+        return resp
+
+    @property
+    def _search_uri(self):
+        flavor = self.flavor
+        if flavor == 'basic':
+            flavor = 'default'
+        req_obj = OrderedDict()
+        req_obj['status'] = 'ready'
+        req_obj['project'] = self.project
+        req_obj['flavor'] = flavor
+        req_obj['distros'] = '%s/%s' % (self.distro, self.arch)
+        ref_name, ref_val = self._choose_reference().items()[0]
+        if ref_name == 'tag':
+            req_obj['sha1'] = self._sha1 = self._tag_to_sha1()
+        elif ref_name == 'sha1':
+            req_obj['sha1'] = ref_val
+        else:
+            req_obj['ref'] = ref_val
+        req_str = urllib.urlencode(req_obj)
+        uri = urlparse.urljoin(
+            self.query_url,
+            'search',
+        ) + '?%s' % req_str
+        return uri
+
+    def _tag_to_sha1(self):
+        """
+        Shaman doesn't know about tags. Use git ls-remote to query the remote
+        repo in order to map tags to their sha1 value.
+
+        This method will also retry against ceph.git if the original request
+        uses ceph-ci.git and fails.
+        """
+        def get_sha1(url):
+            # Ceph (and other projects) uses annotated tags for releases. This
+            # has the side-effect of making git ls-remote return the sha1 for
+            # the annotated tag object and not the last "real" commit in that
+            # tag. By contrast, when a person (or a build system) issues a
+            # "git checkout <tag>" command, HEAD will be the last "real" commit
+            # and not the tag.
+            # Below we have to append "^{}" to the tag value to work around
+            # this in order to query for the sha1 that the build system uses.
+            return repo_utils.ls_remote(url, "%s^{}" % self.tag)
+
+        git_url = repo_utils.build_git_url(self.project)
+        result = get_sha1(git_url)
+        # For upgrade tests that are otherwise using ceph-ci.git, we need to
+        # also look in ceph.git to lookup released tags.
+        if result is None and 'ceph-ci' in git_url:
+            alt_git_url = git_url.replace('ceph-ci', 'ceph')
+            log.info(
+                "Tag '%s' not found in %s; will also look in %s",
+                self.tag,
+                git_url,
+                alt_git_url,
+            )
+            result = get_sha1(alt_git_url)
+
+        if result is None:
+            raise CommitNotFoundError(self.tag, git_url)
+        return result
+
+    def assert_result(self):
+        if len(self._result.json()) == 0:
+            raise VersionNotFoundError(self._result.url)
+
+    @classmethod
+    def _get_distro(cls, distro=None, version=None, codename=None):
+        if distro in ('centos', 'rhel'):
+            distro = 'centos'
+            version = cls._parse_version(version)
+        return "%s/%s" % (distro, version)
+
+    def _get_package_sha1(self):
+        # This doesn't raise because GitbuilderProject._get_package_sha1()
+        # doesn't either.
+        if not len(self._result.json()):
+            log.error("sha1 not found: %s", self._result.url)
+        else:
+            return self._result.json()[0]['sha1']
+
+    def _get_package_version(self):
+        self.assert_result()
+        return self._result.json()[0]['extra']['package_manager_version']
+
+    @property
+    def scm_version(self):
+        self.assert_result()
+        return self._result.json()[0]['extra']['version']
+
+    @property
+    def repo_url(self):
+        self.assert_result()
+        return urlparse.urljoin(
+            self._result.json()[0]['chacra_url'],
+            'repo',
+        )
+
+    def _get_repo(self):
+        resp = requests.get(self.repo_url)
+        resp.raise_for_status()
+        return resp.text
+
+    def _install_rpm_repo(self):
+        repo = self._get_repo()
+        sudo_write_file(
+            self.remote,
+            '/etc/yum.repos.d/{proj}.repo'.format(proj=self.project),
+            repo,
+        )
+
+    def _install_deb_repo(self):
+        repo = self._get_repo()
+        sudo_write_file(
+            self.remote,
+            '/etc/apt/sources.list.d/{proj}.list'.format(
+                proj=self.project),
+            repo,
+        )
+
+    def _remove_rpm_repo(self):
+        self.remote.run(
+            args=[
+                'sudo',
+                'rm', '-f',
+                '/etc/yum.repos.d/{proj}.repo'.format(proj=self.project),
+            ]
+        )
+
+
+def get_builder_project():
+    """
+    Depending on whether config.use_shaman is True or False, return
+    GitbuilderProject or ShamanProject (the class, not an instance).
+    """
+    if config.use_shaman is True:
+        builder_class = ShamanProject
+    else:
+        builder_class = GitbuilderProject
+    return builder_class

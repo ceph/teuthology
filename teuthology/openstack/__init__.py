@@ -201,7 +201,7 @@ class OpenStack(object):
         'ubuntu-16.04-x86_64': 'https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img',
         'ubuntu-16.04-aarch64': 'https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-arm64-disk1.img',
         'ubuntu-16.04-i686': 'https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-i386-disk1.img',
-        'debian-8.0-x86_64': 'http://cdimage.debian.org/cdimage/openstack/current/debian-8.5.0-openstack-amd64.qcow2',
+        'debian-8.0-x86_64': 'http://cdimage.debian.org/cdimage/openstack/current/debian-8.7.0-openstack-amd64.qcow2',
     }
 
     def __init__(self):
@@ -919,7 +919,7 @@ openstack security group rule create --proto udp --dst-port 16000:65535 teutholo
         arch = self.get_default_arch()
         self.run(
             "server create " +
-            " --image '" + self.image('ubuntu', '14.04', arch) + "' " +
+            " --image '" + self.image('ubuntu', '16.04', arch) + "' " +
             " --flavor '" + self.flavor(arch) + "' " +
             " " + self.net() +
             " --key-name " + self.args.key_name +

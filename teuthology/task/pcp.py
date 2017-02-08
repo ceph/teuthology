@@ -19,6 +19,11 @@ from . import Task
 log = logging.getLogger(__name__)
 
 
+# Because PCP output is nonessential, set a timeout to avoid stalling
+# tests if the server does not respond promptly.
+GRAPHITE_DOWNLOAD_TIMEOUT = 60
+
+
 class PCPDataSource(object):
     def __init__(self, hosts, time_from, time_until='now'):
         self.hosts = hosts
@@ -157,7 +162,7 @@ class GraphiteGrapher(PCPGrapher):
                 self.dest_dir,
                 filename,
             )
-            resp = requests.get(url)
+            resp = requests.get(url, timeout=GRAPHITE_DOWNLOAD_TIMEOUT)
             if not resp.ok:
                 log.warn(
                     "Graph download failed with error %s %s: %s",
@@ -256,7 +261,7 @@ class PCP(Task):
             )
 
     def setup_graphite(self, hosts):
-        if not hasattr(self.ctx, 'archive'):
+        if not getattr(self.ctx, 'archive', None):
             self.use_graphite = False
         if self.use_graphite:
             out_dir = os.path.join(
@@ -275,7 +280,7 @@ class PCP(Task):
             )
 
     def setup_archive(self, hosts):
-        if not hasattr(self.ctx, 'archive'):
+        if not getattr(self.ctx, 'archive', None):
             self.fetch_archives = False
         if self.fetch_archives:
             self.archiver = PCPArchive(
@@ -310,8 +315,12 @@ class PCP(Task):
             if hasattr(self.ctx, 'summary'):
                 self.ctx.summary['pcp_grafana_url'] = grafana_url
         if self.use_graphite:
-            self.graphite.download_graphs()
-            self.graphite.write_html(mode='static')
+            try:
+                self.graphite.download_graphs()
+                self.graphite.write_html(mode='static')
+            except (requests.ConnectionError, requests.ReadTimeout):
+                log.exception("Downloading graphs failed!")
+                self.graphite.write_html()
         if self.fetch_archives:
             for remote in self.cluster.remotes.keys():
                 log.info("Copying PCP data into archive...")

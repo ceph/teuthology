@@ -128,7 +128,7 @@ class TeuthologyConfig(YamlConfig):
     """
     yaml_path = os.path.join(os.path.expanduser('~/.teuthology.yaml'))
     _defaults = {
-        'archive_base': '/var/lib/teuthworker/archive',
+        'archive_base': '/home/teuthworker/archive',
         'archive_upload': None,
         'archive_upload_key': None,
         'archive_upload_url': None,
@@ -137,7 +137,11 @@ class TeuthologyConfig(YamlConfig):
         'ceph_git_base_url': 'https://github.com/ceph/',
         'ceph_git_url': None,
         'ceph_qa_suite_git_url': None,
+        'use_conserver': False,
+        'conserver_master': 'conserver.front.sepia.ceph.com',
+        'conserver_port': 3109,
         'gitbuilder_host': 'gitbuilder.ceph.com',
+        'githelper_base_url': 'http://git.ceph.com:8080',
         'check_package_signatures': True,
         'lab_domain': 'front.sepia.ceph.com',
         'lock_server': 'http://paddles.front.sepia.ceph.com/',
@@ -153,6 +157,8 @@ class TeuthologyConfig(YamlConfig):
         'kojiroot_url': 'http://kojipkgs.fedoraproject.org/packages',
         'koji_task_url': 'https://kojipkgs.fedoraproject.org/work/',
         'baseurl_template': 'http://{host}/{proj}-{pkg_type}-{dist}-{arch}-{flavor}/{uri}',
+        'use_shaman': True,
+        'shaman_host': 'shaman.ceph.com',
         'teuthology_path': None,
         'suite_verify_ceph_hash': True,
         'suite_allow_missing_packages': False,
@@ -177,11 +183,11 @@ class TeuthologyConfig(YamlConfig):
 
     def get_ceph_qa_suite_git_url(self):
         return (self.ceph_qa_suite_git_url or
-                self.ceph_git_base_url + 'ceph-qa-suite.git')
+                self.get_ceph_git_url())
 
     def get_ceph_git_url(self):
         return (self.ceph_git_url or
-                self.ceph_git_base_url + 'ceph.git')
+                self.ceph_git_base_url + 'ceph-ci.git')
 
 
 class JobConfig(YamlConfig):

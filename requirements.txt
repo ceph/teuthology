@@ -1,3 +1,21 @@
 --index-url https://pypi.python.org/simple/
 
 -e .
+
+boto==2.39.0
+cffi==1.5.2
+cliff==2.2.0
+keystoneauth1==2.12.1
+openstacksdk==0.9.5
+os-client-config==1.21.1
+osc-lib==1.1.0
+oslo.config==3.17.0
+oslo.i18n==3.9.0
+oslo.serialization==2.13.0
+oslo.utils==3.16.0
+python-cinderclient==1.9.0
+python-glanceclient==2.5.0
+python-keystoneclient==3.5.0
+python-neutronclient==4.1.1
+python-novaclient==6.0.0
+python-openstackclient==3.2.0

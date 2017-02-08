@@ -7,13 +7,16 @@ import logging
 import os
 import re
 import shlex
+import urlparse
 
 from teuthology import misc as teuthology
+from teuthology.config import config as teuth_config
 from ..orchestra import run
-from ..config import config as teuth_config
-from ..exceptions import (UnsupportedPackageTypeError,
-                          ConfigError,
-                          VersionNotFoundError)
+from ..exceptions import (
+    UnsupportedPackageTypeError,
+    ConfigError,
+    VersionNotFoundError,
+)
 from ..packaging import (
     install_package,
     get_koji_build_info,
@@ -21,7 +24,7 @@ from ..packaging import (
     get_koji_package_name,
     get_koji_task_rpm_info,
     get_koji_task_result,
-    GitbuilderProject,
+    get_builder_project,
 )
 
 log = logging.getLogger(__name__)
@@ -30,6 +33,7 @@ CONFIG_DEFAULT = {'branch': 'master'}
 TIMEOUT_DEFAULT = 300
 
 VERSION_KEYS = ['branch', 'tag', 'sha1', 'deb', 'rpm', 'koji', 'koji_task']
+
 
 def normalize_config(ctx, config):
     """
@@ -94,6 +98,7 @@ def normalize_config(ctx, config):
                     new_config[name] = role_config.copy()
     return new_config
 
+
 def normalize_and_apply_overrides(ctx, config, overrides):
     """
     kernel task config is hierarchical and needs to be transformed into
@@ -132,6 +137,7 @@ def normalize_and_apply_overrides(ctx, config, overrides):
 
     return (config, timeout)
 
+
 def validate_config(ctx, config):
     """
     Make sure that all kernels in the list of remove kernels
@@ -152,17 +158,6 @@ def validate_config(ctx, config):
                 if role in config:
                     del config[role]
 
-def _vsplitter(version):
-    """Kernels from Calxeda are named ...ceph-<sha1>...highbank.
-    Kernels that we generate are named ...-g<sha1>.
-    This routine finds the text in front of the sha1 that is used by
-    need_to_install() to extract information from the kernel name.
-
-    :param version: Name of the kernel
-    """
-    if version.endswith('highbank'):
-        return 'ceph-'
-    return '-g'
 
 def need_to_install(ctx, role, version):
     """
@@ -196,16 +191,11 @@ def need_to_install(ctx, role, version):
             ret = False
     else:
         # version is sha1, need to try to extract sha1 from cur_version
-        splt = _vsplitter(cur_version)
-        if splt in cur_version:
-            _, cur_sha1 = cur_version.rsplit(splt, 1)
-            dloc = cur_sha1.find('-')
-            if dloc > 0:
-                cur_sha1 = cur_sha1[0:dloc]
+        match = re.search('[-_]g([0-9a-f]{6,40})', cur_version)
+        if match:
+            cur_sha1 = match.group(1)
             log.debug('extracting sha1, {ver} -> {sha1}'.format(
                       ver=cur_version, sha1=cur_sha1))
-            # FIXME: The above will match things like ...-generic on Ubuntu
-            # distro kernels resulting in 'eneric' cur_sha1.
             m = min(len(cur_sha1), len(version))
             assert m >= 6, "cur_sha1 and/or version is too short, m = %d" % m
             if cur_sha1[0:m] == version[0:m]:
@@ -215,6 +205,7 @@ def need_to_install(ctx, role, version):
             log.debug('failed to parse current kernel version')
     uname_fp.close()
     return ret
+
 
 def install_firmware(ctx, config):
     """
@@ -284,6 +275,7 @@ def install_firmware(ctx, config):
                 ],
             )
 
+
 def gitbuilder_pkg_name(remote):
     if remote.os.package_type == 'rpm':
         pkg_name = 'kernel.x86_64.rpm'
@@ -293,6 +285,7 @@ def gitbuilder_pkg_name(remote):
         raise UnsupportedPackageTypeError(remote)
     return pkg_name
 
+
 def remote_pkg_path(remote):
     """
     This is where kernel packages are copied over (in case of local
@@ -300,6 +293,7 @@ def remote_pkg_path(remote):
     then installed from.
     """
     return os.path.join('/tmp', gitbuilder_pkg_name(remote))
+
 
 def download_kernel(ctx, config):
     """
@@ -366,17 +360,42 @@ def download_kernel(ctx, config):
             ))
             needs_download = True
 
-            gitbuilder = GitbuilderProject(
+            builder = get_builder_project()(
                 'kernel',
-                ctx.config.get('kernel'),
+                {'sha1': src},
                 ctx=ctx,
                 remote=role_remote,
             )
-            baseurl = gitbuilder.base_url + "/"
+            if teuth_config.use_shaman:
+                if role_remote.os.package_type == 'rpm':
+                    arch = builder.arch
+                    baseurl = urlparse.urljoin(
+                        builder.base_url,
+                        '/'.join([arch, ''])
+                    )
+                    pkg_name = "kernel-%s.%s.rpm" % (
+                        builder.version,
+                        arch,
+                    )
+                elif role_remote.os.package_type == 'deb':
+                    arch = 'amd64'  # FIXME
+                    baseurl = urlparse.urljoin(
+                        builder.base_url,
+                        '/'.join([
+                            'pool', 'main', 'l',
+                            'linux-%s' % builder.scm_version, ''
+                        ])
+                    )
+                    pkg_name = 'linux-image-%s_%s_%s.deb' % (
+                        builder.scm_version,
+                        builder.version,
+                        arch,
+                    )
+            else:
+                baseurl = builder.base_url + "/"
+                pkg_name = gitbuilder_pkg_name(role_remote)
 
-            pkg_name = gitbuilder_pkg_name(role_remote)
-
-            log.info("fetching, gitbuilder baseurl is %s", baseurl)
+            log.info("fetching, builder baseurl is %s", baseurl)
 
         if needs_download:
             proc = role_remote.run(
@@ -420,6 +439,7 @@ def _no_grub_link(in_file, remote, kernel_ver):
     remote.run(
         args=['sudo', 'ln', '-s', '%s-%s' % (in_file, kernel_ver) , boot1, ],
     )
+
 
 def install_and_reboot(ctx, config):
     """
@@ -559,10 +579,18 @@ def install_and_reboot(ctx, config):
                 'rm',
                 remote_pkg_path(role_remote),
                 run.Raw('&&'),
+                # work around a systemd issue, where network gets shut down
+                # before ssh can close its session
+                run.Raw('('),
+                'sleep',
+                '1',
+                run.Raw('&&'),
                 'sudo',
                 'shutdown',
                 '-r',
                 'now',
+                run.Raw('&'),
+                run.Raw(')'),
                 ],
             wait=False,
             )
@@ -571,6 +599,7 @@ def install_and_reboot(ctx, config):
     for name, proc in procs.iteritems():
         log.debug('Waiting for install on %s to complete...', name)
         proc.wait()
+
 
 def enable_disable_kdb(ctx, config):
     """
@@ -807,6 +836,7 @@ def install_kernel(remote, path=None, version=None):
             remote.run( args=['sudo', 'shutdown', '-r', 'now'], wait=False )
             return
 
+
 def update_grub_rpm(remote, newversion):
     """
     Updates grub file to boot new kernel version on both legacy grub/grub2.
@@ -855,6 +885,7 @@ def grub2_kernel_select_generic(remote, newversion, ostype):
                 break
             entry_num += 1
     remote.run(args=['sudo', grubset, str(entry_num), ])
+
 
 def generate_legacy_grub_entry(remote, newversion):
     """
@@ -911,6 +942,7 @@ def generate_legacy_grub_entry(remote, newversion):
             newgrubconf.append(line)
         linenum += 1
     return newgrubconf
+
 
 def get_image_version(remote, path):
     """
@@ -1020,16 +1052,15 @@ def get_latest_image_version_deb(remote, ostype):
 
 def get_sha1_from_pkg_name(path):
     """
-    Get commit hash (min 7 max 40 chars) from (rpm or deb) package name.
-    Sample basenames of "make deb-pkg" and "make rpm-pkg" packages
-        linux-image-3.10.0-ceph-rhdeb-00050-g687d1a5f0083_3.10.0-ceph-rhdeb-00050-g687d1a5f0083-6_amd64.deb
-        kernel-3.10.0_ceph_rhrpm_00050_g687d1a5f0083-8.x86_64.rpm
-    Make sure kernel was built with CONFIG_LOCALVERSION_AUTO=y.
+    Get commit hash (min 12 max 40 chars) from (rpm or deb) package name.
+    Example package names ("make bindeb-pkg" and "make binrpm-pkg"):
+        linux-image-4.9.0-rc4-ceph-g156db39ecfbd_4.9.0-rc4-ceph-g156db39ecfbd-1_amd64.deb
+        kernel-4.9.0_rc4_ceph_g156db39ecfbd-2.x86_64.rpm
 
     :param path: (rpm or deb) package path (only basename is used)
     """
     basename = os.path.basename(path)
-    match = re.search('\d+[-_]g([0-9a-f]{7,40})', basename)
+    match = re.search('[-_]ceph[-_]g([0-9a-f]{12,40})', basename)
     sha1 = match.group(1) if match else None
     log.debug("get_sha1_from_pkg_name: %s -> %s -> %s", path, basename, sha1)
     return sha1
@@ -1217,23 +1248,23 @@ def task(ctx, config):
                 need_install[role] = build_info
                 need_version[role] = version
         else:
-            gitbuilder = GitbuilderProject(
+            builder = get_builder_project()(
                 "kernel",
-                ctx.config.get('kernel'),
+                role_config,
                 ctx=ctx,
                 remote=role_remote,
             )
-            sha1 = gitbuilder.sha1
+            sha1 = builder.sha1
             log.debug('sha1 for {role} is {sha1}'.format(role=role, sha1=sha1))
             ctx.summary['{role}-kernel-sha1'.format(role=role)] = sha1
 
             if need_to_install(ctx, role, sha1):
-                version = gitbuilder.version
-
+                if teuth_config.use_shaman:
+                    version = builder.scm_version
+                else:
+                    version = builder.version
                 if not version:
-                    raise VersionNotFoundError("{url} is empty!".format(
-                        url=gitbuilder.base_url + "/version"))
-
+                    raise VersionNotFoundError(builder.base_url)
                 need_install[role] = sha1
                 need_version[role] = version
 

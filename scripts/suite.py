@@ -7,6 +7,7 @@ from teuthology.config import config
 doc = """
 usage: teuthology-suite --help
        teuthology-suite [-v | -vv ] --suite <suite> [options] [<config_yaml>...]
+       teuthology-suite [-v | -vv ] --rerun <name>  [options] [<config_yaml>...]
 
 Run a suite of ceph integration tests. A suite is a directory containing
 facets. A facet is a directory containing config snippets. Running a suite
@@ -35,6 +36,11 @@ Standard arguments:
                               If both -S and -c are supplied, -S wins, and
                               there is no validation that sha1 is contained
                               in branch
+  -n <newest>, --newest <newest>
+                              Search for the newest revision built on all
+                              required distro/versions, starting from
+                              either --ceph or --sha1, backtracking
+                              up to <newest> commits [default: 0]
   -k <kernel>, --kernel <kernel>
                               The kernel branch to run against; if not
                               supplied, the installed kernel is unchanged
@@ -49,6 +55,16 @@ Standard arguments:
                               Machine type [default: {default_machine_type}]
   -d <distro>, --distro <distro>
                               Distribution to run against
+  -D <distroversion>, --distro-version <distroversion>
+                              Distro version to run against
+  --ceph-repo <ceph_repo>     Query this repository for Ceph branch and SHA1
+                              values [default: {default_ceph_repo}]
+  --suite-repo <suite_repo>   Use tasks and suite definition in this repository
+                              [default: {default_suite_repo}]
+  --suite-relpath <suite_relpath>
+                              Look for tasks and suite definitions in this
+                              subdirectory of the suite repo.
+                              [default: qa]
   --suite-branch <suite_branch>
                               Use this suite branch instead of the ceph branch
   --suite-dir <suite_dir>     Use this alternative directory as-is when
@@ -91,8 +107,30 @@ Scheduler arguments:
                               Useful to avoid bursts that may be too hard on
                               the underlying infrastructure or exceed OpenStack API
                               limits (server creation per minute for instance).
-""".format(default_machine_type=config.default_machine_type,
-           default_results_timeout=config.results_timeout)
+  -r, --rerun <name>          Attempt to reschedule a run, selecting only those
+                              jobs whose status are mentioned by
+                              --rerun-status.
+                              Note that this is implemented by scheduling an
+                              entirely new suite and including only jobs whose
+                              descriptions match the selected ones. It does so
+                              using the same logic as --filter.
+                              Of all the flags that were passed when scheduling
+                              the original run, the resulting one will only
+                              inherit the suite value. Any others must be
+                              passed as normal while scheduling with this
+                              feature.
+ -R, --rerun-statuses <statuses>
+                              A comma-separated list of statuses to be used
+                              with --rerun. Supported statuses are: 'dead',
+                              'fail', 'pass', 'queued', 'running', 'waiting'
+                              [default: fail,dead]
+
+""".format(
+    default_machine_type=config.default_machine_type,
+    default_results_timeout=config.results_timeout,
+    default_ceph_repo=config.get_ceph_git_url(),
+    default_suite_repo=config.get_ceph_qa_suite_git_url(),
+)
 
 
 def main(argv=sys.argv[1:]):

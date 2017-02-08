@@ -25,7 +25,8 @@ def set_up_logging(verbose, archive):
         teuthology.log.setLevel(logging.DEBUG)
 
     if archive is not None:
-        os.mkdir(archive)
+        if not os.path.isdir(archive):
+            os.mkdir(archive)
 
         teuthology.setup_log_file(os.path.join(archive, 'teuthology.log'))
 
@@ -94,8 +95,14 @@ def fetch_tasks_if_needed(job_config):
         log.info("Tasks not found; will attempt to fetch")
 
     ceph_branch = job_config.get('branch', 'master')
+    suite_repo = job_config.get('suite_repo')
+    if suite_repo:
+        teuth_config.ceph_qa_suite_git_url = suite_repo
     suite_branch = job_config.get('suite_branch', ceph_branch)
-    suite_path = fetch_qa_suite(suite_branch)
+    suite_path = os.path.normpath(os.path.join(
+        fetch_qa_suite(suite_branch),
+        job_config.get('suite_relpath', ''),
+    ))
     sys.path.insert(1, suite_path)
     return suite_path
 
@@ -184,13 +191,16 @@ def get_initial_tasks(lock, config, machine_type):
         init_tasks.append({'internal.lock_machines': (
             len(config['roles']), machine_type)})
 
-
     init_tasks.append({'internal.save_config': None})
 
     if 'roles' in config:
+        init_tasks.append({'internal.check_lock': None})
+
+    init_tasks.append({'internal.add_remotes': None})
+
+    if 'roles' in config:
         init_tasks.extend([
-            {'internal.check_lock': None},
-            {'internal.add_remotes': None},
+            {'console_log': None},
             {'internal.connect': None},
             {'internal.push_inventory': None},
             {'internal.serialize_remote_roles': None},
@@ -332,6 +342,10 @@ def main(args):
 
     args["summary"] = get_summary(owner, description)
 
+    ceph_repo = config.get('repo')
+    if ceph_repo:
+        teuth_config.ceph_git_url = ceph_repo
+
     config["tasks"] = validate_tasks(config)
 
     init_tasks = get_initial_tasks(lock, config, machine_type)
@@ -352,6 +366,11 @@ def main(args):
     # overwrite the config value of os_version if --os-version is provided
     if os_version:
         config["os_version"] = os_version
+
+    # If the job has a 'use_shaman' key, use that value to override the global
+    # config's value.
+    if config.get('use_shaman') is not None:
+        teuth_config.use_shaman = config['use_shaman']
 
     # create a FakeNamespace instance that mimics the old argparse way of doing
     # things we do this so we can pass it to run_tasks without porting those
