@@ -27,9 +27,13 @@ Setup
 
 * Get and configure teuthology::
 
-    $ git clone http://github.com/ceph/teuthology
+    $ git clone http://github.com/SUSE/teuthology
     $ cd teuthology ; ./bootstrap install
     $ source virtualenv/bin/activate
+    $ cat >> ~/.teuthology.yaml <<EOF
+    openstack:
+      clone: git clone http://github.com/SUSE/teuthology
+    EOF
 
 Get OpenStack credentials and test it
 -------------------------------------

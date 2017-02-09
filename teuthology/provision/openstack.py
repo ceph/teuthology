@@ -62,7 +62,8 @@ class ProvisionOpenStack(OpenStack):
         for i in range(volumes['count']):
             volume_name = name + '-' + str(i)
             try:
-                self.run("volume show -f json " + volume_name)
+                OpenStack().run("volume show -f json " +
+                                volume_name)
             except subprocess.CalledProcessError as e:
                 if 'No volume with a name or ID' not in e.output:
                     raise e
@@ -99,8 +100,8 @@ class ProvisionOpenStack(OpenStack):
         """
         return the instance name suffixed with the /16 part of the IP.
         """
-        digits = map(int, re.findall('.*\.(\d+)\.(\d+)', ip)[0])
-        return prefix + "%03d%03d" % tuple(digits)
+        digits = map(int, re.findall('(\d+)\.(\d+)\.(\d+)\.(\d+)', ip)[0])
+        return prefix + "%03d%03d%03d%03d" % tuple(digits)
 
     def create(self, num, os_type, os_version, arch, resources_hint):
         """
@@ -109,20 +110,23 @@ class ProvisionOpenStack(OpenStack):
         described in resources_hint.
         """
         log.debug('ProvisionOpenStack:create')
+        if arch is None:
+            arch = self.get_default_arch()
         resources_hint = self.interpret_hints({
             'machine': config['openstack']['machine'],
             'volumes': config['openstack']['volumes'],
         }, resources_hint)
         self.init_user_data(os_type, os_version)
-        image = self.image(os_type, os_version)
+        image = self.image(os_type, os_version, arch)
         if 'network' in config['openstack']:
             net = "--nic net-id=" + str(self.net_id(config['openstack']['network']))
         else:
             net = ''
         flavor = self.flavor(resources_hint['machine'],
+                             arch,
                              config['openstack'].get('flavor-select-regexp'))
         cmd = ("flock --close --timeout 28800 /tmp/teuthology-server-create.lock" +
-               " openstack server create" +
+               " openstack --quiet server create" +
                " " + config['openstack'].get('server-create', '') +
                " -f json " +
                " --image '" + str(image) + "'" +
@@ -153,9 +157,9 @@ class ProvisionOpenStack(OpenStack):
             for instance in instances:
                 ip = instance.get_ip(network)
                 name = self.ip2name(self.basename, ip)
-                self.run("server set " +
-                         "--name " + name + " " +
-                         instance['ID'])
+                OpenStack().run("server set " +
+                                "--name " + name + " " +
+                                instance['ID'])
                 fqdn = name + '.' + config.lab_domain
                 if not misc.ssh_keyscan_wait(fqdn):
                     raise ValueError('ssh_keyscan_wait failed for ' + fqdn)
@@ -174,3 +178,4 @@ class ProvisionOpenStack(OpenStack):
     def destroy(self, name_or_id):
         log.debug('ProvisionOpenStack:destroy ' + name_or_id)
         return OpenStackInstance(name_or_id).destroy()
+

@@ -45,6 +45,9 @@ from teuthology import misc
 
 log = logging.getLogger(__name__)
 
+class NoFlavorException(Exception):
+    pass
+
 def enforce_json_dictionary(something):
     if type(something) is not types.DictType:
         raise Exception(
@@ -58,7 +61,8 @@ class OpenStackInstance(object):
 
     def __init__(self, name_or_id, info=None):
         self.name_or_id = name_or_id
-        self.ip = None
+        self.private_or_floating_ip = None
+        self.private_ip = None
         if info is None:
             self.set_info()
         else:
@@ -106,12 +110,11 @@ class OpenStackInstance(object):
 
     def get_ip_neutron(self):
         subnets = json.loads(misc.sh("neutron subnet-list -f json -c id -c ip_version"))
-        subnet_id = None
+        subnet_ids = []
         for subnet in subnets:
             if subnet['ip_version'] == 4:
-                subnet_id = subnet['id']
-                break
-        if not subnet_id:
+                subnet_ids.append(subnet['id'])
+        if not subnet_ids:
             raise Exception("no subnet with ip_version == 4")
         ports = json.loads(misc.sh("neutron port-list -f json -c fixed_ips -c device_id"))
         fixed_ips = None
@@ -124,7 +127,7 @@ class OpenStackInstance(object):
         ip = None
         for fixed_ip in fixed_ips:
             record = json.loads(fixed_ip)
-            if record['subnet_id'] == subnet_id:
+            if record['subnet_id'] in subnet_ids:
                 ip = record['ip_address']
                 break
         if not ip:
@@ -135,26 +138,28 @@ class OpenStackInstance(object):
         """
         Return the private IP of the OpenStack instance_id.
         """
-        try:
-            return self.get_ip_neutron()
-        except Exception as e:
-            log.debug("ignoring get_ip_neutron exception " + str(e))
-            return re.findall(network + '=([\d.]+)',
-                              self.get_addresses())[0]
+        if self.private_ip is None:
+            try:
+                self.private_ip = self.get_ip_neutron()
+            except Exception as e:
+                log.debug("ignoring get_ip_neutron exception " + str(e))
+                self.private_ip = re.findall(network + '=([\d.]+)',
+                                             self.get_addresses())[0]
+        return self.private_ip
 
     def get_floating_ip(self):
         ips = json.loads(OpenStack().run("ip floating list -f json"))
         for ip in ips:
-            if ip['Instance ID'] == self['id']:
-                return ip['IP']
+            if ip['Fixed IP Address'] == self.get_ip(''):
+                return ip['Floating IP Address']
         return None
 
     def get_floating_ip_or_ip(self):
-        if not self.ip:
-            self.ip = self.get_floating_ip()
-            if not self.ip:
-                self.ip = self.get_ip('')
-        return self.ip
+        if not self.private_or_floating_ip:
+            self.private_or_floating_ip = self.get_floating_ip()
+            if not self.private_or_floating_ip:
+                self.private_or_floating_ip = self.get_ip('')
+        return self.private_or_floating_ip
 
     def destroy(self):
         """
@@ -175,29 +180,28 @@ class OpenStackInstance(object):
 
 class OpenStack(object):
 
-    # wget -O debian-8.0.qcow2  http://cdimage.debian.org/cdimage/openstack/current/debian-8.1.0-openstack-amd64.qcow2
-    # wget -O ubuntu-12.04.qcow2 https://cloud-images.ubuntu.com/precise/current/precise-server-cloudimg-amd64-disk1.img
-    # wget -O ubuntu-12.04-i386.qcow2 https://cloud-images.ubuntu.com/precise/current/precise-server-cloudimg-i386-disk1.img
-    # wget -O ubuntu-14.04.qcow2 https://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-disk1.img
-    # wget -O ubuntu-14.04-i386.qcow2 https://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-i386-disk1.img
-    # wget -O ubuntu-15.04.qcow2 https://cloud-images.ubuntu.com/vivid/current/vivid-server-cloudimg-arm64-disk1.img
-    # wget -O ubuntu-15.04-i386.qcow2 https://cloud-images.ubuntu.com/vivid/current/vivid-server-cloudimg-i386-disk1.img
-    # wget -O opensuse-13.2 http://download.opensuse.org/repositories/Cloud:/Images:/openSUSE_13.2/images/openSUSE-13.2-OpenStack-Guest.x86_64.qcow2
-    # wget -O opensuse-42.1 http://download.opensuse.org/repositories/Cloud:/Images:/Leap_42.1/images/openSUSE-Leap-42.1-OpenStack.x86_64.qcow2
-    # wget -O centos-7.0.qcow2 http://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud.qcow2
-    # wget -O centos-6.6.qcow2 http://cloud.centos.org/centos/6/images/CentOS-6-x86_64-GenericCloud.qcow2
-    # wget -O fedora-22.qcow2 https://download.fedoraproject.org/pub/fedora/linux/releases/22/Cloud/x86_64/Images/Fedora-Cloud-Base-22-20150521.x86_64.qcow2
-    # wget -O fedora-21.qcow2 http://fedora.mirrors.ovh.net/linux/releases/21/Cloud/Images/x86_64/Fedora-Cloud-Base-20141203-21.x86_64.qcow2
-    # wget -O fedora-20.qcow2 http://fedora.mirrors.ovh.net/linux/releases/20/Images/x86_64/Fedora-x86_64-20-20131211.1-sda.qcow2
+    # http://cdimage.debian.org/cdimage/openstack/current/
+    # https://cloud-images.ubuntu.com/precise/current/precise-server-cloudimg-amd64-disk1.img etc.
+    # http://download.opensuse.org/repositories/Cloud:/Images:/openSUSE_13.2/images/openSUSE-13.2-OpenStack-Guest.x86_64.qcow2
+    # http://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud.qcow2 etc.
+    # http://cloud.centos.org/centos/6/images/CentOS-6-x86_64-GenericCloud.qcow2 etc.
+    # https://download.fedoraproject.org/pub/fedora/linux/releases/22/Cloud/x86_64/Images/Fedora-Cloud-Base-22-20150521.x86_64.qcow2
+    # http://fedora.mirrors.ovh.net/linux/releases/21/Cloud/Images/x86_64/Fedora-Cloud-Base-20141203-21.x86_64.qcow2
+    # http://fedora.mirrors.ovh.net/linux/releases/20/Images/x86_64/Fedora-x86_64-20-20131211.1-sda.qcow2
     image2url = {
-        'centos-6.5': 'http://cloud.centos.org/centos/6/images/CentOS-6-x86_64-GenericCloud-1508.qcow2',
-        'centos-7.0': 'http://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud-1503.qcow2',
-        'centos-7.1': 'http://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud-1503.qcow2',
-        'centos-7.2': 'http://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud-1511.qcow2',
-        'opensuse-42.1': 'http://download.opensuse.org/repositories/Cloud:/Images:/Leap_42.1/images/openSUSE-Leap-42.1-OpenStack.x86_64.qcow2',
-        'ubuntu-12.04': 'https://cloud-images.ubuntu.com/precise/current/precise-server-cloudimg-amd64-disk1.img',
-        'ubuntu-14.04': 'https://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-disk1.img',
-        'debian-8.0': 'http://cdimage.debian.org/cdimage/openstack/current/debian-8.2.0-openstack-amd64.qcow2',
+        'centos-6.5-x86_64': 'http://cloud.centos.org/centos/6/images/CentOS-6-x86_64-GenericCloud-1508.qcow2',
+        'centos-7.0-x86_64': 'http://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud-1503.qcow2',
+        'centos-7.1-x86_64': 'http://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud-1503.qcow2',
+        'centos-7.2-x86_64': 'http://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud-1511.qcow2',
+        'opensuse-42.1-x86_64': 'http://download.opensuse.org/repositories/Cloud:/Images:/Leap_42.1/images/openSUSE-Leap-42.1-OpenStack.x86_64.qcow2',
+        'ubuntu-12.04-x86_64': 'https://cloud-images.ubuntu.com/precise/current/precise-server-cloudimg-amd64-disk1.img',
+        'ubuntu-14.04-x86_64': 'https://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-disk1.img',
+        'ubuntu-14.04-aarch64': 'https://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-arm64-disk1.img',
+        'ubuntu-14.04-i686': 'https://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-i386-disk1.img',
+        'ubuntu-16.04-x86_64': 'https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img',
+        'ubuntu-16.04-aarch64': 'https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-arm64-disk1.img',
+        'ubuntu-16.04-i686': 'https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-i386-disk1.img',
+        'debian-8.0-x86_64': 'http://cdimage.debian.org/cdimage/openstack/current/debian-8.7.0-openstack-amd64.qcow2',
     }
 
     def __init__(self):
@@ -212,7 +216,7 @@ class OpenStack(object):
     token_cache_duration = 3600
 
     def cache_token(self):
-        if self.provider != 'ovh':
+        if self.get_provider() != 'ovh':
             return False
         if (OpenStack.token is None and
             'OS_TOKEN_VALUE' in os.environ and
@@ -236,7 +240,7 @@ class OpenStack(object):
         return True
 
     def get_os_url(self, cmd, type=None):
-        if self.provider != 'ovh':
+        if self.get_provider() != 'ovh':
             return ""
         url = ""
         if (type == 'compute' or
@@ -279,7 +283,9 @@ class OpenStack(object):
     def set_provider(self):
         if 'OS_AUTH_URL' not in os.environ:
             raise Exception('no OS_AUTH_URL environment variable')
-        providers = (('cloud.ovh.net', 'ovh'),
+        providers = (('runabove.io', 'runabove'),
+                     ('cloud.ovh.net', 'ovh'),
+                     ('cloudlab.us', 'cloudlab'),
                      ('entercloudsuite.com', 'entercloudsuite'),
                      ('rackspacecloud.com', 'rackspace'),
                      ('dream.io', 'dreamhost'))
@@ -325,11 +331,11 @@ class OpenStack(object):
                                network))
         return self.get_value(r, 'id')
 
-    def type_version(self, os_type, os_version):
+    def type_version_arch(self, os_type, os_version, arch):
         """
         Return the string used to differentiate os_type and os_version in names.
         """
-        return os_type + '-' + os_version
+        return os_type + '-' + os_version + '-' + arch
 
     def image_name(self, name):
         """
@@ -338,9 +344,9 @@ class OpenStack(object):
         """
         return "teuthology-" + name
 
-    def image_create(self, name):
+    def image_create(self, name, arch):
         """
-        Upload an image into OpenStack with glance.
+        Upload an image into OpenStack
         """
         misc.sh("wget -c -O " + name + ".qcow2 " + self.image2url[name])
         if self.get_provider() == 'dreamhost':
@@ -350,47 +356,91 @@ class OpenStack(object):
         else:
             image = name + ".qcow2"
             disk_format = 'qcow2'
-        misc.sh("glance image-create --property ownedby=teuthology " +
-                " --disk-format=" + disk_format + " --container-format=bare " +
-                " --visibility private" +
-                " --file " + image + " --name " + self.image_name(name))
+        if self.get_provider() == 'runabove':
+            properties = [
+                "--property architecture_restrict=" + arch,
+                "--property architecture=" + arch
+            ]
+        elif self.get_provider() == 'cloudlab':
+            # if not, nova-compute fails on the compute node with
+            # Error: Cirrus VGA not available
+            properties = [
+                "--property hw_video_model=vga",
+            ]
+        else:
+            properties = []
 
-    def image(self, os_type, os_version):
+        self.run("image create --property ownedby=teuthology " +
+                " ".join(properties) +
+                " --disk-format=" + disk_format + " --container-format=bare " +
+                " --private" +
+                " --file " + image + " " + self.image_name(name))
+
+    def image(self, os_type, os_version, arch):
         """
         Return the image name for the given os_type and os_version. If the image
         does not exist it will be created.
         """
-        name = self.type_version(os_type, os_version)
+        name = self.type_version_arch(os_type, os_version, arch)
         if not self.image_exists(name):
-            self.image_create(name)
+            self.image_create(name, arch)
         return self.image_name(name)
 
-    def flavor(self, hint, select):
-        """
-        Return the smallest flavor that satisfies the desired size.
-        """
+    def get_sorted_flavors(self, arch, select):
         flavors_string = self.run("flavor list -f json")
         flavors = json.loads(flavors_string)
         found = []
         for flavor in flavors:
             if select and not re.match(select, flavor['Name']):
                 continue
-            if (flavor['RAM'] >= hint['ram'] and
-                    flavor['VCPUs'] >= hint['cpus'] and
-                    flavor['Disk'] >= hint['disk']):
-                found.append(flavor)
-        if not found:
-            raise Exception("openstack flavor list: " + flavors_string +
-                            " does not contain a flavor in which" +
-                            " the desired " + str(hint) + " can fit")
+            found.append(flavor)
 
         def sort_flavor(a, b):
             return (a['VCPUs'] - b['VCPUs'] or
                     a['RAM'] - b['RAM'] or
                     a['Disk'] - b['Disk'])
-        sorted_flavor = sorted(found, cmp=sort_flavor)
-        log.debug("sorted flavor = " + str(sorted_flavor))
-        return sorted_flavor[0]['Name']
+        sorted_flavors = sorted(found, cmp=sort_flavor)
+        log.debug("sorted flavors = " + str(sorted_flavors))
+        return sorted_flavors
+
+    def flavor(self, hint, arch, select):
+        """
+        Return the smallest flavor that satisfies the desired size.
+        """
+        flavors = self.get_sorted_flavors(arch, select)
+        for flavor in flavors:
+            if (flavor['RAM'] >= hint['ram'] and
+                    flavor['VCPUs'] >= hint['cpus'] and
+                    flavor['Disk'] >= hint['disk']):
+                return flavor['Name']
+        raise NoFlavorException("flavor list: " + str(flavors) +
+                                " does not contain a flavor in which" +
+                                " the desired " + str(hint) + " can fit")
+
+    def flavor_range(self, min, good, arch, select):
+        """
+        Return the smallest flavor that satisfies the good hint.
+        If no such flavor, get the largest flavor smaller than good
+        and larger than min.
+        """
+        flavors = self.get_sorted_flavors(arch, select)
+        low_range = []
+        for flavor in flavors:
+            if (flavor['RAM'] >= good['ram'] and
+                    flavor['VCPUs'] >= good['cpus'] and
+                    flavor['Disk'] >= good['disk']):
+                return flavor['Name']
+            else:
+                low_range.append(flavor)
+        low_range.reverse()
+        for flavor in low_range:
+            if (flavor['RAM'] >= min['ram'] and
+                    flavor['VCPUs'] >= min['cpus'] and
+                    flavor['Disk'] >= min['disk']):
+                return flavor['Name']
+        raise NoFlavorException("flavor list: " + str(flavors) +
+                                " does not contain a flavor which" +
+                                " is larger than " + str(min))
 
     def interpret_hints(self, defaults, hints):
         """
@@ -505,6 +555,30 @@ class OpenStack(object):
     def get_ip(self, instance_id, network):
         return OpenStackInstance(instance_id).get_ip(network)
 
+    def net(self):
+        """
+        Return the network to be used when creating an OpenStack instance.
+        By default it should not be set. But some providers such as
+        entercloudsuite require it is.
+        """
+        if self.get_provider() == 'entercloudsuite':
+            return "--nic net-id=default"
+        elif self.get_provider() == 'cloudlab':
+            return "--nic net-id=flat-lan-1-net"
+        else:
+            return ""
+
+    def get_available_archs(self):
+        if (self.get_provider() == 'cloudlab' or
+            (self.get_provider() == 'runabove' and
+             'HZ1' in os.environ.get('OS_REGION_NAME', ''))):
+            return ('aarch64',)
+        else:
+            return ('x86_64', 'i686')
+
+    def get_default_arch(self):
+        return self.get_available_archs()[0]
+
 
 class TeuthologyOpenStack(OpenStack):
 
@@ -556,6 +630,8 @@ class TeuthologyOpenStack(OpenStack):
             if original_argv[0] in ('--name',
                                     '--teuthology-branch',
                                     '--teuthology-git-url',
+                                    '--ceph-workbench-branch',
+                                    '--ceph-workbench-git-url',
                                     '--archive-upload',
                                     '--archive-upload-url',
                                     '--key-name',
@@ -667,7 +743,7 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
             log.exception("flavor list")
             raise Exception("verify openrc.sh has been sourced")
 
-    def flavor(self):
+    def flavor(self, arch):
         """
         Return an OpenStack flavor fit to run the teuthology cluster.
         The RAM size depends on the maximum number of workers that
@@ -687,19 +763,8 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
 
         select = None
         if self.get_provider() == 'ovh':
-            select = '^(vps|eg)-'
-        return super(TeuthologyOpenStack, self).flavor(hint, select)
-
-    def net(self):
-        """
-        Return the network to be used when creating an OpenStack instance.
-        By default it should not be set. But some providers such as
-        entercloudsuite require it is.
-        """
-        if self.get_provider() == 'entercloudsuite':
-            return "--nic net-id=default"
-        else:
-            return ""
+            select = '^(vps|hg)-.*ssd'
+        return super(TeuthologyOpenStack, self).flavor(hint, arch, select)
 
     def get_user_data(self):
         """
@@ -729,16 +794,24 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
             clone = ("git clone -b {branch} {url}".format(
                 branch=self.args.teuthology_branch,
                 url=self.args.teuthology_git_url))
+        ceph_workbench = ''
+        if self.args.ceph_workbench_git_url:
+            ceph_workbench += (" --ceph-workbench-branch " +
+                               self.args.ceph_workbench_branch)
+            ceph_workbench += (" --ceph-workbench-git-url " +
+                               self.args.ceph_workbench_git_url)
         log.debug("OPENRC = " + openrc + " " +
                   "TEUTHOLOGY_USERNAME = " + self.username + " " +
                   "CLONE_OPENSTACK = " + clone + " " +
                   "UPLOAD = " + upload + " " +
+                  "CEPH_WORKBENCH = " + ceph_workbench + " " +
                   "NWORKERS = " + str(self.args.simultaneous_jobs))
         content = (template.
                    replace('OPENRC', openrc).
                    replace('TEUTHOLOGY_USERNAME', self.username).
                    replace('CLONE_OPENSTACK', clone).
                    replace('UPLOAD', upload).
+                   replace('CEPH_WORKBENCH', ceph_workbench).
                    replace('NWORKERS', str(self.args.simultaneous_jobs)))
         open(path, 'w').write(content)
         log.debug("get_user_data: " + content + " written to " + path)
@@ -776,8 +849,8 @@ openstack security group rule create --proto udp --dst-port 16000:65535 teutholo
         """
         ips = json.loads(OpenStack().run("ip floating list -f json"))
         for ip in ips:
-            if not ip['Instance ID']:
-                return ip['IP']
+            if not ip['Port']:
+                return ip['Floating IP Address']
         return None
 
     @staticmethod
@@ -793,10 +866,9 @@ openstack security group rule create --proto udp --dst-port 16000:65535 teutholo
         try:
             ip = json.loads(OpenStack().run(
                 "ip floating create -f json '" + pool + "'"))
-            return TeuthologyOpenStack.get_value(ip, 'ip')
+            return ip['ip']
         except subprocess.CalledProcessError:
             log.debug("create_floating_ip: not creating a floating ip")
-            pass
         return None
 
     @staticmethod
@@ -844,10 +916,11 @@ openstack security group rule create --proto udp --dst-port 16000:65535 teutholo
             security_group = ''
         else:
             security_group = " --security-group teuthology"
+        arch = self.get_default_arch()
         self.run(
             "server create " +
-            " --image '" + self.image('ubuntu', '14.04') + "' " +
-            " --flavor '" + self.flavor() + "' " +
+            " --image '" + self.image('ubuntu', '16.04', arch) + "' " +
+            " --flavor '" + self.flavor(arch) + "' " +
             " " + self.net() +
             " --key-name " + self.args.key_name +
             " --user-data " + user_data +

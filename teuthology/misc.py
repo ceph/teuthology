@@ -1209,12 +1209,12 @@ def get_system_type(remote, distro=False, version=False):
     if system_value in ['Ubuntu', 'Debian']:
         return "deb"
     if system_value in ['CentOS', 'Fedora', 'RedHatEnterpriseServer',
-                        'openSUSE project', 'SUSE LINUX']:
+                        'openSUSE project', 'SUSE', 'SUSE LINUX']:
         return "rpm"
     return system_value
 
 def get_pkg_type(os_type):
-    if os_type in ('centos', 'fedora', 'opensuse', 'rhel', 'sles'):
+    if os_type in ('centos', 'fedora', 'opensuse', 'rhel', 'sle'):
         return 'rpm'
     else:
         return 'deb'
@@ -1316,6 +1316,7 @@ def sh(command, log_limit=1024):
     truncated = False
     with proc.stdout:
         for line in iter(proc.stdout.readline, b''):
+            line = line.decode('utf-8').encode('ascii', 'ignore')
             lines.append(line)
             line = line.strip()
             if len(line) > log_limit:
@@ -1337,4 +1338,4 @@ def sh(command, log_limit=1024):
             cmd=command,
             output=output
         )
-    return output.decode('utf-8')
+    return output
