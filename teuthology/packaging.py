@@ -76,6 +76,7 @@ def install_package(package, remote):
                   'install',
                   '{package}'.format(package=package)]
     elif flavor == 'rpm':
+        # FIXME: zypper
         pkgcmd = ['sudo',
                   'yum',
                   '-y',
@@ -101,6 +102,7 @@ def remove_package(package, remote):
                   'purge',
                   '{package}'.format(package=package)]
     elif flavor == 'rpm':
+        # FIXME: zypper
         pkgcmd = ['sudo',
                   'yum',
                   '-y',
@@ -789,11 +791,10 @@ class GitbuilderProject(object):
         url = "{base_url}/noarch/{rpm_name}".format(
             base_url=self.base_url, rpm_name=rpm_name)
         if dist_release in ['opensuse', 'sle']:
-            # no point in pretending ceph-release RPM is used in SUSE
             url = "{base_url}/{arch}".format(
                 base_url=self.base_url, arch=self.arch)
             self.remote.run(args=[
-                'sudo', 'zypper', '-n', 'addrepo', url, 'ceph-rpm'
+                'sudo', 'zypper', '-n', 'addrepo', url, 'ceph-rpm-under-test'
             ])
         else:
             self.remote.run(args=['sudo', 'yum', '-y', 'install', url])
@@ -823,7 +824,12 @@ class GitbuilderProject(object):
             self._remove_deb_repo()
 
     def _remove_rpm_repo(self):
-        remove_package('%s-release' % self.project, self.remote)
+        if self.dist_release in ['opensuse', 'sle']:
+            self.remote.run(args=[
+                'sudo', 'zypper', '-n', 'removerepo', 'ceph-rpm-under-test'
+            ])
+        else:
+            remove_package('%s-release' % self.project, self.remote)
 
     def _remove_deb_repo(self):
         self.remote.run(
@@ -981,6 +987,7 @@ class ShamanProject(GitbuilderProject):
         )
 
     def _remove_rpm_repo(self):
+        # FIXME: zypper
         self.remote.run(
             args=[
                 'sudo',
