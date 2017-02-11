@@ -385,7 +385,7 @@ def synch_clocks(remotes):
             args=[
                 'sudo', 'service', 'ntp', 'stop',
                 run.Raw('&&'),
-                'sudo', 'ntpdate-debian',
+                'sudo', 'ntpd', '-gq',
                 run.Raw('&&'),
                 'sudo', 'hwclock', '--systohc', '--utc',
                 run.Raw('&&'),
