@@ -32,29 +32,28 @@ def task(ctx, config):
 
     log.info('Syncing clocks and checking initial clock skew...')
     for rem in ctx.cluster.remotes.iterkeys():
-        ntpconf = rem.get_file('/etc/ntp.conf')
-        servers = [
-            l.strip().split()[1] for l in open(ntpconf, 'r').readlines()
-            if l.startswith('server')
-        ]
-        os.remove(ntpconf)
-        args = [
-            'sudo',
-            'service', 'ntp', 'stop',
-            run.Raw(';'),
-            'sudo',
-            'ntpdate',
-        ]
-        args.extend(servers)
-        args.extend([
-            run.Raw(';'),
-            'sudo',
-            'service', 'ntp', 'start',
-            run.Raw(';'),
-            'PATH=/usr/bin:/usr/sbin',
-            'ntpq', '-p',
-        ])
-        rem.run(args)
+        rem.run(
+            args = [
+                'sudo', 'service', 'ntp', 'stop', run.Raw('||'),
+                'sudo', 'systemctl', 'stop', 'ntp.service'
+            ]
+        )
+        rem.run(
+            args = [
+                'sudo', 'ntpd', '-gq',
+            ]
+        )
+        rem.run(
+            args = [
+                'sudo', 'service', 'ntp', 'start', run.Raw('||'),
+                'sudo', 'systemctl', 'start', 'ntp.service'
+            ]
+        )
+        rem.run(
+            args = [
+                'PATH=/usr/bin:/usr/sbin', 'ntpq', '-p',
+            ],
+        )
 
     try:
         yield
@@ -64,8 +63,7 @@ def task(ctx, config):
         for rem in ctx.cluster.remotes.iterkeys():
             rem.run(
                 args=[
-                    'PATH=/usr/bin:/usr/sbin',
-                    'ntpq', '-p',
+                    'PATH=/usr/bin:/usr/sbin', 'ntpq', '-p',
                     ],
                 )
 
