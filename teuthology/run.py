@@ -230,9 +230,20 @@ def get_initial_tasks(lock, config, machine_type):
     init_tasks.append({'internal.timer': None})
 
     if 'roles' in config:
+        if machine_type != 'openstack':
+            init_tasks.extend([
+                {'pcp': None},
+            ])
+        if ('os_type' in config):
+            os_type = config['os_type']
+        else:
+            os_type = 'unknown'
+        log.info("os_type is {}".format(os_type))
+        if os_type == 'centos':
+            init_tasks.extend([
+                {'selinux': None},
+            ])
         init_tasks.extend([
-            {'pcp': None},
-            {'selinux': None},
             {'ansible.cephlab': None},
             {'clock.check': None}
         ])
