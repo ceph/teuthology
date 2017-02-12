@@ -10,6 +10,7 @@ import re
 import logging
 from cStringIO import StringIO
 from teuthology import lockstatus as ls
+from teuthology import lock
 import os
 import pwd
 import tempfile
@@ -243,7 +244,10 @@ class Remote(object):
         """
         if self.os.package_type != 'rpm':
             return
-        if misc.is_vm(self.shortname):
+        if lock.is_vm(self.shortname):
+            log.info("Not running chcon on {machine} because it is a VM".format(
+                machine=self.shortname
+            ))
             return
         self.run(args="sudo chcon {con} {path}".format(
             con=context, path=file_path))
