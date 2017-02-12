@@ -243,7 +243,7 @@ class Remote(object):
         """
         if self.os.package_type != 'rpm':
             return
-        if misc.is_vm(self.shortname):
+        if misc.is_vm(self.shortname) or self.machine_type == 'openstack':
             return
         self.run(args="sudo chcon {con} {path}".format(
             con=context, path=file_path))
