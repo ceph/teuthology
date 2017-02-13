@@ -18,6 +18,7 @@ users:
     groups: users
 runcmd:
  - ( MYHOME=/home/{username} ; mkdir $MYHOME/.ssh ; chmod 700 $MYHOME/.ssh ; cp /root/.ssh/authorized_keys $MYHOME/.ssh ; chown -R {username}.users $MYHOME/.ssh )
+ - zypper --non-interactive --no-gpg-checks refresh
  - zypper --non-interactive install --no-recommends python wget git ntp rsyslog lsb-release
  - ( if ! grep '^server' /etc/ntp.conf ; then for i in 0 1 2 3 ; do echo "server $i.opensuse.pool.ntp.org iburst" >> /etc/ntp.conf ; done ; fi )
  - systemctl enable ntpd.service
