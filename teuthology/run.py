@@ -16,7 +16,7 @@ from .repo_utils import fetch_qa_suite
 from .results import email_results
 from .config import FakeNamespace
 from .config import config as teuth_config
-from .salt import Salt
+from .salt import UseSalt
 
 log = logging.getLogger(__name__)
 
@@ -236,7 +236,7 @@ def get_initial_tasks(lock, config, machine_type):
     else:
         os_type = 'unknown'
     log.info("os_type is {}".format(os_type))
-    salt = Salt(machine_type=machine_type, os_type=os_type)
+    salt = UseSalt(machine_type=machine_type, os_type=os_type)
 
     if 'roles' in config:
         if machine_type != 'openstack':

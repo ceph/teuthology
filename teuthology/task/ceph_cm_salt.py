@@ -16,6 +16,6 @@ def task(ctx, config):
     salt.generate_minion_keys()
     salt.preseed_minions()
     salt.set_minion_master()
-    salt.start_minions()
+    salt.start_minions(ctx)
     log.info("Going to sleep")
     time.sleep(10000000)
