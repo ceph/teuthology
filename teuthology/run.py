@@ -16,6 +16,7 @@ from .repo_utils import fetch_qa_suite
 from .results import email_results
 from .config import FakeNamespace
 from .config import config as teuth_config
+from .salt import UseSalt
 
 log = logging.getLogger(__name__)
 
@@ -220,6 +221,7 @@ def get_initial_tasks(lock, config, machine_type):
     if 'roles' in config:
         init_tasks.append({'internal.base': None})
     init_tasks.append({'internal.archive_upload': None})
+
     if 'roles' in config:
         init_tasks.extend([
             {'internal.archive': None},
@@ -229,24 +231,23 @@ def get_initial_tasks(lock, config, machine_type):
         ])
     init_tasks.append({'internal.timer': None})
 
+    if 'os_type' in config:
+        os_type = config['os_type']
+    else:
+        os_type = 'unknown'
+    log.info("os_type is {}".format(os_type))
+    salt = UseSalt(machine_type=machine_type, os_type=os_type)
+
     if 'roles' in config:
         if machine_type != 'openstack':
-            init_tasks.extend([
-                {'pcp': None},
-            ])
-        if ('os_type' in config):
-            os_type = config['os_type']
-        else:
-            os_type = 'unknown'
-        log.info("os_type is {}".format(os_type))
+            init_tasks.append({'pcp': None})
         if os_type == 'centos':
-            init_tasks.extend([
-                {'selinux': None},
-            ])
-        init_tasks.extend([
-            {'ansible.cephlab': None},
-            {'clock.check': None}
-        ])
+            init_tasks.append({'selinux': None})
+        if salt.use_salt:
+            init_tasks.append({'ceph_cm_salt': None})
+        else:
+            init_tasks.append({'ansible.cephlab': None})
+        init_tasks.append({'clock.check': None})
 
     return init_tasks
 
