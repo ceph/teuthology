@@ -1,5 +1,5 @@
 import logging
-import StringIO
+import time
 
 from os.path import isfile
 from netifaces import ifaddresses
@@ -48,6 +48,7 @@ class Salt(object):
 
     def __init__(self, ctx, config):
         self._ctx = ctx
+        self._job_id = ctx.config.get('job_id')
         self._cluster = ctx.cluster
         self._remotes = ctx.cluster.remotes
         self._teuthology_ip_address = None
@@ -56,6 +57,11 @@ class Salt(object):
     @property
     def ctx(self):
         return self._ctx
+
+    @property
+    def job_id(self):
+        """Name of the current teuthology run"""
+        return self._job_id
 
     @property
     def remotes(self):
@@ -142,6 +148,11 @@ class Salt(object):
             r = rem.run(
                 args=[
                     'sudo',
+		    'sh',
+                    '-c',
+                    'echo "grains:" > /etc/salt/minion.d/job_id_grains.conf;\
+                    echo "  job_id: {}" >> /etc/salt/minion.d/job_id_grains.conf'.format(self.job_id),
+		    'sudo',
                     'chown',
                     'root',
                     '{}.pem'.format(minion_id),
@@ -215,4 +226,35 @@ class Salt(object):
                 wait=False,
             )
         )
+
+    def ping_minions_serial(self):
+        """Pings minions, raises exception if they don't respond"""
+        for mid in self.minions:
+            for wl in range(10):
+                time.sleep(5)
+                log.debug("Attempt {n}/10 to ping Salt Minion {m}".format(
+                    m=mid,
+                    n=wl+1,
+                ))
+                if self.master_fqdn == self.teuthology_fqdn:
+                    sh("sudo salt '{}' test.ping".format(mid))
+                    # how do we determine success/failure?
+                else:
+                    # master is a remote
+                    pass
+
+    def ping_minions_parallel(self):
+        """Pings minions, raises exception if they don't respond"""
+        for wl in range(10):
+            time.sleep(5)
+            log.debug("Attempt {n}/10 to ping all Salt Minions in job {j}".format(
+                j=self.job_id,
+                n=wl+1,
+            ))
+            if self.master_fqdn == self.teuthology_fqdn:
+                sh("sudo salt -C 'G@job_id:{}' test.ping".format(self.job_id))
+                # how do we determine success/failure?
+            else:
+                # master is a remote
+                pass
 
