@@ -200,6 +200,11 @@ class Salt(object):
                 sed_cmd,
             ])
 
+    def init_minions(self):
+        self.generate_minion_keys()
+        self.preseed_minions()
+        self.set_minion_master()
+
     def start_master(self):
         """Starts salt-master.service on given FQDN via SSH"""
         sh('ssh {} sudo systemctl restart salt-master.service'.format(

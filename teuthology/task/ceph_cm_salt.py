@@ -13,9 +13,7 @@ def task(ctx, config):
     """
     log.info("ceph_cm_salt: begin")
     salt = Salt(ctx, config)
-    salt.generate_minion_keys()
-    salt.preseed_minions()
-    salt.set_minion_master()
+    salt.init_minions()
     salt.start_minions()
     salt.ping_minions_parallel()
     log.info("ceph_cm_salt: end")
