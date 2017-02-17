@@ -51,12 +51,17 @@ class Salt(object):
         self._job_id = ctx.config.get('job_id')
         self._cluster = ctx.cluster
         self._remotes = ctx.cluster.remotes
-        self._teuthology_ip_address = None
+        # FIXME: this seems fragile (ens3 hardcoded)
+        self._teuthology_ip_address = ifaddresses('ens3')[2][0]['addr']
         self._minions = []
-        if 'master_fqdn' not in kwargs:
-            self._master_fqdn(self.teuthology_fqdn)
-        else:
-            self._master_fqdn(kwargs['master_fqdn'])
+        ip_addr = self._teuthology_ip_address.split('.')
+        self._teuthology_fqdn = "target{:03d}{:03d}{:03d}{:03d}.teuthology".format(
+            int(ip_addr[0]),
+            int(ip_addr[1]),
+            int(ip_addr[2]),
+            int(ip_addr[3]),
+        )
+        self._master_fqdn = kwargs.get('master_fqdn', self._teuthology_fqdn)
 
     @property
     def ctx(self):
@@ -87,22 +92,12 @@ class Salt(object):
     @property
     def teuthology_ip_address(self):
         """Return the IP address of the teuthology VM"""
-        if self._teuthology_ip_address is None:
-            # FIXME: this seems fragile (ens3 hardcoded)
-            self._teuthology_ip_address = ifaddresses('ens3')[2][0]['addr']
         return self._teuthology_ip_address
 
     @property
     def teuthology_fqdn(self):
         """Return the resolvable FQDN of the teuthology VM"""
-        ip_addr = self.teuthology_ip_address.split('.')
-        log.debug("teuthology_ip_address returned {}".format(ip_addr))
-        return "target{:03d}{:03d}{:03d}{:03d}.teuthology".format(
-            int(ip_addr[0]),
-            int(ip_addr[1]),
-            int(ip_addr[2]),
-            int(ip_addr[3]),
-        )
+        return self._teuthology_fqdn
 
     def generate_minion_keys(self):
         for rem in self.remotes.iterkeys():
