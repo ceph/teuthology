@@ -47,13 +47,23 @@ class UseSalt(object):
 class Salt(object):
 
     def __init__(self, ctx, config):
+        self._ctx = ctx
+        self._cluster = ctx.cluster
         self._remotes = ctx.cluster.remotes
         self._teuthology_ip_address = None
         self._minions = []
 
     @property
+    def ctx(self):
+        return self._ctx
+
+    @property
     def remotes(self):
         return self._remotes
+
+    @property
+    def cluster(self):
+        return self._cluster
 
     @property
     def minions(self):
@@ -188,19 +198,19 @@ class Salt(object):
             master_fqdn
         ))
 
-    def stop_minions(self, ctx):
+    def stop_minions(self):
         """Stops salt-minion.service on all target VMs"""
         run.wait(
-            ctx.cluster.run(
+            self.cluster.run(
                 args=['sudo', 'systemctl', 'stop', 'salt-minion.service'],
                 wait=False,
             )
         )
 
-    def start_minions(self, ctx):
+    def start_minions(self):
         """Starts salt-minion.service on all target VMs"""
         run.wait(
-            ctx.cluster.run(
+            self.cluster.run(
                 args=['sudo', 'systemctl', 'start', 'salt-minion.service'],
                 wait=False,
             )
