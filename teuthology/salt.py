@@ -14,24 +14,14 @@ log = logging.getLogger(__name__)
 class UseSalt(object):
 
     def __init__(self, machine_type, os_type):
-        self._machine_type = machine_type
-        self._os_type = os_type
+        self.machine_type = machine_type
+        self.os_type = os_type
 
-    @property
-    def machine_type(self):
-        return self._machine_type
-
-    @property
-    def os_type(self):
-        return self._os_type
-
-    @property
     def openstack(self):
         if self.machine_type == 'openstack':
             return True
         return False
 
-    @property
     def suse(self):
         if self.os_type in ['opensuse', 'sle']:
             return True
@@ -39,7 +29,7 @@ class UseSalt(object):
 
     @property
     def use_salt(self):
-        if self.openstack and self.suse:
+        if self.openstack() and self.suse():
             return True
         return False
 
@@ -47,63 +37,27 @@ class UseSalt(object):
 class Salt(object):
 
     def __init__(self, ctx, config, **kwargs):
-        self._ctx = ctx
-        self._job_id = ctx.config.get('job_id')
-        self._cluster = ctx.cluster
-        self._remotes = ctx.cluster.remotes
+        self.ctx = ctx
+        self.job_id = ctx.config.get('job_id')
+        self.cluster = ctx.cluster
+        self.remotes = ctx.cluster.remotes
         # FIXME: this seems fragile (ens3 hardcoded)
-        self._teuthology_ip_address = ifaddresses('ens3')[2][0]['addr']
-        self._minions = []
-        ip_addr = self._teuthology_ip_address.split('.')
-        self._teuthology_fqdn = "target{:03d}{:03d}{:03d}{:03d}.teuthology".format(
+        self.teuthology_ip_address = ifaddresses('ens3')[2][0]['addr']
+        self.minions = []
+        ip_addr = self.teuthology_ip_address.split('.')
+        self.teuthology_fqdn = "target{:03d}{:03d}{:03d}{:03d}.teuthology".format(
             int(ip_addr[0]),
             int(ip_addr[1]),
             int(ip_addr[2]),
             int(ip_addr[3]),
         )
-        self._master_fqdn = kwargs.get('master_fqdn', self._teuthology_fqdn)
-
-    @property
-    def ctx(self):
-        return self._ctx
-
-    @property
-    def job_id(self):
-        """Name of the current teuthology run"""
-        return self._job_id
-
-    @property
-    def remotes(self):
-        return self._remotes
-
-    @property
-    def cluster(self):
-        return self._cluster
-
-    @property
-    def master_fqdn(self):
-        return self._master_fqdn
-
-    @property
-    def minions(self):
-        """List of minion IDs"""
-        return self._minions
-
-    @property
-    def teuthology_ip_address(self):
-        """Return the IP address of the teuthology VM"""
-        return self._teuthology_ip_address
-
-    @property
-    def teuthology_fqdn(self):
-        """Return the resolvable FQDN of the teuthology VM"""
-        return self._teuthology_fqdn
+        self.master_fqdn = kwargs.get('master_fqdn', self.teuthology_fqdn)
 
     def generate_minion_keys(self):
         for rem in self.remotes.iterkeys():
             minion_fqdn=rem.name.split('@')[1]
             minion_id=rem.shortname
-            self._minions.append(minion_id)
+            self.minions.append(minion_id)
             log.debug("minion: FQDN {fqdn}, ID {sn}".format(
                 fqdn=minion_fqdn,
                 sn=minion_id,
