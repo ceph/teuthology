@@ -11,11 +11,11 @@ def task(ctx, config):
     Do the same thing as ansible.cephlab, but in a minimalistic manner (just
     for OpenStack and, for the time being, just for openSUSE)
     """
-    log.info("Starting ceph_cm_salt task")
+    log.info("ceph_cm_salt: begin")
     salt = Salt(ctx, config)
-    salt.generate_minion_keys()
-    salt.preseed_minions()
-    salt.set_minion_master()
-    salt.start_minions(ctx)
-    log.info("Going to sleep")
-    time.sleep(10000000)
+    salt.init_minions()
+    salt.start_minions()
+    salt.ping_minions_parallel()
+    log.info("ceph_cm_salt: end")
+    #log.info("Going to sleep at the end of ceph_cm_salt task")
+    #time.sleep(10000000)
