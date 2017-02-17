@@ -17,6 +17,7 @@ def task(ctx, config):
     salt.preseed_minions()
     salt.set_minion_master()
     salt.start_minions()
+    salt.ping_minions_parallel()
     log.info("ceph_cm_salt: end")
     #log.info("Going to sleep at the end of ceph_cm_salt task")
     #time.sleep(10000000)
