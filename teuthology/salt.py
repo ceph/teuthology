@@ -46,13 +46,17 @@ class UseSalt(object):
 
 class Salt(object):
 
-    def __init__(self, ctx, config):
+    def __init__(self, ctx, config, **kwargs):
         self._ctx = ctx
         self._job_id = ctx.config.get('job_id')
         self._cluster = ctx.cluster
         self._remotes = ctx.cluster.remotes
         self._teuthology_ip_address = None
         self._minions = []
+        if 'master_fqdn' not in kwargs:
+            self._master_fqdn(self.teuthology_fqdn)
+        else:
+            self._master_fqdn(kwargs['master_fqdn'])
 
     @property
     def ctx(self):
@@ -70,6 +74,10 @@ class Salt(object):
     @property
     def cluster(self):
         return self._cluster
+
+    @property
+    def master_fqdn(self):
+        return self._master_fqdn
 
     @property
     def minions(self):
@@ -98,11 +106,11 @@ class Salt(object):
 
     def generate_minion_keys(self):
         for rem in self.remotes.iterkeys():
-            mfqdn=rem.name.split('@')[1]
+            minion_fqdn=rem.name.split('@')[1]
             minion_id=rem.shortname
             self._minions.append(minion_id)
             log.debug("minion: FQDN {fqdn}, ID {sn}".format(
-                fqdn=mfqdn,
+                fqdn=minion_fqdn,
                 sn=minion_id,
             ))
             if isfile('{sn}.pub'.format(sn=minion_id)):
@@ -112,26 +120,19 @@ class Salt(object):
 
     def cleanup_keys(self):
         for rem in self.remotes.iterkeys():
-            mfqdn=rem.name.split('@')[1]
+            minion_fqdn=rem.name.split('@')[1]
             minion_id=rem.shortname
-            log.debug("minion: FQDN {fqdn}, ID {sn}".format(
-                fqdn=mfqdn,
+            log.debug("Deleting minion key: FQDN {fqdn}, ID {sn}".format(
+                fqdn=minion_fqdn,
                 sn=minion_id,
             ))
             sh('sudo salt-key -y -d {sn}'.format(sn=minion_id))
 
-    def set_master_fqdn(self, master_fqdn):
-        """Ensures master_fqdn is not None"""
-        if master_fqdn is None:
-            master_fqdn = self.teuthology_fqdn
-        return master_fqdn
-
-    def preseed_minions(self, master_fqdn=None):
-        master_fqdn = self.set_master_fqdn(master_fqdn)
+    def preseed_minions(self):
         for rem in self.remotes.iterkeys():
-            mfqdn=rem.name.split('@')[1]
+            minion_fqdn=rem.name.split('@')[1]
             minion_id=rem.shortname
-            if master_fqdn == self.teuthology_fqdn:
+            if self.master_fqdn == self.teuthology_fqdn:
                 sh('sudo cp {sn}.pub /etc/salt/pki/master/minions/{sn}'.format(
                     sn=minion_id)
                 )
@@ -183,18 +184,15 @@ class Salt(object):
                     'cat',
                     '/etc/salt/minion_id',
                 ],
-                stdout=StringIO.StringIO()
             )
-            log.debug("{fqdn} reports: {output}".format(
-                fqdn=mfqdn,
-                output=r.stdout.getvalue(),
-            ))
 
-    def set_minion_master(self, master_fqdn=None):
-        """Points all minions to the given master"""
-        master_fqdn = self.set_master_fqdn(master_fqdn)
+    def set_minion_master(self):
+        """Points all minions to the master"""
         for rem in self.remotes.iterkeys():
-            sed_cmd = 'echo master: {} > /etc/salt/minion.d/master.conf'.format(master_fqdn)
+            sed_cmd = 'echo master: {} > ' \
+                      '/etc/salt/minion.d/master.conf'.format(
+                self.master_fqdn
+            )
             rem.run(args=[
                 'sudo',
                 'sh',
@@ -202,11 +200,10 @@ class Salt(object):
                 sed_cmd,
             ])
 
-    def start_master(self, master_fqdn=None):
+    def start_master(self):
         """Starts salt-master.service on given FQDN via SSH"""
-        master_fqdn = self.set_master_fqdn(master_fqdn)
         sh('ssh {} sudo systemctl restart salt-master.service'.format(
-            master_fqdn
+            self.master_fqdn
         ))
 
     def stop_minions(self):
