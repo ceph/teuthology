@@ -49,10 +49,16 @@ class Salt(object):
     def __init__(self, ctx, config):
         self._remotes = ctx.cluster.remotes
         self._teuthology_ip_address = None
+        self._minions = []
 
     @property
     def remotes(self):
         return self._remotes
+
+    @property
+    def minions(self):
+        """List of minion IDs"""
+        return self._minions
 
     @property
     def teuthology_ip_address(self):
@@ -78,6 +84,7 @@ class Salt(object):
         for rem in self.remotes.iterkeys():
             mfqdn=rem.name.split('@')[1]
             minion_id=rem.shortname
+            self._minions.append(minion_id)
             log.debug("minion: FQDN {fqdn}, ID {sn}".format(
                 fqdn=mfqdn,
                 sn=minion_id,
