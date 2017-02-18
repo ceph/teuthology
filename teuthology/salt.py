@@ -27,10 +27,9 @@ class UseSalt(object):
             return True
         return False
 
-    @property
     def use_salt(self):
-        if self.openstack() and self.suse():
-            return True
+        #if self.openstack() and self.suse():
+        #    return True
         return False
 
 

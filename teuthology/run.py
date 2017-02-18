@@ -243,7 +243,7 @@ def get_initial_tasks(lock, config, machine_type):
             init_tasks.append({'pcp': None})
         if os_type == 'centos':
             init_tasks.append({'selinux': None})
-        if salt.use_salt:
+        if salt.use_salt():
             init_tasks.append({'ceph_cm_salt': None})
         else:
             init_tasks.append({'ansible.cephlab': None})
