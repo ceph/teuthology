@@ -247,6 +247,9 @@ def get_initial_tasks(lock, config, machine_type):
             init_tasks.append({'ceph_cm_salt': None})
         else:
             init_tasks.append({'ansible.cephlab': None})
+        # upstream changed this to "clock" in f5d9712 but in openstack
+        # we have the ability to sync clocks in the user-data script,
+        # so we are keeping "clock.check" for now
         init_tasks.append({'clock.check': None})
 
     return init_tasks
