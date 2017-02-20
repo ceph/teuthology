@@ -1667,7 +1667,7 @@ openstack keypair delete {key_name} || true
         assert 0 == teuthology.ssh("lsb_release -a")
         assert 0 == teuthology.ssh("grep 'substituded variables' /var/log/cloud-init.log")
         l = caplog.text()
-        assert 'Ubuntu 14.04' in l
+        assert 'Ubuntu 16.04' in l
         assert "nworkers=" + str(args.simultaneous_jobs) in l
         assert "username=" + teuthology.username in l
         assert "upload=--archive-upload user@archive:/tmp" in l
