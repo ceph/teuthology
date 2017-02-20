@@ -236,6 +236,11 @@ def get_openstack_parser():
         help='Public facing URL where archives are uploaded',
         default='http://teuthology-logs.public.ceph.com',
     )
+    parser.add_argument(
+        '--no-canonical-tags',
+        action='store_true', default=False,
+        help='configure remote teuthology to not fetch tags from http://github.com/ceph/ceph.git in buildpackages task',
+    )
     return parser
 
 def get_parser():
