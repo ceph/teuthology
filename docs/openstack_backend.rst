@@ -131,6 +131,10 @@ test. Login wih the ssh access displayed at the end of the
 
     $ sudo pkill -f teuthology-worker
     $ cd teuthology ; pip install "tox>=1.9"
+
+There are two test suites, ``openstack-integration.py`` and ``openstack.py``.
+To run them, do the following::
+
     $ tox -v -e openstack-integration
     integration/openstack-integration.py::TestSuite::test_suite_noop PASSED
     ...
@@ -139,6 +143,15 @@ test. Login wih the ssh access displayed at the end of the
     integration/test_openstack.py::TestTeuthologyOpenStack::test_create PASSED
     ...
     ========= 1 passed in 204.35 seconds =========
+
+To run a single test::
+
+    $ tox -v -e py27-integration -- teuthology/openstack/test/openstack-integration.py::TestSuite::test_suite_noop
+
+The same, but with messages in real time::
+
+    $ tox -v -e py27-integration -- -s -v teuthology/openstack/test/openstack-integration.py::TestSuite::test_suite_noop
+
 
 Defining instances flavor and volumes
 -------------------------------------
