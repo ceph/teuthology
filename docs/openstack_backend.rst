@@ -129,7 +129,7 @@ This will create a virtual machine suitable for the integration
 test. Login wih the ssh access displayed at the end of the
 ``teuthology-openstack`` command and run the following::
 
-    $ pkill -f teuthology-worker
+    $ sudo pkill -f teuthology-worker
     $ cd teuthology ; pip install "tox>=1.9"
     $ tox -v -e openstack-integration
     integration/openstack-integration.py::TestSuite::test_suite_noop PASSED
