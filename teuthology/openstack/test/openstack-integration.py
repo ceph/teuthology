@@ -115,11 +115,14 @@ class TestSuite(Integration):
         cwd = os.getcwd()
         os.mkdir(self.d + '/upload', 0o755)
         upload = 'localhost:' + self.d + '/upload'
-        args = ['--suite', 'noop',
+        args = [
+                '-vv',
+                '--ceph', 'master',
+                '--suite', 'noop',
                 '--suite-dir', cwd + '/teuthology/openstack/test',
                 '--machine-type', 'openstack',
                 '--archive-upload', upload,
-                '--verbose']
+               ]
         logging.info("TestSuite:test_suite_noop")
         scripts.suite.main(args)
         self.wait_worker()
@@ -135,10 +138,13 @@ class TestSuite(Integration):
 
     def test_suite_nuke(self):
         cwd = os.getcwd()
-        args = ['--suite', 'nuke',
+        args = [
+                '-vv',
+                '--ceph', 'master',
+                '--suite', 'nuke',
                 '--suite-dir', cwd + '/teuthology/openstack/test',
                 '--machine-type', 'openstack',
-                '--verbose']
+               ]
         logging.info("TestSuite:test_suite_nuke")
         scripts.suite.main(args)
         self.wait_worker()
