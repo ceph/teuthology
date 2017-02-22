@@ -56,17 +56,20 @@ class Salt(object):
 
     def generate_minion_keys(self):
         for rem in self.remotes.iterkeys():
-            minion_fqdn=rem.name.split('@')[1]
             minion_id=rem.shortname
             self.minions.append(minion_id)
-            log.debug("minion: FQDN {fqdn}, ID {sn}".format(
-                fqdn=minion_fqdn,
+            log.debug("minion: ID {sn}".format(
                 sn=minion_id,
             ))
-            if isfile('{sn}.pub'.format(sn=minion_id)):
-                log.debug("{sn} minion key already set up".format(sn=minion_id))
-                continue
-            sh('sudo salt-key --gen-keys={sn}'.format(sn=minion_id))
+            # mode 777 is necessary to be able to generate keys reliably
+            # we hit this before: https://github.com/saltstack/salt/issues/31565
+            self.master_remote.run(args = ['mkdir', 'salt'],
+                    check_status = False)
+            self.master_remote.run(args = ['mkdir', '-m', '777', 'salt/minion-keys'],
+                    check_status = False)
+            self.master_remote.run(args = ['sudo', 'salt-key',
+                '--gen-keys={sn}'.format(sn=minion_id),
+                '--gen-keys-dir=salt/minion-keys/'])
 
     def cleanup_keys(self):
         for rem in self.remotes.iterkeys():
@@ -82,20 +85,16 @@ class Salt(object):
         for rem in self.remotes.iterkeys():
             minion_fqdn=rem.name.split('@')[1]
             minion_id=rem.shortname
-            if self.master_fqdn == self.teuthology_fqdn:
-                sh('sudo cp {sn}.pub /etc/salt/pki/master/minions/{sn}'.format(
-                    sn=minion_id)
-                )
-            else:
-                # This case is for when master != teuthology...not important for
-                # now
-                pass
-            keys = "{sn}.pem {sn}.pub".format(sn=minion_id)
-            sh('sudo chown ubuntu {k}'.format(k=keys))
-            sh('scp {k} {fn}:'.format(
-                k=keys,
-                fn=rem.name,
-            ))
+            self.master_remote.run(args = ['sudo', 'cp',
+                'salt/minion-keys/{sn}.pub'.format(sn=minion_id),
+                '/etc/salt/pki/master/minions/{sn}'.format(sn=minion_id)])
+            self.master_remote.run(args = ['sudo', 'chown', 'ubuntu',
+                "salt/minion-keys/{sn}.pem".format(sn=minion_id),
+                "salt/minion-keys/{sn}.pub".format(sn=minion_id)])
+            # copy the keys via the teuthology VM. The worker VMs can't ssh to
+            # each other. scp -3 does a 3-point copy through the teuhology VM.
+            sh('scp -3 {}:salt/minion-keys/{}.* {}:'.format(self.master_remote.name,
+                minion_id, rem.name))
             r = rem.run(
                 args=[
                     'sudo',
@@ -145,6 +144,10 @@ class Salt(object):
             )
             rem.run(args=[
                 'sudo',
+                'rm',
+                '/etc/salt/pki/minion/minion_master.pub',
+                run.Raw(';'),
+                'sudo',
                 'sh',
                 '-c',
                 sed_cmd,
@@ -157,9 +160,8 @@ class Salt(object):
 
     def start_master(self):
         """Starts salt-master.service on given FQDN via SSH"""
-        sh('ssh {} sudo systemctl restart salt-master.service'.format(
-            self.master_fqdn
-        ))
+        self.master_remote.run(args = ['sudo', 'systemctl', 'restart',
+            'salt-master.service'])
 
     def stop_minions(self):
         """Stops salt-minion.service on all target VMs"""
@@ -174,7 +176,7 @@ class Salt(object):
         """Starts salt-minion.service on all target VMs"""
         run.wait(
             self.cluster.run(
-                args=['sudo', 'systemctl', 'start', 'salt-minion.service'],
+                args=['sudo', 'systemctl', 'restart', 'salt-minion.service'],
                 wait=False,
             )
         )
