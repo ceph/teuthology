@@ -1,10 +1,12 @@
 import logging
+import re
 import time
 
 from os.path import isfile
 from netifaces import ifaddresses
 
 import teuthology
+from .contextutil import safe_while
 from .misc import sh
 from .orchestra import run
 
@@ -177,34 +179,25 @@ class Salt(object):
             )
         )
 
-    def ping_minions_serial(self):
-        """Pings minions, raises exception if they don't respond"""
-        for mid in self.minions:
-            for wl in range(10):
-                time.sleep(5)
-                log.debug("Attempt {n}/10 to ping Salt Minion {m}".format(
-                    m=mid,
-                    n=wl+1,
-                ))
+    def ping_minion(self, mid):
+        """Pings a minion, raises exception if it doesn't respond"""
+        self.__ping("sudo salt '{}' test.ping".format(mid), 1)
+
+    def ping_minions(self):
+        """Pings minions with this cluser's job_id, raises exception if they don't respond"""
+        self.__ping("sudo salt -C 'G@job_id:{}' test.ping".format(self.job_id),
+                len(self.remotes))
+
+    def __ping(self, ping_cmd, expected):
+        with safe_while(sleep=2, tries=10,
+                action=ping_cmd) as proceed:
+            while proceed():
                 if self.master_fqdn == self.teuthology_fqdn:
-                    sh("sudo salt '{}' test.ping".format(mid))
-                    # how do we determine success/failure?
+                    res = sh(ping_cmd)
+                    responded = len(re.findall('True', res))
+                    log.debug("{} minion(s) responded".format(responded))
+                    if(expected == responded):
+                        return
                 else:
                     # master is a remote
                     pass
-
-    def ping_minions_parallel(self):
-        """Pings minions, raises exception if they don't respond"""
-        for wl in range(10):
-            time.sleep(5)
-            log.debug("Attempt {n}/10 to ping all Salt Minions in job {j}".format(
-                j=self.job_id,
-                n=wl+1,
-            ))
-            if self.master_fqdn == self.teuthology_fqdn:
-                sh("sudo salt -C 'G@job_id:{}' test.ping".format(self.job_id))
-                # how do we determine success/failure?
-            else:
-                # master is a remote
-                pass
-
