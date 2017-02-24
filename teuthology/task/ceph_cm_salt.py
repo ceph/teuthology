@@ -13,8 +13,6 @@ def task(ctx, config):
     """
     log.info("ceph_cm_salt: begin")
     salt = Salt(ctx, config)
-    salt.init_minions()
-    salt.start_minions()
     salt.ping_minions()
     log.info("ceph_cm_salt: end")
     #log.info("Going to sleep at the end of ceph_cm_salt task")
