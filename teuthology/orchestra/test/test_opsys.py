@@ -111,13 +111,6 @@ class TestOS(object):
         assert os.codename == 'wheezy'
         assert os.package_type == 'deb'
 
-    def test_ubuntu_12_04_python(self):
-        os = OS.from_python(self.str_ubuntu_12_04_python)
-        assert os.name == 'ubuntu'
-        assert os.version == '12.04'
-        assert os.codename == 'precise'
-        assert os.package_type == 'deb'
-
     def test_ubuntu_12_04_lsb_release(self):
         os = OS.from_lsb_release(self.str_ubuntu_12_04_lsb_release)
         assert os.name == 'ubuntu'
@@ -137,13 +130,6 @@ class TestOS(object):
         assert os.name == 'rhel'
         assert os.version == '6.4'
         assert os.codename == 'santiago'
-        assert os.package_type == 'rpm'
-
-    def test_rhel_7_python(self):
-        os = OS.from_python(self.str_rhel_7_python)
-        assert os.name == 'rhel'
-        assert os.version == '7.0'
-        assert os.codename == 'maipo'
         assert os.package_type == 'rpm'
 
     def test_rhel_7_lsb_release(self):
