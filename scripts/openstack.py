@@ -43,7 +43,6 @@ def get_suite_parser():
     parser.add_argument(
         '-c', '--ceph',
         help='The ceph branch to run against',
-        default='master',
     )
     parser.add_argument(
         '-k', '--kernel',
