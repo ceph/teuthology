@@ -136,7 +136,7 @@ class ProvisionOpenStack(OpenStack):
                " " + net +
                " --min " + str(num) +
                " --max " + str(num) +
-               " --security-group teuthology" +
+               " --security-group teuthology-worker" +
                " --property teuthology=" + self.property +
                " --property ownedby=" + config.openstack['ip'] +
                " --wait " +
