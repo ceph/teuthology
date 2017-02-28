@@ -830,17 +830,24 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
             return
         except subprocess.CalledProcessError:
             pass
-        # TODO(loic): this leaves the teuthology vm very exposed
-        # it would be better to be very liberal for 192.168.0.0/16
-        # and 172.16.0.0/12 and 10.0.0.0/8 and only allow 80/8081/22
-        # for the rest.
         misc.sh("""
 openstack security group create teuthology
-openstack security group rule create --dst-port 1:65535 teuthology
-openstack security group rule create --proto udp --dst-port 53 teuthology # dns
-openstack security group rule create --proto udp --dst-port 111 teuthology # for nfs
-openstack security group rule create --proto udp --dst-port 2049 teuthology # for nfs
-openstack security group rule create --proto udp --dst-port 16000:65535 teuthology # for nfs
+openstack security group create teuthology-worker
+# access to teuthology VM from the outside
+openstack security group rule create --proto tcp --dst-port 22 teuthology # ssh
+openstack security group rule create --proto tcp --dst-port 80 teuthology # for log access
+openstack security group rule create --proto tcp --dst-port 8080 teuthology # pulpito
+openstack security group rule create --proto tcp --dst-port 8081 teuthology # paddles
+# access between teuthology and workers
+openstack security group rule create --src-group teuthology-worker --dst-port 1:65535 teuthology
+openstack security group rule create --protocol udp --src-group teuthology-worker --dst-port 1:65535 teuthology
+openstack security group rule create --src-group teuthology --dst-port 1:65535 teuthology-worker
+openstack security group rule create --protocol udp --src-group teuthology --dst-port 1:65535 teuthology-worker
+# access between members of one group
+openstack security group rule create --src-group teuthology-worker --dst-port 1:65535 teuthology-worker
+openstack security group rule create --protocol udp --src-group teuthology-worker --dst-port 1:65535 teuthology-worker
+openstack security group rule create --src-group teuthology --dst-port 1:65535 teuthology
+openstack security group rule create --protocol udp --src-group teuthology --dst-port 1:65535 teuthology
         """)
 
     @staticmethod
