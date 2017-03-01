@@ -879,12 +879,12 @@ def get_scratch_devices(remote):
     return retval
 
 
-def wait_until_healthy(ctx, remote, ceph_cluster='ceph'):
+def wait_until_healthy(ctx, remote, ceph_cluster='ceph', timeout=900):
     """
     Wait until a Ceph cluster is healthy. Give up after 15min.
     """
     testdir = get_testdir(ctx)
-    with safe_while(tries=(900 / 6), action="wait_until_healthy") as proceed:
+    with safe_while(tries=timeout/6, action="wait_until_healthy") as proceed:
         while proceed():
             r = remote.run(
                 args=[
@@ -905,11 +905,13 @@ def wait_until_healthy(ctx, remote, ceph_cluster='ceph'):
             time.sleep(1)
 
 
-def wait_until_osds_up(ctx, cluster, remote, ceph_cluster='ceph'):
+def wait_until_osds_up(ctx, cluster, remote,
+                       ceph_cluster='ceph', timeout=300):
     """Wait until all Ceph OSDs are booted."""
     num_osds = num_instances_of_type(cluster, 'osd', ceph_cluster)
     testdir = get_testdir(ctx)
-    with safe_while(sleep=6, tries=50) as proceed:
+    sleep = 6
+    with safe_while(sleep=sleep, tries=timeout/sleep) as proceed:
         while proceed():
             r = remote.run(
                 args=[
