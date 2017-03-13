@@ -16,7 +16,6 @@ from .repo_utils import fetch_qa_suite
 from .results import email_results
 from .config import FakeNamespace
 from .config import config as teuth_config
-from .salt import UseSalt
 
 log = logging.getLogger(__name__)
 
@@ -236,14 +235,13 @@ def get_initial_tasks(lock, config, machine_type):
     else:
         os_type = 'unknown'
     log.info("os_type is {}".format(os_type))
-    salt = UseSalt(machine_type=machine_type, os_type=os_type)
 
     if 'roles' in config:
         if machine_type != 'openstack':
             init_tasks.append({'pcp': None})
         if os_type == 'centos':
             init_tasks.append({'selinux': None})
-        if salt.use_salt():
+        if 'ceph_cm' in config and config.get('ceph_cm') == 'salt':
             init_tasks.append({'ceph_cm_salt': None})
         else:
             init_tasks.append({'ansible.cephlab': None})
@@ -361,6 +359,13 @@ def main(args):
     if ceph_repo:
         teuth_config.ceph_git_url = ceph_repo
 
+    # overwrite the config values of os_{type,version} if corresponding 
+    # command-line arguments are provided
+    if os_type:
+        config["os_type"] = os_type
+    if os_version:
+        config["os_version"] = os_version
+
     config["tasks"] = validate_tasks(config)
 
     init_tasks = get_initial_tasks(lock, config, machine_type)
@@ -373,14 +378,6 @@ def main(args):
 
     # fetches the tasks and returns a new suite_path if needed
     config["suite_path"] = fetch_tasks_if_needed(config)
-
-    # overwrite the config value of os_type if --os-type is provided
-    if os_type:
-        config["os_type"] = os_type
-
-    # overwrite the config value of os_version if --os-version is provided
-    if os_version:
-        config["os_version"] = os_version
 
     # If the job has a 'use_shaman' key, use that value to override the global
     # config's value.

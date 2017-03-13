@@ -14,28 +14,6 @@ from .orchestra import run
 log = logging.getLogger(__name__)
 
 
-class UseSalt(object):
-
-    def __init__(self, machine_type, os_type):
-        self.machine_type = machine_type
-        self.os_type = os_type
-
-    def openstack(self):
-        if self.machine_type == 'openstack':
-            return True
-        return False
-
-    def suse(self):
-        if self.os_type in ['opensuse', 'sle']:
-            return True
-        return False
-
-    def use_salt(self):
-        # if self.openstack() and self.suse():
-        #    return True
-        return False
-
-
 class Salt(object):
 
     def __init__(self, ctx, config, **kwargs):
