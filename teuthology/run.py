@@ -16,7 +16,6 @@ from .repo_utils import fetch_qa_suite
 from .results import email_results
 from .config import FakeNamespace
 from .config import config as teuth_config
-from .salt import UseSalt
 
 log = logging.getLogger(__name__)
 
@@ -236,14 +235,13 @@ def get_initial_tasks(lock, config, machine_type):
     else:
         os_type = 'unknown'
     log.info("os_type is {}".format(os_type))
-    salt = UseSalt(machine_type=machine_type, os_type=os_type)
 
     if 'roles' in config:
         if machine_type != 'openstack':
             init_tasks.append({'pcp': None})
         if os_type == 'centos':
             init_tasks.append({'selinux': None})
-        if salt.use_salt():
+        if 'ceph_cm' in config and config.get('ceph_cm') == 'salt':
             init_tasks.append({'ceph_cm_salt': None})
         else:
             init_tasks.append({'ansible.cephlab': None})
