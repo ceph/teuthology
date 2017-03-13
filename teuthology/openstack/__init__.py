@@ -267,7 +267,7 @@ class OpenStack(object):
             if self.cache_token():
                 os.environ['OS_TOKEN'] = os.environ['OS_TOKEN_VALUE']
                 os.environ['OS_URL'] = url
-        if re.match('(server|flavor|ip|security|network|image|volume)', cmd):
+        if re.match('(server|flavor|ip|security|network|image|volume|keypair)', cmd):
             cmd = "openstack --quiet " + cmd
         try:
             status = misc.sh(cmd)
@@ -830,6 +830,7 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
             return
         except subprocess.CalledProcessError:
             pass
+        # FIXME: the following assumes "--name teuthology"
         misc.sh("""
 openstack security group create teuthology
 openstack security group create teuthology-worker
@@ -950,6 +951,9 @@ openstack security group rule create --protocol udp --src-group teuthology --dst
         self.delete_floating_ip(instance_id)
         self.run("server delete packages-repository || true")
         self.run("server delete --wait " + self.args.name)
+        self.run("keypair delete {} || true".format(self.args.name))
+        self.run("security group delete {}-worker || true".format(self.args.name))
+        self.run("security group delete {} || true".format(self.args.name))
 
 def main(ctx, argv):
     return TeuthologyOpenStack(ctx, teuth_config, argv).main()
