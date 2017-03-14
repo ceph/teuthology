@@ -32,15 +32,15 @@ class TestRun(object):
 
     @patch("teuthology.run.merge_configs")
     def test_setup_config_targets_ok(self, m_merge_configs):
-        config = {"targets": range(4), "roles": range(2)}
+        config = {"targets": range(4), "nodes": range(2)}
         m_merge_configs.return_value = config
         result = run.setup_config(["some/config.yaml"])
         assert result["targets"] == [0, 1, 2, 3]
-        assert result["roles"] == [0, 1]
+        assert result["nodes"] == [0, 1]
 
     @patch("teuthology.run.merge_configs")
     def test_setup_config_targets_invalid(self, m_merge_configs):
-        config = {"targets": range(2), "roles": range(4)}
+        config = {"targets": range(2), "nodes": range(4)}
         m_merge_configs.return_value = config
         with pytest.raises(AssertionError):
             run.setup_config(["some/config.yaml"])
@@ -100,13 +100,101 @@ class TestRun(object):
         assert excinfo.value.message.startswith("You cannot")
 
     def test_get_inital_tasks(self):
-        config = {"roles": range(2), "kernel": "the_kernel", "use_existing_cluster": False}
+        config = dict(
+            roles=['r1', 'r2'],
+            kernel='the_kernel',
+            use_existing_cluster=False,
+        )
         result = run.get_initial_tasks(True, config, "machine_type")
-        assert {"internal.lock_machines": (2, "machine_type")} in result
+        assert {
+            'internal.lock_machines': [dict(
+                os_version=None, os_type=None, arch=None,
+                machine_type='machine_type', roles=['r1', 'r2'],
+            )]
+        } in result
         assert {"kernel": "the_kernel"} in result
         # added because use_existing_cluster == False
         assert {'internal.vm_setup': None} in result
         assert {'internal.buildpackages_prep': None} in result
+
+    @pytest.mark.parametrize(
+        'input_conf, machine_type, expected',
+        [
+            [
+                dict(nodes=[
+                    dict(
+                        roles=['u16'],
+                        os_type='ubuntu',
+                        os_version='16.04',
+                        arch='aarch64',
+                    ),
+                ]),
+                'mtype',
+                [
+                    dict(
+                        os_type='ubuntu',
+                        os_version='16.04',
+                        arch='aarch64',
+                        machine_type='mtype',
+                        roles=[['u16']],
+                    ),
+                ],
+            ],
+            [
+                dict(nodes=[
+                    dict(
+                        roles=['u16_1'],
+                        os_type='ubuntu',
+                        os_version='16.04',
+                        arch='x86_64',
+                    ),
+                    dict(
+                        roles=['u16_2'],
+                        os_type='ubuntu',
+                        os_version='16.04',
+                        arch='x86_64',
+                    ),
+                    dict(
+                        roles=['c7_1'],
+                        os_type='centos',
+                        os_version='7.3',
+                    ),
+                    dict(
+                        roles=[],
+                    ),
+                ]),
+                'mtype',
+                [
+                    dict(
+                        os_type='ubuntu',
+                        os_version='16.04',
+                        arch='x86_64',
+                        machine_type='mtype',
+                        roles=[['u16_1'], ['u16_2']],
+                    ),
+                    dict(
+                        os_type='centos',
+                        os_version='7.3',
+                        arch=None,
+                        machine_type='mtype',
+                        roles=[['c7_1']],
+                    ),
+                    dict(
+                        os_type=None,
+                        os_version=None,
+                        arch=None,
+                        machine_type='mtype',
+                        roles=[[]],
+                    ),
+                ],
+            ],
+        ]
+    )
+    def test_lock_request(self, input_conf, machine_type, expected):
+        print expected
+        result = run.get_initial_tasks(True, input_conf, machine_type)
+        print result
+        assert {'internal.lock_machines': expected} in result
 
     @patch("teuthology.run.fetch_qa_suite")
     def test_fetch_tasks_if_needed(self, m_fetch_qa_suite):

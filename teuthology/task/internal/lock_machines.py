@@ -25,10 +25,29 @@ def lock_machines(ctx, config):
     machines and placed those keys in the Targets section of a yaml file.
     """
     ctx.config['targets'] = dict()
-    # change the status during the locking process
+    # Change the status during the locking process
     report.try_push_job_info(ctx.config, dict(status='waiting'))
+    total_required = sum(map(lambda c: len(c['roles']), config))
+    assert len(ctx.config['nodes']) == total_required
+    # Now lock all the machines we need
     for request in config:
-        result = do_lock_machines(ctx, request)
+        request['targets'] = do_lock_machines(ctx, request)
+        assert len(request['targets']) == len(request['roles'])
+
+    # Then, map the resulting locked targets to each appropriate 'node conf' in
+    # ctx.config['nodes']
+    for node_conf in ctx.config['nodes']:
+
+        def request_matches(request):
+            def get_spec(obj):
+                keys = ('os_type', 'os_version', 'arch', 'machine_type')
+                return [obj.get(key) for key in keys]
+            return get_spec(node_conf) == get_spec(request)
+        request = filter(request_matches, config)[0]
+        node_conf['targets'] = dict()
+        key = request['targets'].keys()[0]
+        node_conf['targets'][key] = request['targets'].pop(key)
+
     # successfully locked machines, change status back to running
     report.try_push_job_info(ctx.config, dict(status='running'))
     try:
@@ -56,7 +75,7 @@ def do_lock_machines(ctx, request):
     os_version = request['os_version']
     arch = request['arch'] or ctx.config.get('arch')
     machine_type = request['machine_type']
-    total_requested = request['count']
+    total_requested = len(request['roles'])
     log.info('Locking machines...')
 
     all_locked = dict()
@@ -94,11 +113,11 @@ def do_lock_machines(ctx, request):
             else:
                 ctx.config['targets'].update(all_locked)
             locked_targets = yaml.safe_dump(
-                ctx.config['targets'],
+                all_locked,
                 default_flow_style=False
             ).splitlines()
             log.info('\n  '.join(['Locked targets:', ] + locked_targets))
-            break
+            return all_locked
         elif not ctx.block:
             assert 0, 'not enough machines are available'
         else:

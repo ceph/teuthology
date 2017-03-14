@@ -4,6 +4,7 @@ import StringIO
 import contextlib
 import sys
 import logging
+from collections import OrderedDict
 from traceback import format_tb
 
 import teuthology
@@ -122,13 +123,13 @@ def setup_config(config_paths):
         job_id = str(job_id)
         config['job_id'] = job_id
 
-    # targets must be >= than roles
-    if 'targets' in config and 'roles' in config:
+    # targets must be >= than nodes
+    if 'targets' in config and 'nodes' in config:
         targets = len(config['targets'])
-        roles = len(config['roles'])
-        assert targets >= roles, \
-            '%d targets are needed for all roles but found %d listed.' % (
-                roles, targets)
+        nodes = len(config['nodes'])
+        assert targets >= nodes, \
+            '%d targets are needed for all nodes but found %d listed.' % (
+                nodes, targets)
 
     return config
 
@@ -179,26 +180,89 @@ def validate_tasks(config):
     return config["tasks"]
 
 
+def get_nodes_request(config, machine_type):
+    """
+    Examine each item in a job's 'nodes' stanza. Consolidate those with the
+    same requirements into 'node requests' so that we may later call
+    lock_many() as few times as possible.
+
+    Each resulting request contains role lists, each of which will be mapped to
+    a target when the machines are locked.
+    """
+    request = list()
+    os_specs = OrderedDict()
+    # Group node confs by 'spec'. We use an OrderedDict to contain them
+    # briefly, because it combines the functionality of an ordered set with
+    # key-value storage.
+    for item in config:
+        item['arch'] = item.get('arch')
+        item['machine_type'] = item.get('machine_type', machine_type)
+        spec_key = (
+            item.get('os_type'),
+            item.get('os_version'),
+            item.get('arch'),
+            item.get('machine_type'),
+        )
+        spec_roles = os_specs.get(spec_key, list())
+        assert isinstance(spec_roles, list)
+        spec_roles.append(item['roles'])
+        os_specs[spec_key] = spec_roles
+
+    # Build a 'request' for each 'spec'
+    for spec, roles in os_specs.items():
+        os_type, os_version, arch, machine_type = spec
+        request.append(dict(
+            os_type=os_type or None,
+            os_version=os_version or None,
+            arch=arch or None,
+            machine_type=machine_type,
+            roles=roles,
+        ))
+    return request
+
+
 def get_initial_tasks(lock, config, machine_type):
     init_tasks = [
         {'internal.check_packages': None},
         {'internal.buildpackages_prep': None},
     ]
-    if 'roles' in config and lock:
-        msg = ('You cannot specify targets in a config file when using the ' +
-               '--lock option')
-        assert 'targets' not in config, msg
-        init_tasks.append({'internal.lock_machines': (
-            len(config['roles']), machine_type)})
+
+    target_conflict_msg = 'You cannot specify targets in a config file when' \
+        'using the --lock option'
+    if lock and ('roles' in config or 'nodes' in config):
+        assert 'targets' not in config, target_conflict_msg
+    if lock and 'roles' in config:
+        if 'nodes' in config:
+            log.warn(
+                "Config specifies both 'roles' and 'nodes'; "
+                "using 'nodes' and ignoring 'roles'"
+            )
+        else:
+            # Convert old 'roles' stanza into new 'nodes' stanza, so that
+            # elsewhere in teuthology we can consolidate to one set of
+            # codepaths for node specification
+            nodes_config = list()
+            for node_roles in config['roles']:
+                nodes_config.append(dict(
+                    roles=node_roles,
+                    os_type=config.get("os_type"),
+                    os_version=config.get("os_version"),
+                    arch=config.get('arch'),
+                ))
+            config['nodes'] = nodes_config
+            del config['roles']
+    if lock and 'nodes' in config:
+        nodes_request = get_nodes_request(config['nodes'], machine_type)
+        init_tasks.append({'internal.lock_machines': nodes_request})
 
     init_tasks.append({'internal.save_config': None})
 
-    if 'roles' in config:
+    if 'nodes' in config:
         init_tasks.append({'internal.check_lock': None})
 
     init_tasks.append({'internal.add_remotes': None})
 
-    if 'roles' in config:
+    if 'nodes' in config:
         init_tasks.extend([
             {'console_log': None},
             {'internal.connect': None},
@@ -207,8 +271,8 @@ def get_initial_tasks(lock, config, machine_type):
             {'internal.check_conflict': None},
         ])
 
-    if ('roles' in config and
-        not config.get('use_existing_cluster', False)):
+    if ('nodes' in config and
+            not config.get('use_existing_cluster', False)):
         init_tasks.extend([
             {'internal.check_ceph_data': None},
             {'internal.vm_setup': None},
@@ -217,10 +281,10 @@ def get_initial_tasks(lock, config, machine_type):
     if 'kernel' in config:
         init_tasks.append({'kernel': config['kernel']})
 
-    if 'roles' in config:
+    if 'nodes' in config:
         init_tasks.append({'internal.base': None})
     init_tasks.append({'internal.archive_upload': None})
-    if 'roles' in config:
+    if 'nodes' in config:
         init_tasks.extend([
             {'internal.archive': None},
             {'internal.coredump': None},
@@ -237,7 +301,7 @@ def get_initial_tasks(lock, config, machine_type):
             {'kernel.install_latest_rh_kernel': None}
         ])
 
-    if 'roles' in config:
+    if 'nodes' in config:
         init_tasks.extend([
             {'pcp': None},
             {'selinux': None},
@@ -357,6 +421,14 @@ def main(args):
     if suite_repo:
         teuth_config.ceph_qa_suite_git_url = suite_repo
 
+    # overwrite the config value of os_type if --os-type is provided
+    if os_type:
+        config["os_type"] = os_type
+
+    # overwrite the config value of os_version if --os-version is provided
+    if os_version:
+        config["os_version"] = os_version
+
     config["tasks"] = validate_tasks(config)
 
     init_tasks = get_initial_tasks(lock, config, machine_type)
@@ -369,14 +441,6 @@ def main(args):
 
     # fetches the tasks and returns a new suite_path if needed
     config["suite_path"] = fetch_tasks_if_needed(config)
-
-    # overwrite the config value of os_type if --os-type is provided
-    if os_type:
-        config["os_type"] = os_type
-
-    # overwrite the config value of os_version if --os-version is provided
-    if os_version:
-        config["os_version"] = os_version
 
     # If the job has a 'use_shaman' key, use that value to override the global
     # config's value.
