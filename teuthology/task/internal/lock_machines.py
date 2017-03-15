@@ -47,8 +47,9 @@ def lock_machines(ctx, config):
     requested = total_requested
     while True:
         # get a candidate list of machines
-        machines = teuthology.lock.query.list_locks(machine_type=machine_type, up=True,
-                                                    locked=False, count=requested + reserved)
+        machines = teuthology.lock.query.list_locks(
+            machine_type=machine_type, up=True, locked=False, count=requested +
+            reserved)
         if machines is None:
             if ctx.block:
                 log.error('Error listing machines, trying again')
@@ -58,10 +59,12 @@ def lock_machines(ctx, config):
                 raise RuntimeError('Error listing machines')
 
         # make sure there are machines for non-automated jobs to run
-        if len(machines) < reserved + requested and ctx.owner.startswith('scheduled'):
+        if (len(machines) < reserved + requested and
+                ctx.owner.startswith('scheduled')):
             if ctx.block:
                 log.info(
-                    'waiting for more %s machines to be free (need %s + %s, have %s)...',
+                    'waiting for more %s machines to be free '
+                    '(need %s + %s, have %s)...',
                     machine_type,
                     reserved,
                     requested,
@@ -74,9 +77,9 @@ def lock_machines(ctx, config):
                            (reserved, requested, len(machines)))
 
         try:
-            newly_locked = teuthology.lock.ops.lock_many(ctx, requested, machine_type,
-                                                         ctx.owner, ctx.archive, os_type,
-                                                         os_version, arch)
+            newly_locked = teuthology.lock.ops.lock_many(
+                ctx, requested, machine_type, ctx.owner, ctx.archive, os_type,
+                os_version, arch)
         except Exception:
             # Lock failures should map to the 'dead' status instead of 'fail'
             set_status(ctx.summary, 'dead')
@@ -157,4 +160,5 @@ def lock_machines(ctx, config):
         if get_status(ctx.summary) == 'pass' or unlock_on_failure:
             log.info('Unlocking machines...')
             for machine in ctx.config['targets'].iterkeys():
-                teuthology.lock.ops.unlock_one(ctx, machine, ctx.owner, ctx.archive)
+                teuthology.lock.ops.unlock_one(
+                    ctx, machine, ctx.owner, ctx.archive)
