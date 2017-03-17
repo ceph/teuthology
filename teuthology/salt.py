@@ -50,7 +50,7 @@ class Salt(object):
         minions.
         '''
         for rem in self.remotes.iterkeys():
-            minion_id = rem.shortname
+            minion_id = rem.hostname
             self.minions.append(minion_id)
             log.debug("minion: ID {}".format(minion_id,))
             # mode 777 is necessary to be able to generate keys reliably
@@ -80,7 +80,7 @@ class Salt(object):
         Remove this cluster's minion keys (files and accepted keys)
         '''
         for rem in self.remotes.iterkeys():
-            minion_id = rem.shortname
+            minion_id = rem.hostname
             log.debug("Deleting minion key: ID {}".format(minion_id))
             self.master_remote.run(args = ['sudo', 'salt-key', '-y', '-d',
                 '{}'.format(minion_id)])
@@ -91,10 +91,14 @@ class Salt(object):
     def __preseed_minions(self):
         '''
         Preseed minions with generated and accepted keys, as well as the job_id
-        grain and the minion id (the remotes shortname)
+        grain and the minion id (the remotes hostname)
         '''
+        grains = '''grains:
+                      job_id: {}'''.format(self.job_id)
+        grains_path = '/etc/salt/minion.d/job_id_grains.conf'
         for rem in self.remotes.iterkeys():
-            minion_id = rem.shortname
+            minion_id = rem.hostname
+
             self.master_remote.run(args = ['sudo', 'cp',
                 'salt/minion-keys/{}.pub'.format(minion_id),
                 '/etc/salt/pki/master/minions/{}'.format(minion_id)])
@@ -105,14 +109,11 @@ class Salt(object):
             # each other. scp -3 does a 3-point copy through the teuhology VM.
             sh('scp -3 {}:salt/minion-keys/{}.* {}:'.format(self.master_remote.name,
                 minion_id, rem.name))
+            sudo_write_file(rem, grains_path, grains)
+            sudo_write_file(rem, '/etc/salt/minion_id', minion_id)
+
             r = rem.run(
                 args=[
-                    # add jobid to grains
-                    'sudo',
-		    'sh',
-                    '-c',
-                    'echo "grains:" > /etc/salt/minion.d/job_id_grains.conf;\
-                    echo "  job_id: {}" >> /etc/salt/minion.d/job_id_grains.conf'.format(self.job_id),
                     # set proper owner and permissions on keys
 		    'sudo',
                     'chown',
@@ -129,40 +130,30 @@ class Salt(object):
                     'chmod',
                     '644',
                     '{}.pub'.format(minion_id),
-                    run.Raw(';'),
-                    # move keys to correct location
-                    'sudo',
-                    'mv',
-                    '{}.pem'.format(minion_id),
-                    '/etc/salt/pki/minion/minion.pem',
-                    run.Raw(';'),
-                    'sudo',
-                    'mv',
-                    '{}.pub'.format(minion_id),
-                    '/etc/salt/pki/minion/minion.pub',
-                    run.Raw(';'),
-                    # set minion id to shortname
-                    'sudo',
-                    'sh',
-                    '-c',
-                    'echo {} > /etc/salt/minion_id'.format(minion_id),
                 ],
             )
 
+            # move keys to correct location
+            move_file(rem, '{}.pem'.format(minion_id),
+                    '/etc/salt/pki/minion/minion.pem', sudo = True,
+                    preserve_perms = False)
+            move_file(rem, '{}.pub'.format(minion_id),
+                    '/etc/salt/pki/minion/minion.pub', sudo = True,
+                    preserve_perms = False)
+
     def __set_minion_master(self):
         """Points all minions to the master"""
-        master_shortname = self.master_remote.name.split('@')[1]
+        master_id = self.master_remote.hostname
         for rem in self.remotes.iterkeys():
+            # remove old master public key if present. Minion will refuse to
+            # start if master name changed but old key is present
+            delete_file(rem, '/etc/salt/pki/minion/minion_master.pub' ,
+                    sudo = True, check = False)
+
+            # set master id
             sed_cmd = 'echo master: {} > ' \
-                      '/etc/salt/minion.d/master.conf'.format(master_shortname)
+                      '/etc/salt/minion.d/master.conf'.format(master_id)
             rem.run(args=[
-                # remove old master public key if present. Minion will refuse to
-                # start if master name changed but old key is present
-                'sudo',
-                'rm',
-                '/etc/salt/pki/minion/minion_master.pub',
-                run.Raw(';'),
-                # set master id
                 'sudo',
                 'sh',
                 '-c',
@@ -185,7 +176,7 @@ class Salt(object):
             'salt-minion.service'])
 
     def __ping(self, ping_cmd, expected):
-        with safe_while(sleep=2, tries=10,
+        with safe_while(sleep=5, tries=10,
                 action=ping_cmd) as proceed:
             while proceed():
                 output = StringIO()
