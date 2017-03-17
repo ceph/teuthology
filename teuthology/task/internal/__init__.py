@@ -137,30 +137,24 @@ def add_remotes(ctx, config):
     """
     ctx.cluster = cluster.Cluster()
     # Allow jobs to run without using nodes, for self-testing
-    if 'roles' not in ctx.config and 'targets' not in ctx.config:
+    if 'nodes' not in ctx.config and 'targets' not in ctx.config:
         return
-    remotes = []
-    machs = []
-    for name in ctx.config['targets'].iterkeys():
-        machs.append(name)
-    for t, key in ctx.config['targets'].iteritems():
-        t = misc.canonicalize_hostname(t)
-        try:
-            if ctx.config['sshkeys'] == 'ignore':
-                key = None
-        except (AttributeError, KeyError):
-            pass
-        rem = remote.Remote(name=t, host_key=key, keep_alive=True)
-        remotes.append(rem)
-    if 'roles' in ctx.config:
-        for rem, roles in zip(remotes, ctx.config['roles']):
+    for node_conf in ctx.config['nodes']:
+        remotes = []
+        for name, key in node_conf['targets'].items():
+            name = misc.canonicalize_hostname(name)
+            try:
+                if ctx.config['sshkeys'] == 'ignore':
+                    key = None
+            except (AttributeError, KeyError):
+                pass
+            rem = remote.Remote(name=name, host_key=key, keep_alive=True)
+            remotes.append(rem)
+            roles = node_conf['roles']
             assert all(isinstance(role, str) for role in roles), \
                 "Roles in config must be strings: %r" % roles
             ctx.cluster.add(rem, roles)
             log.info('roles: %s - %s' % (rem, roles))
-    else:
-        for rem in remotes:
-            ctx.cluster.add(rem, rem.name)
 
 
 def connect(ctx, config):
