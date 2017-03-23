@@ -24,59 +24,70 @@ def lock_machines(ctx, config):
     new machines.  This is not called if the one has teuthology-locked
     machines and placed those keys in the Targets section of a yaml file.
     """
+    ctx.config['targets'] = dict()
+    # Change the status during the locking process
+    report.try_push_job_info(ctx.config, dict(status='waiting'))
+    total_required = sum(map(lambda c: len(c['roles']), config))
+    assert len(ctx.config['nodes']) == total_required
+    # Now lock all the machines we need
+    for request in config:
+        request['targets'] = do_lock_machines(ctx, request)
+        assert len(request['targets']) == len(request['roles'])
+
+    # Then, map the resulting locked targets to each appropriate 'node conf' in
+    # ctx.config['nodes']
+    for node_conf in ctx.config['nodes']:
+
+        def request_matches(request):
+            def get_spec(obj):
+                keys = ('os_type', 'os_version', 'arch', 'machine_type')
+                return [obj.get(key) for key in keys]
+            return get_spec(node_conf) == get_spec(request)
+        request = filter(request_matches, config)[0]
+        node_conf['targets'] = dict()
+        key = request['targets'].keys()[0]
+        node_conf['targets'][key] = request['targets'].pop(key)
+
+    # successfully locked machines, change status back to running
+    report.try_push_job_info(ctx.config, dict(status='running'))
+    try:
+        yield
+    finally:
+        # If both unlock_on_failure and nuke-on-error are set, don't unlock now
+        # because we're just going to nuke (and unlock) later.
+        unlock_on_failure = (
+            ctx.config.get('unlock_on_failure', False)
+            and not ctx.config.get('nuke-on-error', False)
+        )
+        if get_status(ctx.summary) == 'pass' or unlock_on_failure:
+            log.info('Unlocking machines...')
+            for machine in ctx.config['targets'].iterkeys():
+                teuthology.lock.ops.unlock_one(
+                    ctx, machine, ctx.owner, ctx.archive)
+
+
+def do_lock_machines(ctx, request):
     # It's OK for os_type and os_version to be None here.  If we're trying
     # to lock a bare metal machine, we'll take whatever is available.  If
     # we want a vps, defaults will be provided by misc.get_distro and
     # misc.get_distro_version in provision.create_if_vm
-    os_type = ctx.config.get("os_type")
-    os_version = ctx.config.get("os_version")
-    arch = ctx.config.get('arch')
+    os_type = request['os_type']
+    os_version = request['os_version']
+    arch = request['arch'] or ctx.config.get('arch')
+    machine_type = request['machine_type']
+    total_requested = len(request['roles'])
     log.info('Locking machines...')
-    assert isinstance(config[0], int), 'config[0] must be an integer'
-    machine_type = config[1]
-    total_requested = config[0]
-    # We want to make sure there are always this many machines available
-    reserved = teuth_config.reserve_machines
-    assert isinstance(reserved, int), 'reserve_machines must be integer'
-    assert (reserved >= 0), 'reserve_machines should >= 0'
-
-    # change the status during the locking process
-    report.try_push_job_info(ctx.config, dict(status='waiting'))
 
     all_locked = dict()
     requested = total_requested
     while True:
-        # get a candidate list of machines
-        machines = teuthology.lock.query.list_locks(machine_type=machine_type, up=True,
-                                                    locked=False, count=requested + reserved)
-        if machines is None:
-            if ctx.block:
-                log.error('Error listing machines, trying again')
-                time.sleep(20)
-                continue
-            else:
-                raise RuntimeError('Error listing machines')
-
-        # make sure there are machines for non-automated jobs to run
-        if len(machines) < reserved + requested and ctx.owner.startswith('scheduled'):
-            if ctx.block:
-                log.info(
-                    'waiting for more %s machines to be free (need %s + %s, have %s)...',
-                    machine_type,
-                    reserved,
-                    requested,
-                    len(machines),
-                )
-                time.sleep(10)
-                continue
-            else:
-                assert 0, ('not enough machines free; need %s + %s, have %s' %
-                           (reserved, requested, len(machines)))
+        if not wait_for_enough(ctx, machine_type, requested):
+            continue
 
         try:
-            newly_locked = teuthology.lock.ops.lock_many(ctx, requested, machine_type,
-                                                         ctx.owner, ctx.archive, os_type,
-                                                         os_version, arch)
+            newly_locked = teuthology.lock.ops.lock_many(
+                ctx, requested, machine_type, ctx.owner, ctx.archive, os_type,
+                os_version, arch)
         except Exception:
             # Lock failures should map to the 'dead' status instead of 'fail'
             set_status(ctx.summary, 'dead')
@@ -92,46 +103,21 @@ def lock_machines(ctx, config):
             )
         )
         if len(all_locked) == total_requested:
-            vmlist = []
-            for lmach in all_locked:
-                if teuthology.lock.query.is_vm(lmach):
-                    vmlist.append(lmach)
-            if vmlist:
-                log.info('Waiting for virtual machines to come up')
-                keys_dict = dict()
-                loopcount = 0
-                while len(keys_dict) != len(vmlist):
-                    loopcount += 1
-                    time.sleep(10)
-                    keys_dict = misc.ssh_keyscan(vmlist)
-                    log.info('virtual machine is still unavailable')
-                    if loopcount == 40:
-                        loopcount = 0
-                        log.info('virtual machine(s) still not up, ' +
-                                 'recreating unresponsive ones.')
-                        for guest in vmlist:
-                            if guest not in keys_dict.keys():
-                                log.info('recreating: ' + guest)
-                                full_name = misc.canonicalize_hostname(guest)
-                                provision.destroy_if_vm(ctx, full_name)
-                                provision.create_if_vm(ctx, full_name)
-                if teuthology.lock.keys.do_update_keys(keys_dict)[0]:
-                    log.info("Error in virtual machine keys")
-                newscandict = {}
-                for dkey in all_locked.iterkeys():
-                    stats = teuthology.lock.query.get_status(dkey)
-                    newscandict[dkey] = stats['ssh_pub_key']
-                ctx.config['targets'] = newscandict
+            locked_vms = dict()
+            for name in all_locked:
+                if teuthology.lock.query.is_vm(name):
+                    locked_vms[name] = all_locked[name]
+            if locked_vms:
+                ctx.config['targets'].update(
+                    wait_for_vms(ctx, locked_vms))
             else:
-                ctx.config['targets'] = all_locked
+                ctx.config['targets'].update(all_locked)
             locked_targets = yaml.safe_dump(
-                ctx.config['targets'],
+                all_locked,
                 default_flow_style=False
             ).splitlines()
             log.info('\n  '.join(['Locked targets:', ] + locked_targets))
-            # successfully locked machines, change status back to running
-            report.try_push_job_info(ctx.config, dict(status='running'))
-            break
+            return all_locked
         elif not ctx.block:
             assert 0, 'not enough machines are available'
         else:
@@ -145,16 +131,68 @@ def lock_machines(ctx, config):
         )
         log.warn('Could not lock enough machines, waiting...')
         time.sleep(10)
-    try:
-        yield
-    finally:
-        # If both unlock_on_failure and nuke-on-error are set, don't unlock now
-        # because we're just going to nuke (and unlock) later.
-        unlock_on_failure = (
-            ctx.config.get('unlock_on_failure', False)
-            and not ctx.config.get('nuke-on-error', False)
-        )
-        if get_status(ctx.summary) == 'pass' or unlock_on_failure:
-            log.info('Unlocking machines...')
-            for machine in ctx.config['targets'].iterkeys():
-                teuthology.lock.ops.unlock_one(ctx, machine, ctx.owner, ctx.archive)
+
+
+def wait_for_enough(ctx, machine_type, requested):
+    # We want to make sure there are always this many machines available
+    reserved = teuth_config.reserve_machines
+    assert isinstance(reserved, int), 'reserve_machines must be integer'
+    assert (reserved >= 0), 'reserve_machines should >= 0'
+    # get a candidate list of machines
+    machines = teuthology.lock.query.list_locks(
+        machine_type=machine_type, up=True, locked=False, count=requested +
+        reserved)
+    if machines is None:
+        if ctx.block:
+            log.error('Error listing machines, trying again')
+            time.sleep(20)
+            return False
+        else:
+            raise RuntimeError('Error listing machines')
+
+    # make sure there are machines for non-automated jobs to run
+    if (len(machines) < reserved + requested and
+            ctx.owner.startswith('scheduled')):
+        if ctx.block:
+            log.info(
+                'waiting for more %s machines to be free '
+                '(need %s + %s, have %s)...',
+                machine_type,
+                reserved,
+                requested,
+                len(machines),
+            )
+            time.sleep(10)
+            return False
+        else:
+            assert 0, ('not enough machines free; need %s + %s, have %s' %
+                       (reserved, requested, len(machines)))
+    return True
+
+
+def wait_for_vms(ctx, vm_dict):
+    log.info('Waiting for virtual machines to come up')
+    keys_dict = dict()
+    loopcount = 0
+    while len(keys_dict) != len(vm_dict):
+        loopcount += 1
+        time.sleep(10)
+        keys_dict = misc.ssh_keyscan(vm_dict.keys())
+        log.info('virtual machine is still unavailable')
+        if loopcount == 40:
+            loopcount = 0
+            log.info('virtual machine(s) still not up, '
+                     'recreating unresponsive ones.')
+            for guest in vm_dict:
+                if guest not in keys_dict.keys():
+                    log.info('recreating: ' + guest)
+                    full_name = misc.canonicalize_hostname(guest)
+                    provision.destroy_if_vm(ctx, full_name)
+                    provision.create_if_vm(ctx, full_name)
+    if teuthology.lock.keys.do_update_keys(keys_dict)[0]:
+        log.info("Error in virtual machine keys")
+    newscandict = {}
+    for dkey in vm_dict.keys():
+        stats = teuthology.lock.query.get_status(dkey)
+        newscandict[dkey] = stats['ssh_pub_key']
+    return newscandict
