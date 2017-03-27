@@ -883,12 +883,14 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
         among instances created within the same tenant.
         """
         try:
-            self.run("security group show teuthology")
+            self.run("security group show teuthology && security group show teuthology-worker")
             return
         except subprocess.CalledProcessError:
             pass
         # FIXME: the following assumes "--name teuthology"
         misc.sh("""
+openstack security group delete teuthology || true
+openstack security group delete teuthology-worker || true
 openstack security group create teuthology
 openstack security group create teuthology-worker
 # access to teuthology VM from the outside
