@@ -336,7 +336,7 @@ class CephAnsible(Task):
         ceph_installer.run(args=('cat', 'ceph-ansible/site.yml'))
         ceph_installer.run(args=('cat', 'ceph-ansible/group_vars/all'))
         str_args = ' '.join(args)
-        ceph_installer.run(args=[
+        next_args=[
             run.Raw('cd ~/ceph-ansible'),
             run.Raw(';'),
             'virtualenv',
@@ -351,11 +351,21 @@ class CephAnsible(Task):
             run.Raw(';'),
             'pip',
             'install',
-            run.Raw('setuptools>=11.3'),
-            run.Raw(ansible_ver),
+            run.Raw('"setuptools>=11.3"'),
+            run.Raw('"%s"' % ansible_ver),
             run.Raw(';'),
-            run.Raw(str_args)
-        ])
+            'cp',
+            'group_vars/osds.yml.sample',
+            'group_vars/osds',
+            run.Raw(';'),
+            'sed',
+            '-i',
+            run.Raw('"s/#journal_collocation: false/journal_collocation: true/"'),
+            'group_vars/osds',
+            run.Raw(';'),
+        ]
+        next_args.extend(args)
+        ceph_installer.run(args=next_args)
         wait_for_health = self.config.get('wait-for-health', True)
         if wait_for_health:
             self.wait_for_ceph_health()
