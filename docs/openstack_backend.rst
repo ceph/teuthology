@@ -72,7 +72,7 @@ Usage
   time (from a few minutes to half an hour or so) because it downloads
   and uploads a cloud image to the OpenStack provider. ::
 
-    $ teuthology-openstack --key-filename myself.pem --key-name myself --suite dummy
+    $ teuthology-openstack --ceph master --key-filename myself.pem --key-name myself --suite dummy
     Job scheduled with name ubuntu-2015-07-24_09:03:29-dummy-master---basic-openstack and ID 1
     2015-07-24 09:03:30,520.520 INFO:teuthology.suite:ceph sha1: dedda6245ce8db8828fdf2d1a2bfe6163f1216a1
     2015-07-24 09:03:31,620.620 INFO:teuthology.suite:ceph version: v9.0.2-829.gdedda62
@@ -101,7 +101,7 @@ Usage
   with the ``--upload`` flag::
 
     $ teuthology-openstack --key-filename myself.pem --key-name myself \
-                           --suite dummy --upload
+                           --ceph master --suite dummy --upload
     
 
 Troubleshooting
@@ -121,7 +121,7 @@ Running the OpenStack backend integration tests
 
 The easiest way to run the integration tests is to first run a dummy suite::
 
-    $ teuthology-openstack --key-name myself --suite dummy
+    $ teuthology-openstack --ceph master --key-name myself --suite dummy
     ...
     ssh access   : ssh ubuntu@167.114.242.13
 
