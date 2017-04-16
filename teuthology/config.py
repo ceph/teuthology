@@ -144,6 +144,7 @@ class TeuthologyConfig(YamlConfig):
         'githelper_base_url': 'http://git.ceph.com:8080',
         'check_package_signatures': True,
         'lab_domain': 'front.sepia.ceph.com',
+        'canonicalize_hostname': True,
         'lock_server': 'http://paddles.front.sepia.ceph.com/',
         'max_job_time': 259200,  # 3 days
         'nsupdate_url': 'http://nsupdate.front.sepia.ceph.com/update',
