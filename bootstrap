@@ -16,7 +16,7 @@ case "$(uname -s)" in
 Linux)
     case "$(lsb_release --id --short)" in
     Ubuntu|Debian)
-        for package in qemu-utils python-dev libssl-dev python-pip python-virtualenv libev-dev libvirt-dev libmysqlclient-dev libffi-dev libyaml-dev ; do
+        for package in qemu-utils python-dev libssl-dev python-pip python-virtualenv libev-dev libvirt-dev libmysqlclient-dev libffi-dev libyaml-dev python-libvirt ; do
             if [ "$(dpkg --status -- $package|sed -n 's/^Status: //p')" != "install ok installed" ]; then
                 # add a space after old values
                 missing="${missing:+$missing }$package"
