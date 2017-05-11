@@ -316,7 +316,7 @@ class Ansible(Task):
         extra_vars = dict(ansible_ssh_user=user)
         extra_vars.update(self.config.get('vars', dict()))
         args = [
-            'ansible-playbook', '-v',
+            'ansible-playbook', '-v', '-f', '1',
             "--extra-vars", "'%s'" % json.dumps(extra_vars),
             '-i', self.inventory,
             '--limit', ','.join(fqdns),
