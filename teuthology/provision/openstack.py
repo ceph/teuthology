@@ -129,9 +129,7 @@ class ProvisionOpenStack(OpenStack):
             net = "--nic net-id=" + str(self.net_id(config['openstack']['network']))
         else:
             net = ''
-        flavor = self.flavor(resources_hint['machine'],
-                             arch,
-                             config['openstack'].get('flavor-select-regexp'))
+        flavor = self.flavor(resources_hint['machine'], arch)
         cmd = ("flock --close --timeout 28800 /tmp/teuthology-server-create.lock" +
                " openstack --quiet server create" +
                " " + config['openstack'].get('server-create', '') +
