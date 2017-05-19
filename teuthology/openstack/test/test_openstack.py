@@ -110,6 +110,8 @@ class TestOpenStackInstance(object):
     """
 
     def test_init(self):
+        if 'OS_AUTH_URL' not in os.environ:
+            pytest.skip('no OS_AUTH_URL environment variable')
         with patch.multiple(
                 misc,
                 sh=lambda cmd: self.teuthology_instance,
@@ -120,6 +122,8 @@ class TestOpenStackInstance(object):
         assert o['id'] == "OTHER"
 
     def test_get_created(self):
+        if 'OS_AUTH_URL' not in os.environ:
+            pytest.skip('no OS_AUTH_URL environment variable')
         with patch.multiple(
                 misc,
                 sh=lambda cmd: self.teuthology_instance,
@@ -128,6 +132,8 @@ class TestOpenStackInstance(object):
             assert o.get_created() > 0
 
     def test_exists(self):
+        if 'OS_AUTH_URL' not in os.environ:
+            pytest.skip('no OS_AUTH_URL environment variable')
         with patch.multiple(
                 misc,
                 sh=lambda cmd: self.teuthology_instance,
@@ -144,6 +150,8 @@ class TestOpenStackInstance(object):
             assert not o.exists()
 
     def test_volumes(self):
+        if 'OS_AUTH_URL' not in os.environ:
+            pytest.skip('no OS_AUTH_URL environment variable')
         with patch.multiple(
                 misc,
                 sh=lambda cmd: self.teuthology_instance,
@@ -152,6 +160,8 @@ class TestOpenStackInstance(object):
             assert len(o.get_volumes()) == 3
 
     def test_get_addresses(self):
+        if 'OS_AUTH_URL' not in os.environ:
+            pytest.skip('no OS_AUTH_URL environment variable')
         answers = [
             self.teuthology_instance_no_addresses,
             self.teuthology_instance,
@@ -289,15 +299,20 @@ class TestOpenStack(object):
             'image': ('image',),
             'volume': ('volume',),
         }
-        os.environ['OS_REGION_NAME'] = 'REGION'
-        os.environ['OS_TENANT_ID'] = 'TENANT'
+        if os.environ.get('OS_REGION_NAME') is None:
+            os.environ['OS_REGION_NAME'] = 'REGION'
+        if os.environ.get('OS_TENANT_ID') is None:
+            os.environ['OS_TENANT_ID'] = 'TENANT'
         for (type, cmds) in type2cmd.iteritems():
             for cmd in cmds:
                 assert ("//" + type) in o.get_os_url(cmd + " ")
         for type in type2cmd.keys():
             assert ("//" + type) in o.get_os_url("whatever ", type=type)
-        del os.environ['OS_REGION_NAME']
-        del os.environ['OS_TENANT_ID']
+        if os.environ['OS_REGION_NAME'] == 'REGION':
+            del os.environ['OS_REGION_NAME']
+        if os.environ['OS_TENANT_ID'] == 'TENANT':
+            del os.environ['OS_TENANT_ID']
+        o.clear_token()
 
     @patch('teuthology.misc.sh')
     def test_cache_token(self, m_sh):
@@ -330,8 +345,7 @@ class TestOpenStack(object):
         assert True == o.cache_token()
         assert time.time() < int(os.environ['OS_TOKEN_EXPIRES'])
         assert time.time() < OpenStack.token_expires
-        del os.environ['OS_TOKEN_VALUE']
-        del os.environ['OS_TOKEN_EXPIRES']
+        o.clear_token()
 
     @patch('teuthology.misc.sh')
     def test_cache_token_from_environment(self, m_sh):
@@ -346,8 +360,7 @@ class TestOpenStack(object):
         assert token == OpenStack.token
         assert token_expires == OpenStack.token_expires
         m_sh.assert_not_called()
-        del os.environ['OS_TOKEN_VALUE']
-        del os.environ['OS_TOKEN_EXPIRES']
+        o.clear_token()
         
     @patch('teuthology.misc.sh')
     def test_cache_token_expired_environment(self, m_sh):
@@ -365,8 +378,7 @@ class TestOpenStack(object):
         assert token == OpenStack.token
         assert time.time() < int(os.environ['OS_TOKEN_EXPIRES'])
         assert time.time() < OpenStack.token_expires
-        del os.environ['OS_TOKEN_VALUE']
-        del os.environ['OS_TOKEN_EXPIRES']
+        o.clear_token()
 
 class TestTeuthologyOpenStack(object):
 
@@ -387,6 +399,7 @@ class TestTeuthologyOpenStack(object):
             self.can_create_floating_ips = False
 
     def setup(self):
+        OpenStack.clear_token_class()
         self.key_filename = tempfile.mktemp()
         self.key_name = 'teuthology-test'
         self.name = 'teuthology-test'
