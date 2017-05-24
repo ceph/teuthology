@@ -89,6 +89,7 @@ def fetch_tasks_if_needed(job_config):
     suite_branch = job_config.get('suite_branch', ceph_branch)
     suite_path = os.path.normpath(os.path.join(
         fetch_qa_suite(suite_branch),
+        'qa',
         job_config.get('suite_relpath', ''),
     ))
     sys.path.insert(1, suite_path)
