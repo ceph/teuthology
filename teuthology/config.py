@@ -265,6 +265,9 @@ def _get_config_path():
     if not os.path.exists(TeuthologyConfig.yaml_path) and \
             os.path.exists(system_config_path):
         return system_config_path
+    elif not os.path.exists(TeuthologyConfig.yaml_path):
+        with open(TeuthologyConfig.yaml_path, 'w') as f:
+            yaml.dump(TeuthologyConfig._defaults, f)
     return TeuthologyConfig.yaml_path
 
 config = TeuthologyConfig(yaml_path=_get_config_path())
