@@ -23,7 +23,7 @@ meta:
 Fields are user-defined, and are not required to be in all yaml files.
 
 positional arguments:
-  <suite_dir>                        path of qa suite
+  <suite_dir>                        Path of qa suite
 
 optional arguments:
   -h, --help                         Show this help message and exit

@@ -29,12 +29,12 @@ and analyze results.
     parser.add_argument(
         '-v', '--verbose',
         action='store_true', default=None,
-        help='be more verbose',
+        help='Be more verbose',
     )
     parser.add_argument(
         '--wait',
         action='store_true', default=None,
-        help='block until the suite is finished',
+        help='Block until the suite is finished',
     )
     parser.add_argument(
         '--name',
@@ -48,36 +48,36 @@ and analyze results.
     )
     parser.add_argument(
         '--key-filename',
-        help='path to the ssh private key',
+        help='Path to the ssh private key',
     )
     parser.add_argument(
         '--simultaneous-jobs',
-        help='maximum number of jobs running in parallel',
+        help='Maximum number of jobs running in parallel',
         type=int,
         default=1,
     )
     parser.add_argument(
         '--teardown',
         action='store_true', default=None,
-        help='destroy the cluster, if it exists',
+        help='Destroy the cluster, if it exists',
     )
     parser.add_argument(
         '--teuthology-git-url',
-        help=("git clone url for teuthology"),
+        help=("Git clone url for teuthology"),
     )
     parser.add_argument(
         '--teuthology-branch',
-        help="use this teuthology branch instead of master",
+        help="Use this teuthology branch instead of master",
         default='master',
     )
     parser.add_argument(
         '--upload',
         action='store_true', default=False,
-        help='upload archives to an rsync server',
+        help='Upload archives to an rsync server',
     )
     parser.add_argument(
         '--archive-upload',
-        help='rsync destination to upload archives',
+        help='Rsync destination to upload archives',
         default='ubuntu@teuthology-logs.public.ceph.com:./',
     )
     parser.add_argument(
@@ -185,11 +185,11 @@ and analyze results.
     )
     parser.add_argument(
         '--ceph-git-url',
-        help=("git clone url for Ceph"),
+        help=("Git clone url for Ceph"),
     )
     parser.add_argument(
         '--ceph-qa-suite-git-url',
-        help=("git clone url for ceph-qa-suite"),
+        help=("Git clone url for ceph-qa-suite"),
     )
 
     return parser.parse_args(argv)

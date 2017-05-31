@@ -20,7 +20,7 @@ NOTE: Must be run on the same machine that is executing the teuthology job
 processes.
 
 optional arguments:
-  -h, --help            show this help message and exit
+  -h, --help            Show this help message and exit
   -a ARCHIVE, --archive ARCHIVE
                         The base archive directory
                         [default: {archive_base}]
