@@ -107,6 +107,8 @@ class SELinux(Task):
         #  https://bugzilla.redhat.com/show_bug.cgi?id=1289274
         # tracker for chronyd/cephtest issue:
         #  http://tracker.ceph.com/issues/14244
+        # AVC denial about dac_read_search chronyc
+        #  https://bugzilla.redhat.com/show_bug.cgi?id=1449108
         known_denials = [
             'comm="dmidecode"',
             'chronyd.service',
@@ -114,6 +116,7 @@ class SELinux(Task):
             'scontext=system_u:system_r:nrpe_t:s0',
             'scontext=system_u:system_r:pcp_pmlogger_t',
             'scontext=system_u:system_r:pcp_pmcd_t:s0',
+            'comm="chronyc"',
         ]
         se_whitelist = self.config.get('whitelist', [])
         if se_whitelist:
