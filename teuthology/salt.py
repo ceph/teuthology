@@ -211,6 +211,9 @@ class Salt(object):
         Pings minions with this cluser's job_id, raises exception if they
         don't respond
         """
-        self.__ping([
-            'sudo', 'salt', '-C', 'G@job_id:{}'.format(self.job_id),
-            'test.ping'], len(self.remotes))
+        self.__ping(
+            [
+            'sudo', 'sh', '-c', 
+            'salt -C "G@job_id:{}" test.ping || true'.format(self.job_id),
+            ],
+            len(self.remotes))
