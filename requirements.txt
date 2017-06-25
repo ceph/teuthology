@@ -5,6 +5,7 @@
 boto==2.39.0
 cffi==1.5.2
 cliff==2.2.0
+fasteners=0.14.1
 keystoneauth1==2.12.1
 openstacksdk==0.9.5
 os-client-config==1.21.1

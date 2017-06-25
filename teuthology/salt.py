@@ -1,3 +1,4 @@
+import fasteners
 import logging
 import re
 
@@ -30,19 +31,24 @@ class Salt(object):
             int(ip_addr[2]),
             int(ip_addr[3]),
         )
+
         # If config has no master_remote attribute, Salt is being used
         # for worker deployment and the teuthology machine is the master.
-        if not config:
-            self.master_remote = Remote(teuthology_remote_name)
-        else:
-            self.master_remote = Remote(config.get('master_remote',
-                                        teuthology_remote_name))
-        log.debug('master_remote is {}'.format(self.master_remote))
+        self.need_lock = True
+        self.master_remote = Remote(teuthology_remote_name)
+        if config:
+            if 'master_remote' in config:
+                self.need_lock = False
+                self.master_remote = Remote(config.get('master_remote'))
 
         self.__generate_minion_keys()
         self.__preseed_minions()
         self.__set_minion_master()
-        self.__start_master()
+        log.info('Restarting salt-master...')
+        if self.need_lock:
+            self.__start_master_with_lock()
+        else:
+            self.__start_master_without_lock()
         self.__start_minions()
 
     def __generate_minion_keys(self):
@@ -179,6 +185,13 @@ class Salt(object):
         """Starts salt-master.service on master_remote via SSH"""
         self.master_remote.run(args=[
             'sudo', 'systemctl', 'restart', 'salt-master.service'])
+
+    @fasteners.interprocess_locked('/tmp/salt-master_restart_lock')
+    def __start_master_with_lock(self):
+        self.__start_master()
+
+    def __start_master_without_lock(self):
+        self.__start_master()
 
     def __stop_minions(self):
         """Stops salt-minion.service on all target VMs"""
