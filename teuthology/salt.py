@@ -190,6 +190,17 @@ class Salt(object):
                 sed_cmd,
             ])
 
+    def __set_debug_log_level(self):
+        """Sets log_level: debug for all salt daemons"""
+        for rem in self.remotes.iterkeys():
+            rem.run(args=[
+                'sudo',
+                'sed', '--in-place', '--regexp-extended',
+                's/^#\s*log_level:\s+debug/log_level: debug/g',
+                '/etc/salt/master',
+                '/etc/salt/minion',
+            ])
+
     def __start_master(self):
         """Starts salt-master.service on master_remote via SSH"""
         try:
@@ -213,6 +224,7 @@ class Salt(object):
         self.__generate_minion_keys()
         self.__preseed_minions()
         self.__set_minion_master()
+        self.__set_debug_log_level()
         self.__start_master()
 
     def __stop_minions(self):
