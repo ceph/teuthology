@@ -6,6 +6,8 @@ from cStringIO import StringIO
 from netifaces import ifaddresses
 
 from .contextutil import safe_while
+from .exceptions import (CommandCrashedError, CommandFailedError,
+                         ConnectionLostError)
 from .misc import delete_file, move_file, sh, sudo_write_file
 from .orchestra.remote import Remote
 from .orchestra import run
@@ -34,21 +36,19 @@ class Salt(object):
 
         # If config has no master_remote attribute, Salt is being used
         # for worker deployment and the teuthology machine is the master.
-        self.need_lock = True
+        self.master_is_teuthology = True
         self.master_remote = Remote(teuthology_remote_name)
         if config:
             if 'master_remote' in config:
-                self.need_lock = False
+                self.master_is_teuthology = False
                 self.master_remote = Remote(config.get('master_remote'))
 
-        self.__generate_minion_keys()
-        self.__preseed_minions()
-        self.__set_minion_master()
-        log.info('Restarting salt-master...')
-        if self.need_lock:
-            self.__start_master_with_lock()
+        if self.master_is_teuthology:
+            log.info('Provisioning minions with lock...')
+            self.__provision_minions_with_lock()
         else:
-            self.__start_master_without_lock()
+            log.info('Provisioning minions without lock...')
+            self.__provision_minions_without_lock()
         self.__start_minions()
 
     def __generate_minion_keys(self):
@@ -59,7 +59,8 @@ class Salt(object):
         for rem in self.remotes.iterkeys():
             minion_id = rem.hostname
             self.minions.append(minion_id)
-            log.debug('minion: ID {}'.format(minion_id,))
+            log.info('Ensuring that minion ID {} has a keypair on the master'
+                     .format(minion_id))
             # mode 777 is necessary to be able to generate keys reliably
             # we hit this before:
             # https://github.com/saltstack/salt/issues/31565
@@ -85,10 +86,13 @@ class Salt(object):
                  ' fi').format(mid=minion_id),
             ])
 
-    def __cleanup_keys(self):
+    def cleanup_keys(self):
         '''
         Remove this cluster's minion keys (files and accepted keys)
         '''
+        if self.master_is_teuthology:
+            log.warning("Refusing to clean up minion keys on the teuthology VM")
+            return
         for rem in self.remotes.iterkeys():
             minion_id = rem.hostname
             log.debug('Deleting minion key: ID {}'.format(minion_id))
@@ -112,11 +116,16 @@ class Salt(object):
         for rem in self.remotes.iterkeys():
             minion_id = rem.hostname
 
+            src = 'salt/minion-keys/{}.pub'.format(minion_id)
+            dest = '/etc/salt/pki/master/minions/{}'.format(minion_id)
             self.master_remote.run(args=[
                 'sudo',
-                'cp',
-                'salt/minion-keys/{}.pub'.format(minion_id),
-                '/etc/salt/pki/master/minions/{}'.format(minion_id),
+                'sh',
+                '-c',
+                ('if [ ! -f {d} ]; then '
+                'cp {s} {d} ; '
+                'chown root {d} ; '
+                'fi').format(s=src, d=dest)
             ])
             self.master_remote.run(args=[
                 'sudo',
@@ -181,16 +190,41 @@ class Salt(object):
                 sed_cmd,
             ])
 
+    def __set_debug_log_level(self):
+        """Sets log_level: debug for all salt daemons"""
+        for rem in self.remotes.iterkeys():
+            rem.run(args=[
+                'sudo',
+                'sed', '--in-place', '--regexp-extended',
+                's/^#\s*log_level:\s+debug/log_level: debug/g',
+                '/etc/salt/master',
+                '/etc/salt/minion',
+            ])
+
     def __start_master(self):
         """Starts salt-master.service on master_remote via SSH"""
-        self.master_remote.run(args=[
-            'sudo', 'systemctl', 'restart', 'salt-master.service'])
+        try:
+            self.master_remote.run(args=[
+                'sudo', 'systemctl', 'restart', 'salt-master.service'])
+        except CommandFailedError:
+            log.warning("Failed to restart salt-master.service!")
+            self.master_remote.run(args=[
+                'sudo', 'systemctl', 'status', '--full', '--lines=50',
+                'salt-master.service', run.Raw('||'), 'true'])
+            raise
 
-    @fasteners.interprocess_locked('/tmp/salt-master_restart_lock')
-    def __start_master_with_lock(self):
+    @fasteners.interprocess_locked('/tmp/minion_provisioning_lock')
+    def __provision_minions_with_lock(self):
+        self.__generate_minion_keys()
+        self.__preseed_minions()
+        self.__set_minion_master()
         self.__start_master()
 
-    def __start_master_without_lock(self):
+    def __provision_minions_without_lock(self):
+        self.__generate_minion_keys()
+        self.__preseed_minions()
+        self.__set_minion_master()
+        self.__set_debug_log_level()
         self.__start_master()
 
     def __stop_minions(self):
