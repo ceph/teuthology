@@ -196,7 +196,8 @@ class Salt(object):
             rem.run(args=[
                 'sudo',
                 'sed', '--in-place', '--regexp-extended',
-                's/^#\s*log_level:\s+debug/log_level: debug/g',
+                '-e', 's/^\s*#\s*log_level:.*$/log_level: debug/g',
+                '-e', '/^\s*#.*$/d', '-e', '/^\s*$/d',
                 '/etc/salt/master',
                 '/etc/salt/minion',
             ])
