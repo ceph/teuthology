@@ -12,7 +12,7 @@ from ..config import config as teuth_config
 from ..misc import get_scratch_devices
 from teuthology import contextutil
 from teuthology.orchestra import run
-from teuthology import misc
+from teuthology import misc as teuthology
 log = logging.getLogger(__name__)
 
 
@@ -76,7 +76,12 @@ class CephAnsible(Task):
             vars['ceph_dev_key'] = 'https://download.ceph.com/keys/autobuild.asc'
         if 'ceph_dev_branch' not in vars:
             vars['ceph_dev_branch'] = ctx.config.get('branch', 'master')
+<<<<<<< 8583708cb9d48774329cdbd3bd0b63778c15357e
         self.cluster_name = vars.get('cluster', 'ceph')
+=======
+        if 'ceph_stable_release' not in vars:
+            vars['ceph_stable_release'] = vars['ceph_dev_branch'] 
+>>>>>>> qa: create client keyrings in ceph-ansible task
 
     def setup(self):
         super(CephAnsible, self).setup()
@@ -117,11 +122,17 @@ class CephAnsible(Task):
             '-i', 'inven.yml', 'site.yml'
         ]
         log.debug("Running %s", args)
+<<<<<<< 8583708cb9d48774329cdbd3bd0b63778c15357e
         # If there is an installer.0 node, use that for the installer.
         # Otherwise, use the first mon node as installer node.
         ansible_loc = self.ctx.cluster.only('installer.0')
         (ceph_first_mon,) = self.ctx.cluster.only(
             misc.get_first_mon(self.ctx,
+=======
+        # use the first mon node as installer node
+        (ceph_installer,) = self.ctx.cluster.only(
+            teuthology.get_first_mon(self.ctx,
+>>>>>>> qa: create client keyrings in ceph-ansible task
                                self.config)).remotes.iterkeys()
         if ansible_loc.remotes:
             (ceph_installer,) = ansible_loc.remotes.iterkeys()
@@ -508,6 +519,68 @@ class CephAnsible(Task):
                 run.Raw('o+r'),
                 '/etc/ceph/%s.client.admin.keyring' % self.cluster_name
             ])
+        log.info('Setting up client nodes...')
+        conf_path = '/etc/ceph/ceph.conf'
+        admin_keyring_path = '/etc/ceph/ceph.client.admin.keyring'
+        first_mon = teuthology.get_first_mon(self.ctx, self.config)
+        (mon0_remote,) = self.ctx.cluster.only(first_mon).remotes.keys()
+        conf_data = teuthology.get_file(
+            remote=mon0_remote,
+            path=conf_path,
+            sudo=True,
+        )
+        admin_keyring = teuthology.get_file(
+            remote=mon0_remote,
+            path=admin_keyring_path,
+            sudo=True,
+        )
+        clients = self.ctx.cluster.only(teuthology.is_type('client'))
+        testdir = teuthology.get_testdir(self.ctx)
+        for remot, roles_for_host in clients.remotes.iteritems():
+            for id_ in teuthology.roles_of_type(roles_for_host, 'client'):
+                client_keyring = \
+                    '/etc/ceph/ceph.client.{id}.keyring'.format(id=id_)
+                mon0_remote.run(
+                    args=[
+                        'cd',
+                        '{tdir}'.format(tdir=testdir),
+                        run.Raw('&&'),
+                        'sudo', 'bash', '-c',
+                        run.Raw('"'), 'ceph',
+                        'auth',
+                        'get-or-create',
+                        'client.{id}'.format(id=id_),
+                        'mds', 'allow',
+                        'mon', 'allow *',
+                        'osd', 'allow *',
+                        run.Raw('>'),
+                        client_keyring,
+                        run.Raw('"'),
+                    ],
+                )
+                key_data = teuthology.get_file(
+                    remote=mon0_remote,
+                    path=client_keyring,
+                    sudo=True,
+                )
+                teuthology.sudo_write_file(
+                    remote=remot,
+                    path=client_keyring,
+                    data=key_data,
+                    perms='0644'
+                )
+                teuthology.sudo_write_file(
+                    remote=remot,
+                    path=admin_keyring_path,
+                    data=admin_keyring,
+                    perms='0644'
+                )
+                teuthology.sudo_write_file(
+                    remote=remot,
+                    path=conf_path,
+                    data=conf_data,
+                    perms='0644'
+                )
 
 
 class CephAnsibleError(Exception):
