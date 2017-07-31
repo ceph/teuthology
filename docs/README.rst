@@ -23,8 +23,9 @@ operations on remote hosts over SSH, as implemented by `Paramiko
 
 When testing, it is common to group many `jobs` together to form a `test run`.
 
-If you are new to teuthology and simply want to run existing tests, check out
-:ref:`intro_testers`
+If you are new to teuthology and simply want to run existing tests, check out: `intro_testers`_
+
+.. _intro_testers: ./intro_testers.rst
 
 
 Provided Utilities
@@ -44,37 +45,49 @@ Provided Utilities
 * ``teuthology-updatekeys`` - Update SSH host keys for a machine
 * ``teuthology-worker`` - Worker daemon to monitor the queue and execute jobs
 
-For a description of the distinct services that utilities interact with see
-:ref:`components`.
+For a description of the distinct services that utilities interact with see: `components`_.
+
+.. _components: ./COMPONENTS.rst
 
 Installation
 ============
 
-See :ref:`installation_and_setup`.
+See: `installation_and_setup`_.
+
+.. _installation_and_setup: ./INSTALL.rst
 
 
 Infrastructure
 ==============
 
 The examples in this document are based on the lab machine configuration used
-by the Red Hat Ceph development and quality assurance teams 
-(see :ref:`lab_setup`). Other instances of a Ceph Lab being used in a
-development or testing environment may differ from these examples.
+by the Red Hat Ceph development and quality assurance teams
+(see: `lab_setup`_). Other instances of a Ceph Lab being used in a
+development or testing environment may differ from these examples(see: `lab_setup_Q&A`_).
 
+.. _lab_setup: ./LAB_SETUP.rst
+
+.. _lab_setup_Q&A: ./LAB_SETUP.rst
 
 Detailed test configuration
 ===========================
 
-See :ref:`detailed_test_config`.
+See: `detailed_test_config`_.
+
+.. _detailed_test_config: ./detailed_test_config.rst
 
 
 Virtual Machine Support
 =======================
 
-For OpenStack support, see :ref:`openstack-backend`
+For OpenStack support, see: `openstack-backend`_
 
-For 'vps' support using `downburst <https://github.com/ceph/downburst>`__, see
-:ref:`downburst_vms`
+
+.. _openstack-backend: ./openstack_backend.rst
+
+For 'vps' support using `downburst <https://github.com/ceph/downburst>`__, see: `downburst_vms`_
+
+.. _downburst_vms: ./downburst_vms.rst
 
 
 Test Suites

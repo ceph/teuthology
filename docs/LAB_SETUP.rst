@@ -11,6 +11,17 @@ We recently set up a new lab for Ceph testing and decided to document the parts 
 
 We started by setting aside two of the test machines: one as the 'teuthology node', and another as the 'paddles/pulpito node'. These would be used to orchestrate automated testing and to store and serve the results on our intranet.
 
+Architecture
+============
+Teuthology Setup:
+
+.. image:: ./picture/Teuthology_integration.PNG
+
+Teuthology Working Flow:
+
+.. image:: ./picture/Teuthology_cluster.PNG
+
+
 paddles/pulpito node
 ====================
 
@@ -84,6 +95,12 @@ Install these packages::
 
     sudo apt-get -y install git python-dev python-pip python-virtualenv libevent-dev python-libvirt beanstalkd
 
+Keep beanstalkd service running and configure it in Teuthology yaml file::
+
+    queue_host: localhost
+    queue_port: 11300
+
+
 Now, set up the two users you just created:
 
 
@@ -135,8 +152,41 @@ Now to do the work::
 Serving Test Logs
 =================
 
-pulpito tries to provide links to test logs. Out-of-the-box, those links will be broken, but are easy to fix. 
+pulpito tries to provide links to test logs. Out-of-the-box, those links will be broken, but are easy to fix.
 
 First, install your favorite web server on the teuthology node. If you use nginx, you may use `our configuration <_static/nginx_test_logs>`_ as a template.
 
 Once you've got log files being served, edit paddles' ``config.py`` and update the ``job_log_href_templ`` value. Restart paddles when you're done.
+
+Q&A
+=====
+
+Q: What should I do if I want to use local server to build specified Ceph binary for Teuthology test?
+
+A: Create Gitbuilder for Ceph Binary. You need to get `Gitbuilder`_. For ubuntu os. You need to modify those files for yours::
+
+    autobuilder.sh
+    branches.sh
+    branches-local
+
+.. _Gitbuilder: https://github.com/ceph/gitbuilder/blob/master/README
+
+For Ceph binary build, you also need to change Ceph make-debs.sh for your build version. You can use example `here`_.
+
+.. _here: ./picture/gitbuilder_diff
+
+Q: What should I do if I want to use specified Ceph repo instead of Ceph-ci repo?
+
+A: You should modify config file in teuthology/config.py::
+
+    class TeuthologyConfig(YamlConfig):
+      def get_ceph_git_url(self):
+      ceph_git_url = yours_repo.git_name
+
+Q: What should I do if I want to use my Teuthology repo instead of remote?
+
+A: You should modify worker file in teuthology/worker.py::
+
+    def prep_job(job_config, log_file_path, archive_dir):
+      teuth_path = your_own_teuthology_path
+

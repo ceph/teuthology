@@ -1,0 +1,36 @@
+autobuilder.sh
+--- /tmp/test/gitbuilder/autobuilder.sh 2015-08-21 13:53:31.971931227 +0800
++++ autobuilder.sh      2015-07-02 10:59:09.588364316 +0800
+@@ -54,6 +54,12 @@
+                trap "echo 'Killing (SIGINT)';  kill -TERM -$XPID; exit 1" SIGINT
+                trap "echo 'Killing (SIGTERM)'; kill -TERM -$XPID; exit 1" SIGTERM
+                wait; wait
++               mkdir -p /ceph_repos/ceph-deb-trusty-x86_64-basic/ref/${branch#*/}
++               cp -r --preserve=links /ceph_tmp/release/Ubuntu/{conf,db,dists,pool,trusty,version} /ceph_repos/ceph-deb-trusty-x86_64-basic/ref/${branch#*/}
++               echo $ref > /ceph_repos/ceph-deb-trusty-x86_64-basic/ref/${branch#*/}/sha1
++
++               ln -s /ceph_repos/ceph-deb-trusty-x86_64-basic/ref/${branch#*/} /ceph_repos/ceph-deb-trusty-x86_64-basic/sha1/$ref
++               rm -rf /ceph_tmp/release/*
+        done
+
+        sleep 5
+
+branches-local
+you can use the easy way to assign to branch which you want it.
+example:
+branches-local.bak
+#!/bin/sh
+echo 'origin/dillaman_librbd_cache_2'
+
+branches.sh
+you need change branches script
+example:
+#!/bin/bash
+DIR=$(dirname $0)
+cd "$DIR/build"
+
+if [ -x ../branches-local ]; then
+    #exec ../branches-local "$@"
+    #exec ../branches-local.808 "$@"
+    exec ../branches-local.bak "$@"
+fi

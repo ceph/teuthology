@@ -1,0 +1,41 @@
+diff --git a/make-debs.sh b/make-debs.sh
+index 705d88d..f02278e 100755
+--- a/make-debs.sh
++++ b/make-debs.sh
+@@ -16,7 +16,7 @@
+ #
+ set -xe
+
+-base=${1:-/tmp/release}
++base=${1:-/ceph_tmp/release}
+ codename=$(lsb_release -sc)
+ releasedir=$base/$(lsb_release -si)/WORKDIR
+ rm -fr $releasedir
+@@ -46,8 +46,8 @@ tar -C $releasedir -jxf $releasedir/ceph_$vers.orig.tar.bz2
+ #
+ cp -a debian $releasedir/ceph-$vers/debian
+ cd $releasedir
+-perl -ni -e 'print if(!(/^Package: .*-dbg$/../^$/))' ceph-$vers/debian/control
+-perl -pi -e 's/--dbg-package.*//' ceph-$vers/debian/rules
++#perl -ni -e 'print if(!(/^Package: .*-dbg$/../^$/))' ceph-$vers/debian/control
++#perl -pi -e 's/--dbg-package.*//' ceph-$vers/debian/rules
+ #
+ # always set the debian version to 1 which is ok because the debian
+ # directory is included in the sources and the upstream version will
+@@ -68,11 +68,11 @@ fi
+ # b) do not sign the packages
+ # c) use half of the available processors
+ #
+-: ${NPROC:=$(($(nproc) / 2))}
+-if test $NPROC -gt 1 ; then
+-    j=-j${NPROC}
+-fi
+-PATH=/usr/lib/ccache:$PATH dpkg-buildpackage $j -uc -us
++# ${NPROC:=$(($(nproc) / 2))}
++#if test $NPROC -gt 1 ; then
++#    j=-j${NPROC}
++#fi
++PATH=/usr/lib/ccache:$PATH dpkg-buildpackage $j100 -uc -us
+ cd ../..
+ mkdir -p $codename/conf
+ cat > $codename/conf/distributions <<EOF
