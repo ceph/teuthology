@@ -63,6 +63,7 @@ pbr==2.0.0                # via cliff, debtcollector, keystoneauth1, openstacksd
 pexpect==4.2.1
 pip-tools==1.9.0
 pluggy==0.4.0             # via tox
+pytz==2017.2              # via babel, oslo.serialization, oslo.utils
 positional==1.1.1         # via keystoneauth1, python-keystoneclient
 prettytable==0.7.2
 psutil==5.2.2
@@ -80,7 +81,6 @@ python-keystoneclient==3.10.0  # via python-neutronclient, python-openstackclien
 python-neutronclient==6.2.0
 python-novaclient==8.0.0
 python-openstackclient==3.9.0
-pytz==2017.2              # via babel, oslo.serialization, oslo.utils
 pyyaml==3.12
 raven==6.0.0
 requests==2.12.5
