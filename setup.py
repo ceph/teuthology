@@ -90,6 +90,7 @@ setup(
                       'apache-libcloud',
                       # For apache-libcloud when using python < 2.7.9
                       'backports.ssl_match_hostname',
+                      'urllib3',
                       ],
 
 

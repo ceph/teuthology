@@ -91,6 +91,7 @@ six==1.10.0
 stevedore==1.21.0         # via cliff, keystoneauth1, openstacksdk, osc-lib, oslo.config, python-keystoneclient
 tox==2.7.0
 unicodecsv==0.14.1        # via cliff
+urllib3==1.22
 virtualenv==15.1.0        # via tox
 warlock==1.2.0            # via python-glanceclient
 web.py==0.38
