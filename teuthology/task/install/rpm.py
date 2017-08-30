@@ -26,7 +26,7 @@ def _remove(ctx, config, remote, rpm):
 
     if dist_release in ['opensuse', 'sle']:
         pkg_mng_cmd = 'zypper'
-        pkg_mng_opts = '-n'
+        pkg_mng_opts = '-n --no-gpg-checks'
         pkg_mng_subcommand_opts = '--capability'
     else:
         pkg_mng_cmd = 'yum'
@@ -125,7 +125,7 @@ def _update_package_list_and_install(ctx, remote, rpm, config):
 
     if dist_release in ['opensuse', 'sle']:
         pkg_mng_cmd = 'zypper'
-        pkg_mng_opts = '-n'
+        pkg_mng_opts = '-n --no-gpg-checks'
         pkg_mng_subcommand_opts = '--capability'
         pkg_mng_install_opts = '--no-recommends'
     else:
