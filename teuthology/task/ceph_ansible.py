@@ -322,7 +322,6 @@ class CephAnsible(Task):
                 'install',
                 '-y',
                 'libssl-dev',
-                'python-openssl',
                 'libffi-dev',
                 'python-dev'
             ])
