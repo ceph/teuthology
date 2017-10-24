@@ -359,6 +359,12 @@ class OpenStackProvisioner(base.Provisioner):
                 ['passwd', '-d', self.user],
                 ['touch', self._sentinel_path]
             ],
+            manage_resolv_conf=True,
+            resolv_conf=dict(
+                # Use Google DNS
+                nameservers=['8.8.4.4', '8.8.8.8'],
+                domain=config.lab_domain,
+            ),
         )
         ssh_pubkey = util.get_user_ssh_pubkey()
         if ssh_pubkey:
