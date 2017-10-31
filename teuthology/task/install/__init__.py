@@ -36,6 +36,9 @@ def verify_package_version(ctx, config, remote):
     if config.get("extras"):
         log.info("Skipping version verification...")
         return True
+    if 'repos' in config and config.get('repos'):
+        log.info("Skipping version verification because we have custom repos...")
+        return True
     builder = _get_builder_project(ctx, remote, config)
     version = builder.version
     pkg_to_check = builder.project
@@ -92,7 +95,6 @@ def _purge_data(remote):
         'sudo',
         'rm', '-rf', '--one-file-system', '--', '/var/lib/ceph',
     ])
-
 
 def install_packages(ctx, pkgs, config):
     """
@@ -535,6 +537,8 @@ def task(ctx, config):
     if overrides:
         install_overrides = overrides.get('install', {})
         teuthology.deep_merge(config, install_overrides.get(project, {}))
+        repos = install_overrides.get('repos', None)
+        log.debug('INSTALL overrides: %s' % install_overrides)
     log.debug('config %s' % config)
 
     rhbuild = None
@@ -561,8 +565,7 @@ def task(ctx, config):
         with contextutil.nested(*nested_tasks):
                 yield
     else:
-        with contextutil.nested(
-            lambda: install(ctx=ctx, config=dict(
+        nested_config = dict(
                 branch=config.get('branch'),
                 tag=config.get('tag'),
                 sha1=config.get('sha1'),
@@ -574,7 +577,11 @@ def task(ctx, config):
                 wait_for_package=config.get('wait_for_package', False),
                 project=project,
                 packages=config.get('packages', dict()),
-            )),
+        )
+        if repos:
+            nested_config['repos'] = repos
+        with contextutil.nested(
+            lambda: install(ctx=ctx, config=nested_config),
             lambda: ship_utilities(ctx=ctx, config=None),
         ):
             yield

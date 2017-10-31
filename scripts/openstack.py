@@ -258,6 +258,18 @@ def get_openstack_parser():
         action='store_true', default=False,
         help='configure remote teuthology to not fetch tags from http://github.com/ceph/ceph.git in buildpackages task',
     )
+    parser.add_argument(
+        '--test-repo',
+        action='append',
+        help=('Package repository, or repositories, to be added on test nodes. '
+              'Repository to be specified as a NAME:URL pair. Multiple '
+              'repositories can be provided with multiple usage. '
+              'For example --test-repo foo:http://example.com/repo/foo '
+              '--test-repo bar:http://example.com/repo/bar specifies two '
+              'test package repositories named "foo" and "bar", respectively.'),
+        default=None,
+    )
+
     return parser
 
 def get_parser():
