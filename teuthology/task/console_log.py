@@ -29,7 +29,7 @@ class ConsoleLog(Task):
             if not hasattr(remote.console, 'spawn_sol_log'):
                 log.debug("%s does not support IPMI; excluding",
                           remote.shortname)
-            elif not (remote.console.has_ipmi_credentials or
+            elif not (getattr(remote.console, 'has_ipmi_credentials', False) or
                       remote.console.has_conserver):
                 log.debug("Cannot find IPMI credentials or conserver settings "
                           "for %s; excluding",
