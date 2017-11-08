@@ -5,21 +5,23 @@ try:
 except ImportError:
     libvirt = None
 
+from teuthology.orchestra.console.base import Console
+
 import teuthology.lock.query
 import teuthology.lock.util
 
 log = logging.getLogger(__name__)
 
 
-class VirtualConsole():
+class VirtualConsole(Console):
     """
     Virtual Console (set from getRemoteConsole)
     """
     def __init__(self, name):
+        super(VirtualConsole, self).__init__(name)
         if libvirt is None:
             raise RuntimeError("libvirt not found")
 
-        self.shortname = remote.getShortName(name)
         status_info = teuthology.lock.query.get_status(self.shortname)
         try:
             if teuthology.lock.query.is_vm(status=status_info):

@@ -6,23 +6,20 @@ import subprocess
 import sys
 import time
 
-import teuthology.orchestra.remote
-
 from teuthology.config import config
-
 from teuthology.exceptions import ConsoleError
+from teuthology.orchestra.console.base import Console
 
 log = logging.getLogger(__name__)
 
 
-class PhysicalConsole():
+class PhysicalConsole(Console):
     """
     Physical Console (set from getRemoteConsole)
     """
     def __init__(self, name, ipmiuser=None, ipmipass=None, ipmidomain=None,
                  logfile=None, timeout=20):
-        self.name = name
-        self.shortname = teuthology.orchestra.remote.getShortName(name)
+        super(PhysicalConsole, self).__init__(name)
         self.timeout = timeout
         self.logfile = None
         self.ipmiuser = ipmiuser or config.ipmi_user
