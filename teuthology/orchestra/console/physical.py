@@ -1,14 +1,9 @@
 import logging
-import os
 import pexpect
-import psutil
-import subprocess
-import sys
 import time
 
 from teuthology.config import config
-from teuthology.exceptions import ConsoleError
-from teuthology.orchestra.console.base import Console
+from teuthology.orchestra.console.base import Console, NoConserver
 
 log = logging.getLogger(__name__)
 
@@ -19,28 +14,14 @@ class PhysicalConsole(Console):
     """
     def __init__(self, name, ipmiuser=None, ipmipass=None, ipmidomain=None,
                  logfile=None, timeout=20):
-        super(PhysicalConsole, self).__init__(name)
-        self.timeout = timeout
-        self.logfile = None
+        super(PhysicalConsole, self).__init__(
+            name, timeout=timeout, logfile=logfile)
         self.ipmiuser = ipmiuser or config.ipmi_user
         self.ipmipass = ipmipass or config.ipmi_password
         self.ipmidomain = ipmidomain or config.ipmi_domain
         self.has_ipmi_credentials = all(
             [self.ipmiuser, self.ipmipass, self.ipmidomain]
         )
-        self.conserver_master = config.conserver_master
-        self.conserver_port = config.conserver_port
-        conserver_client_found = psutil.Popen(
-            'which console',
-            shell=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT).wait() == 0
-        self.has_conserver = all([
-            config.use_conserver is not False,
-            self.conserver_master,
-            self.conserver_port,
-            conserver_client_found,
-        ])
 
     def _pexpect_spawn_ipmi(self, ipmi_cmd):
         """
@@ -49,37 +30,24 @@ class PhysicalConsole(Console):
         full_command = self._ipmi_command(ipmi_cmd)
         return self._pexpect_spawn(full_command)
 
-    def _pexpect_spawn(self, cmd):
-        """
-        Run a command using pexpect.spawn(). Return the child object.
-        """
-        log.debug('pexpect command: %s', cmd)
-        return pexpect.spawn(
-            cmd,
-            logfile=self.logfile,
-        )
-
     def _get_console(self, readonly=True):
-        def start():
-            cmd = self._console_command(readonly=readonly)
-            return self._pexpect_spawn(cmd)
-
-        child = start()
+        child = super(PhysicalConsole, self)._get_console(
+            readonly=readonly,
+        )
         if self.has_conserver and not child.isalive():
             log.error("conserver failed to get the console; will try ipmitool")
             self.has_conserver = False
-            child = start()
+            child = super(PhysicalConsole, self)._get_console(
+                readonly=readonly,
+            )
         return child
 
     def _console_command(self, readonly=True):
-        if self.has_conserver:
-            return 'console -M {master} -p {port} {mode} {host}'.format(
-                master=self.conserver_master,
-                port=self.conserver_port,
-                mode='-s' if readonly else '-f',
-                host=self.shortname,
+        try:
+            return super(PhysicalConsole, self)._console_command(
+                readonly=readonly,
             )
-        else:
+        except NoConserver:
             return self._ipmi_command('sol activate')
 
     def _ipmi_command(self, subcommand):
@@ -103,47 +71,16 @@ class PhysicalConsole(Console):
 
     def _exit_session(self, child, timeout=None):
         t = timeout or self.timeout
-        if self.has_conserver:
-            child.sendcontrol('e')
-            child.send('c.')
-            r = child.expect(
-                ['[disconnect]', pexpect.TIMEOUT, pexpect.EOF],
-                timeout=t)
-            if r != 0:
-                child.kill(15)
-        else:
+        try:
+            super(PhysicalConsole, self)._exit_session(
+                child, timeout=timeout)
+        except NoConserver:
             child.send('~.')
             r = child.expect(
                 ['terminated ipmitool', pexpect.TIMEOUT, pexpect.EOF],
                 timeout=t)
             if r != 0:
                 self._pexpect_spawn_ipmi('sol deactivate')
-
-    def _wait_for_login(self, timeout=None, attempts=2):
-        """
-        Wait for login.  Retry if timeouts occur on commands.
-        """
-        t = timeout or self.timeout
-        log.debug('Waiting for login prompt on {s}'.format(s=self.shortname))
-        # wait for login prompt to indicate boot completed
-        for i in range(0, attempts):
-            start = time.time()
-            while time.time() - start < t:
-                child = self._get_console(readonly=False)
-                child.send('\n')
-                log.debug('expect: {s} login'.format(s=self.shortname))
-                r = child.expect(
-                    ['{s} login: '.format(s=self.shortname),
-                     pexpect.TIMEOUT,
-                     pexpect.EOF],
-                    timeout=(t - (time.time() - start)))
-                log.debug('expect before: {b}'.format(b=child.before))
-                log.debug('expect after: {a}'.format(a=child.after))
-
-                self._exit_session(child)
-                if r == 0:
-                    return
-        raise ConsoleError("Did not get a login prompt from %s!" % self.name)
 
     def check_power(self, state, timeout=None):
         """
@@ -262,37 +199,9 @@ class PhysicalConsole(Console):
             s=self.shortname, i=interval))
 
     def spawn_sol_log(self, dest_path):
-        """
-        Using the subprocess module, spawn an ipmitool process using 'sol
-        activate' and redirect its output to a file.
-
-        :returns: a psutil.Popen object
-        """
-        pexpect_templ = \
-            "import pexpect; " \
-            "pexpect.run('{cmd}', logfile=file('{log}', 'w'), timeout=None)"
-
-        def start():
-            console_cmd = self._console_command()
-            # use sys.executable to find python rather than /usr/bin/env.
-            # The latter relies on PATH, which is set in a virtualenv
-            # that's been activated, but is not set when binaries are
-            # run directly from the virtualenv's bin/ directory.
-            python_cmd = [
-                sys.executable, '-c',
-                pexpect_templ.format(
-                    cmd=console_cmd,
-                    log=dest_path,
-                ),
-            ]
-            return psutil.Popen(
-                python_cmd,
-                env=os.environ,
-            )
-
-        proc = start()
+        proc = super(PhysicalConsole, self).spawn_sol_log(dest_path)
         if self.has_conserver and proc.poll() is not None:
             log.error("conserver failed to get the console; will try ipmitool")
             self.has_conserver = False
-            proc = start()
+            proc = super(PhysicalConsole, self).spawn_sol_log(dest_path)
         return proc

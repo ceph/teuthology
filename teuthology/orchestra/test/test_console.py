@@ -88,7 +88,7 @@ class TestPhysicalConsole(TestConsole):
 
     def test_spawn_log_conserver(self):
         with patch(
-            'teuthology.orchestra.console.physical.psutil.subprocess.Popen',
+            'teuthology.orchestra.console.base.psutil.subprocess.Popen',
             autospec=True,
         ) as m_popen:
             m_popen.return_value.pid = 42
@@ -107,7 +107,7 @@ class TestPhysicalConsole(TestConsole):
 
     def test_spawn_log_ipmi(self):
         with patch(
-            'teuthology.orchestra.console.physical.psutil.subprocess.Popen',
+            'teuthology.orchestra.console.base.psutil.subprocess.Popen',
             autospec=True,
         ) as m_popen:
             m_popen.return_value.pid = 42
@@ -126,7 +126,7 @@ class TestPhysicalConsole(TestConsole):
 
     def test_spawn_log_fallback(self):
         with patch(
-            'teuthology.orchestra.console.physical.psutil.subprocess.Popen',
+            'teuthology.orchestra.console.base.psutil.subprocess.Popen',
             autospec=True,
         ) as m_popen:
             m_popen.return_value.pid = 42
@@ -146,7 +146,7 @@ class TestPhysicalConsole(TestConsole):
 
     def test_get_console_conserver(self):
         with patch(
-            'teuthology.orchestra.console.physical.psutil.subprocess.Popen',
+            'teuthology.orchestra.console.base.psutil.subprocess.Popen',
             autospec=True,
         ) as m_popen:
             m_popen.return_value.pid = 42
@@ -165,7 +165,7 @@ class TestPhysicalConsole(TestConsole):
 
     def test_get_console_ipmitool(self):
         with patch(
-            'teuthology.orchestra.console.physical.psutil.subprocess.Popen',
+            'teuthology.orchestra.console.base.psutil.subprocess.Popen',
             autospec=True,
         ) as m_popen:
             m_popen.return_value.pid = 42
@@ -184,7 +184,7 @@ class TestPhysicalConsole(TestConsole):
 
     def test_get_console_fallback(self):
         with patch(
-            'teuthology.orchestra.console.physical.psutil.subprocess.Popen',
+            'teuthology.orchestra.console.base.psutil.subprocess.Popen',
             autospec=True,
         ) as m_popen:
             m_popen.return_value.pid = 42
@@ -206,7 +206,7 @@ class TestPhysicalConsole(TestConsole):
 
     def test_disable_conserver(self):
         with patch(
-            'teuthology.orchestra.console.physical.psutil.subprocess.Popen',
+            'teuthology.orchestra.console.base.psutil.subprocess.Popen',
             autospec=True,
         ) as m_popen:
             m_popen.return_value.pid = 42
