@@ -775,7 +775,8 @@ class GitbuilderProject(object):
         if self.remote.os.package_type == 'rpm':
             self._install_rpm_repo()
         elif self.remote.os.package_type == 'deb':
-            self._install_deb_repo()
+            self._install_deb_repo(),
+            self._install_deb_pinning()
 
     def _install_rpm_repo(self):
         dist_release = self.dist_release
@@ -811,6 +812,19 @@ class GitbuilderProject(object):
             stdout=StringIO(),
         )
 
+    def _install_deb_pinning(self):
+        self.remote.run(
+            args=[
+                'echo', '-e',
+                '"Package:', '*\nPin:', 'origin', '*.ceph.com\nPin-Priority:',
+                '900"',
+                Raw('|'),
+                'sudo', 'tee',
+                '/etc/apt/preferences.d/{proj}'
+            ],
+            stdout=StringIO(),
+        )
+
     def remove_repo(self):
         """
         Remove the .repo file or sources.list fragment on self.remote if there
@@ -821,7 +835,8 @@ class GitbuilderProject(object):
         if self.remote.os.package_type == 'rpm':
             self._remove_rpm_repo()
         elif self.remote.os.package_type == 'deb':
-            self._remove_deb_repo()
+            self._remove_deb_repo(),
+            self._remove_deb_pinning()
 
     def _remove_rpm_repo(self):
         remove_package('%s-release' % self.project, self.remote)
@@ -833,6 +848,15 @@ class GitbuilderProject(object):
                 'rm', '-f',
                 '/etc/apt/sources.list.d/{proj}.list'.format(
                     proj=self.project),
+            ]
+        )
+
+    def _remove_deb_pinning(self):
+        self.remote.run(
+            args=[
+                'sudo',
+                'rm', '-f',
+                '/etc/apt/preferences.d/{proj}'
             ]
         )
 
