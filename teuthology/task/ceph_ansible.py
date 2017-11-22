@@ -280,6 +280,7 @@ class CephAnsible(Task):
     def wait_for_ceph_health(self):
         with contextutil.safe_while(sleep=15, tries=6,
                                     action='check health') as proceed:
+            import pdb; pdb.set_trace()
             (remote,) = self.ctx.cluster.only('mon.a').remotes
             remote.run(args=[
                 'sudo', 'ceph', '--cluster', self.cluster_name, 'osd', 'tree'
