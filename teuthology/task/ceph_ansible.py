@@ -419,6 +419,7 @@ class CephAnsible(Task):
         ])
         self._copy_and_print_config()
         str_args = ' '.join(args)
+        import pdb; pdb.set_trace()
         ceph_installer.run(args=[
             run.Raw('cd ~/ceph-ansible'),
             run.Raw(';'),
