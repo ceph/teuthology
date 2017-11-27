@@ -3,6 +3,7 @@ import os
 import re
 import logging
 import yaml
+import time
 
 from cStringIO import StringIO
 
@@ -280,7 +281,8 @@ class CephAnsible(Task):
     def wait_for_ceph_health(self):
         with contextutil.safe_while(sleep=15, tries=6,
                                     action='check health') as proceed:
-            import pdb; pdb.set_trace()
+            log.info('wait_for_ceph_health aardvark')
+            time.sleep(30)
             (remote,) = self.ctx.cluster.only('mon.a').remotes
             remote.run(args=[
                 'sudo', 'ceph', '--cluster', self.cluster_name, 'osd', 'tree'
@@ -419,7 +421,8 @@ class CephAnsible(Task):
         ])
         self._copy_and_print_config()
         str_args = ' '.join(args)
-        import pdb; pdb.set_trace()
+        log.info('wait_for_run_ceph-ansible')
+        time.sleep(30)
         ceph_installer.run(args=[
             run.Raw('cd ~/ceph-ansible'),
             run.Raw(';'),
