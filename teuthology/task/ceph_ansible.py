@@ -438,7 +438,7 @@ class CephAnsible(Task):
             run.Raw(';'),
             'pip',
             'install',
-            '"setuptools>=11.3"',
+            'setuptools>=11.3',
             run.Raw(ansible_ver),
             #run.Raw(';'),
         ])
