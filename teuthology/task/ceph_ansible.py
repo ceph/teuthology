@@ -422,7 +422,6 @@ class CephAnsible(Task):
         self._copy_and_print_config()
         str_args = ' '.join(args)
         log.info('wait_for_run_ceph-ansible')
-        time.sleep(30)
         ceph_installer.run(args=[
             run.Raw('cd ~/ceph-ansible'),
             run.Raw(';'),
@@ -441,7 +440,11 @@ class CephAnsible(Task):
             'install',
             run.Raw('"setuptools>=11.3"'),
             run.Raw('"%s"' % ansible_ver),
-            run.Raw(';'),
+            #run.Raw(';'),
+        ])
+        log.info('right before this command:')
+        log.info(str_args)
+        ceph_installer.run(args=[
             run.Raw(str_args)
         ])
         wait_for_health = self.config.get('wait-for-health', True)
