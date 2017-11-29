@@ -321,6 +321,7 @@ class CephAnsible(Task):
         return host_vars
 
     def run_rh_playbook(self):
+        log.info("aardvarks are running rh playbook")
         ceph_installer = self.ceph_installer
         args = self.args
         ceph_installer.run(args=[
