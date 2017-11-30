@@ -449,6 +449,8 @@ class CephAnsible(Task):
         ])
         ceph_installer.run(args=[
             run.Raw('ls ~/ceph-ansible')
+            run.Raw('>'),
+            run.Raw('/tmp/cephanslog.wsu')
         ])
         log.info('right before this command:')
         log.info(str_args)
