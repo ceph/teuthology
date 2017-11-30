@@ -417,7 +417,7 @@ class CephAnsible(Task):
             run.Raw('~/ceph-ansible'),
             run.Raw(';'),
             'cd',
-            run.Raw('~/ceph-ansible'),
+            run.Raw('~'),
             run.Raw(';'),
             'git',
             'clone',
