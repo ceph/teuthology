@@ -415,10 +415,10 @@ class CephAnsible(Task):
         import pdb; pdb.set_trace()
         ceph_installer.run(args=[
             'mkdir',
-            run.Raw('/home/wusui/ceph-ansible'),
+            run.Raw('~/ceph-ansible'),
             run.Raw(';'),
             'cd',
-            run.Raw('/home/wusui'),
+            run.Raw('~/wusui'),
             run.Raw(';'),
             'git',
             'clone',
@@ -426,7 +426,7 @@ class CephAnsible(Task):
             run.Raw(ansible_repo),
         ])
         ceph_installer.run(args=[
-            run.Raw('ls /home/wusui/ceph-ansible'),
+            run.Raw('ls ~/ceph-ansible'),
             run.Raw('>'),
             run.Raw('/tmp/cephanslog1.wsu')
         ])
@@ -434,7 +434,7 @@ class CephAnsible(Task):
         str_args = ' '.join(args)
         log.info('wait_for_run_ceph-ansible')
         ceph_installer.run(args=[
-            run.Raw('cd /home/wusui/ceph-ansible'),
+            run.Raw('cd ~/ceph-ansible'),
             run.Raw(';'),
             'virtualenv',
             run.Raw('--system-site-packages'),
@@ -454,7 +454,7 @@ class CephAnsible(Task):
             #run.Raw(';'),
         ])
         ceph_installer.run(args=[
-            run.Raw('ls /home/wusui/ceph-ansible'),
+            run.Raw('ls ~/ceph-ansible'),
             run.Raw('>'),
             run.Raw('/tmp/cephanslog.wsu')
         ])
