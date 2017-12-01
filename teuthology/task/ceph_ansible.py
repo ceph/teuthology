@@ -424,6 +424,12 @@ class CephAnsible(Task):
             run.Raw('-b %s' % branch),
             run.Raw(ansible_repo),
         ])
+        import pdb; pdb.set_trace()
+        ceph_installer.run(args=[
+            run.Raw('ls ~/ceph-ansible'),
+            run.Raw('>'),
+            run.Raw('/tmp/cephanslog1.wsu')
+        ])
         self._copy_and_print_config()
         str_args = ' '.join(args)
         log.info('wait_for_run_ceph-ansible')
