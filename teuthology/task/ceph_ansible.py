@@ -418,7 +418,7 @@ class CephAnsible(Task):
             run.Raw('~/ceph-ansible'),
             run.Raw(';'),
             'cd',
-            run.Raw('~/wusui'),
+            run.Raw('~'),
             run.Raw(';'),
             'git',
             'clone',
