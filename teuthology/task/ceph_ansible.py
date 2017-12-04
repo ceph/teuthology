@@ -461,6 +461,8 @@ class CephAnsible(Task):
         log.info('right before this command:')
         log.info(str_args)
         ceph_installer.run(args=[
+            run.Raw('cd ~/ceph-ansible'),
+            run.Raw(';'),
             run.Raw(str_args)
         ])
         wait_for_health = self.config.get('wait-for-health', True)
