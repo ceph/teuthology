@@ -412,7 +412,7 @@ class CephAnsible(Task):
             check_status=False
         )
         log.info("Clone command (aardvark):")
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         ceph_installer.run(args=[
             'mkdir',
             run.Raw('~/ceph-ansible'),
