@@ -411,6 +411,8 @@ class CephAnsible(Task):
             'mkdir',
             run.Raw('~/ceph-ansible'),
             run.Raw(';'),
+            run.Raw('cd ~'),
+            run.Raw(';'),
             'git',
             'clone',
             run.Raw('-b %s' % branch),
@@ -436,6 +438,9 @@ class CephAnsible(Task):
             'install',
             run.Raw('setuptools>=11.3'),
             run.Raw(ansible_ver),
+        ])
+        ceph_installer.run(args=[
+            run.Raw('cd ~/ceph-ansible'),
             run.Raw(';'),
             run.Raw(str_args)
         ])
