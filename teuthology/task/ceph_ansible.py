@@ -280,7 +280,12 @@ class CephAnsible(Task):
     def wait_for_ceph_health(self):
         with contextutil.safe_while(sleep=15, tries=6,
                                     action='check health') as proceed:
-            (remote,) = self.ctx.cluster.only('mon.a').remotes
+            # install ceph_ansible on ansible.1 machine, if it exists.
+            # use mon.a machine if ansible role is not specirfied.
+            ansible_loc = log.info(self.ctx.cluster.only('ansible.1'))
+            if ansible_loc is None:
+                 ansible_loc = self.ctx.cluster.only('mon.a')
+            (remote,) = ansible_loc.remotes
             remote.run(args=[
                 'sudo', 'ceph', '--cluster', self.cluster_name, 'osd', 'tree'
             ])
