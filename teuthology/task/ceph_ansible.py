@@ -40,6 +40,10 @@ class CephAnsible(Task):
         * Set ``monitor_interface`` for each host if ``monitor_interface`` is
           unset
         * Set ``public_network`` for each host if ``public_network`` is unset
+
+    The machine that ceph-ansible runs on can be specified using the
+    installer.0 role.  If installer.0 is not used, mon.a will be the
+    machine on which ceph-ansible runs.
     """.format(git_base=teuth_config.ceph_git_base_url)
 
     groups_to_roles = dict(
@@ -280,9 +284,9 @@ class CephAnsible(Task):
     def wait_for_ceph_health(self):
         with contextutil.safe_while(sleep=15, tries=6,
                                     action='check health') as proceed:
-            # install ceph_ansible on ansible.1 machine, if it exists.
+            # install ceph_ansible on installer.0 machine, if it exists.
             # use mon.a machine if ansible role is not specirfied.
-            ansible_loc = log.info(self.ctx.cluster.only('ansible.1'))
+            ansible_loc = log.info(self.ctx.cluster.only('installer.0'))
             if ansible_loc is None:
                  ansible_loc = self.ctx.cluster.only('mon.a')
             (remote,) = ansible_loc.remotes
@@ -415,8 +419,6 @@ class CephAnsible(Task):
         ceph_installer.run(args=[
             'mkdir',
             run.Raw('~/ceph-ansible'),
-            run.Raw(';'),
-            run.Raw('cd ~'),
             run.Raw(';'),
             'git',
             'clone',
