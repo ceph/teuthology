@@ -193,6 +193,7 @@ def get_initial_tasks(lock, config, machine_type):
             {'internal.push_inventory': None},
             {'internal.serialize_remote_roles': None},
             {'internal.pre_cleanup': None},
+            {'internal.git_ignore_ssl': None},
             {'internal.check_conflict': None},
         ])
 
