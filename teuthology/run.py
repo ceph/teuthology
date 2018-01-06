@@ -193,7 +193,6 @@ def get_initial_tasks(lock, config, machine_type):
             {'internal.push_inventory': None},
             {'internal.serialize_remote_roles': None},
             {'internal.pre_cleanup': None},
-            {'internal.git_ignore_ssl': None},
             {'internal.check_conflict': None},
         ])
 
@@ -234,6 +233,7 @@ def get_initial_tasks(lock, config, machine_type):
 
     if 'redhat' in config:
         init_tasks.extend([
+            {'internal.git_ignore_ssl': None},
             {'internal.setup_cdn_repo': None},
             {'internal.setup_base_repo': None},
             {'internal.setup_additional_repo': None},
