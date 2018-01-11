@@ -636,6 +636,10 @@ class TeuthologyOpenStack(OpenStack):
         set_config_attr(self.args)
         self.key_filename = self.args.key_filename
         self.verify_openstack()
+        if self.args.teardown:
+            self.instance = OpenStackInstance(self.server_name())
+            self.teardown()
+            return 0
         self.setup()
         exit_code = 0
         if self.args.suite:
@@ -814,7 +818,7 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
                    upload=upload))
 
     def setup(self):
-        self.instance = OpenStackInstance(self.args.name)
+        self.instance = OpenStackInstance(self.server_name())
         if not self.instance.exists():
             if self.get_provider() != 'rackspace':
                 self.create_security_group()
@@ -934,6 +938,37 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
             ceph_workbench += (" --ceph-workbench-git-url " +
                                self.args.ceph_workbench_git_url)
         canonical_tags = "--no-canonical-tags" if self.args.no_canonical_tags else ""
+        setup_options = [
+            '--keypair %s' % self.key_pair(),
+            '--selfname %s' % self.args.name,
+            '--server-name %s' % self.server_name(),
+            '--server-group %s' % self.server_group(),
+            '--worker-group %s' % self.worker_group(),
+            '--package-repo %s' % self.packages_repository(),
+            #'--setup-all',
+        ]
+        all_options = [
+            '--install',                #do_install_packages=true
+            #'--setup-ceph-workbench',   #do_ceph_workbench=true
+            '--config',                 #do_create_config=true
+            '--setup-keypair',          #do_setup_keypair=true
+            #'',           #do_apt_get_update=true
+            '--setup-docker',           #do_setup_docker=true
+            '--setup-salt-master',      #do_setup_salt_master=true
+            '--setup-dnsmasq',          #do_setup_dnsmasq=true
+            '--setup-fail2ban',         #do_setup_fail2ban=true
+            '--setup-paddles',          #do_setup_paddles=true
+            '--setup-pulpito',          #do_setup_pulpito=true
+            '--populate-paddles',       #do_populate_paddles=true
+        ]
+        ceph_workbench = ''
+        if self.args.ceph_workbench_git_url:
+            all_options += [
+                '--setup-ceph-workbench',
+                '--ceph-workbench-branch %s' % self.args.ceph_workbench_branch,
+                '--ceph-workbench-git-url %s' % self.args.ceph_workbench_git_url,
+            ]
+
         log.debug("OPENRC = " + openrc + " " +
                   "TEUTHOLOGY_USERNAME = " + self.username + " " +
                   "CLONE_OPENSTACK = " + clone + " " +
@@ -943,6 +978,7 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
                   "CANONICAL_TAGS = " +
                   ("(empty string)" if canonical_tags == "" else canonical_tags))
         content = (template.
+                   replace('SETUP_OPTIONS', ' '.join(setup_options + all_options)).
                    replace('OPENRC', openrc).
                    replace('TEUTHOLOGY_USERNAME', self.username).
                    replace('CLONE_OPENSTACK', clone).
@@ -954,6 +990,18 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
         log.debug("get_user_data: " + content + " written to " + path)
         return path
 
+    def key_pair(self):
+        return "teuth-%s" % self.args.name
+
+    def server_name(self):
+        return "teuth-%s" % self.args.name
+
+    def server_group(self):
+        return "teuth-%s" % self.args.name
+
+    def worker_group(self):
+        return "teuth-%s-worker" % self.args.name
+
     def create_security_group(self):
         """
         Create a security group that will be used by all teuthology
@@ -961,33 +1009,30 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
         but some OpenStack providers enforce firewall restrictions even
         among instances created within the same tenant.
         """
-        try:
-            self.run("security group show teuthology && security group show teuthology-worker")
+        groups = misc.sh('openstack security group list -c Name -f value').split('\n')
+        if all(g in groups for g in [self.server_group(), self.worker_group()]):
             return
-        except subprocess.CalledProcessError:
-            pass
-        # FIXME: the following assumes "--name teuthology"
         misc.sh("""
-openstack security group delete teuthology || true
-openstack security group delete teuthology-worker || true
-openstack security group create teuthology
-openstack security group create teuthology-worker
+openstack security group delete {server} || true
+openstack security group delete {worker} || true
+openstack security group create {server}
+openstack security group create {worker}
 # access to teuthology VM from the outside
-openstack security group rule create --proto tcp --dst-port 22 teuthology # ssh
-openstack security group rule create --proto tcp --dst-port 80 teuthology # for log access
-openstack security group rule create --proto tcp --dst-port 8080 teuthology # pulpito
-openstack security group rule create --proto tcp --dst-port 8081 teuthology # paddles
+openstack security group rule create --proto tcp --dst-port 22 {server} # ssh
+openstack security group rule create --proto tcp --dst-port 80 {server} # for log access
+openstack security group rule create --proto tcp --dst-port 8080 {server} # pulpito
+openstack security group rule create --proto tcp --dst-port 8081 {server} # paddles
 # access between teuthology and workers
-openstack security group rule create --src-group teuthology-worker --dst-port 1:65535 teuthology
-openstack security group rule create --protocol udp --src-group teuthology-worker --dst-port 1:65535 teuthology
-openstack security group rule create --src-group teuthology --dst-port 1:65535 teuthology-worker
-openstack security group rule create --protocol udp --src-group teuthology --dst-port 1:65535 teuthology-worker
+openstack security group rule create --src-group {worker} --dst-port 1:65535 {server}
+openstack security group rule create --protocol udp --src-group {worker} --dst-port 1:65535 {server}
+openstack security group rule create --src-group {server} --dst-port 1:65535 {worker}
+openstack security group rule create --protocol udp --src-group {server} --dst-port 1:65535 {worker}
 # access between members of one group
-openstack security group rule create --src-group teuthology-worker --dst-port 1:65535 teuthology-worker
-openstack security group rule create --protocol udp --src-group teuthology-worker --dst-port 1:65535 teuthology-worker
-openstack security group rule create --src-group teuthology --dst-port 1:65535 teuthology
-openstack security group rule create --protocol udp --src-group teuthology --dst-port 1:65535 teuthology
-        """)
+openstack security group rule create --src-group {worker} --dst-port 1:65535 {worker}
+openstack security group rule create --protocol udp --src-group {worker} --dst-port 1:65535 {worker}
+openstack security group rule create --src-group {server} --dst-port 1:65535 {server}
+openstack security group rule create --protocol udp --src-group {server} --dst-port 1:65535 {server}
+        """.format(server=self.server_group(), worker=self.worker_group()))
 
     @staticmethod
     def get_unassociated_floating_ip():
@@ -1043,7 +1088,11 @@ openstack security group rule create --protocol udp --src-group teuthology --dst
 
     @staticmethod
     def get_instance_id(name):
-        return OpenStackInstance(name)['id']
+        instance = OpenStackInstance(name)
+        if instance.info:
+            return instance['id']
+        else:
+            return None
 
     @staticmethod
     def delete_floating_ip(instance_id):
@@ -1059,10 +1108,10 @@ openstack security group rule create --protocol udp --src-group teuthology --dst
 
     def create_cluster(self):
         user_data = self.get_user_data()
+        security_group = \
+            " --security-group {teuthology}".format(teuthology=self.server_group())
         if self.get_provider() == 'rackspace':
             security_group = ''
-        else:
-            security_group = " --security-group teuthology"
         arch = self.get_default_arch()
         self.run(
             "server create " +
@@ -1072,26 +1121,30 @@ openstack security group rule create --protocol udp --src-group teuthology --dst
             " --key-name " + self.args.key_name +
             " --user-data " + user_data +
             security_group +
-            " --wait " + self.args.name +
+            " --wait " + self.server_name() +
             " -f json")
         os.unlink(user_data)
-        self.instance = OpenStackInstance(self.args.name)
+        self.instance = OpenStackInstance(self.server_name())
         self.associate_floating_ip(self.instance['id'])
         return self.cloud_init_wait(self.instance)
+
+    def packages_repository(self):
+        return 'teuth-%s-repo' % self.args.name #packages-repository
 
     def teardown(self):
         """
         Delete all instances run by the teuthology cluster and delete the
         instance running the teuthology cluster.
         """
-        self.ssh("sudo /etc/init.d/teuthology stop || true")
-        instance_id = self.get_instance_id(self.args.name)
-        self.delete_floating_ip(instance_id)
-        self.run("server delete packages-repository || true")
-        self.run("server delete --wait " + self.args.name)
-        self.run("keypair delete {} || true".format(self.args.name))
-        self.run("security group delete {}-worker || true".format(self.args.name))
-        self.run("security group delete {} || true".format(self.args.name))
+        instance_id = self.get_instance_id(self.server_name())
+        if instance_id:
+            self.ssh("sudo /etc/init.d/teuthology stop || true")
+            self.delete_floating_ip(instance_id)
+        self.run("server delete %s || true" % self.packages_repository())
+        self.run("server delete --wait %s || true" % self.server_name())
+        self.run("keypair delete %s || true" % self.key_pair())
+        self.run("security group delete %s || true" % self.worker_group())
+        self.run("security group delete %s || true" % self.server_group())
 
 def main(ctx, argv):
     return TeuthologyOpenStack(ctx, teuth_config, argv).main()

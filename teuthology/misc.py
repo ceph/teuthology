@@ -1305,7 +1305,7 @@ def is_in_dict(searchkey, searchval, d):
         return searchval == val
 
 
-def sh(command, log_limit=1024):
+def sh(command, log_limit=1024, abort=False):
     """
     Run the shell command and return the output in ascii (stderr and
     stdout).  If the command fails, raise an exception. The command
@@ -1339,6 +1339,12 @@ def sh(command, log_limit=1024):
                       " because an error occurred and some of"
                       " it was truncated")
             log.error(output)
+        raise subprocess.CalledProcessError(
+            returncode=proc.returncode,
+            cmd=command,
+            output=output
+        )
+    if abort and proc.returncode:
         raise subprocess.CalledProcessError(
             returncode=proc.returncode,
             cmd=command,
