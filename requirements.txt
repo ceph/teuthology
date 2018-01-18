@@ -3,12 +3,12 @@
 -e .
 
 boto==2.39.0
-cffi==1.10.0
+cffi==1.11.2
 cliff==2.2.0
-cryptography==1.9
+cryptography==2.1.4
 fasteners==0.14.1
 keystoneauth1==2.12.1
-idna==2.5
+idna==2.6
 openstacksdk==0.9.5
 os-client-config==1.21.1
 osc-lib==1.1.0
@@ -16,7 +16,7 @@ oslo.config==3.17.0
 oslo.i18n==3.9.0
 oslo.serialization==2.13.0
 oslo.utils==3.16.0
-pycparser==2.14
+pycparser==2.18
 python-cinderclient==1.9.0
 python-glanceclient==2.5.0
 python-keystoneclient==3.5.0
