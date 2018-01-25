@@ -83,8 +83,17 @@ def _setup_latest_repo(ctx, config):
     with parallel():
         for remote in ctx.cluster.remotes.iterkeys():
             if remote.os.package_type == 'rpm':
-                remote.run(args=['sudo', 'subscription-manager', 'repos',
-                                 run.Raw('--disable=*ceph*')])
+                # pre-cleanup
+                remote.run(args=['sudo', 'rm', run.Raw('/etc/yum.repos.d/rh*')],
+                           check_status=False)
+                remote.run(args=['sudo', 'yum', 'clean', 'metadata'])
+                remote.run(args=['sudo', 'yum', 'update', 'metadata'])
+                # skip is required for beta iso testing
+                if config.get('skip-subscription-manager', False) is True:
+                    log.info("Skipping subscription-manager command")
+                else:
+                    remote.run(args=['sudo', 'subscription-manager', 'repos',
+                                    run.Raw('--disable=*ceph*')])
                 base_url = config.get('base-repo-url', '')
                 installer_url = config.get('installer-repo-url', '')
                 repos = ['MON', 'OSD', 'Tools', 'Calamari', 'Installer']
@@ -101,6 +110,7 @@ def _setup_latest_repo(ctx, config):
                     remote.put_file(base_repo_file.name, base_repo_file.name)
                     remote.run(args=['sudo', 'cp', base_repo_file.name,
                                      '/etc/yum.repos.d/rh_ceph.repo'])
+                    remote.run(args=['sudo', 'yum', 'clean', 'metadata'])
                 if installer_url.startswith('http'):
                     irepo_to_use = _get_repos_to_use(
                         installer_url, installer_repos)
@@ -109,6 +119,8 @@ def _setup_latest_repo(ctx, config):
                     remote.put_file(installer_file.name, installer_file.name)
                     remote.run(args=['sudo', 'cp', installer_file.name,
                                      '/etc/yum.repos.d/rh_inst.repo'])
+                    remote.run(args=['sudo', 'yum', 'clean', 'metadata'])
+                    remote.run(args=['sudo', 'yum', 'update', 'metadata'])
             else:
                 if config.get('deb-repo-url'):
                     deb_repo = config.get('deb-repo-url')
