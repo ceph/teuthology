@@ -70,8 +70,7 @@ def install(ctx, config):
             else:
                 log.info("Install on Ubuntu node: %s", remote.shortname)
                 p.spawn(install_deb_pkgs, ctx, remote, version,
-                        downstream_config, config['deb-repo'],
-                        config['deb-gpg-key'])
+                        downstream_config)
     try:
         yield
     finally:
@@ -157,19 +156,14 @@ def install_deb_pkgs(
         ctx,
         remote,
         version,
-        downstream_config,
-        deb_repo,
-        deb_gpg_key):
+        downstream_config):
     """
     Setup debian repo, Install gpg key
     and Install on debian packages
     : param ctx
     : param remote
     : param downstream_config the dict object that has downstream pkg info
-    : deb_repo - http path of downstream ubuntu repo
-    : deb_gpg_key - gpg key for the ubuntu pkg
     """
-    set_deb_repo(remote, deb_repo, deb_gpg_key)
     rh_version_check = downstream_config.get('versions').get('deb').get('mapped')
     rh_deb_pkgs = downstream_config.get('pkgs').get('deb')
     pkgs = str.join(' ', rh_deb_pkgs)
