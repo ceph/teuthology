@@ -203,8 +203,10 @@ def get_initial_tasks(lock, config, machine_type):
             {'internal.vm_setup': None},
         ])
 
-    if 'kernel' in config:
-        init_tasks.append({'kernel': config['kernel']})
+    # install_latest_rh_kernel is used for redhat config
+    if 'redhat' not in config:
+        if 'kernel' in config:
+            init_tasks.append({'kernel': config['kernel']})
 
     if 'roles' in config:
         init_tasks.append({'internal.base': None})
