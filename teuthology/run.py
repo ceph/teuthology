@@ -192,6 +192,7 @@ def get_initial_tasks(lock, config, machine_type):
             {'internal.connect': None},
             {'internal.push_inventory': None},
             {'internal.serialize_remote_roles': None},
+            {'internal.pre_cleanup': None},
             {'internal.check_conflict': None},
         ])
 
@@ -221,8 +222,11 @@ def get_initial_tasks(lock, config, machine_type):
         init_tasks.extend([
             {'pcp': None},
             {'selinux': None},
-            {'ansible.cephlab': None},
             {'clock': None}
+        ])
+    if 'run-cm-ansible' in config:
+        init_tasks.extend([
+             {'ansible.cephlab': None},
         ])
 
     if 'redhat' in config:
@@ -232,7 +236,7 @@ def get_initial_tasks(lock, config, machine_type):
             {'internal.setup_additional_repo': None},
             {'kernel.install_latest_rh_kernel': None}
         ])
- 
+
     return init_tasks
 
 
