@@ -3,6 +3,7 @@ import os
 import re
 import logging
 import yaml
+import time
 
 from cStringIO import StringIO
 
@@ -64,18 +65,23 @@ class CephAnsible(Task):
         if 'repo' not in config:
             self.config['repo'] = os.path.join(teuth_config.ceph_git_base_url,
                                                'ceph-ansible.git')
+
+
         # default vars to dev builds
         if 'vars' not in config:
             vars = dict()
             config['vars'] = vars
         vars = config['vars']
+        self.cluster_name = vars.get('cluster', 'ceph')
+        # for downstream bulids skip var setup
+        if 'rhbuild' in config:
+            return
         if 'ceph_dev' not in vars:
             vars['ceph_dev'] = True
         if 'ceph_dev_key' not in vars:
             vars['ceph_dev_key'] = 'https://download.ceph.com/keys/autobuild.asc'
         if 'ceph_dev_branch' not in vars:
             vars['ceph_dev_branch'] = ctx.config.get('branch', 'master')
-        self.cluster_name = vars.get('cluster', 'ceph')
 
     def setup(self):
         super(CephAnsible, self).setup()
@@ -304,7 +310,7 @@ class CephAnsible(Task):
                 out = StringIO()
                 remote.run(
                     args=['sudo', 'ceph', '--cluster', self.cluster_name,
-                          'health'], 
+                          'health'],
                     stdout=out,
                 )
                 out = out.getvalue().split(None, 1)[0]
@@ -329,8 +335,32 @@ class CephAnsible(Task):
         return host_vars
 
     def run_rh_playbook(self):
-        ceph_installer = self.ceph_installer
         args = self.args
+        ceph_installer = self.ceph_installer
+        from tasks.set_repo import GA_BUILDS, set_cdn_repo
+        rhbuild = self.config.get('rhbuild')
+        # skip cdn's for rhel beta tests which will use GA builds from Repo
+        if self.ctx.config.get('redhat').get('skip-subscription-manager',
+                                             False) is False:
+            if rhbuild in GA_BUILDS:
+                set_cdn_repo(self.ctx, self.config)
+        # install ceph-ansible
+        if ceph_installer.os.package_type == 'rpm':
+            ceph_installer.run(args=[
+                'sudo',
+                'yum',
+                'install',
+                '-y',
+                'ceph-ansible'])
+            time.sleep(4)
+        else:
+            ceph_installer.run(args=[
+                'sudo',
+                'apt-get',
+                'install',
+                '-y',
+                'ceph-ansible'])
+            time.sleep(4)
         ceph_installer.run(args=[
             'cp',
             '-R',
@@ -338,6 +368,7 @@ class CephAnsible(Task):
             '.'
         ])
         self._copy_and_print_config()
+        self._generate_client_config()
         out = StringIO()
         str_args = ' '.join(args)
         ceph_installer.run(
@@ -348,14 +379,15 @@ class CephAnsible(Task):
                 run.Raw(str_args)
             ],
             timeout=4200,
-            check_status=False,
             stdout=out
         )
-        log.info(out.getvalue())
         if re.search(r'all hosts have already failed', out.getvalue()):
             log.error("Failed during ceph-ansible execution")
             raise CephAnsibleError("Failed during ceph-ansible execution")
         self._create_rbd_pool()
+        # fix keyring permission for workunits
+        self.fix_keyring_permission()
+        self.wait_for_ceph_health()
 
     def run_playbook(self):
         # setup ansible on first mon node
@@ -481,6 +513,19 @@ class CephAnsible(Task):
             ceph_installer.run(args=('cat', 'ceph-ansible/site.yml'))
             ceph_installer.run(args=('cat', 'ceph-ansible/group_vars/all'))
 
+    def _generate_client_config(self):
+        ceph_installer = self.ceph_installer
+        ceph_installer.run(args=('touch', 'ceph-ansible/clients.yml'))
+        # copy admin key for all clients
+        ceph_installer.run(
+                            args=[
+                                run.Raw('printf "copy_admin_key: True\n"'),
+                                run.Raw('>'),
+                                'ceph-ansible/group_vars/clients'
+                                ]
+                           )
+        ceph_installer.run(args=('cat', 'ceph-ansible/group_vars/clients'))
+
     def _create_rbd_pool(self):
         mon_node = self.ceph_first_mon
         log.info('Creating RBD pool')
@@ -510,5 +555,6 @@ class CephAnsible(Task):
 
 class CephAnsibleError(Exception):
     pass
+
 
 task = CephAnsible
