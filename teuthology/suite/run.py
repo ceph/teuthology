@@ -8,6 +8,7 @@ import yaml
 
 from datetime import datetime
 from tempfile import NamedTemporaryFile
+from math import floor
 
 from ..config import config, JobConfig
 from ..exceptions import (
@@ -475,8 +476,30 @@ class Run(object):
             (combine_path(suite_name, item[0]), item[1]) for item in
             build_matrix(suite_path, subset=self.args.subset)
         ]
+
         log.info('Suite %s in %s generated %d jobs (not yet filtered)' % (
             suite_name, suite_path, len(configs)))
+
+        if self.args.simple_subset:
+            simple_subset = self.args.simple_subset
+            log.info("Using simple subset options %s " % simple_subset)
+            (sset, outof) = simple_subset.split('/')
+            sset = int(sset)
+            outof = int(outof)
+            if outof < len(configs):
+                cycle = floor(len(configs) / outof)
+                if sset == outof:
+                    log.info("Final subset, including remainder jobs")
+                    start = (sset-1) * cycle
+                    end = len(configs)
+                else:
+                    start = (sset-1) * cycle
+                    end = start + (cycle-1)
+                start = int(start)
+                end = int(end)
+                log.info("using start index of %d , end index of %d" %(start, end))
+                configs = configs[start:end]
+                log.info("Number of Jobs after simple subset are %d" % len(configs))
 
         if self.args.dry_run:
             log.debug("Base job config:\n%s" % self.base_config)
