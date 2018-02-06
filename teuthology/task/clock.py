@@ -44,8 +44,7 @@ def task(ctx, config):
             run.Raw('||'),
             'sudo', 'service', 'ntpd', 'stop',
             run.Raw(';'),
-            'sudo',
-            'ntpdate',
+            'sudo', 'ntpdate', '-b',
         ]
         args.extend(servers)
         args.extend([
