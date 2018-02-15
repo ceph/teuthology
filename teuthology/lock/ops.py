@@ -77,22 +77,9 @@ def lock_many(ctx, num, machine_type, user=None, description=None,
             machine_type=machine_type,
             description=description,
         )
-        # Only query for os_type/os_version if non-vps and non-libcloud, since
-        # in that case we just create them.
+        # Only query for os_type/os_version if non-vps, non-libcloud and
+        # non FOG since in that case we just create them.
         vm_types = ['vps'] + teuthology.provision.cloud.get_types()
-        # backup os_type/os_version to be restored after machine lock
-        # with FOG we dont need to request specific os_type/os_version
-        if os_type:
-            os_type_bu = os_type
-            os_type = None
-        if os_version:
-            os_version_bu = os_version
-            os_version = None
-        if machine_type not in vm_types:
-            if os_type_bu:
-                data['os_type'] = os_type_bu
-            if os_version_bu:
-                data['os_version'] = os_version_bu
         if arch:
             data['arch'] = arch
         log.debug("lock_many request: %s", repr(data))
@@ -118,11 +105,6 @@ def lock_many(ctx, num, machine_type, user=None, description=None,
                     ok_machs = keys.do_update_keys(ok_machs.keys())[1]
                 return ok_machs
             else:
-                # restore os_type/os_version after machine lock
-                if os_type_bu:
-                    os_type = os_type_bu
-                if os_version_bu:
-                    os_version = os_version_bu
                 reimaged = dict()
                 console_log_conf = dict(
                     logfile_name='{shortname}_reimage.log',
