@@ -82,6 +82,9 @@
 	mon osd reporter subtree level = osd
 	mon osd prime pg temp = true
 	mon reweight min bytes per osd = 10
+	mon osdmap full prune min = 50
+	mon osdmap full prune interval = 5
+	mon osdmap full prune txsize = 5
 
 [mds]
         mds debug scatterstat = true
