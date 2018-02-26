@@ -54,6 +54,8 @@ class ProvisionOpenStack(OpenStack):
             username=self.username,
             lab_domain=config.lab_domain)
         open(self.user_data, 'w').write(user_data)
+        log.debug("user_data file contents:")
+        log.debug(user_data)
 
     def attach_volumes(self, name, volumes):
         """
