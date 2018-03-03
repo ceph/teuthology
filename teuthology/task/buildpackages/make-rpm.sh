@@ -117,10 +117,6 @@ function build_package() {
         make dist-bzip2
     else
         # kraken and above
-        if [ "$suse" = true ]; then
-            sed -i -e 's/^%autosetup -p1$/%autosetup -p1 -n @TARBALL_BASENAME@/' \
-                ceph.spec.in
-        fi
         ./make-dist
     fi
     # Set up build area
@@ -138,6 +134,9 @@ function build_package() {
     mkdir -p ${buildarea}/RPMS
     mkdir -p ${buildarea}/BUILD
     CEPH_TARBALL=( ceph-*.tar.bz2 )
+    CEPH_TARBALL_BASE=$(echo $CEPH_TARBALL | sed -e 's/.tar.bz2$//')
+    CEPH_VERSION=$(echo $CEPH_TARBALL_BASE | cut -d - -f 2-2)
+    CEPH_RELEASE=$(echo $CEPH_TARBALL_BASE | cut -d - -f 3- | tr - .)
     cp -a $CEPH_TARBALL ${buildarea}/SOURCES/.
     cp -a rpm/*.patch ${buildarea}/SOURCES || true
     (
@@ -147,10 +146,14 @@ function build_package() {
           sed -i \
                  -e '0,/%package/s//%debug_package\n\n&/' \
                  -e 's/%bcond_with ceph_test_package/%bcond_without ceph_test_package/g' \
-                 -e '0,/^Release:/s/.<B_CNT>//' \
+                 -e "s/^Version:.*/Version: $CEPH_VERSION/g" \
+                 -e "s/^Release:.*/Release: $CEPH_RELEASE/g" \
+                 -e "s/^Source0:.*/Source0: $CEPH_TARBALL/g" \
                  -e '/^Source9/d' \
+                 -e "s/^%autosetup -p1.*/%autosetup -p1 -n $CEPH_TARBALL_BASE/g" \
                  ceph.spec
         fi
+        cat ceph.spec
         buildarea=`readlink -fn ${releasedir}`   ### rpm wants absolute path
         PATH=$ccache:$PATH rpmbuild -ba --nosignature \
           --define '_srcdefattr (-,root,root)' \
@@ -196,16 +199,9 @@ install -pm 644 %{SOURCE0} .
 rm -rf %{buildroot}
 #install -Dpm 644 %{SOURCE0} \
 #    %{buildroot}/%{_sysconfdir}/pki/rpm-gpg/RPM-GPG-KEY-CEPH
-%if 0%{defined suse_version}
-install -dm 755 %{buildroot}/%{_sysconfdir}/zypp
-install -dm 755 %{buildroot}/%{_sysconfdir}/zypp/repos.d
-install -pm 644 %{SOURCE0} \
-    %{buildroot}/%{_sysconfdir}/zypp/repos.d
-%else
 install -dm 755 %{buildroot}/%{_sysconfdir}/yum.repos.d
 install -pm 644 %{SOURCE0} \
     %{buildroot}/%{_sysconfdir}/yum.repos.d
-%endif
 
 %clean
 #rm -rf %{buildroot}
@@ -217,19 +213,15 @@ install -pm 644 %{SOURCE0} \
 %files
 %defattr(-,root,root,-)
 #%doc GPL
-%if 0%{defined suse_version}
-/etc/zypp/repos.d/*
-%else
 /etc/yum.repos.d/*
-%endif
 #/etc/pki/rpm-gpg/*
 
 %changelog
-* Tue Mar 10 2013 Gary Lowell <glowell@inktank.com> - 1-0
+* Tue Mar 12 2013 Gary Lowell <glowell@inktank.com> - 1-0
 - Handle both yum and zypper
 - Use URL to ceph git repo for key
 - remove config attribute from repo file
-* Tue Aug 27 2012 Gary Lowell <glowell@inktank.com> - 1-0
+* Tue Aug 28 2012 Gary Lowell <glowell@inktank.com> - 1-0
 - Initial Package
 EOF
 
