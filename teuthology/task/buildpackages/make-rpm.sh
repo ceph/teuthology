@@ -35,11 +35,18 @@ suse=false
 [[ $codename =~ suse ]] && suse=true
 [[ $codename =~ sle ]] && suse=true
 
+CREATEREPO=createrepo
 if [ "$suse" = true ] ; then
-    sudo zypper --non-interactive --no-gpg-checks refresh
-    sudo zypper --non-interactive install --no-recommends git
+    source /etc/os-release
+    majorvers=$(echo $VERSION_ID | cut -d \. -f 1-1)
+    test $majorvers -ge 15 && CREATEREPO=createrepo_c
+    for delay in 60 60 60 60 ; do
+        sudo zypper --non-interactive --no-gpg-checks refresh && break
+        sleep $delay
+    done
+    sudo zypper --non-interactive install --no-recommends git $CREATEREPO
 else
-    sudo yum install -y git
+    sudo yum install -y git $CREATEREPO
 fi
 
 export BUILDPACKAGES_CANONICAL_TAGS=$canonical_tags
@@ -256,16 +263,9 @@ function build_rpm_repo() {
     local gitbuilder_host=$2
     local base=$3
 
-    if [ "$suse" = true ] ; then
-        sudo zypper --non-interactive --no-gpg-checks refresh
-        sudo zypper --non-interactive install --no-recommends createrepo
-    else
-        sudo yum install -y createrepo
-    fi
-
     for dir in ${buildarea}/SRPMS ${buildarea}/RPMS/*
     do
-        createrepo ${dir}
+        $CREATEREPO ${dir}
     done
 
     local sha1_dir=${buildarea}/../$codename/$base/sha1/$sha1
