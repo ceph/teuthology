@@ -230,7 +230,7 @@ def get_initial_tasks(lock, config, machine_type):
             {'pcp': None},
             {'selinux': None},
         ])
-    if config.get('ceph_cm_ansible', True):
+    if config.get('ceph_cm_ansible', False):
         init_tasks.append({'ansible.cephlab': None})
 
     # clock_sync_task: 'clock' or 'clock.check'
