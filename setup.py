@@ -84,7 +84,9 @@ setup(
                       # a dependency but we need it anyway.
                       'python-neutronclient',
                       'prettytable',
-                      'libvirt-python',
+                      # pin libvirt-python until new version on pypi fixes
+                      # https://bugs.launchpad.net/openstack-requirements/+bug/1753539 
+                      'libvirt-python==4.0.0',
                       'python-dateutil',
                       'manhole',
                       'apache-libcloud',
