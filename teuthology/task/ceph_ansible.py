@@ -326,6 +326,12 @@ class CephAnsible(Task):
             dev_needed = len([role for role in roles
                               if role.startswith('osd')])
             host_vars['devices'] = get_scratch_devices(remote)[0:dev_needed]
+            # check if the host has nvme device, if so use it as journal
+            # fix me asap
+            if extra_vars.get('osd_scenario') == 'non-collocated':
+                journals = ['/dev/nvme0n1']
+                host_vars['dedicated_devices'] = journals
+                host_vars['devices'] = get_scratch_devices(remote)[0:1]
         if 'monitor_interface' not in extra_vars:
             host_vars['monitor_interface'] = remote.interface
         if 'radosgw_interface' not in extra_vars:
