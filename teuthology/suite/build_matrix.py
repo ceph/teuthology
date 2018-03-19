@@ -121,15 +121,11 @@ def _build_matrix(path, mincyclicity=0, item=''):
                 fn = files[randint(0,fileslen)]
                 submat = _build_matrix(
                     os.path.join(path, fn),
-                    mincyclicity,
+                    mincyclicity=0,
                     item=fn)
                 if submat is not None:
                     submats.append(submat)
             mat = matrix.Product(item, submats)
-            if mat and mat.cyclicity() < mincyclicity:
-                mat = matrix.Cycle(
-                    (mincyclicity + mat.cyclicity() - 1) / mat.cyclicity(), mat
-                )
             return mat
         else:
             # list items
