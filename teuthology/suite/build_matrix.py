@@ -124,8 +124,12 @@ def _build_matrix(path, mincyclicity=0, item=''):
                     mincyclicity=0,
                     item=fn)
                 if submat is not None:
-                    submats.append(submat)
+                    submats = [submat]
             mat = matrix.Product(item, submats)
+            if mat and mat.cyclicity() < mincyclicity:
+                mat = matrix.Cycle(
+                    (mincyclicity + mat.cyclicity() - 1) / mat.cyclicity(), mat
+                )
             return mat
         else:
             # list items
