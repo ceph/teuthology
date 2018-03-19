@@ -117,6 +117,7 @@ def _build_matrix(path, mincyclicity=0, item=''):
             files.remove('$')
             submats = []
             fileslen = len(files)
+            print "===========" + str(fileslen) + "=============="
             for _ in range(0, fileslen):
                 fn = files[randint(0,fileslen)]
                 submat = _build_matrix(
