@@ -117,7 +117,7 @@ def _build_matrix(path, mincyclicity=0, item=''):
             files.remove('$')
             submats = []
             fileslen = len(files)
-            for fn in sorted(files):
+            for _ in range(0, fileslen):
                 fn = files[randint(0,fileslen)]
                 submat = _build_matrix(
                     os.path.join(path, fn),
@@ -125,12 +125,11 @@ def _build_matrix(path, mincyclicity=0, item=''):
                     item=fn)
                 if submat is not None:
                     submats.append(submat)
-            mat = submats
-            #mat = matrix.Product(item, submats)
-            #if mat and mat.cyclicity() < mincyclicity:
-            #    mat = matrix.Cycle(
-            #        (mincyclicity + mat.cyclicity() - 1) / mat.cyclicity(), mat
-            #    )
+            mat = matrix.Product(item, submats)
+            if mat and mat.cyclicity() < mincyclicity:
+                mat = matrix.Cycle(
+                    (mincyclicity + mat.cyclicity() - 1) / mat.cyclicity(), mat
+                )
             return mat
         else:
             # list items
