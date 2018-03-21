@@ -584,6 +584,10 @@ function main() {
                 shift
                 labdomain=$1
                 ;;
+            --network)
+                shift
+                network=$1
+                ;;
             --nworkers)
                 shift
                 nworkers=$1
