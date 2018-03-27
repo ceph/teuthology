@@ -34,15 +34,17 @@ def task(ctx, config):
     for rem in ctx.cluster.remotes.iterkeys():
         rem.run(
             args = [
-                'sudo', 'service', 'ntp', 'stop', run.Raw('||'),
-                'sudo', 'systemctl', 'stop', 'ntp.service',
+                'sudo', 'systemctl', 'stop', 'ntpd.service', run.Raw('||'),
+                'sudo', 'systemctl', 'stop', 'chronyd.service',
                 run.Raw(';'),
-                'sudo', 'ntpd', '-gq',
+                'sudo', 'ntpd', '-gq', run.Raw('||'),
+                'sudo', 'chronyc', 'makestep',
                 run.Raw(';'),
-                'sudo', 'service', 'ntp', 'start', run.Raw('||'),
-                'sudo', 'systemctl', 'start', 'ntp.service',
+                'sudo', 'systemctl', 'start', 'ntpd.service', run.Raw('||'),
+                'sudo', 'systemctl', 'start', 'chronyd.service',
                 run.Raw(';'),
-                'PATH=/usr/bin:/usr/sbin', 'ntpq', '-p',
+                'PATH=/usr/bin:/usr/sbin', 'ntpq', '-p', run.Raw('||'),
+                'PATH=/usr/bin:/usr/sbin', 'chronyc', 'sources',
             ],
         )
 
@@ -54,7 +56,8 @@ def task(ctx, config):
         for rem in ctx.cluster.remotes.iterkeys():
             rem.run(
                 args=[
-                    'PATH=/usr/bin:/usr/sbin', 'ntpq', '-p',
+                    'PATH=/usr/bin:/usr/sbin', 'ntpq', '-p', run.Raw('||'),
+                    'PATH=/usr/bin:/usr/sbin', 'chronyc', 'sources',
                     ],
                 )
 
@@ -71,8 +74,8 @@ def check(ctx, config):
     for rem in ctx.cluster.remotes.iterkeys():
         rem.run(
             args=[
-                'PATH=/usr/bin:/usr/sbin',
-                'ntpq', '-p',
+                'PATH=/usr/bin:/usr/sbin', 'ntpq', '-p', run.Raw('||'),
+                'PATH=/usr/bin:/usr/sbin', 'chronyc', 'sources',
                 ],
             )
 
@@ -84,7 +87,7 @@ def check(ctx, config):
         for rem in ctx.cluster.remotes.iterkeys():
             rem.run(
                 args=[
-                    'PATH=/usr/bin:/usr/sbin',
-                    'ntpq', '-p',
+                    'PATH=/usr/bin:/usr/sbin', 'ntpq', '-p', run.Raw('||'),
+                    'PATH=/usr/bin:/usr/sbin', 'chronyc', 'sources',
                     ],
                 )
