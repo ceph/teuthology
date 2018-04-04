@@ -577,6 +577,7 @@ def task(ctx, config):
                 wait_for_package=config.get('wait_for_package', False),
                 project=project,
                 packages=config.get('packages', dict()),
+                install_packages=config.get('install_packages', True),
         )
         if repos:
             nested_config['repos'] = repos

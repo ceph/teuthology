@@ -111,11 +111,12 @@ def _update_package_list_and_install(ctx, remote, rpm, config):
     """
     remote_os = remote.os
     rpm = _package_overrides(rpm, remote_os)
-    log.info("Installing packages: {pkglist} on remote rpm {arch}".format(
-        pkglist=", ".join(rpm), arch=remote.arch))
 
     dist_release = remote_os.name
+    log.debug("_update_package_list_and_install: config is {}".format(config))
     repos = config.get('repos')
+    install_packages = config.get('install_packages')
+
     if repos:
         log.debug("Adding repos: %s" % repos)
         if dist_release in ['opensuse', 'sle']:
@@ -128,6 +129,13 @@ def _update_package_list_and_install(ctx, remote, rpm, config):
         log.info('Pulling from %s', builder.base_url)
         log.info('Package version is %s', builder.version)
         builder.install_repo()
+
+    if install_packages:
+        log.info("Installing packages: {pkglist} on remote rpm {arch}".format(
+            pkglist=", ".join(rpm), arch=remote.arch))
+    else:
+        log.info("install_packages set to False: not actually installing packages")
+        return True
 
     if dist_release not in ['opensuse', 'sle']:
         project = builder.project
