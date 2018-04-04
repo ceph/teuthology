@@ -101,7 +101,6 @@ def _build_matrix(path, mincyclicity=0, item=''):
         elif path.endswith('$'):
             # pick a random item -- make sure we don't pick any magic files
             import pdb; pdb.set_trace()
-            files.remove('$')
             files.remove('%')
             submats = []
             for fn in sorted(files):
