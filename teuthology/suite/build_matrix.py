@@ -100,6 +100,8 @@ def _build_matrix(path, mincyclicity=0, item=''):
             return matrix.Concat(item, submats)
         elif path.endswith('$'):
             # pick a random item -- make sure we don't pick any magic files
+            if '%' in files:
+                files.remove('%')
             submats = []
             for fn in sorted(files):
                 submat = _build_matrix(
