@@ -826,9 +826,12 @@ class GitbuilderProject(object):
 
     def _remove_rpm_repo(self):
         if self.dist_release in ['opensuse', 'sle']:
-            self.remote.run(args=[
-                'sudo', 'zypper', '-n', 'removerepo', 'ceph-rpm-under-test'
-            ])
+            #self.remote.run(args=[
+            #    'sudo', 'zypper', '-n', 'removerepo', 'ceph-rpm-under-test'
+            #])
+            log.info("Not removing ceph-rpm-under-test zypper repo, because "
+                     "it might not exist and in any case the machine is going "
+                     "to be destroyed (OpenStack) or reimaged (FOG)")
         else:
             remove_package('%s-release' % self.project, self.remote)
 
