@@ -23,9 +23,6 @@ def _remove(ctx, config, remote, rpm):
 
     install_packages = config.get('install_packages')
     if install_packages:
-        log.info("install task did not install any packages, "
-                 "so not removing any, either")
-    else:
         log.info("Removing packages: {pkglist} on rpm system.".format(
             pkglist=", ".join(rpm)))
         if dist_release in ['opensuse', 'sle']:
@@ -40,6 +37,9 @@ def _remove(ctx, config, remote, rpm):
                     sudo yum -y remove $d || true
                 done'''.format(rpms=' '.join(rpm)))
             remote.run(args='sudo yum clean all')
+    else:
+        log.info("install task did not install any packages, "
+                 "so not removing any, either")
 
     repos = config.get('repos')
     if repos:
