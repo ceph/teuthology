@@ -20,23 +20,28 @@ def _remove(ctx, config, remote, rpm):
     remote_os = remote.os
     dist_release = remote_os.name
     rpm = _package_overrides(rpm, remote_os)
-    log.info("Removing packages: {pkglist} on rpm system.".format(
-        pkglist=", ".join(rpm)))
-    repos = config.get('repos')
 
-    if dist_release in ['opensuse', 'sle']:
-        remote.run(args='''
-            for d in {rpms} ; do
-                sudo zypper -n --no-gpg-checks remove --capability $d || true
-            done'''.format(rpms=' '.join(rpm)))
-        remote.run(args='sudo zypper clean -a')
+    install_packages = config.get('install_packages')
+    if install_packages:
+        log.info("install task did not install any packages, "
+                 "so not removing any, either")
     else:
-        remote.run(args='''
-            for d in {rpms} ; do
-                sudo yum -y remove $d || true
-            done'''.format(rpms=' '.join(rpm)))
-        remote.run(args='sudo yum clean all')
+        log.info("Removing packages: {pkglist} on rpm system.".format(
+            pkglist=", ".join(rpm)))
+        if dist_release in ['opensuse', 'sle']:
+            remote.run(args='''
+                for d in {rpms} ; do
+                    sudo zypper -n --no-gpg-checks remove --capability $d || true
+                done'''.format(rpms=' '.join(rpm)))
+            remote.run(args='sudo zypper clean -a')
+        else:
+            remote.run(args='''
+                for d in {rpms} ; do
+                    sudo yum -y remove $d || true
+                done'''.format(rpms=' '.join(rpm)))
+            remote.run(args='sudo yum clean all')
 
+    repos = config.get('repos')
     if repos:
         if dist_release in ['opensuse', 'sle']:
             _zypper_removerepo(remote, repos)
@@ -48,7 +53,9 @@ def _remove(ctx, config, remote, rpm):
         builder.remove_repo()
 
     if dist_release in ['opensuse', 'sle']:
-        remote.run(args='sudo zypper clean -a')
+        #remote.run(args='sudo zypper clean -a')
+        log.info("Not cleaning zypper cache: this might fail, and is not needed "
+                 "because the test machine will be destroyed or reimaged anyway")
     else:
         remote.run(args='sudo yum clean expire-cache')
 
