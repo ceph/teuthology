@@ -12,6 +12,7 @@ from ..config import config as teuth_config
 from ..misc import get_scratch_devices
 from teuthology import contextutil
 from teuthology.orchestra import run
+from teuthology.orchestra.daemon import DaemonGroup
 from teuthology import misc
 log = logging.getLogger(__name__)
 
@@ -133,6 +134,8 @@ class CephAnsible(Task):
             self.run_rh_playbook()
         else:
             self.run_playbook()
+        # setup deamongroup to use systemd
+        self.ctx.daemons = DaemonGroup(use_systemd=True)
 
     def generate_hosts_file(self):
         hosts_dict = dict()
@@ -304,7 +307,7 @@ class CephAnsible(Task):
                 out = StringIO()
                 remote.run(
                     args=['sudo', 'ceph', '--cluster', self.cluster_name,
-                          'health'], 
+                          'health'],
                     stdout=out,
                 )
                 out = out.getvalue().split(None, 1)[0]
