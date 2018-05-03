@@ -192,7 +192,6 @@ def get_initial_tasks(lock, config, machine_type):
             {'internal.connect': None},
             {'internal.push_inventory': None},
             {'internal.serialize_remote_roles': None},
-            {'internal.pre_cleanup': None},
             {'internal.check_conflict': None},
         ])
 
