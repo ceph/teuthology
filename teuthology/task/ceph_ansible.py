@@ -9,10 +9,9 @@ from cStringIO import StringIO
 from . import Task
 from tempfile import NamedTemporaryFile
 from ..config import config as teuth_config
-from ..misc import get_scratch_devices
+from ..misc import get_scratch_devices, register_daemons
 from teuthology import contextutil
 from teuthology.orchestra import run
-from teuthology.orchestra.daemon import DaemonGroup
 from teuthology import misc
 log = logging.getLogger(__name__)
 
@@ -135,7 +134,7 @@ class CephAnsible(Task):
         else:
             self.run_playbook()
         # setup deamongroup to use systemd
-        self.ctx.daemons = DaemonGroup(use_systemd=True)
+        register_daemons(self.ctx)
 
     def generate_hosts_file(self):
         hosts_dict = dict()
@@ -513,5 +512,6 @@ class CephAnsible(Task):
 
 class CephAnsibleError(Exception):
     pass
+
 
 task = CephAnsible
