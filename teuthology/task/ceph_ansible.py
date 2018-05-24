@@ -13,6 +13,7 @@ from ..config import config as teuth_config
 from ..misc import get_scratch_devices
 from teuthology import contextutil
 from teuthology.orchestra import run
+from teuthology.orchestra.daemon import DaemonGroup
 from teuthology import misc
 log = logging.getLogger(__name__)
 
@@ -391,6 +392,7 @@ class CephAnsible(Task):
             log.error("Failed during ceph-ansible execution")
             raise CephAnsibleError("Failed during ceph-ansible execution")
         self._create_rbd_pool()
+        self._fix_roles_map()
         # fix keyring permission for workunits
         self.fix_keyring_permission()
         self.wait_for_ceph_health()
@@ -494,6 +496,7 @@ class CephAnsible(Task):
         # for the teuthology workunits to work we
         # need to fix the permission on keyring to be readable by them
         self._create_rbd_pool()
+        self._fix_roles_map()
         self.fix_keyring_permission()
 
     def _copy_and_print_config(self):
@@ -518,6 +521,45 @@ class CephAnsible(Task):
             ceph_installer.run(args=('cat', 'ceph-ansible/inven.yml'))
             ceph_installer.run(args=('cat', 'ceph-ansible/site.yml'))
             ceph_installer.run(args=('cat', 'ceph-ansible/group_vars/all'))
+
+    def _fix_roles_map(self):
+        ctx = self.ctx
+        ctx.managers = {}
+        ctx.daemons = DaemonGroup(use_systemd=True)
+        new_remote_role = dict()
+        for remote, roles in ctx.cluster.remotes.iteritems():
+            new_remote_role[remote] = []
+            for role in roles:
+                _, rol, id = misc.split_role(role)
+                if role.startswith('osd'):
+                    new_remote_role[remote].append(role)
+                    log.info("Registering Daemon {rol} {id}".format(rol=rol, id=id))
+                    ctx.daemons.add_daemon(remote, rol, id)
+                elif role.startswith('mon') or role.startswith('mgr') or \
+                        role.startswith('mds') or role.startswith('rgw'):
+                    hostname = remote.shortname
+                    target_role = role.split('.')[-2]
+                    mapped_role = "{0}.{1}".format(target_role, hostname)
+                    log.info("New role : " + target_role + ":" + hostname)
+                    new_remote_role[remote].append(mapped_role)
+                    # append old role for compatibility
+                    new_remote_role[remote].append(role)
+                    log.info("Registering Daemon {rol} {id}".format(rol=rol, id=id))
+                    ctx.daemons.add_daemon(remote, rol, hostname)
+                else:
+                    new_remote_role[remote].append(role)
+        ctx.cluster.remotes = new_remote_role
+        cluster = 'ceph'
+        (ceph_first_mon,) = self.ctx.cluster.only(
+            misc.get_first_mon(self.ctx,
+                               self.config)).remotes.iterkeys()
+        from tasks.ceph_manager import CephManager
+        ctx.managers[cluster] = CephManager(
+            ceph_first_mon,
+            ctx=ctx,
+            logger=log.getChild('ceph_manager.' + cluster),
+            cluster=cluster,
+            )
 
     def _generate_client_config(self):
         ceph_installer = self.ceph_installer
