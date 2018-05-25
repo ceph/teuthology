@@ -14,6 +14,7 @@ from ..misc import get_scratch_devices
 from teuthology import contextutil
 from teuthology.orchestra import run
 from teuthology.orchestra.daemon import DaemonGroup
+from teuthology.task.install import ship_utilities
 from teuthology import misc
 log = logging.getLogger(__name__)
 
