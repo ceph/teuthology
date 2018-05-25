@@ -386,12 +386,8 @@ class CephAnsible(Task):
                 run.Raw(';'),
                 run.Raw(str_args)
             ],
-            timeout=4200,
-            stdout=out
+            timeout=4200
         )
-        if re.search(r'all hosts have already failed', out.getvalue()):
-            log.error("Failed during ceph-ansible execution")
-            raise CephAnsibleError("Failed during ceph-ansible execution")
         self._create_rbd_pool()
         self._fix_roles_map()
         # fix keyring permission for workunits
@@ -531,10 +527,30 @@ class CephAnsible(Task):
         new_remote_role = dict()
         for remote, roles in ctx.cluster.remotes.iteritems():
             new_remote_role[remote] = []
+            generate_osd_list = True
             for role in roles:
                 _, rol, id = misc.split_role(role)
                 if role.startswith('osd'):
                     new_remote_role[remote].append(role)
+                    if generate_osd_list:
+                        # gather osd ids as seen on host
+                        out = StringIO()
+                        remote.run(args=[
+                                        'ps', '-eaf', run.Raw('|'), 'grep',
+                                        'ceph-osd', run.Raw('|'),
+                                        run.Raw('awk {\'print $13\'}')],
+                                   stdout=out)
+                        osd_list_all = out.getvalue().split('\n')
+                        generate_osd_list = False
+                        osd_list = []
+                        for osd_id in osd_list_all:
+                            try:
+                                osd_num = int(osd_id)
+                                osd_list.append(osd_id)
+                            except ValueError:
+                                # ignore any empty lines as part of output
+                                pass
+                    id = osd_list.pop()
                     log.info("Registering Daemon {rol} {id}".format(rol=rol, id=id))
                     ctx.daemons.add_daemon(remote, rol, id)
                 elif role.startswith('mon') or role.startswith('mgr') or \
