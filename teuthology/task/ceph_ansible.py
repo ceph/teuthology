@@ -137,6 +137,8 @@ class CephAnsible(Task):
         self.ceph_first_mon = ceph_first_mon
         self.ceph_installer = ceph_installer
         self.args = args
+        # ship utilities files
+        self._ship_utilities()
         if self.config.get('rhbuild'):
             self.run_rh_playbook()
         else:
@@ -519,6 +521,10 @@ class CephAnsible(Task):
             ceph_installer.run(args=('cat', 'ceph-ansible/inven.yml'))
             ceph_installer.run(args=('cat', 'ceph-ansible/site.yml'))
             ceph_installer.run(args=('cat', 'ceph-ansible/group_vars/all'))
+
+    def _ship_utilities(self):
+        with ship_utilities(self.ctx, {'skipcleanup': True}) as ship_utils:
+            ship_utils
 
     def _fix_roles_map(self):
         ctx = self.ctx

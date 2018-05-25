@@ -62,7 +62,7 @@ def ship_utilities(ctx, config):
     :param ctx: Context
     :param config: Configuration
     """
-    assert config is None
+    log.info(config)
     testdir = teuthology.get_testdir(ctx)
     filenames = []
 
@@ -109,15 +109,18 @@ def ship_utilities(ctx, config):
     try:
         yield
     finally:
-        log.info('Removing shipped files: %s...', ' '.join(filenames))
-        run.wait(
-            ctx.cluster.run(
-                args=[
-                    'sudo',
-                    'rm',
-                    '-f',
-                    '--',
-                ] + list(filenames),
-                wait=False,
-            ),
-        )
+        if config.get("skipcleanup", False):
+            log.info("skipping cleanup of shipped files")
+        else:
+            log.info('Removing shipped files: %s...', ' '.join(filenames))
+            run.wait(
+                ctx.cluster.run(
+                    args=[
+                        'sudo',
+                        'rm',
+                        '-f',
+                        '--',
+                    ] + list(filenames),
+                    wait=False,
+                ),
+            )
