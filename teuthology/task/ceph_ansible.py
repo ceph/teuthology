@@ -223,6 +223,19 @@ class CephAnsible(Task):
                 run.Raw('~/ceph-ansible/'),
             ]
         )
+        shipped_files = ['/usr/bin/daemon-helper', '/usr/bin/adjust-ulimits']
+        testdir = misc.get_testdir(self.ctx)
+        valgrind_file = os.path.join(testdir, 'valgrind.supp')
+        shipped_files.append(valgrind_file)
+        self.ctx.cluster.run(
+                    args=[
+                        'sudo',
+                        'rm',
+                        '-f',
+                        '--',
+                    ] + list(shipped_files),
+                    check_status=False,
+                )
         if self.config.get('rhbuild'):
             installer_node.run(
                 args=[
@@ -537,9 +550,8 @@ class CephAnsible(Task):
             new_remote_role[remote] = []
             generate_osd_list = True
             for role in roles:
-                _, rol, id = misc.split_role(role)
+                cluster, rol, id = misc.split_role(role)
                 if role.startswith('osd'):
-                    new_remote_role[remote].append(role)
                     if generate_osd_list:
                         # gather osd ids as seen on host
                         out = StringIO()
@@ -561,6 +573,11 @@ class CephAnsible(Task):
                     id = osd_list.pop()
                     log.info("Registering Daemon {rol} {id}".format(rol=rol, id=id))
                     ctx.daemons.add_daemon(remote, rol, id)
+                    if len(role.split('.')) == 2:
+                        osd_role = "{rol}.{id}".format(rol=rol, id=id)
+                    else:
+                        osd_role = "{c}.{rol}.{id}".format(c=cluster, rol=rol, id=id)
+                    new_remote_role[remote].append(osd_role)
                 elif role.startswith('mon') or role.startswith('mgr') or \
                         role.startswith('mds') or role.startswith('rgw'):
                     hostname = remote.shortname
