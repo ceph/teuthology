@@ -62,10 +62,11 @@ def ship_utilities(ctx, config):
     :param ctx: Context
     :param config: Configuration
     """
-    log.info(config)
     testdir = teuthology.get_testdir(ctx)
     filenames = []
-
+    if config is None:
+        config = dict()
+    log.info(config)
     log.info('Shipping valgrind.supp...')
     assert 'suite_path' in ctx.config
     try:
