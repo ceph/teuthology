@@ -150,6 +150,7 @@ def lock_machines(ctx, config):
     finally:
         # If both unlock_on_failure and nuke-on-error are set, don't unlock now
         # because we're just going to nuke (and unlock) later.
+        misc.cleanup(ctx)
         unlock_on_failure = (
             ctx.config.get('unlock_on_failure', False)
             and not ctx.config.get('nuke-on-error', False)
