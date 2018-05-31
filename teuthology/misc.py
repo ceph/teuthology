@@ -24,6 +24,7 @@ import pprint
 from netaddr.strategy.ipv4 import valid_str as _is_ipv4
 from netaddr.strategy.ipv6 import valid_str as _is_ipv6
 from teuthology import safepath
+from teuthology.parallel import parallel
 from teuthology.exceptions import (CommandCrashedError, CommandFailedError,
                                    ConnectionLostError)
 from .orchestra import run
@@ -1308,6 +1309,17 @@ def get_distro(ctx):
 
     # if os_type is None, return the default of ubuntu
     return os_type or "ubuntu"
+
+
+def cleanup(ctx):
+    unregister_rhel_systems(ctx)
+
+
+def unregister_rhel_systems(ctx):
+    with parallel():
+        for remote in ctx.cluster.remotes.iterkeys():
+            if remote.os.name == 'rhel':
+                remote.run(args=['sudo', 'subscription-manager', 'unregister'])
 
 
 def get_distro_version(ctx):
