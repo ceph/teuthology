@@ -217,6 +217,11 @@ def get_initial_tasks(lock, config, machine_type):
         ])
     init_tasks.append({'internal.timer': None})
 
+    if 'redhat' in config:
+        init_tasks.extend([
+            {'internal.setup_stage_cdn': None}
+        ])
+
     if 'roles' in config:
         init_tasks.extend([
             {'pcp': None},
@@ -224,6 +229,7 @@ def get_initial_tasks(lock, config, machine_type):
             {'ansible.cephlab': None},
             {'clock': None}
         ])
+
 
     if 'redhat' in config:
         init_tasks.extend([
