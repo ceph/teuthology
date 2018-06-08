@@ -230,6 +230,11 @@ def get_initial_tasks(lock, config, machine_type):
             {'selinux': None},
             {'clock': None}
         ])
+
+    if 'redhat' in config:
+        init_tasks.extend([
+            {'internal.setup_stage_cdn': None}
+        ])
     # dont run cm-ansible by default unless requested in config
     # nodes are reimaged by FOG and the images provided
     # by FOG have already gone through cm-ansible run
