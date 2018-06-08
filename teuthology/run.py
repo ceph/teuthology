@@ -229,6 +229,11 @@ def get_initial_tasks(lock, config, machine_type):
             {'pcp': None},
             {'selinux': None},
         ])
+
+    # dont run cm-ansible by default unless requested in config
+    # nodes are reimaged by FOG and the images provided
+    # by FOG have already gone through cm-ansible run
+
     if config.get('ceph_cm_ansible', False):
         init_tasks.append({'ansible.cephlab': None})
 
