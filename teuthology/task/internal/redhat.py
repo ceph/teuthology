@@ -52,7 +52,8 @@ def _subscribe_stage_cdn(remote, teuthconfig):
 
 
 def _unsubscribe_stage_cdn(remote):
-    remote.run(args=['sudo', 'subcription-manger', 'unregister'])
+    remote.run(args=['sudo', 'subscription-manager', 'unregister'],
+        check_status=False)
 
 
 @contextlib.contextmanager
