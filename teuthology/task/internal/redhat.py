@@ -9,6 +9,7 @@ from teuthology.config import config as teuthconfig
 from teuthology.parallel import parallel
 from teuthology.orchestra import run
 from teuthology.task.install.redhat import set_deb_repo
+from teuthology.exceptions import CommandFailedError
 
 log = logging.getLogger(__name__)
 
@@ -53,8 +54,12 @@ def _subscribe_stage_cdn(remote, teuthconfig):
 
 
 def _unsubscribe_stage_cdn(remote):
-    remote.run(args=['sudo', 'subscription-manager', 'unregister'],
-               check_status=False)
+    try:
+        remote.run(args=['sudo', 'subscription-manager', 'unregister'],
+                   check_status=False)
+    except CommandFailedError:
+        # FIX ME
+        log.info("unregistring subscription-manager failed, ignoring")
 
 
 @contextlib.contextmanager
