@@ -33,6 +33,7 @@ def setup_stage_cdn(ctx, config):
 
 
 def _subscribe_stage_cdn(remote, teuthconfig):
+    _unsubscribe_stage_cdn(remote)
     cdn_config = teuthconfig.get('cdn-config', dict())
     server_url = cdn_config.get('server-url', 'subscription.rhsm.stage.redhat.com:443/subscription')
     base_url = cdn_config.get('base-url', 'https://cdn.stage.redhat.com')
@@ -53,7 +54,7 @@ def _subscribe_stage_cdn(remote, teuthconfig):
 
 def _unsubscribe_stage_cdn(remote):
     remote.run(args=['sudo', 'subscription-manager', 'unregister'],
-        check_status=False)
+               check_status=False)
 
 
 @contextlib.contextmanager
