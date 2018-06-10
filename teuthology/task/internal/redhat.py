@@ -48,6 +48,7 @@ def _subscribe_stage_cdn(remote, teuthconfig):
             '--auto-attach'
             ],
         timeout=720)
+    _enable_rhel_repos(remote)
 
 
 def _unsubscribe_stage_cdn(remote):
@@ -87,6 +88,14 @@ def setup_additional_repo(ctx, config):
 
     yield
 
+
+def _enable_rhel_repos(remote):
+    rhel_7_rpms = ['rhel-7-server-rpms',
+                   'rhel-7-server-optional-rpms',
+                   'rhel-7-server-extras-rpms']
+    for repo in rhel_7_rpms:
+        remote.run(args=['sudo', 'subscription-manager',
+                         'repos', '--enable={r}'.format(r=repo)])
 
 @contextlib.contextmanager
 def setup_base_repo(ctx, config):
