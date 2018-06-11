@@ -1279,7 +1279,9 @@ def get_distro(ctx):
 
 
 def cleanup(ctx):
-    unregister_rhel_systems(ctx)
+    # due to stage cdn use, this is run as internal task now
+    # unregister_rhel_systems(ctx)
+    pass
 
 
 def unregister_rhel_systems(ctx):
