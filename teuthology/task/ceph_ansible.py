@@ -435,7 +435,10 @@ class CephAnsible(Task):
         if re.search(r'all hosts have already failed', out.getvalue()):
             log.error("Failed during ceph-ansible execution")
             raise CephAnsibleError("Failed during ceph-ansible execution")
-        self.ready_cluster = self.ctx.cluster.only(lambda role: role.startswith(self.cluster_name))
+        if self.cluster_name == 'ceph':
+            self.ready_cluster = self.ctx.cluster
+        else:
+            self.ready_cluster = self.ctx.cluster.only(lambda role: role.startswith(self.cluster_name))
         log.info('Ready_cluster {}'.format(self.ready_cluster))
         self._create_rbd_pool()
         self._fix_roles_map()
