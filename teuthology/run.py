@@ -362,7 +362,7 @@ def main(args):
     if suite_repo:
         teuth_config.ceph_qa_suite_git_url = suite_repo
 
-    # overwrite the config values of os_{type,version} if corresponding 
+    # overwrite the config values of os_{type,version} if corresponding
     # command-line arguments are provided
     if os_type:
         config["os_type"] = os_type
