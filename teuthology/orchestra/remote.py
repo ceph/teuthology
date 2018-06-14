@@ -400,7 +400,7 @@ class Remote(object):
             args.append('sudo')
         args.extend([
             'tar',
-            'cz',
+            'czh',
             '-f', remote_temp_path,
             '-C', path,
             '--',
@@ -422,7 +422,7 @@ class Remote(object):
             args.append('sudo')
         args.extend([
             'tar',
-            'cz',
+            'czh',
             '-f', '-',
             '-C', path,
             '--',
