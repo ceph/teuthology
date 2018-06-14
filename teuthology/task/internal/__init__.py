@@ -364,10 +364,10 @@ def archive(ctx, config):
                 # Check for coredumps and pull binaries
                 fetch_binaries_for_coredumps(path, rem)
 
-        log.info('Removing archive directory...')
+        log.info('Removing archive directory as sudo...')
         run.wait(
             ctx.cluster.run(
-                args=['rm', '-rf', '--', archive_dir],
+                args=['sudo', 'rm', '-rf', '--', archive_dir],
                 wait=False,
             ),
         )
