@@ -157,6 +157,7 @@ class CephAnsible(Task):
             osds=self.cluster_name+'.'+'osd',
             rgws=self.cluster_name+'.'+'rgw',
             clients=self.cluster_name+'.'+'client',
+            nfss=self.cluster_name+'.'+'nfs',
         )
 
         hosts_dict = dict()
