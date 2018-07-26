@@ -221,9 +221,13 @@ def get_initial_tasks(lock, config, machine_type):
         init_tasks.extend([
             {'pcp': None},
             {'selinux': None},
-            {'ansible.cephlab': None},
             {'clock': None}
         ])
+    # dont run cm-ansible by default unless requested in config
+    # nodes are reimaged by FOG and the images provided
+    # by FOG have already gone through cm-ansible run
+    if config.get('run-cm-ansible', False):
+        init_tasks.extend([{'ansible.cephlab': None}])
 
     if 'redhat' in config:
         init_tasks.extend([
