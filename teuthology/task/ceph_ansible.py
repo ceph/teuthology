@@ -122,7 +122,7 @@ class CephAnsible(Task):
         # Otherwise, use the first mon node as installer node.
         ansible_loc = self.ctx.cluster.only('installer.0')
         (ceph_first_mon,) = self.ctx.cluster.only(
-            misc.get_first_mon(self.ctx,
+            misc.get_first_mon(self.ctx, self.config)).remotes.iterkeys()
         if ansible_loc.remotes:
             (ceph_installer,) = ansible_loc.remotes.iterkeys()
         else:
