@@ -76,12 +76,8 @@ class CephAnsible(Task):
             vars['ceph_dev_key'] = 'https://download.ceph.com/keys/autobuild.asc'
         if 'ceph_dev_branch' not in vars:
             vars['ceph_dev_branch'] = ctx.config.get('branch', 'master')
-<<<<<<< 8583708cb9d48774329cdbd3bd0b63778c15357e
-        self.cluster_name = vars.get('cluster', 'ceph')
-=======
         if 'ceph_stable_release' not in vars:
             vars['ceph_stable_release'] = vars['ceph_dev_branch'] 
->>>>>>> qa: create client keyrings in ceph-ansible task
 
     def setup(self):
         super(CephAnsible, self).setup()
@@ -122,18 +118,11 @@ class CephAnsible(Task):
             '-i', 'inven.yml', 'site.yml'
         ]
         log.debug("Running %s", args)
-<<<<<<< 8583708cb9d48774329cdbd3bd0b63778c15357e
         # If there is an installer.0 node, use that for the installer.
         # Otherwise, use the first mon node as installer node.
         ansible_loc = self.ctx.cluster.only('installer.0')
         (ceph_first_mon,) = self.ctx.cluster.only(
             misc.get_first_mon(self.ctx,
-=======
-        # use the first mon node as installer node
-        (ceph_installer,) = self.ctx.cluster.only(
-            teuthology.get_first_mon(self.ctx,
->>>>>>> qa: create client keyrings in ceph-ansible task
-                               self.config)).remotes.iterkeys()
         if ansible_loc.remotes:
             (ceph_installer,) = ansible_loc.remotes.iterkeys()
         else:
