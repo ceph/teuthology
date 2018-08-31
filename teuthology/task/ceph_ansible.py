@@ -5,7 +5,7 @@ import logging
 import yaml
 import time
 import errno
-
+import socket
 from cStringIO import StringIO
 
 from . import Task
@@ -59,6 +59,7 @@ class CephAnsible(Task):
         rgws='rgw',
         clients='client',
         nfss='nfs',
+        haproxys='haproxy'
     )
 
     def __init__(self, ctx, config):
@@ -146,6 +147,8 @@ class CephAnsible(Task):
         self._ship_utilities()
         if self.config.get('rhbuild'):
             self.run_rh_playbook()
+            if self.config.get('haproxy', False):
+                self.run_haproxy()
         else:
             self.run_playbook()
 
@@ -159,6 +162,7 @@ class CephAnsible(Task):
             rgws=self.cluster_name+'.'+'rgw',
             clients=self.cluster_name+'.'+'client',
             nfss=self.cluster_name+'.'+'nfs',
+            haproxys=self.cluster_name+'.'+'haproxy',
         )
 
         hosts_dict = dict()
@@ -313,13 +317,12 @@ class CephAnsible(Task):
         if ctx.archive is not None and \
                 not (ctx.config.get('archive-on-error') and ctx.summary['success']):
             log.info('Archiving logs...')
-            path = os.path.join(ctx.archive, 'remote')
+            path = os.path.join(ctx.archive, self.cluster_name, 'remote')
             try:
                 os.makedirs(path)
             except OSError as e:
                 if e.errno != errno.EISDIR or e.errno != errno.EEXIST:
                     raise
- #           os.makedirs(path)
 
             def wanted(role):
                 # Only attempt to collect logs from hosts which are part of the
@@ -447,6 +450,82 @@ class CephAnsible(Task):
         # fix keyring permission for workunits
         self.fix_keyring_permission()
         self.wait_for_ceph_health()
+
+    def run_haproxy(self):
+
+        """
+        task:
+            ceph-ansible:
+                haproxy: true
+                haproxy_repo: https://github.com/smanjara/ansible-haproxy.git
+                haproxy_branch: master
+        """
+        # Clone haproxy from https://github.com/smanjara/ansible-haproxy/,
+        # use inven.yml from ceph-ansible dir to read haproxy node from
+
+        installer_node = self.ceph_installer
+        haproxy_ansible_repo = self.config['haproxy_repo']
+        branch = 'master'
+        if self.config.get('haproxy_branch'):
+            branch = self.config.get('haproxy_branch')
+
+        installer_node.run(args=[
+            'cd',
+            run.Raw('~/'),
+            run.Raw(';'),
+            'git',
+            'clone',
+            run.Raw('-b %s' % branch),
+            run.Raw(haproxy_ansible_repo),
+        ],
+            timeout=4200,
+            stdout=StringIO()
+        )
+
+        remote = self.ctx.cluster.only(misc.is_type('haproxy', self.cluster_name)).remotes.iterkeys()
+        allhosts = self.ctx.cluster.only(misc.is_type('rgw', self.cluster_name)).remotes.keys()
+        clients = list(set(allhosts))
+        ips = []
+        for each_client in clients:
+            ips.append(socket.gethostbyname(each_client.hostname))
+
+        # substitute {{ ip_var' }} in haproxy.yml file with rgw node ips
+        ip_vars = {}
+        for i in range(len(ips)):
+            ip_vars['ip_var' + str(i)] = ips.pop()
+
+        # run haproxy playbook
+        args = [
+            'ANSIBLE_STDOUT_CALLBACK=debug',
+            'ansible-playbook', '-vv', 'haproxy.yml',
+            '-e', "'%s'" % json.dumps(ip_vars),
+            '-i', '~/ceph-ansible/inven.yml'
+        ]
+        log.debug("Running %s", args)
+        str_args = ' '.join(args)
+        installer_node.run(
+            args=[
+                run.Raw('cd ~/ansible-haproxy'),
+                run.Raw(';'),
+                run.Raw(str_args)
+            ]
+        )
+        # run keepalived playbook
+        args = [
+            'ANSIBLE_STDOUT_CALLBACK=debug',
+            'ansible-playbook', '-vv', 'keepalived.yml',
+            '-e', "'%s'" % json.dumps(ip_vars),
+            '-i', '~/ceph-ansible/inven.yml'
+        ]
+        log.debug("Running %s", args)
+        str_args = ' '.join(args)
+        installer_node.run(
+            args=[
+                run.Raw('cd ~/ansible-haproxy'),
+                run.Raw(';'),
+                run.Raw(str_args)
+            ]
+        )
 
     def run_playbook(self):
         # setup ansible on first mon node
