@@ -315,8 +315,7 @@ class TestInstall(object):
         m_get_pkg_version.return_value = "0.94.5"
         deb_repo=Mock()
         deb_gpg_key=Mock()
-        install.redhat.install_deb_pkgs(ctx, remote, version, rh_ds_yaml,
-                                    deb_repo, deb_gpg_key)
+        install.redhat.install_deb_pkgs(ctx, remote, version, rh_ds_yaml)
 
 
     @patch("teuthology.task.install.packaging.get_package_version")
