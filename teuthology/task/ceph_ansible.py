@@ -703,8 +703,7 @@ class CephAnsible(Task):
                     else:
                         osd_role = "{c}.{rol}.{id}".format(c=cluster, rol=rol, id=id)
                     new_remote_role[remote].append(osd_role)
-                elif rol.startswith('mon') or rol.startswith('mgr') or rol.startswith('mds') \
-                        or rol.startswith('rgw'):
+                elif rol.startswith('mon') or rol.startswith('mgr') or rol.startswith('mds'):
                     hostname = remote.shortname
                     new_remote_role[remote].append(role)
                     log.info("Registering Daemon {rol} {id}".format(rol=rol, id=id))
