@@ -16,8 +16,9 @@ from teuthology import contextutil
 from teuthology.orchestra import run
 from teuthology.orchestra.daemon import DaemonGroup
 from teuthology.task.install import ship_utilities
-from teuthology.orchestra.cluster import Cluster
 from teuthology import misc
+from teuthology import misc as teuthology
+
 log = logging.getLogger(__name__)
 
 
@@ -212,9 +213,99 @@ class CephAnsible(Task):
                                                 content=hosts_stringio.read().strip())
         self.generated_inventory = True
 
+    def add_osddisk_info(self, ctx, remote, json_dir, json_list):
+        '''
+        add output of diskinfo json to ctx
+        format looks like
+        {'osd.id':[{'osd_disk':'details'}, remote]}
+        above dict will be added into ctx.osd_disk_info
+        this also helps in mapping given osd to remote
+        '''
+        buf = ""
+        for ent in json_list:
+            if ent == '' or ent == '\n':
+                continue
+            buf = teuthology.get_file(remote, json_dir+ent)
+            osd_info = json.loads(buf)
+            log.info(osd_info)
+            my_id = osd_info['whoami']
+            temp_val = [osd_info, remote]
+            ctx.osd_disk_info[my_id] = temp_val
+            log.info("added with osd {}".format(my_id))
+
+    def get_osd_disk_map(self, ctx, remote):
+        '''
+        Use ceph-volume to fetch all the disk details
+        on the given remote
+        '''
+        osddir = '/var/lib/ceph/osd/'
+        json_dir = '/etc/ceph/osd/'
+        cmd = 'sudo ls ' + osddir
+        proc = remote.run(
+            args=cmd,
+            stdout=StringIO(),
+        )
+        if not proc.stdout == None:
+            out = proc.stdout.getvalue()
+        elif not proc.stderr == None:
+            out = proc.stderr.getvalue()
+        else:
+            log.info("No ouput from ls {}".format(osddir))
+            assert False
+        log.info("OSDs on this node are")
+        log.info(out)
+        olist = out.split('\n')
+        log.info('OSD list = {}'.format(olist))
+        for osd in olist:
+            if osd == '':
+                continue
+            cmd = 'sudo ceph-volume simple scan {}'.format(osddir+osd)
+            proc = remote.run(
+                args=cmd,
+                stdout=StringIO(),
+            )
+
+            if not proc.stdout == None:
+                out = proc.stdout.getvalue()
+            else:
+                out = proc.stderr.getvalue()
+            log.info(out)
+
+        #Extract the results from /etc/ceph/osd which will have json file
+        cmd = 'sudo ls ' + json_dir
+        proc = remote.run(
+            args=cmd,
+            stdout=StringIO(),
+        )
+        if not proc.stdout == None:
+            out = proc.stdout.getvalue()
+        else:
+            out = proc.stderr.getvalue()
+        log.info(out)
+        json_list = out.split('\n')
+        self.add_osddisk_info(ctx, remote, json_dir, json_list)
+
+    def set_diskinfo_ctx(self):
+        '''
+        This function get create a dict with disk information
+        for corresponding osd
+        '''
+        ctx = self.ctx
+        r = re.compile("osd.*")
+        ctx.osd_disk_info = dict()
+        for remote, roles in ctx.cluster.remotes.iteritems():
+            log.info("Current node is {}".format(remote.name))
+            log.info("Roles are {}".format(roles))
+            newlist = filter(r.match, roles)
+            if len(newlist) > 0:
+                self.get_osd_disk_map(ctx, remote)
+        log.info("osd disk info is ")
+        log.info(ctx.osd_disk_info)
+
     def begin(self):
         super(CephAnsible, self).begin()
         self.execute_playbook()
+        self.set_diskinfo_ctx()
 
     def _write_hosts_file(self, prefix, content):
         """
@@ -610,7 +701,6 @@ class CephAnsible(Task):
                         osd_list = []
                         for osd_id in osd_list_all:
                             try:
-                                osd_num = int(osd_id)
                                 osd_list.append(osd_id)
                             except ValueError:
                                 # ignore any empty lines as part of output
@@ -690,6 +780,5 @@ class CephAnsible(Task):
 
 class CephAnsibleError(Exception):
     pass
-
 
 task = CephAnsible
