@@ -303,7 +303,6 @@ class TestInstall(object):
         }
         assert install.upgrade_remote_to_config(ctx, config) == expected_config
 
-
     @patch("teuthology.task.install.packaging.get_package_version")
     @patch("teuthology.task.install.redhat.set_deb_repo")
     def test_rh_install_deb_pkgs(self, m_set_rh_deb_repo, m_get_pkg_version):
@@ -312,12 +311,9 @@ class TestInstall(object):
         version = '1.3.2'
         rh_ds_yaml = dict()
         rh_ds_yaml = {'versions': {'deb': {'mapped': {'1.3.2': '0.94.5'}}},
-                      'pkgs': { 'deb': ['pkg1', 'pkg2'] }}
+                      'pkgs': {'deb': ['pkg1', 'pkg2']}}
         m_get_pkg_version.return_value = "0.94.5"
-        deb_repo=Mock()
-        deb_gpg_key=Mock()
         install.redhat.install_deb_pkgs(ctx, remote, version, rh_ds_yaml)
-
 
     @patch("teuthology.task.install.packaging.get_package_version")
     def test_rh_install_pkgs(self, m_get_pkg_version):
@@ -327,7 +323,7 @@ class TestInstall(object):
         rh_ds_yaml = dict()
         rh_ds_yaml = {'versions': {'rpm': {'mapped': {'1.3.2': '0.94.5',
                                                       '1.3.1': '0.94.3'}}},
-                      'pkgs': { 'rpm': ['pkg1', 'pkg2'] }}
+                      'pkgs': {'rpm': ['pkg1', 'pkg2']}}
         m_get_pkg_version.return_value = "0.94.5"
         install.redhat.install_pkgs(ctx, remote, version, rh_ds_yaml)
         version = '1.3.1'
