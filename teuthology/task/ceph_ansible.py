@@ -702,7 +702,8 @@ class CephAnsible(Task):
                         osd_list = []
                         for osd_id in osd_list_all:
                             try:
-                                osd_list.append(osd_id)
+                                if type(int(osd_id)) is int:
+                                    osd_list.append(osd_id)
                             except ValueError:
                                 # ignore any empty lines as part of output
                                 pass
