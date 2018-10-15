@@ -50,34 +50,36 @@ def task(ctx, config):
         config = dict((id_, a) for id_ in roles)
 
     for role, ls in config.iteritems():
-        (remote,) = ctx.cluster.only(role).remotes.iterkeys()
-        log.info('Running commands on role %s host %s', role, remote.name)
-        for c in ls:
-            c.replace('$TESTDIR', testdir)
-            if retry:
-                with safe_while(sleep=sleep_for_retry, tries=retry,
-                                action="exec_with_retry") as proceed:
-                    while proceed():
-                        proc = remote.run(
-                                  args=[
-                                      'sudo',
-                                      'TESTDIR={tdir}'.format(tdir=testdir),
-                                      'bash',
-                                      '-c',
-                                      c],
-                                  timeout=timeout,
-                                  check_status=False,
-                                  wait=True,
-                                 )
-                        if proc.exitstatus == 0:
-                            break
-            else:
-                remote.run(
-                    args=[
-                        'sudo',
-                        'TESTDIR={tdir}'.format(tdir=testdir),
-                        'bash',
-                        '-c',
-                        c],
-                    timeout=timeout
-                    )
+        if 'mon' in role or 'osd' in role \
+                or 'client' in role:
+            (remote,) = ctx.cluster.only(role).remotes.iterkeys()
+            log.info('Running commands on role %s host %s', role, remote.name)
+            for c in ls:
+                c.replace('$TESTDIR', testdir)
+                if retry:
+                    with safe_while(sleep=sleep_for_retry, tries=retry,
+                                    action="exec_with_retry") as proceed:
+                        while proceed():
+                            proc = remote.run(
+                                      args=[
+                                          'sudo',
+                                          'TESTDIR={tdir}'.format(tdir=testdir),
+                                          'bash',
+                                          '-c',
+                                          c],
+                                      timeout=timeout,
+                                      check_status=False,
+                                      wait=True,
+                                     )
+                            if proc.exitstatus == 0:
+                                break
+                else:
+                    remote.run(
+                        args=[
+                            'sudo',
+                            'TESTDIR={tdir}'.format(tdir=testdir),
+                            'bash',
+                            '-c',
+                            c],
+                        timeout=timeout
+                        )
