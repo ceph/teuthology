@@ -459,6 +459,10 @@ class CephAnsible(Task):
                 haproxy: true
                 haproxy_repo: https://github.com/smanjara/ansible-haproxy.git
                 haproxy_branch: master
+         
+        cluster yaml:
+           - haproxy.0
+           - haproxy.1
         """
         # Clone haproxy from https://github.com/smanjara/ansible-haproxy/,
         # use inven.yml from ceph-ansible dir to read haproxy node from
