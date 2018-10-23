@@ -3,6 +3,7 @@ import sys
 import time
 import logging
 import subprocess
+import shlex
 from collections import OrderedDict
 from textwrap import dedent
 from textwrap import fill
@@ -14,12 +15,14 @@ from .report import ResultsReporter
 
 log = logging.getLogger(__name__)
 
+
 UNFINISHED_STATUSES = ('queued', 'running', 'waiting')
 
 
 def main(args):
 
     log = logging.getLogger(__name__)
+
     if args['--verbose']:
         teuthology.log.setLevel(logging.DEBUG)
 
@@ -46,6 +49,7 @@ def note_rerun_params(subset, seed):
 
 
 def results(archive_dir, name, email, timeout, dry_run):
+    log.info('Inside results.....')
     starttime = time.time()
 
     if timeout:
@@ -81,31 +85,81 @@ def results(archive_dir, name, email, timeout, dry_run):
                 body=body,
             )
     finally:
+	log.info("Inside FINALLY")
         generate_coverage(archive_dir, name)
+
+def generate_coverage_compile(cover_dir):
+	log.info("Inside generate_coverage_compile")
+	merged_total=cover_dir+"/total.info"
+	filtered_total=cover_dir+"/filtered_total.info"
+	cmd="lcov --rc lcov_branch_coverage=1 "
+	ilist=os.listdir(cover_dir)
+	for ent in ilist:
+		subprocess.Popen(
+			args=[
+			    'sed', '-i','s/\/sourcebuild/\/tmp\/build\/{}/'.format(\
+				os.path.basename(cover_dir)), \
+				cover_dir+"/"+ent]
+		)
+
+	for ent in ilist:
+		addstr= " -a " + cover_dir+"/"+ent
+		tstr=" -t "+ ent.split("_")[0]
+		cmd = cmd + addstr+tstr
+	cmd=cmd + " -o "+ merged_total
+	log.info(cmd)
+	proc=subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE)
+	proc_stdout=proc.communicate()[0]
+	log.info(proc_stdout)
+	assert(os.path.exists(merged_total))
+
+	proc=subprocess.Popen(
+		args=[
+			'sed', '-i','s/\/sourcebuild/\/tmp\/build\/{}/'.format(\
+				os.path.basename(cover_dir)), \
+				merged_total]
+		)
+	proc_stdout=proc.communicate()[0]
+	log.info(proc_stdout)
+
+	cmd="lcov --remove "+merged_total+" '/usr/include/*' '/usr/lib/*' " +\
+		" -o "+ filtered_total
+	log.info(cmd)
+	proc=subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE)
+	proc_stdout=proc.communicate()[0]
+	log.info(proc_stdout)
+	assert(os.path.exists(filtered_total))
+
+	cmd="genhtml " + " -o "+cover_dir+" {}".format(filtered_total)
+	log.info(cmd)
+	proc=subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE)
+	proc_stdout=proc.communicate()[0].strip()
+	log.info(proc_stdout)
+	assert(os.path.exists(cover_dir+"/index.html"))
 
 
 def generate_coverage(archive_dir, name):
     coverage_config_keys = ('coverage_output_dir', 'coverage_html_dir',
-                            'coverage_tools_dir')
+			    'coverage_tools_dir')
     for key in coverage_config_keys:
-        if key not in config.to_dict():
-            log.warn(
-                "'%s' not in teuthology config; skipping coverage report",
-                key)
-            return
+	if key not in config.to_dict():
+	    log.warn(
+		"'%s' not in teuthology config; skipping coverage report",
+		key)
+	    return
     log.info('starting coverage generation')
     subprocess.Popen(
-        args=[
-            os.path.join(os.path.dirname(sys.argv[0]), 'teuthology-coverage'),
-            '-v',
-            '-o',
-            os.path.join(config.coverage_output_dir, name),
-            '--html-output',
-            os.path.join(config.coverage_html_dir, name),
-            '--cov-tools-dir',
-            config.coverage_tools_dir,
-            archive_dir,
-        ],
+	args=[
+	    os.path.join(os.path.dirname(sys.argv[0]), 'teuthology-coverage'),
+	    '-v',
+	    '-o',
+	    os.path.join(config.coverage_output_dir, name),
+	    '--html-output',
+	    os.path.join(config.coverage_html_dir, name),
+	    '--cov-tools-dir',
+	    config.coverage_tools_dir,
+	    archive_dir,
+	],
     )
 
 
