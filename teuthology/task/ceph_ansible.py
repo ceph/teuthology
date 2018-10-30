@@ -552,6 +552,7 @@ class CephAnsible(Task):
         """
         # Clone haproxy from https://github.com/smanjara/ansible-haproxy/,
         # use inven.yml from ceph-ansible dir to read haproxy node from
+        # Assumes haproxy roles such as haproxy.0, haproxy.1 and so on.
 
         installer_node = self.ceph_installer
         haproxy_ansible_repo = self.config['haproxy_repo']
