@@ -5,7 +5,7 @@ import logging
 import yaml
 import time
 import errno
-
+import socket
 from cStringIO import StringIO
 
 from . import Task
@@ -60,6 +60,7 @@ class CephAnsible(Task):
         rgws='rgw',
         clients='client',
         nfss='nfs',
+        haproxys='haproxy'
     )
 
     def __init__(self, ctx, config):
@@ -147,6 +148,8 @@ class CephAnsible(Task):
         self._ship_utilities()
         if self.config.get('rhbuild'):
             self.run_rh_playbook()
+            if self.config.get('haproxy', False):
+                self.run_haproxy()
         else:
             self.run_playbook()
 
@@ -160,6 +163,7 @@ class CephAnsible(Task):
             rgws=self.cluster_name+'.'+'rgw',
             clients=self.cluster_name+'.'+'client',
             nfss=self.cluster_name+'.'+'nfs',
+            haproxys=self.cluster_name+'.'+'haproxy',
         )
 
         hosts_dict = dict()
@@ -538,6 +542,82 @@ class CephAnsible(Task):
         self.fix_keyring_permission()
         self.wait_for_ceph_health()
 
+    def run_haproxy(self):
+
+        """
+        task:
+            ceph-ansible:
+                haproxy: true
+                haproxy_repo: https://github.com/smanjara/ansible-haproxy.git
+                haproxy_branch: master
+        """
+        # Clone haproxy from https://github.com/smanjara/ansible-haproxy/,
+        # use inven.yml from ceph-ansible dir to read haproxy node from
+
+        installer_node = self.ceph_installer
+        haproxy_ansible_repo = self.config['haproxy_repo']
+        branch = 'master'
+        if self.config.get('haproxy_branch'):
+            branch = self.config.get('haproxy_branch')
+
+        installer_node.run(args=[
+            'cd',
+            run.Raw('~/'),
+            run.Raw(';'),
+            'git',
+            'clone',
+            run.Raw('-b %s' % branch),
+            run.Raw(haproxy_ansible_repo),
+        ],
+            timeout=4200,
+            stdout=StringIO()
+        )
+
+        remote = self.ctx.cluster.only(misc.is_type('haproxy', self.cluster_name)).remotes.iterkeys()
+        allhosts = self.ctx.cluster.only(misc.is_type('rgw', self.cluster_name)).remotes.keys()
+        clients = list(set(allhosts))
+        ips = []
+        for each_client in clients:
+            ips.append(socket.gethostbyname(each_client.hostname))
+
+        # substitute {{ ip_var' }} in haproxy.yml file with rgw node ips
+        ip_vars = {}
+        for i in range(len(ips)):
+            ip_vars['ip_var' + str(i)] = ips.pop()
+
+        # run haproxy playbook
+        args = [
+            'ANSIBLE_STDOUT_CALLBACK=debug',
+            'ansible-playbook', '-vv', 'haproxy.yml',
+            '-e', "'%s'" % json.dumps(ip_vars),
+            '-i', '~/ceph-ansible/inven.yml'
+        ]
+        log.debug("Running %s", args)
+        str_args = ' '.join(args)
+        installer_node.run(
+            args=[
+                run.Raw('cd ~/ansible-haproxy'),
+                run.Raw(';'),
+                run.Raw(str_args)
+            ]
+        )
+        # run keepalived playbook
+        args = [
+            'ANSIBLE_STDOUT_CALLBACK=debug',
+            'ansible-playbook', '-vv', 'keepalived.yml',
+            '-e', "'%s'" % json.dumps(ip_vars),
+            '-i', '~/ceph-ansible/inven.yml'
+        ]
+        log.debug("Running %s", args)
+        str_args = ' '.join(args)
+        installer_node.run(
+            args=[
+                run.Raw('cd ~/ansible-haproxy'),
+                run.Raw(';'),
+                run.Raw(str_args)
+            ]
+        )
+
     def run_playbook(self):
         # setup ansible on first mon node
         ceph_installer = self.ceph_installer
@@ -714,8 +794,7 @@ class CephAnsible(Task):
                     else:
                         osd_role = "{c}.{rol}.{id}".format(c=cluster, rol=rol, id=id)
                     new_remote_role[remote].append(osd_role)
-                elif rol.startswith('mon') or rol.startswith('mgr') or rol.startswith('mds') \
-                        or rol.startswith('rgw'):
+                elif rol.startswith('mon') or rol.startswith('mgr') or rol.startswith('mds'):
                     hostname = remote.shortname
                     new_remote_role[remote].append(role)
                     log.info("Registering Daemon {rol} {id}".format(rol=rol, id=id))
