@@ -572,8 +572,6 @@ class CephAnsible(Task):
             timeout=4200,
             stdout=StringIO()
         )
-
-        remote = self.ctx.cluster.only(misc.is_type('haproxy', self.cluster_name)).remotes.iterkeys()
         allhosts = self.ctx.cluster.only(misc.is_type('rgw', self.cluster_name)).remotes.keys()
         clients = list(set(allhosts))
         ips = []
