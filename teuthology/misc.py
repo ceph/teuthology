@@ -279,34 +279,39 @@ def get_mons(roles, ips,
     Get monitors and their associated addresses
     """
     mons = {}
-    mon_ports = {}
+    v1_ports = {}
+    v2_ports = {}
     mon_id = 0
     is_mon = is_type('mon')
     for idx, roles in enumerate(roles):
         for role in roles:
             if not is_mon(role):
                 continue
-            if ips[idx] not in mon_ports:
-                mon_ports[ips[idx]] = 6789
+            if ips[idx] not in v1_ports:
+                v1_ports[ips[idx]] = 6789
             else:
-                mon_ports[ips[idx]] += 1
+                v1_ports[ips[idx]] += 1
             if mon_bind_msgr2:
                 assert mon_bind_addrvec
-                addr = 'v2:{ip}:{port},v1:{ip}:{port2}'.format(
-                    ip=ips[idx],
-                    port=mon_ports[ips[idx]],
-                    port2=mon_ports[ips[idx]] + 1,
-                )
-                mon_ports[ips[idx]] += 1
+                if ips[idx] not in v2_ports:
+                    v2_ports[ips[idx]] = 3300
+                    addr = '{ip}'.format(ip=ips[idx])
+                else:
+                    v2_ports[ips[idx]] += 1
+                    addr = 'v2:{ip}:{port2},v1:{ip}:{port1}'.format(
+                        ip=ips[idx],
+                        port2=v2_ports[ips[idx]],
+                        port1=v1_ports[ips[idx]],
+                    )
             elif mon_bind_addrvec:
                 addr = 'v1:{ip}:{port}'.format(
                     ip=ips[idx],
-                    port=mon_ports[ips[idx]],
+                    port=v1_ports[ips[idx]],
                 )
             else:
                 addr = '{ip}:{port}'.format(
                     ip=ips[idx],
-                    port=mon_ports[ips[idx]],
+                    port=v1_ports[ips[idx]],
                 )
             mon_id += 1
             mons[role] = addr
