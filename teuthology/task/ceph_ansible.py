@@ -121,6 +121,7 @@ class CephAnsible(Task):
 
         stripped_role = {}
         for remote, roles in self.cluster.remotes.iteritems():
+            stripped_role[remote] = []
             for role in roles:
                 stripped_role[remote].append(teuthology.ceph_role(role))
         return self.ctx.cluster.remotes.update(stripped_role)
