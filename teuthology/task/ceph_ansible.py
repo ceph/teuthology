@@ -117,6 +117,14 @@ class CephAnsible(Task):
         self.extra_vars_file = self._write_hosts_file(prefix='teuth_ansible_gvar',
                                                       content=gvar)
 
+    def remove_cluster_prefix(self):
+
+        stripped_role = {}
+        for remote, roles in self.cluster.remotes.iteritems():
+            for role in roles:
+                stripped_role[remote].append(teuthology.ceph_role(role))
+        return self.ctx.cluster.remotes.update(stripped_role)
+
     def execute_playbook(self):
         """
         Execute ansible-playbook
@@ -134,9 +142,10 @@ class CephAnsible(Task):
         # If there is an installer.0 node, use that for the installer.
         # Otherwise, use the first mon node as installer node.
         ansible_loc = self.ctx.cluster.only('installer.0')
+        self.remove_cluster_prefix()
         (ceph_first_mon,) = self.ctx.cluster.only(
             misc.get_first_mon(self.ctx,
-                               self.config, self.cluster_name)).remotes.iterkeys()
+                               self.config)).remotes.iterkeys()
         if ansible_loc.remotes:
             (ceph_installer,) = ansible_loc.remotes.iterkeys()
         else:
@@ -155,42 +164,19 @@ class CephAnsible(Task):
 
     def generate_hosts_file(self):
 
-        self.cluster_groups_to_roles = dict(
-            mons=self.cluster_name+'.'+'mon',
-            mgrs=self.cluster_name+'.'+'mgr',
-            mdss=self.cluster_name+'.'+'mds',
-            osds=self.cluster_name+'.'+'osd',
-            rgws=self.cluster_name+'.'+'rgw',
-            clients=self.cluster_name+'.'+'client',
-            nfss=self.cluster_name+'.'+'nfs',
-            haproxys=self.cluster_name+'.'+'haproxy',
-        )
-
         hosts_dict = dict()
 
-        if self.cluster_name is 'ceph':
-            for group in sorted(self.groups_to_roles.keys()):
-                role_prefix = self.groups_to_roles[group]
-                log.info("role_prefix: ".format(role_prefix))
-                want = lambda role: role.startswith(role_prefix)
-                for (remote, roles) in self.cluster.only(want).remotes.iteritems():
-                    hostname = remote.hostname
-                    host_vars = self.get_host_vars(remote)
-                    if group not in hosts_dict:
-                        hosts_dict[group] = {hostname: host_vars}
-                    elif hostname not in hosts_dict[group]:
-                        hosts_dict[group][hostname] = host_vars
-        else:
-            for group in sorted(self.cluster_groups_to_roles.keys()):
-                role_prefix = self.cluster_groups_to_roles[group]
-                want = lambda role: role.startswith(role_prefix)
-                for (remote, roles) in self.cluster.only(want).remotes.iteritems():
-                    hostname = remote.hostname
-                    host_vars = self.get_host_vars(remote)
-                    if group not in hosts_dict:
-                        hosts_dict[group] = {hostname: host_vars}
-                    elif hostname not in hosts_dict[group]:
-                        hosts_dict[group][hostname] = host_vars
+        for group in sorted(self.groups_to_roles.keys()):
+            role_prefix = self.groups_to_roles[group]
+            log.info("role_prefix: ".format(role_prefix))
+            want = lambda role: role.startswith(role_prefix)
+            for (remote, roles) in self.cluster.only(want).remotes.iteritems():
+                hostname = remote.hostname
+                host_vars = self.get_host_vars(remote)
+                if group not in hosts_dict:
+                    hosts_dict[group] = {hostname: host_vars}
+                elif hostname not in hosts_dict[group]:
+                    hosts_dict[group][hostname] = host_vars
 
 
         hosts_stringio = StringIO()
@@ -418,16 +404,10 @@ class CephAnsible(Task):
             def wanted(role):
                 # Only attempt to collect logs from hosts which are part of the
                 # cluster
-                if self.cluster_name is 'ceph':
-                    return any(map(
-                        lambda role_stub: role.startswith(role_stub),
-                        self.groups_to_roles.values(),
-                    ))
-                else:
-                    return any(map(
-                        lambda role_stub: role.startswith(role_stub),
-                        self.cluster_groups_to_roles.values(),
-                    ))
+                return any(map(
+                    lambda role_stub: role.startswith(role_stub),
+                    self.groups_to_roles.values(),
+                ))
 
             for remote in ctx.cluster.only(wanted).remotes.keys():
                 sub = os.path.join(path, remote.shortname)
@@ -440,17 +420,17 @@ class CephAnsible(Task):
                                     action='check health') as proceed:
             remote = self.ceph_first_mon
             remote.run(args=[
-                'sudo', 'ceph', '--cluster', self.cluster_name, 'osd', 'tree'
+                'sudo', 'ceph', 'osd', 'tree'
             ])
             remote.run(args=[
-                'sudo', 'ceph', '--cluster', self.cluster_name, '-s'
+                'sudo', 'ceph', '-s'
             ])
             log.info("Waiting for Ceph health to reach HEALTH_OK \
                         or HEALTH WARN")
             while proceed():
                 out = StringIO()
                 remote.run(
-                    args=['sudo', 'ceph', '--cluster', self.cluster_name,
+                    args=['sudo', 'ceph',
                           'health'],
                     stdout=out,
                 )
@@ -531,10 +511,7 @@ class CephAnsible(Task):
         if re.search(r'all hosts have already failed', out.getvalue()):
             log.error("Failed during ceph-ansible execution")
             raise CephAnsibleError("Failed during ceph-ansible execution")
-        if self.cluster_name == 'ceph':
-            self.ready_cluster = self.ctx.cluster
-        else:
-            self.ready_cluster = self.ctx.cluster.only(lambda role: role.startswith(self.cluster_name))
+        self.ready_cluster = self.ctx.cluster
         log.info('Ready_cluster {}'.format(self.ready_cluster))
         self._create_rbd_pool()
         self._fix_roles_map()
@@ -573,7 +550,7 @@ class CephAnsible(Task):
             timeout=4200,
             stdout=StringIO()
         )
-        allhosts = self.ctx.cluster.only(misc.is_type('rgw', self.cluster_name)).remotes.keys()
+        allhosts = self.ctx.cluster.only(misc.is_type('rgw')).remotes.keys()
         clients = list(set(allhosts))
         ips = []
         for each_client in clients:
@@ -808,13 +785,12 @@ class CephAnsible(Task):
         ctx.cluster.remotes.update(new_remote_role)
         (ceph_first_mon,) = self.ctx.cluster.only(
             misc.get_first_mon(self.ctx,
-                               self.config, self.cluster_name)).remotes.iterkeys()
+                               self.config)).remotes.iterkeys()
         from tasks.ceph_manager import CephManager
-        ctx.managers[self.cluster_name] = CephManager(
+        ctx.managers['ceph'] = CephManager(
             ceph_first_mon,
             ctx=ctx,
-            logger=log.getChild('ceph_manager.' + self.cluster_name),
-            cluster=self.cluster_name,
+            logger=log.getChild('ceph_manager.' + 'ceph'),
             )
 
     def _generate_client_config(self):
@@ -835,12 +811,12 @@ class CephAnsible(Task):
         log.info('Creating RBD pool')
         mon_node.run(
             args=[
-                'sudo', 'ceph', '--cluster', self.cluster_name,
+                'sudo', 'ceph',
                 'osd', 'pool', 'create', 'rbd', '128', '128'],
             check_status=False)
         mon_node.run(
             args=[
-                'sudo', 'ceph', '--cluster', self.cluster_name,
+                'sudo', 'ceph',
                 'osd', 'pool', 'application', 'enable',
                 'rbd', 'rbd', '--yes-i-really-mean-it'
                 ],
@@ -853,7 +829,7 @@ class CephAnsible(Task):
                 'sudo',
                 'chmod',
                 run.Raw('o+r'),
-                '/etc/ceph/%s.client.admin.keyring' % self.cluster_name
+                '/etc/ceph/ceph.client.admin.keyring'
             ])
 
 
