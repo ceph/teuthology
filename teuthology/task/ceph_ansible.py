@@ -75,7 +75,6 @@ class CephAnsible(Task):
             self.config['repo'] = os.path.join(teuth_config.ceph_git_base_url,
                                                'ceph-ansible.git')
 
-
         # default vars to dev builds
         if 'vars' not in config:
             vars = dict()
@@ -124,7 +123,7 @@ class CephAnsible(Task):
             stripped_role[remote] = []
             for role in roles:
                 stripped_role[remote].append(teuthology.ceph_role(role))
-        return self.ctx.cluster.remotes.update(stripped_role)
+        self.ctx.cluster.remotes = stripped_role
 
     def execute_playbook(self):
         """
@@ -168,18 +167,40 @@ class CephAnsible(Task):
 
         hosts_dict = dict()
 
-        for group in sorted(self.groups_to_roles.keys()):
-            role_prefix = self.groups_to_roles[group]
-            log.info("role_prefix: ".format(role_prefix))
-            want = lambda role: role.startswith(role_prefix)
-            for (remote, roles) in self.cluster.only(want).remotes.iteritems():
-                hostname = remote.hostname
-                host_vars = self.get_host_vars(remote)
-                if group not in hosts_dict:
-                    hosts_dict[group] = {hostname: host_vars}
-                elif hostname not in hosts_dict[group]:
-                    hosts_dict[group][hostname] = host_vars
+        self.cluster_groups_to_roles = dict(
+            mons=self.cluster_name+'.'+'mon',
+            mgrs=self.cluster_name+'.'+'mgr',
+            mdss=self.cluster_name+'.'+'mds',
+            osds=self.cluster_name+'.'+'osd',
+            rgws=self.cluster_name+'.'+'rgw',
+            clients=self.cluster_name+'.'+'client',
+            nfss=self.cluster_name+'.'+'nfs',
+            haproxys=self.cluster_name+'.'+'haproxy',
+        )
 
+        if self.cluster_name is 'ceph':
+            for group in sorted(self.groups_to_roles.keys()):
+                role_prefix = self.groups_to_roles[group]
+                log.info("role_prefix: ".format(role_prefix))
+                want = lambda role: role.startswith(role_prefix)
+                for (remote, roles) in self.cluster.only(want).remotes.iteritems():
+                    hostname = remote.hostname
+                    host_vars = self.get_host_vars(remote)
+                    if group not in hosts_dict:
+                        hosts_dict[group] = {hostname: host_vars}
+                    elif hostname not in hosts_dict[group]:
+                        hosts_dict[group][hostname] = host_vars
+        else:
+            for group in sorted(self.cluster_groups_to_roles.keys()):
+                role_prefix = self.cluster_groups_to_roles[group]
+                want = lambda role: role.startswith(role_prefix)
+                for (remote, roles) in self.cluster.only(want).remotes.iteritems():
+                    hostname = remote.hostname
+                    host_vars = self.get_host_vars(remote)
+                    if group not in hosts_dict:
+                        hosts_dict[group] = {hostname: host_vars}
+                    elif hostname not in hosts_dict[group]:
+                        hosts_dict[group][hostname] = host_vars
 
         hosts_stringio = StringIO()
         for group in sorted(hosts_dict.keys()):
@@ -826,7 +847,7 @@ class CephAnsible(Task):
 
     def fix_keyring_permission(self):
         clients_only = lambda role: role.startswith('client')
-        for client in self.cluster.only(clients_only).remotes.iterkeys():
+        for client in self.ctx.cluster.only(clients_only).remotes.iterkeys():
             client.run(args=[
                 'sudo',
                 'chmod',
