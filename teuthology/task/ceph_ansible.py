@@ -119,10 +119,11 @@ class CephAnsible(Task):
     def remove_cluster_prefix(self):
 
         stripped_role = {}
+        self.each_cluster = self.ctx.cluster.only(lambda role: role.startswith(self.cluster_name))
         for remote, roles in self.each_cluster.remotes.iteritems():
             stripped_role[remote] = []
-            for role in roles:
-                stripped_role[remote].append(teuthology.ceph_role(role))
+            for rol in roles:
+                stripped_role[remote].append(teuthology.ceph_role(rol))
         self.ctx.cluster.remotes = stripped_role
 
     def execute_playbook(self):
@@ -142,7 +143,7 @@ class CephAnsible(Task):
         # If there is an installer.0 node, use that for the installer.
         # Otherwise, use the first mon node as installer node.
         ansible_loc = self.ctx.cluster.only('installer.0')
-        self.each_cluster = self.ctx.cluster.only(lambda role: role.startswith(self.cluster_name))
+#        self.each_cluster = self.ctx.cluster.only(lambda role: role.startswith(self.cluster_name))
 #        self.remove_cluster_prefix()
         (ceph_first_mon,) = self.ctx.cluster.only(
             misc.get_first_mon(self.ctx,
