@@ -143,7 +143,7 @@ class CephAnsible(Task):
         # Otherwise, use the first mon node as installer node.
         ansible_loc = self.ctx.cluster.only('installer.0')
         self.each_cluster = self.ctx.cluster.only(lambda role: role.startswith(self.cluster_name))
-        self.remove_cluster_prefix()
+#        self.remove_cluster_prefix()
         (ceph_first_mon,) = self.ctx.cluster.only(
             misc.get_first_mon(self.ctx,
                                self.config)).remotes.iterkeys()
@@ -166,41 +166,19 @@ class CephAnsible(Task):
     def generate_hosts_file(self):
 
         hosts_dict = dict()
+        self.remove_cluster_prefix()
 
-        self.cluster_groups_to_roles = dict(
-            mons=self.cluster_name+'.'+'mon',
-            mgrs=self.cluster_name+'.'+'mgr',
-            mdss=self.cluster_name+'.'+'mds',
-            osds=self.cluster_name+'.'+'osd',
-            rgws=self.cluster_name+'.'+'rgw',
-            clients=self.cluster_name+'.'+'client',
-            nfss=self.cluster_name+'.'+'nfs',
-            haproxys=self.cluster_name+'.'+'haproxy',
-        )
-
-        if self.cluster_name is 'ceph':
-            for group in sorted(self.groups_to_roles.keys()):
-                role_prefix = self.groups_to_roles[group]
-                log.info("role_prefix: ".format(role_prefix))
-                want = lambda role: role.startswith(role_prefix)
-                for (remote, roles) in self.cluster.only(want).remotes.iteritems():
-                    hostname = remote.hostname
-                    host_vars = self.get_host_vars(remote)
-                    if group not in hosts_dict:
-                        hosts_dict[group] = {hostname: host_vars}
-                    elif hostname not in hosts_dict[group]:
-                        hosts_dict[group][hostname] = host_vars
-        else:
-            for group in sorted(self.cluster_groups_to_roles.keys()):
-                role_prefix = self.cluster_groups_to_roles[group]
-                want = lambda role: role.startswith(role_prefix)
-                for (remote, roles) in self.cluster.only(want).remotes.iteritems():
-                    hostname = remote.hostname
-                    host_vars = self.get_host_vars(remote)
-                    if group not in hosts_dict:
-                        hosts_dict[group] = {hostname: host_vars}
-                    elif hostname not in hosts_dict[group]:
-                        hosts_dict[group][hostname] = host_vars
+        for group in sorted(self.groups_to_roles.keys()):
+            role_prefix = self.groups_to_roles[group]
+            log.info("role_prefix: ".format(role_prefix))
+            want = lambda role: role.startswith(role_prefix)
+            for (remote, roles) in self.ctx.cluster.only(want).remotes.iteritems():
+                hostname = remote.hostname
+                host_vars = self.get_host_vars(remote)
+                if group not in hosts_dict:
+                    hosts_dict[group] = {hostname: host_vars}
+                elif hostname not in hosts_dict[group]:
+                    hosts_dict[group][hostname] = host_vars
 
         hosts_stringio = StringIO()
         for group in sorted(hosts_dict.keys()):
