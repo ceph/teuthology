@@ -422,17 +422,17 @@ class CephAnsible(Task):
                                     action='check health') as proceed:
             remote = self.ceph_first_mon
             remote.run(args=[
-                'sudo', 'ceph', 'osd', 'tree'
+                'sudo', 'ceph', '--cluster', self.cluster_name, 'osd', 'tree'
             ])
             remote.run(args=[
-                'sudo', 'ceph', '-s'
+                'sudo', 'ceph', '--cluster', self.cluster_name, '-s'
             ])
             log.info("Waiting for Ceph health to reach HEALTH_OK \
                         or HEALTH WARN")
             while proceed():
                 out = StringIO()
                 remote.run(
-                    args=['sudo', 'ceph',
+                    args=['sudo', 'ceph', '--cluster', self.cluster_name,
                           'health'],
                     stdout=out,
                 )
@@ -813,12 +813,12 @@ class CephAnsible(Task):
         log.info('Creating RBD pool')
         mon_node.run(
             args=[
-                'sudo', 'ceph',
+                'sudo', 'ceph', '--cluster', self.cluster_name,
                 'osd', 'pool', 'create', 'rbd', '128', '128'],
             check_status=False)
         mon_node.run(
             args=[
-                'sudo', 'ceph',
+                'sudo', 'ceph', '--cluster', self.cluster_name,
                 'osd', 'pool', 'application', 'enable',
                 'rbd', 'rbd', '--yes-i-really-mean-it'
                 ],
@@ -831,7 +831,7 @@ class CephAnsible(Task):
                 'sudo',
                 'chmod',
                 run.Raw('o+r'),
-                '/etc/ceph/ceph.client.admin.keyring'
+                '/etc/ceph/%s.client.admin.keyring' % self.cluster_name
             ])
 
 
