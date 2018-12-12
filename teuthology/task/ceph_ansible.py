@@ -149,7 +149,7 @@ class CephAnsible(Task):
 #        self.remove_cluster_prefix()
         (ceph_first_mon,) = self.each_cluster.only(
             misc.get_first_mon(self.ctx,
-                               self.config)).remotes.iterkeys()
+                               self.config, self.cluster_name)).remotes.iterkeys()
         if ansible_loc.remotes:
             (ceph_installer,) = ansible_loc.remotes.iterkeys()
         else:
@@ -789,7 +789,7 @@ class CephAnsible(Task):
         self.each_cluster.remotes.update(new_remote_role)
         (ceph_first_mon,) = self.each_cluster.only(
             misc.get_first_mon(self.ctx,
-                               self.config)).remotes.iterkeys()
+                               self.config, self.cluster_name)).remotes.iterkeys()
         from tasks.ceph_manager import CephManager
         ctx.managers[self.cluster_name] = CephManager(
             ceph_first_mon,
