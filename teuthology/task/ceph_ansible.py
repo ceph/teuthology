@@ -789,10 +789,11 @@ class CephAnsible(Task):
             misc.get_first_mon(self.ctx,
                                self.config)).remotes.iterkeys()
         from tasks.ceph_manager import CephManager
-        ctx.managers['ceph'] = CephManager(
+        ctx.managers[self.cluster_name] = CephManager(
             ceph_first_mon,
             ctx=ctx,
-            logger=log.getChild('ceph_manager.' + 'ceph'),
+            logger=log.getChild('ceph_manager.' + self.cluster_name),
+            cluster=self.cluster_name
             )
 
     def _generate_client_config(self):
