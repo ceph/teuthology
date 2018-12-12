@@ -147,7 +147,7 @@ class CephAnsible(Task):
         ansible_loc = self.each_cluster.only('installer.0')
 #        self.each_cluster = self.each_cluster.only(lambda role: role.startswith(self.cluster_name))
 #        self.remove_cluster_prefix()
-        (ceph_first_mon,) = self.each_cluster.only(
+        (ceph_first_mon,) = self.ctx.cluster.only(
             misc.get_first_mon(self.ctx,
                                self.config, self.cluster_name)).remotes.iterkeys()
         if ansible_loc.remotes:
