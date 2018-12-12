@@ -126,6 +126,7 @@ class CephAnsible(Task):
             for rol in roles:
                 stripped_role[remote].append(teuthology.ceph_role(rol))
         self.each_cluster.remotes = stripped_role
+        log.info('updated cluster {}'.format(self.each_cluster))
 
     def execute_playbook(self):
         """
