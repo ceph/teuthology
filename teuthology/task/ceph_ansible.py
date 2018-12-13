@@ -75,6 +75,11 @@ class CephAnsible(Task):
             self.config['repo'] = os.path.join(teuth_config.ceph_git_base_url,
                                                'ceph-ansible.git')
 
+        # Legacy option set to true in case we are running a test
+        # which was earlier using "ceph" task for configuration
+        self.legacy = False
+        if 'legacy' in config:
+            self.legacy = True
 
         # default vars to dev builds
         if 'vars' not in config:
@@ -535,6 +540,9 @@ class CephAnsible(Task):
         self._fix_roles_map()
         # fix keyring permission for workunits
         self.fix_keyring_permission()
+        self.create_keyring()
+        if self.legacy:
+            self.change_key_permission()
         self.wait_for_ceph_health()
 
     def run_haproxy(self):
@@ -851,6 +859,79 @@ class CephAnsible(Task):
                 run.Raw('o+r'),
                 '/etc/ceph/%s.client.admin.keyring' % self.cluster_name
             ])
+
+    # this will be called only if "legacy" is true
+    def change_key_permission(self):
+        """
+        Change permission for admin.keyring files on all nodes
+        only if legacy is set to True
+        """
+        log.info("Changing permission for admin keyring on all nodes")
+        mons = self.ctx.cluster.only(teuthology.is_type('mon', self.cluster_name))
+        for remote, roles in mons.remotes.iteritems():
+            remote.run(args=[
+                'sudo',
+                'chmod',
+                run.Raw('o+r'),
+                '/etc/ceph/%s.client.admin.keyring' % self.cluster_name,
+                run.Raw('&&'),
+                'sudo',
+                'ls',
+                run.Raw('-l'),
+                '/etc/ceph/%s.client.admin.keyring' % self.cluster_name,
+            ])
+
+
+    def create_keyring(self):
+        """
+        Set up key ring on remote sites
+        """
+        log.info('Setting up client nodes...')
+        clients = self.ctx.cluster.only(teuthology.is_type('client', self.cluster_name))
+        testdir = teuthology.get_testdir(self.ctx)
+        coverage_dir = '{tdir}/archive/coverage'.format(tdir=testdir)
+        for remote, roles_for_host in clients.remotes.iteritems():
+            for role in teuthology.cluster_roles_of_type(roles_for_host, 'client',
+                                                        self.cluster_name):
+                name = teuthology.ceph_role(role)
+                log.info("Creating keyring for {}".format(name))
+                client_keyring = '/etc/ceph/{0}.{1}.keyring'.format(self.cluster_name, name)
+                remote.run(
+                    args=[
+                        'sudo',
+                        'adjust-ulimits',
+                        'ceph-coverage',
+                        coverage_dir,
+                        'ceph-authtool',
+                        '--create-keyring',
+                        '--gen-key',
+                        # TODO this --name= is not really obeyed, all unknown "types" are munged to "client"
+                        '--name={name}'.format(name=name),
+                        '--cap',
+                        'osd',
+                        'allow rwx',
+                        '--cap',
+                        'mon',
+                        'allow rwx',
+                        client_keyring,
+                        run.Raw('&&'),
+                        'sudo',
+                        'chmod',
+                        '0644',
+                        client_keyring,
+                        run.Raw('&&'),
+                        'sudo',
+                        'ls',run.Raw('-l'),
+                        client_keyring,
+                        run.Raw('&&'),
+                        'sudo',
+                        'ceph',
+                        'auth',
+                        'import',
+                        run.Raw('-i'),
+                        client_keyring,
+                        ],
+                    )
 
 
 class CephAnsibleError(Exception):
