@@ -74,13 +74,13 @@ class CephAnsible(Task):
         if 'repo' not in config:
             self.config['repo'] = os.path.join(teuth_config.ceph_git_base_url,
                                                'ceph-ansible.git')
-
+        if 'cluster' in config:
+            self.cluster_name = self.config.get('cluster', 'ceph')
         # default vars to dev builds
         if 'vars' not in config:
             vars = dict()
             config['vars'] = vars
         vars = config['vars']
-        self.cluster_name = vars.get('cluster', 'ceph')
         # for downstream bulids skip var setup
         if 'rhbuild' in config:
             return
@@ -147,15 +147,16 @@ class CephAnsible(Task):
         ansible_loc = self.each_cluster.only('installer.0')
 #        self.each_cluster = self.each_cluster.only(lambda role: role.startswith(self.cluster_name))
 #        self.remove_cluster_prefix()
-        (ceph_first_mon,) = self.ctx.cluster.only(
+        (ceph_first_mon,) = self.each_cluster.only(
             misc.get_first_mon(self.ctx,
-                               self.config, self.cluster_name)).remotes.iterkeys()
+                               self.config)).remotes.iterkeys()
         if ansible_loc.remotes:
             (ceph_installer,) = ansible_loc.remotes.iterkeys()
         else:
             ceph_installer = ceph_first_mon
         self.ceph_first_mon = ceph_first_mon
-        self.ceph_installer = ceph_installer
+        self.installer = ceph_installer
+        self.ceph_installer = self.installer
         self.args = args
         # ship utilities files
         self._ship_utilities()
@@ -424,17 +425,17 @@ class CephAnsible(Task):
                                     action='check health') as proceed:
             remote = self.ceph_first_mon
             remote.run(args=[
-                'sudo', 'ceph', '--cluster', self.cluster_name, 'osd', 'tree'
+                'sudo', 'ceph', 'osd', 'tree'
             ])
             remote.run(args=[
-                'sudo', 'ceph', '--cluster', self.cluster_name, '-s'
+                'sudo', 'ceph', '-s'
             ])
             log.info("Waiting for Ceph health to reach HEALTH_OK \
                         or HEALTH WARN")
             while proceed():
                 out = StringIO()
                 remote.run(
-                    args=['sudo', 'ceph', '--cluster', self.cluster_name,
+                    args=['sudo', 'ceph',
                           'health'],
                     stdout=out,
                 )
@@ -789,13 +790,12 @@ class CephAnsible(Task):
         self.each_cluster.remotes.update(new_remote_role)
         (ceph_first_mon,) = self.ctx.cluster.only(
             misc.get_first_mon(self.ctx,
-                               self.config, self.cluster_name)).remotes.iterkeys()
+                               self.config)).remotes.iterkeys()
         from tasks.ceph_manager import CephManager
-        ctx.managers[self.cluster_name] = CephManager(
+        ctx.managers['ceph'] = CephManager(
             ceph_first_mon,
             ctx=ctx,
-            logger=log.getChild('ceph_manager.' + self.cluster_name),
-            cluster=self.cluster_name
+            logger=log.getChild('ceph_manager.' + 'ceph'),
             )
 
     def _generate_client_config(self):
@@ -816,12 +816,12 @@ class CephAnsible(Task):
         log.info('Creating RBD pool')
         mon_node.run(
             args=[
-                'sudo', 'ceph', '--cluster', self.cluster_name,
+                'sudo', 'ceph',
                 'osd', 'pool', 'create', 'rbd', '128', '128'],
             check_status=False)
         mon_node.run(
             args=[
-                'sudo', 'ceph', '--cluster', self.cluster_name,
+                'sudo', 'ceph',
                 'osd', 'pool', 'application', 'enable',
                 'rbd', 'rbd', '--yes-i-really-mean-it'
                 ],
@@ -829,12 +829,12 @@ class CephAnsible(Task):
 
     def fix_keyring_permission(self):
         clients_only = lambda role: role.startswith('client')
-        for client in self.each_cluster.only(clients_only).remotes.iterkeys():
+        for client in self.ctx.cluster.only(clients_only).remotes.iterkeys():
             client.run(args=[
                 'sudo',
                 'chmod',
                 run.Raw('o+r'),
-                '/etc/ceph/%s.client.admin.keyring' % self.cluster_name
+                '/etc/ceph/ceph.client.admin.keyring'
             ])
 
 
