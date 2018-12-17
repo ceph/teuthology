@@ -516,7 +516,6 @@ class CephAnsible(Task):
         ])
         self._copy_and_print_config()
         self._generate_client_config()
-        out = StringIO()
         str_args = ' '.join(args)
         ceph_installer.run(
             args=[
@@ -526,11 +525,7 @@ class CephAnsible(Task):
                 run.Raw(str_args)
             ],
             timeout=4200,
-            stdout=out
         )
-        if re.search(r'all hosts have already failed', out.getvalue()):
-            log.error("Failed during ceph-ansible execution")
-            raise CephAnsibleError("Failed during ceph-ansible execution")
         if self.cluster_name == 'ceph':
             self.ready_cluster = self.ctx.cluster
         else:
