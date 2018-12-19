@@ -133,7 +133,7 @@ class CephAnsible(Task):
         args = [
             'ANSIBLE_STDOUT_CALLBACK=debug',
             'ansible-playbook', '-vv',
-            '-e', 'check_firewall=false'
+            '-e', 'check_firewall=false',
             '-i', 'inven.yml', 'site.yml'
         ]
         log.debug("Running %s", args)
