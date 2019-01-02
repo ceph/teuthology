@@ -310,7 +310,7 @@ class CephAnsible(Task):
     def begin(self):
         super(CephAnsible, self).begin()
         self.execute_playbook()
-        self.set_diskinfo_ctx()
+#        self.set_diskinfo_ctx()
 
     def _write_hosts_file(self, prefix, content):
         """
