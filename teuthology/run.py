@@ -168,10 +168,15 @@ def validate_tasks(config):
 
 
 def get_initial_tasks(lock, config, machine_type):
-    init_tasks = [
-        {'internal.check_packages': None},
-        {'internal.buildpackages_prep': None},
-    ]
+    init_tasks = []
+    overrides = config.get('overrides')
+    having_repos = ('install' in config and 'repos' in config.get('install')) \
+        or (overrides and 'install' in overrides and 'repos' in overrides.get('install'))
+    if not having_repos:
+        init_tasks += [
+            {'internal.check_packages': None},
+            {'internal.buildpackages_prep': None},
+        ]
     if 'roles' in config and lock:
         msg = ('You cannot specify targets in a config file when using the ' +
                '--lock option')
@@ -344,7 +349,7 @@ def main(args):
         assert lock, \
             'the --block option is only supported with the --lock option'
 
-    log.debug(
+    log.info(
         '\n  '.join(['Config:', ] + yaml.safe_dump(
             config, default_flow_style=False).splitlines()))
 

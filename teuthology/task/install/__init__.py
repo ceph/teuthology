@@ -41,6 +41,9 @@ def verify_package_version(ctx, config, remote):
     if config.get("extras"):
         log.info("Skipping version verification...")
         return True
+    if 'repos' in config and config.get('repos'):
+        log.info("Skipping version verification because we have custom repos...")
+        return True
     builder = _get_builder_project(ctx, remote, config)
     version = builder.version
     pkg_to_check = builder.project
@@ -101,7 +104,6 @@ def _purge_data(remote):
         'sudo',
         'rm', '-rf', '--one-file-system', '--', '/var/lib/ceph',
     ])
-
 
 def install_packages(ctx, pkgs, config):
     """
@@ -199,7 +201,7 @@ def get_package_list(ctx, config):
         rpms = filter(lambda p: not p.endswith('-debuginfo'), rpms)
 
     def exclude(pkgs, exclude_list):
-        return list(set(pkgs).difference(set(exclude_list)))
+        return list(pkg for pkg in pkgs if pkg not in exclude_list)
 
     excluded_packages = config.get('exclude_packages', [])
     if isinstance(excluded_packages, dict):
@@ -224,8 +226,6 @@ def install(ctx, config):
     :param ctx: the argparse.Namespace object
     :param config: the config dict
     """
-
-    project = config.get('project', 'ceph')
 
     package_list = get_package_list(ctx, config)
     debs = package_list['deb']
@@ -259,7 +259,7 @@ def install(ctx, config):
     finally:
         remove_packages(ctx, config, package_list)
         remove_sources(ctx, config)
-        if project == 'ceph':
+        if config.get('project', 'ceph') == 'ceph':
             purge_data(ctx)
 
 
@@ -547,6 +547,17 @@ def task(ctx, config):
     When passed 'rhbuild' as a key, it will attempt to install an rh ceph build
     using ceph-deploy
 
+    Normally, the package management system will try to install or upgrade
+    specified packages as instructed. But if newer versions of these packages
+    to be installed have been installed on test node, we will have to uninstall
+    or downgrade them. To downgrade multiple packages in a single shot:
+
+    tasks:
+    - install:
+        project: ceph
+        branch: hammer
+        downgrade_packages: ['librados2', 'librbd1']
+
     Reminder regarding teuthology-suite side effects:
 
     The teuthology-suite command always adds the following:
@@ -576,6 +587,8 @@ def task(ctx, config):
     if overrides:
         install_overrides = overrides.get('install', {})
         teuthology.deep_merge(config, install_overrides.get(project, {}))
+        repos = install_overrides.get('repos', None)
+        log.debug('INSTALL overrides: %s' % install_overrides)
     log.debug('config %s' % config)
 
     rhbuild = None
@@ -602,8 +615,7 @@ def task(ctx, config):
         with contextutil.nested(*nested_tasks):
                 yield
     else:
-        with contextutil.nested(
-            lambda: install(ctx=ctx, config=dict(
+        nested_config = dict(
                 branch=config.get('branch'),
                 tag=config.get('tag'),
                 sha1=config.get('sha1'),
@@ -616,7 +628,11 @@ def task(ctx, config):
                 wait_for_package=config.get('wait_for_package', False),
                 project=project,
                 packages=config.get('packages', dict()),
-            )),
+        )
+        if repos:
+            nested_config['repos'] = repos
+        with contextutil.nested(
+            lambda: install(ctx=ctx, config=nested_config),
             lambda: ship_utilities(ctx=ctx, config=None),
         ):
             yield

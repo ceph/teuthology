@@ -1,4 +1,7 @@
 import logging
+import os.path
+
+from distutils.version import LooseVersion
 
 from teuthology.config import config as teuth_config
 from teuthology.orchestra import run
@@ -18,49 +21,40 @@ def _remove(ctx, config, remote, rpm):
     :param remote: the teuthology.orchestra.remote.Remote object
     :param rpm: list of packages names to remove
     """
-    rpm = _package_overrides(rpm, remote.os)
+    remote_os = remote.os
+    dist_release = remote_os.name
+    rpm = _package_overrides(rpm, remote_os)
     log.info("Removing packages: {pkglist} on rpm system.".format(
         pkglist=", ".join(rpm)))
-    builder = _get_builder_project(ctx, remote, config)
-    dist_release = builder.dist_release
+    repos = config.get('repos')
 
-    if dist_release == 'opensuse':
-        pkg_mng_cmd = 'zypper'
-        pkg_mng_opts = '-n'
-        pkg_mng_subcommand_opts = '--capability'
+    if dist_release in ['opensuse', 'sle']:
+        remote.run(args='''
+            for d in {rpms} ; do
+                sudo zypper -n --no-gpg-checks remove --capability $d || true
+            done'''.format(rpms=' '.join(rpm)))
+        remote.run(args='sudo zypper clean -a')
     else:
-        pkg_mng_cmd = 'yum'
-        pkg_mng_opts = '-y'
-        pkg_mng_subcommand_opts = ''
+        remote.run(args='''
+            for d in {rpms} ; do
+                sudo yum -y remove $d || true
+            done'''.format(rpms=' '.join(rpm)))
+        remote.run(args='sudo yum clean all')
 
-    remote.run(
-        args=[
-            'for', 'd', 'in',
-        ] + rpm + [
-            run.Raw(';'),
-            'do',
-            'sudo',
-            pkg_mng_cmd, pkg_mng_opts, 'remove', pkg_mng_subcommand_opts,
-            run.Raw('$d'), run.Raw('||'), 'true', run.Raw(';'),
-            'done',
-        ])
-    if dist_release == 'opensuse':
-        pkg_mng_opts = '-a'
+    if repos:
+        if dist_release in ['opensuse', 'sle']:
+            _zypper_removerepo(remote, repos)
+        else:
+            raise Exception('Custom repos were specified for %s ' % remote_os +
+                            'but these are currently not supported')
     else:
-        pkg_mng_opts = 'all'
-    remote.run(
-        args=[
-            'sudo', pkg_mng_cmd, 'clean', pkg_mng_opts,
-        ])
+        builder = _get_builder_project(ctx, remote, config)
+        builder.remove_repo()
 
-    builder.remove_repo()
-
-    if dist_release != 'opensuse':
-        pkg_mng_opts = 'expire-cache'
-    remote.run(
-        args=[
-            'sudo', pkg_mng_cmd, 'clean', pkg_mng_opts,
-        ])
+    if dist_release in ['opensuse', 'sle']:
+        remote.run(args='sudo zypper clean -a')
+    else:
+        remote.run(args='sudo yum clean expire-cache')
 
 
 def _package_overrides(pkgs, os):
@@ -79,6 +73,64 @@ def _package_overrides(pkgs, os):
                 pkg = pkg.replace('3', '34', 1)
         result.append(pkg)
     return result
+
+def _zypper_addrepo(remote, repo_list):
+    """
+    Add zypper repos to the remote system.
+
+    :param remote: remote node where to add packages
+    :param repo_list: list of dictionaries with keys 'name', 'url'
+    :return:
+    """
+    for repo in repo_list:
+        remote.run(args=[
+            'sudo', 'zypper', '-n', 'addrepo', '--refresh', '--no-gpgcheck',
+            '-p', '1', repo['url'], repo['name'],
+        ])
+
+def _zypper_removerepo(remote, repo_list):
+    """
+    Remove zypper repos on the remote system.
+
+    :param remote: remote node where to remove packages from
+    :param repo_list: list of dictionaries with keys 'name', 'url'
+    :return:
+    """
+    for repo in repo_list:
+        remote.run(args=[
+            'sudo', 'zypper', '-n', 'removerepo', repo['name'],
+        ])
+
+
+def _downgrade_packages(ctx, remote, pkgs, pkg_version, config):
+    """
+    Downgrade packages listed by 'downgrade_packages'
+
+    Downgrade specified packages to given version. The list of packages
+    downgrade is provided by 'downgrade_packages' as a property of "install"
+    task.
+
+    :param ctx: the argparse.Namespace object
+    :param remote: the teuthology.orchestra.remote.Remote object
+    :param pkgs: list of package names to install
+    :param pkg_version: the version to which all packages will be downgraded
+    :param config: the config dict
+    :return: list of package names from 'pkgs' which are not yet
+             installed/downgraded
+    """
+    downgrade_pkgs = config.get('downgrade_packages', [])
+    if not downgrade_pkgs:
+        return pkgs
+    # assuming we are going to downgrade packages with the same version
+    first_pkg = downgrade_pkgs[0]
+    installed_version = packaging.get_package_version(remote, first_pkg)
+    assert installed_version, "failed to get version of {}".format(first_pkg)
+    assert LooseVersion(installed_version) < LooseVersion(pkg_version)
+    # to compose package name like "librados2-0.94.10-87.g116a558.el7"
+    pkgs_opt = ['-'.join([pkg, pkg_version]) for pkg in downgrade_pkgs]
+    downgrade_cmd = 'sudo yum -y downgrade {}'.format(' '.join(pkgs_opt))
+    remote.run(args=downgrade_cmd.format(pkgs=pkgs_opt))
+    return [pkg for pkg in pkgs if pkg not in downgrade_pkgs]
 
 
 def _update_package_list_and_install(ctx, remote, rpm, config):
@@ -101,72 +153,68 @@ def _update_package_list_and_install(ctx, remote, rpm, config):
             rpm += system_pkglist.get('rpm')
         else:
             rpm += system_pkglist
-    rpm = _package_overrides(rpm, remote.os)
-    builder = _get_builder_project(ctx, remote, config)
-    log.info('Pulling from %s', builder.base_url)
-    log.info('Package version is %s', builder.version)
+    remote_os = remote.os
+    rpm = _package_overrides(rpm, remote_os)
     log.info("Installing packages: {pkglist} on remote rpm {arch}".format(
-        pkglist=", ".join(rpm), arch=builder.arch))
-    builder.install_repo()
+        pkglist=", ".join(rpm), arch=remote.arch))
 
-    dist_release = builder.dist_release
-    project = builder.project
-    if dist_release != 'opensuse':
+    dist_release = remote_os.name
+    repos = config.get('repos')
+    if repos:
+        log.debug("Adding repos: %s" % repos)
+        if dist_release in ['opensuse', 'sle']:
+            _zypper_addrepo(remote, repos)
+        else:
+            raise Exception('Custom repos were specified for %s ' % remote_os +
+                            'but these are currently not supported')
+    else:
+        builder = _get_builder_project(ctx, remote, config)
+        log.info('Pulling from %s', builder.base_url)
+        log.info('Package version is %s', builder.version)
+        builder.install_repo()
+
+    if dist_release not in ['opensuse', 'sle']:
+        project = builder.project
         uri = builder.uri_reference
         _yum_fix_repo_priority(remote, project, uri)
         _yum_fix_repo_host(remote, project)
         _yum_set_check_obsoletes(remote)
 
-    if dist_release == 'opensuse':
-        remote.run(
-            args=[
-                'sudo', 'zypper', 'clean', '-a',
-            ])
+    if dist_release in ['opensuse', 'sle']:
+        remote.run(args='sudo zypper clean -a')
     else:
-        remote.run(
-            args=[
-                'sudo', 'yum', 'clean', 'all',
-            ])
+        remote.run(args='sudo yum clean all')
 
     ldir = _get_local_dir(config, remote)
 
-    if dist_release == 'opensuse':
-        pkg_mng_cmd = 'zypper'
-        pkg_mng_opts = '-n'
-        pkg_mng_subcommand_opts = '--capability'
+    if dist_release in ['opensuse', 'sle']:
+        remove_cmd = 'sudo zypper -n remove --capability'
+        install_cmd = 'sudo zypper -n --no-gpg-checks install --capability --no-recommends'
     else:
-        pkg_mng_cmd = 'yum'
-        pkg_mng_opts = '-y'
-        pkg_mng_subcommand_opts = ''
+        remove_cmd = 'sudo yum -y remove'
+        install_cmd = 'sudo yum -y install'
+        # to compose version string like "0.94.10-87.g116a558.el7"
+        pkg_version = '.'.join([builder.version, builder.dist_release])
+        rpm = _downgrade_packages(ctx, remote, rpm, pkg_version, config)
 
     for cpack in rpm:
-        pkg = None
         if ldir:
-            pkg = "{ldir}/{cpack}".format(
-                ldir=ldir,
-                cpack=cpack,
-            )
-            remote.run(
-                args=['if', 'test', '-e',
-                      run.Raw(pkg), run.Raw(';'), 'then',
-                      'sudo', pkg_mng_cmd, pkg_mng_opts, 'remove',
-                      pkg_mng_subcommand_opts, pkg, run.Raw(';'),
-                      'sudo', pkg_mng_cmd, pkg_mng_opts, 'install',
-                      pkg_mng_subcommand_opts, pkg, run.Raw(';'),
-                      'fi']
-            )
-        if pkg is None:
-            remote.run(args=[
-                'sudo', pkg_mng_cmd, pkg_mng_opts, 'install',
-                pkg_mng_subcommand_opts, cpack
-            ])
+            remote.run(args='''
+              if test -e {pkg} ; then
+                {remove_cmd} {pkg} ;
+                {install_cmd} {pkg} ;
+              else
+                {install_cmd} {cpack} ;
+              fi
+            '''.format(remove_cmd=remove_cmd,
+                       install_cmd=install_cmd,
+                       pkg=os.path.join(ldir, cpack),
+                       cpack=cpack))
         else:
-            remote.run(
-                args=['if', 'test', run.Raw('!'), '-e',
-                      run.Raw(pkg), run.Raw(';'), 'then',
-                      'sudo', pkg_mng_cmd, pkg_mng_opts, 'install',
-                      pkg_mng_subcommand_opts, cpack, run.Raw(';'),
-                      'fi'])
+            remote.run(args='''
+              {install_cmd} {cpack}
+            '''.format(install_cmd=install_cmd,
+                       cpack=cpack))
 
 
 def _yum_fix_repo_priority(remote, project, uri):
@@ -268,7 +316,7 @@ def _remove_sources_list(ctx, config, remote):
         args=['sudo', 'rm', '-r', '/var/log/{proj}'.format(proj=proj)],
         check_status=False,
     )
-    if remote.os.name != 'opensuse':
+    if remote.os.name not in ['opensuse', 'sle']:
         _yum_unset_check_obsoletes(remote)
 
 
@@ -301,13 +349,13 @@ def _upgrade_packages(ctx, config, remote, pkgs):
     builder.remove_repo()
     builder.install_repo()
 
-    if builder.dist_release != 'opensuse':
+    if builder.dist_release not in ['opensuse', 'sle']:
         uri = builder.uri_reference
         _yum_fix_repo_priority(remote, project, uri)
         _yum_fix_repo_host(remote, project)
         _yum_set_check_obsoletes(remote)
 
-    if builder.dist_release == 'opensuse':
+    if builder.dist_release in ['opensuse', 'sle']:
         pkg_mng_cmd = 'zypper'
         pkg_mng_opts = '-a'
     else:
@@ -320,13 +368,16 @@ def _upgrade_packages(ctx, config, remote, pkgs):
         ])
 
     # Actually upgrade the project packages
-    if builder.dist_release == 'opensuse':
+    if builder.dist_release in ['opensuse', 'sle']:
         pkg_mng_opts = '-n'
         pkg_mng_subcommand_opts = '--capability'
+        pkg_mng_install_opts = '--no-recommends'
     else:
         pkg_mng_opts = '-y'
         pkg_mng_subcommand_opts = ''
+        pkg_mng_install_opts = ''
     args = ['sudo', pkg_mng_cmd, pkg_mng_opts,
-            'install', pkg_mng_subcommand_opts]
+            'install', pkg_mng_subcommand_opts,
+            pkg_mng_install_opts]
     args += pkgs
     remote.run(args=args)

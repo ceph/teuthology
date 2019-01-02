@@ -7,6 +7,7 @@ from . import run
 from .opsys import OS
 import connection
 from teuthology import misc
+from teuthology.misc import host_shortname
 import time
 import re
 import logging
@@ -45,7 +46,7 @@ class Remote(object):
             # should work on any unix system
             self.user = pwd.getpwuid(os.getuid()).pw_name
             hostname = name
-        self._shortname = shortname or hostname.split('.')[0]
+        self._shortname = shortname or host_shortname(hostname)
         self._host_key = host_key
         self.keep_alive = keep_alive
         self._console = console
@@ -149,7 +150,7 @@ class Remote(object):
     @property
     def shortname(self):
         if self._shortname is None:
-            self._shortname = self.hostname.split('.')[0]
+            self._shortname = host_shortname(self.hostname)
         return self._shortname
 
     @property
@@ -217,6 +218,47 @@ class Remote(object):
             )
         data = proc.stdout.getvalue()
         return data
+
+    def sh(self, script, **kwargs):
+        """
+        Shortcut for run method.
+
+        Usage:
+            my_name = remote.sh('whoami')
+            remote_date = remote.sh('date')
+        """
+        if 'stdout' not in kwargs:
+            kwargs['stdout'] = StringIO()
+        if 'args' not in kwargs:
+            kwargs['args'] = script
+        proc=self.run(**kwargs)
+        return proc.stdout.getvalue()
+
+
+    def sh_file(self, script, label="script", sudo=False, **kwargs):
+        """
+        Run shell script after copying its contents to a remote file
+
+        :param script:  string with script text, or file object
+        :param sudo:    run command with sudo if True,
+                        run as user name if string value (defaults to False)
+        :param label:   string value which will be part of file name
+        Returns: stdout
+        """
+        ftempl = '/tmp/teuthology-remote-$(date +%Y%m%d%H%M%S)-{}-XXXX'\
+                 .format(label)
+        script_file = self.sh("mktemp %s" % ftempl, stdout=StringIO()).strip()
+        self.sh("cat - | tee {script} ; chmod a+rx {script}"\
+            .format(script=script_file), stdin=script)
+        if sudo:
+            if isinstance(sudo, str):
+                command="sudo -u %s %s" % (sudo, script_file)
+            else:
+                command="sudo %s" % script_file
+        else:
+            command="%s" % script_file
+
+        return self.sh(command, **kwargs)
 
     def chmod(self, file_path, permissions):
         """
@@ -468,10 +510,8 @@ def getShortName(name):
     """
     Extract the name portion from remote name strings.
     """
-    hn = name.split('@')[-1]
-    p = re.compile('([^.]+)\.?.*')
-    return p.match(hn).groups()[0]
-
+    hostname = name.split('@')[-1]
+    return host_shortname(hostname)
 
 def getRemoteConsole(name, ipmiuser=None, ipmipass=None, ipmidomain=None,
                      logfile=None, timeout=20):
