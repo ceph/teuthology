@@ -21,6 +21,8 @@ import json
 import re
 import pprint
 
+from netaddr.strategy.ipv4 import valid_str as _is_ipv4
+from netaddr.strategy.ipv6 import valid_str as _is_ipv6
 from teuthology import safepath
 from teuthology.parallel import parallel
 from teuthology.exceptions import (CommandCrashedError, CommandFailedError,
@@ -40,11 +42,18 @@ is_arm = lambda x: x.startswith('tala') or x.startswith(
 
 hostname_expr_templ = '(?P<user>.*@)?(?P<shortname>.*)\.{lab_domain}'
 
+def host_shortname(hostname):
+    if _is_ipv4(hostname) or _is_ipv6(hostname):
+        return hostname
+    else:
+        return hostname.split('.', 1)[0]
 
 def canonicalize_hostname(hostname, user='ubuntu'):
     hostname_expr = hostname_expr_templ.format(
         lab_domain=config.lab_domain.replace('.', '\.'))
     match = re.match(hostname_expr, hostname)
+    if _is_ipv4(hostname) or _is_ipv6(hostname):
+        return "%s@%s" % (user, hostname)
     if match:
         match_d = match.groupdict()
         shortname = match_d['shortname']
@@ -53,7 +62,7 @@ def canonicalize_hostname(hostname, user='ubuntu'):
         else:
             user_ = match_d.get('user') or user
     else:
-        shortname = hostname.split('.')[0]
+        shortname = host_shortname(hostname)
         user_ = user
 
     user_at = user_.strip('@') + '@' if user_ else ''
@@ -264,9 +273,11 @@ def feed_many_stdins_and_close(fp, processes):
         proc.stdin.close()
 
 
-def get_mons(roles, ips):
+def get_mons(roles, ips,
+             mon_bind_msgr2=False,
+             mon_bind_addrvec=False):
     """
-    Get monitors and their associated ports
+    Get monitors and their associated addresses
     """
     mons = {}
     mon_ports = {}
@@ -280,17 +291,33 @@ def get_mons(roles, ips):
                 mon_ports[ips[idx]] = 6789
             else:
                 mon_ports[ips[idx]] += 1
-            addr = '{ip}:{port}'.format(
-                ip=ips[idx],
-                port=mon_ports[ips[idx]],
-            )
+            if mon_bind_msgr2:
+                assert mon_bind_addrvec
+                addr = 'v2:{ip}:{port},v1:{ip}:{port2}'.format(
+                    ip=ips[idx],
+                    port=mon_ports[ips[idx]],
+                    port2=mon_ports[ips[idx]] + 1,
+                )
+                mon_ports[ips[idx]] += 1
+            elif mon_bind_addrvec:
+                addr = 'v1:{ip}:{port}'.format(
+                    ip=ips[idx],
+                    port=mon_ports[ips[idx]],
+                )
+            else:
+                addr = '{ip}:{port}'.format(
+                    ip=ips[idx],
+                    port=mon_ports[ips[idx]],
+                )
             mon_id += 1
             mons[role] = addr
     assert mons
     return mons
 
 
-def skeleton_config(ctx, roles, ips, cluster='ceph'):
+def skeleton_config(ctx, roles, ips, cluster='ceph',
+                    mon_bind_msgr2=False,
+                    mon_bind_addrvec=False):
     """
     Returns a ConfigObj that is prefilled with a skeleton config.
 
@@ -302,7 +329,9 @@ def skeleton_config(ctx, roles, ips, cluster='ceph'):
     t = open(path, 'r')
     skconf = t.read().format(testdir=get_testdir(ctx))
     conf = configobj.ConfigObj(StringIO(skconf), file_error=True)
-    mons = get_mons(roles=roles, ips=ips)
+    mons = get_mons(roles=roles, ips=ips,
+                    mon_bind_msgr2=mon_bind_msgr2,
+                    mon_bind_addrvec=mon_bind_addrvec)
     for role, addr in mons.iteritems():
         mon_cluster, _, _ = split_role(role)
         if mon_cluster != cluster:
@@ -432,7 +461,8 @@ def num_instances_of_type(cluster, type_, ceph_cluster='ceph'):
     return num
 
 
-def create_simple_monmap(ctx, remote, conf, path=None):
+def create_simple_monmap(ctx, remote, conf, path=None,
+                         mon_bind_addrvec=False):
     """
     Writes a simple monmap based on current ceph.conf into path, or
     <testdir>/monmap by default.
@@ -471,7 +501,10 @@ def create_simple_monmap(ctx, remote, conf, path=None):
         '--clobber',
     ]
     for (name, addr) in addresses:
-        args.extend(('--add', name, addr))
+        if mon_bind_addrvec:
+            args.extend(('--addv', name, addr))
+        else:
+            args.extend(('--add', name, addr))
     if not path:
         path = '{tdir}/monmap'.format(tdir=testdir)
     args.extend([
@@ -1256,7 +1289,7 @@ def get_system_type(remote, distro=False, version=False):
     return system_value
 
 def get_pkg_type(os_type):
-    if os_type in ('centos', 'fedora', 'opensuse', 'rhel', 'sles'):
+    if os_type in ('centos', 'fedora', 'opensuse', 'rhel', 'sle'):
         return 'rpm'
     else:
         return 'deb'

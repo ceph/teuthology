@@ -75,7 +75,7 @@ class RemoteProcess(object):
         if hostname:
             self.hostname = hostname
         else:
-            (self.hostname, port) = client.get_transport().getpeername()
+            (self.hostname, port) = client.get_transport().getpeername()[0:2]
 
         self.greenlets = []
         self.stdin, self.stdout, self.stderr = (None, None, None)
@@ -90,8 +90,9 @@ class RemoteProcess(object):
         prefix = "Running:"
         if self.label:
             prefix = "Running ({label}):".format(label=self.label)
-        log.getChild(self.hostname).info(u"{prefix} {cmd!r}".format(
-            cmd=self.command, prefix=prefix))
+        log.getChild(self.hostname).info(prefix)
+        for line in self.command.split('\n'):
+            log.getChild(self.hostname).info('> %s' % line)
 
         if hasattr(self, 'timeout'):
             (self._stdin_buf, self._stdout_buf, self._stderr_buf) = \
@@ -139,10 +140,16 @@ class RemoteProcess(object):
 
         :returns: self.returncode
         """
-        for greenlet in self.greenlets:
-            greenlet.get()
 
         status = self._get_exitstatus()
+        if status != 0:
+            log.debug("got remote process result: {}".format(status))
+        for greenlet in self.greenlets:
+            try:
+                greenlet.get(block=True,timeout=60)
+            except gevent.Timeout:
+                log.debug("timed out waiting; will kill: {}".format(greenlet))
+                greenlet.kill(block=False)
         for stream in ('stdout', 'stderr'):
             if hasattr(self, stream):
                 stream_obj = getattr(self, stream)
@@ -401,7 +408,7 @@ def run(
     try:
         transport = client.get_transport()
         if transport:
-            (host, port) = transport.getpeername()
+            (host, port) = transport.getpeername()[0:2]
         else:
             raise ConnectionLostError(command=quote(args), node=name)
     except socket.error:
