@@ -422,7 +422,7 @@ class CephAnsible(Task):
         if ctx.archive is not None and \
                 not (ctx.config.get('archive-on-error') and ctx.summary['success']):
             log.info('Archiving logs...')
-            path = os.path.join(ctx.archive, self.cluster_name, 'remote')
+            path = os.path.join(ctx.archive, self.cluster_name if self.cluster_name else 'ceph', 'remote')
             try:
                 os.makedirs(path)
             except OSError as e:
