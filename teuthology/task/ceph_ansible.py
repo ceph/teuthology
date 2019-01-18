@@ -29,6 +29,8 @@ class CephAnsible(Task):
     A task to setup ceph cluster using ceph-ansible
 
     - ceph-ansible:
+        cluster: 'cluster_name' # arbitrary cluster identifier defined in rgw test suite yamls 
+        in case of multisite 
         repo: {git_base}ceph-ansible.git
         branch: mybranch # defaults to master
         ansible-version: 2.4 # defaults to 2.5
