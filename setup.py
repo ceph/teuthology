@@ -120,6 +120,7 @@ setup(
             'teuthology-prune-logs = scripts.prune_logs:main',
             'teuthology-describe-tests = scripts.describe_tests:main',
             'teuthology-gencov = scripts.gencov:main',
+            'teuthology-reimage-fog = scripts.reimage_fog:main'
             ],
         },
 
