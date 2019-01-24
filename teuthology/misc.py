@@ -20,6 +20,8 @@ import yaml
 import json
 import re
 import pprint
+import parallel
+
 
 from netaddr.strategy.ipv4 import valid_str as _is_ipv4
 from netaddr.strategy.ipv6 import valid_str as _is_ipv6
@@ -1371,6 +1373,21 @@ def is_in_dict(searchkey, searchval, d):
         return True
     else:
         return searchval == val
+
+
+def reimage_fog(args):
+    """
+    Reimage FOG nodes with options specified
+    """
+    machines = args['--nodes']
+    nodes = machines.rstrip(',').split(',')
+    ctx = argparse.Namespace()
+    ctx.os_type = args['--os-type']
+    ctx.os_version = args['--os-version']
+    from teuthology.provision import reimage
+    with parallel() as p:
+        for node in nodes:
+            p.spawn(reimage, ctx, node)
 
 
 def sh(command, log_limit=1024):
