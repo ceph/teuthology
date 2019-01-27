@@ -130,11 +130,30 @@ class CephAnsible(Task):
                          testing
         """
 
+	for remote, roles in self.ctx.cluster.remotes.iteritems():
+	    cmd = [
+		'sudo',
+		'systemctl',
+		'enable',
+		'firewalld',
+	    ]
+	    proc = remote.run(
+		args=cmd,
+		stdout=StringIO(),
+	    )
+	    if not proc.stdout == None:
+		out = proc.stdout.getvalue()
+	    elif not proc.stderr == None:
+		out = proc.stderr.getvalue()
+	    else:
+		log.info("No output from systemctl enable firewalld")
+	    log.info(out)
+
         args = [
             'ANSIBLE_STDOUT_CALLBACK=debug',
             'ansible-playbook', '-vv',
             '-e', 'check_firewall=false',
-            '-i', 'inven.yml', 'site.yml'
+            '-i', 'inven.yml', 'site.yml',
         ]
         log.debug("Running %s", args)
         # If there is an installer.0 node, use that for the installer.
