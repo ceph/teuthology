@@ -145,7 +145,7 @@ class CephAnsible(Task):
         log.info('updated cluster {}'.format(self.each_cluster))
 
     def start_firewalld(self):
-
+        # fixes timeouts during ansible run
         for remote, roles in self.each_cluster.remotes.iteritems():
             cmd = 'sudo service firewalld start'
             remote.run(
