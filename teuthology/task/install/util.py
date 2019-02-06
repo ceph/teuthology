@@ -86,7 +86,7 @@ def ship_utilities(ctx, config):
     except IOError as e:
         log.info('Cannot ship supression file for valgrind: %s...', e.strerror)
 
-    FILES = ['daemon-helper', 'adjust-ulimits']
+    FILES = ['daemon-helper', 'adjust-ulimits', 'ceph-coverage']
     destdir = '/usr/bin'
     for filename in FILES:
         log.info('Shipping %r...', filename)

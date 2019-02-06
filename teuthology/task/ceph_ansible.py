@@ -158,6 +158,8 @@ class CephAnsible(Task):
                 self.run_haproxy()
         else:
             self.run_playbook()
+	'''Redundant call but required for coverage'''
+        self._ship_utilities()
 
     def generate_hosts_file(self):
 
@@ -439,6 +441,12 @@ class CephAnsible(Task):
                 os.makedirs(sub)
                 misc.pull_directory(remote, '/var/log/ceph',
                                     os.path.join(sub, 'log'))
+		if ctx.config['coverage']:
+		    cover_dir = os.path.join(sub, "coverage")
+		    os.makedirs(cover_dir)
+		    misc.pull_directory(remote, '/builddir',
+					cover_dir)
+
 
     def wait_for_ceph_health(self):
         with contextutil.safe_while(sleep=15, tries=6,
@@ -536,6 +544,7 @@ class CephAnsible(Task):
         else:
             self.ready_cluster = self.ctx.cluster.only(lambda role: role.startswith(self.cluster_name))
         log.info('Ready_cluster {}'.format(self.ready_cluster))
+	self._ship_utilities()
         self._create_rbd_pool()
         self._fix_roles_map()
         # fix keyring permission for workunits
@@ -715,6 +724,7 @@ class CephAnsible(Task):
             run.Raw(';'),
             run.Raw(str_args)
         ])
+	self._ship_utilities()
         wait_for_health = self.config.get('wait-for-health', True)
         if wait_for_health:
             self.wait_for_ceph_health()
