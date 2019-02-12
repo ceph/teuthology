@@ -132,14 +132,13 @@ class CephAnsible(Task):
         stripped_role = {}
         if self.cluster_name:
             self.each_cluster = self.ctx.cluster.only(lambda role: role.startswith(self.cluster_name))
+            for remote, roles in self.each_cluster.remotes.iteritems():
+                stripped_role[remote] = []
+                for rol in roles:
+                    stripped_role[remote].append(teuthology.ceph_role(rol))
+            self.each_cluster.remotes = stripped_role
         else:
             self.each_cluster = self.ctx.cluster
-        log.info('current cluster {}'.format(self.each_cluster))
-        for remote, roles in self.each_cluster.remotes.iteritems():
-            stripped_role[remote] = []
-            for rol in roles:
-                stripped_role[remote].append(teuthology.ceph_role(rol))
-        self.each_cluster.remotes = stripped_role
         log.info('updated cluster {}'.format(self.each_cluster))
 
     def start_firewalld(self):
