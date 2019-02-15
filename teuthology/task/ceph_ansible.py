@@ -143,6 +143,14 @@ class CephAnsible(Task):
             self.each_cluster = self.ctx.cluster
         log.info('updated cluster {}'.format(self.each_cluster))
 
+    def start_firewalld(self):
+
+        for remote, roles in self.each_cluster.remotes.iteritems():
+            cmd = 'sudo service firewalld start'
+            remote.run(
+                args=cmd, stdout=StringIO(),
+            )
+
     def execute_playbook(self):
         """
         Execute ansible-playbook
@@ -525,6 +533,7 @@ class CephAnsible(Task):
         ])
         self._copy_and_print_config()
         self._generate_client_config()
+        self.start_firewalld()
         str_args = ' '.join(args)
         ceph_installer.run(
             args=[
