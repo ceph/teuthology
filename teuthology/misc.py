@@ -20,7 +20,6 @@ import yaml
 import json
 import re
 import pprint
-import parallel
 
 
 from netaddr.strategy.ipv4 import valid_str as _is_ipv4
