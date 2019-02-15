@@ -29,8 +29,7 @@ def gen_results(data_src, outdir):
 
     cmd = "{cmd} -o {merg_info}".format(cmd=cmd, merg_info=merged_info)
     print cmd
-    proc = subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE)
-    proc_stdout = proc.communicate()[0]
+    subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE)
     assert(os.path.exists(merged_info))
 
     ''' remove unncessary includes '''
@@ -38,8 +37,7 @@ def gen_results(data_src, outdir):
 						format( merge_file=merged_info,
 							fltr=merged_filterd)
     print cmd
-    proc = subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE)
-    proc_stdout = proc.communicate()[0]
+    subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE)
     assert(os.path.exists(merged_filterd))
 
     '''genhtml report and put it in outdir'''
@@ -47,8 +45,7 @@ def gen_results(data_src, outdir):
 					merged_filterd=merged_filterd,
 					outdir=outdir)
     print cmd
-    proc = subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE)
-    proc_stdout = proc.communicate()[0]
+    subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE)
     assert(os.path.exists(outdir+ "/index.html"))
 
 
@@ -150,7 +147,6 @@ def do_coverage(args):
 	/run_name_dir/job/ceph/remote/remote_name/coverage/<builddir>.
 	<builddir> follows convention /builddir/build/BUILD/<ceph-version>/
 	'''
-	rundir = args.rundir
 	if args.src:
 	    srcdir = args.src
 	else:
