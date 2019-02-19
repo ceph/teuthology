@@ -147,7 +147,7 @@ class CephAnsible(Task):
     def start_firewalld(self):
 
         for remote, roles in self.each_cluster.remotes.iteritems():
-            cmd = 'sudo service firewalld start'
+            cmd = 'sudo systemctl restart firewalld'
             remote.run(
                 args=cmd, stdout=StringIO(),
             )
