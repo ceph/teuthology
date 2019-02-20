@@ -80,7 +80,8 @@ class CephAnsible(Task):
         if 'cluster' in config:
             self.cluster_name = self.config.get('cluster')
         else:
-            self.cluster_name = None
+            self.cluster_name = "ceph"
+        log.info("init CLUSTER NAME: {}".format(self.cluster_name))
 
         # Legacy option set to true in case we are running a test
         # which was earlier using "ceph" task for configuration
@@ -329,7 +330,7 @@ class CephAnsible(Task):
     def begin(self):
         super(CephAnsible, self).begin()
         self.execute_playbook()
-#        self.set_diskinfo_ctx()
+        self.set_diskinfo_ctx()
 
     def _write_hosts_file(self, prefix, content):
         """
@@ -926,9 +927,11 @@ class CephAnsible(Task):
             for role in teuthology.cluster_roles_of_type(
                     roles_for_host, 'client', self.cluster_name):
                 name = teuthology.ceph_role(role)
+                log.info("creating keyring CLUSTER NAME: {}".format(\
+                                                            self.cluster_name))
                 log.info("Creating keyring for {}".format(name))
-                client_keyring = '/etc/ceph/{0}.{1}.keyring'.format(
-                    self.cluster_name, name)
+                client_keyring = '/etc/ceph/ceph.{1}.keyring'.format(\
+                                                            name)
                 remote.run(
                     args=[
                         'sudo',
