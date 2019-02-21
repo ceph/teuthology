@@ -2,7 +2,6 @@ import logging
 import os
 import subprocess
 import sys
-import tempfile
 import time
 import yaml
 
@@ -253,11 +252,10 @@ def run_job(job_config, teuth_bin_path, archive_dir, verbose):
         arg.extend(['--description', job_config['description']])
     arg.append('--')
 
-    with tempfile.NamedTemporaryFile(prefix='teuthology-worker.',
-                                     suffix='.tmp',) as tmp:
-        yaml.safe_dump(data=job_config, stream=tmp)
-        tmp.flush()
-        arg.append(tmp.name)
+    with open(job_config['archive_path'] + '/job-config.yaml', 'w') as job_config_file:
+        yaml.safe_dump(data=job_config, stream=job_config_file)
+        job_config_file.flush()
+        arg.append(job_config_file.name)
         env = os.environ.copy()
         python_path = env.get('PYTHONPATH', '')
         python_path = ':'.join([suite_path, python_path]).strip(':')

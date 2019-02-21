@@ -61,7 +61,7 @@ class TestWorker(object):
     @patch("os.environ")
     @patch("os.mkdir")
     @patch("yaml.safe_dump")
-    @patch("tempfile.NamedTemporaryFile")
+    @patch("__builtin__.open")
     def test_run_job_with_watchdog(self, m_tempfile, m_safe_dump, m_mkdir,
                                    m_environ, m_popen, m_t_config,
                                    m_run_watchdog):
@@ -110,7 +110,7 @@ class TestWorker(object):
     @patch("os.environ")
     @patch("os.mkdir")
     @patch("yaml.safe_dump")
-    @patch("tempfile.NamedTemporaryFile")
+    @patch("__builtin__.open")
     def test_run_job_no_watchdog(self, m_tempfile, m_safe_dump, m_mkdir,
                                  m_environ, m_popen, m_t_config, m_symlink_log,
                                  m_sleep):
