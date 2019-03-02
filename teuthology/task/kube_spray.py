@@ -6,6 +6,7 @@ from cStringIO import StringIO
 
 from tempfile import NamedTemporaryFile
 from teuthology.orchestra import run
+from teuthology.misc import install_package
 log = logging.getLogger(__name__)
 
 
@@ -22,17 +23,21 @@ class kube_setup(Task):
             cert_management: None
             var1: value1
 
-        Roles usage:
+        Roles Usage:
         [Kmaster.0, Ketcd.0]
         [mon.a, Knode.0]
         [osd.0, Knode.1]
+
+        Task Usage:
+          - ssh-keys:
+          - kube_setup:
     """
 
     groups_to_roles = dict(
             all='K',
             master='Kmaster',
             etcd='Ketcd',
-            nodes='Knode',
+            node='Knode',
         )
     kubespray_git = 'https://github.com/kubernetes-sigs/kubespray.git'
 
@@ -110,12 +115,16 @@ class kube_setup(Task):
         hosts_file.flush()
         return hosts_file.name
 
-    def install_pre_req(self):
+    def run_pre_req(self):
         """
         Install required pre-requistes on each node for kubernetes
         cluster
         """
-        return
+        for remote in self.cluster.remotes.keys():
+            remote.run(args=[
+                    'sudo', 'sytemctl', 'firewalld', 'disable'
+            ])
+            install_package('ansible', remote)
 
     def execute_playbook(self):
         """"
@@ -129,6 +138,8 @@ class kube_setup(Task):
             '--become', '--become-user=root', 'cluster.yml'
         ]
         (kube_installer,) = self.ctx.cluster.only('Kmaster.0').remotes.iterkeys()
+        self.kube_installer = kube_installer
+        self.run_pre_req()
         kube_installer.run(
             args=[
                 'rm',
