@@ -383,6 +383,48 @@ class OpenStackProvisioner(base.Provisioner):
                 'ntp',
             ],
             runcmd=[
+                # Include workaround for OVH networking for suse based distro
+                """
+su - -c 'cat > /tmp/ifcfg' root << EOF
+BOOTPROTO=dhcp
+MTU=
+REMOTE_IPADDR=
+STARTMODE=auto
+ETHTOOL_OPTIONS=
+USERCONTROL=no
+EOF
+                """,
+
+                """
+su - -c 'cat > /tmp/fix-ifcfg' root << EOF
+ETH=\$(ip route list | grep "scope link" | cut -f 3 -d ' ')
+cp /etc/sysconfig/network/ifcfg-\$ETH /etc/sysconfig/network/ifcfg-\$ETH.backup
+cp /tmp/ifcfg /etc/sysconfig/network/ifcfg-\$ETH
+ifdown \$ETH
+ifup \$ETH
+EOF
+                """,
+                """bash /tmp/fix-ifcfg""",
+                """
+. /etc/os-release
+case $ID in
+debian|ubuntu|devuan)
+  apt-get install -y git wget python ntp
+  ;;
+centos|rhel|ol|virtuozzo|fedora)
+  yum install -y git wget python ntp
+  ;;
+opensuse*|suse|sle|sles)
+  zypper in -y git wget python ntp rsyslog || true
+  zypper in -y lsb-release make gcc gcc-c++ chrony || true
+  systemctl enable chronyd.service || true
+  systemctl start chronyd.service || true
+  ;;
+*)
+  echo "Unsupported os: $ID"
+  exit 1
+esac
+""",
                 # Remove the user's password so that console logins are
                 # possible
                 ['passwd', '-d', self.user],
