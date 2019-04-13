@@ -415,7 +415,7 @@ centos|rhel|ol|virtuozzo|fedora)
   yum install -y git wget python ntp
   ;;
 opensuse*|suse|sle|sles)
-  zypper in -y git wget python ntp rsyslog || true
+  zypper in -y git wget rsyslog || true
   zypper in -y lsb-release make gcc gcc-c++ chrony || true
   systemctl enable chronyd.service || true
   systemctl start chronyd.service || true
