@@ -130,6 +130,24 @@ class OpenStackProvider(Provider):
         return self._networks
 
     @property
+    def nameservers(self):
+        if not hasattr(self, '_nameservers'):
+            servers = self.conf.get('nameservers', None)
+            if isinstance(servers, basestring):
+               servers = [servers]
+            self._nameservers = servers
+        return self._nameservers
+
+    @property
+    def searchdomains(self):
+        if not hasattr(self, '_searchdomains'):
+            domains = self.conf.get('searchdomains', None)
+            if isinstance(domains, basestring):
+               domains = [domains]
+            self._searchdomains = domains
+        return self._searchdomains
+
+    @property
     def security_groups(self):
         if not hasattr(self, '_security_groups'):
             try:
@@ -372,17 +390,43 @@ class OpenStackProvisioner(base.Provisioner):
 
     @property
     def userdata(self):
+        runcmd=[]
+        resolv_conf_data={}
+        if self.provider.nameservers:
+            r=["; Created by teuthology.provision.cloud.openstack"]
+            if self.provider.searchdomains:
+                resolv_conf = dict(
+                    nameservers=self.provider.nameservers,
+                    searchdomains=self.provider.searchdomains,
+                )
+                r += ["search %s" % " ".join(self.provider.searchdomains)]
+            else:
+                resolv_conf = dict(
+                    nameserver=self.provider.nameservers,
+                )
+            resolv_conf_data=dict(
+                manage_resolv_conf=True,
+                resolv_conf=resolv_conf,
+            )
+            r += ["nameserver %s" % i for i in self.provider.nameservers]
+            runcmd += ["""
+cat > /etc/resolv.conf << EOF
+{resolv_conf}
+EOF
+
+""".format(resolv_conf="\n".join(r))]
+
         base_config = dict(
             user=self.user,
             manage_etc_hosts=True,
             hostname=self.hostname,
-            packages=[
-                'git',
-                'wget',
-                'python',
-                'ntp',
-            ],
-            runcmd=[
+            #packages=[
+            #    'git',
+            #    'wget',
+            #    'python',
+            #    'ntp',
+            #],
+            runcmd=runcmd + [
                 # Include workaround for OVH networking for suse based distro
                 """
 su - -c 'cat > /tmp/ifcfg' root << EOF
@@ -431,6 +475,7 @@ esac
                 ['touch', self._sentinel_path]
             ],
         )
+        base_config.update(resolv_conf_data)
         ssh_pubkey = util.get_user_ssh_pubkey()
         if ssh_pubkey:
             authorized_keys = base_config.get('ssh_authorized_keys', list())
