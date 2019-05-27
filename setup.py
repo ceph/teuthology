@@ -93,6 +93,8 @@ setup(
                       # For bucket notification testing in multisite
                       'xmltodict',
                       'boto3',
+                      # For bucket notification to amqp
+                      'pika'
                       ],
 
 
