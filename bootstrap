@@ -16,7 +16,7 @@ case "$(uname -s)" in
 Linux)
     case "$(lsb_release --id --short)" in
     Ubuntu|Debian)
-        for package in qemu-utils python-dev libssl-dev python-pip python-virtualenv libev-dev libvirt-dev libmysqlclient-dev libffi-dev libyaml-dev ; do
+        for package in qemu-utils python-dev libssl-dev python-pip python-virtualenv libev-dev libvirt-dev libmysqlclient-dev libffi-dev libyaml-dev rabbitmq-server; do
             if [ "$(dpkg --status -- $package|sed -n 's/^Status: //p')" != "install ok installed" ]; then
                 # add a space after old values
                 missing="${missing:+$missing }$package"
@@ -36,7 +36,7 @@ Linux)
         fi
         ;;
     RedHatEnterpriseWorkstation|RedHatEnterpriseServer|CentOS)
-        for package in python2-pip python-virtualenv mariadb-devel libev-devel libvirt-devel libffi-devel erlang rabbitmq-server; do
+        for package in python2-pip python-virtualenv mariadb-devel libev-devel libvirt-devel libffi-devel rabbitmq-server; do
 	    if [ "$(rpm -q $package)" == "package $package is not installed" ]; then
 		missing="${missing:+$missing }$package"
 	    fi
@@ -46,6 +46,9 @@ Linux)
             echo "$missing"
             if [ "$install" = true ]; then
                 echo "Installing missing packages..."
+                # install epel, required for rabbitmq-server
+                ver=$(awk -F= '$1=="VERSION_ID" {gsub(/"/, "", $2); print $2;}' /etc/os-release)
+                sudo yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-$ver.noarch.rpm
                 sudo yum -y install $missing
             else
                 echo "Please install missing packages or run './bootstrap install' if you have sudo"
@@ -55,7 +58,7 @@ Linux)
 	fi
 	;;
     Fedora)
-        for package in python2-pip python2-virtualenv libev-devel libvirt-devel community-mysql-devel libffi-devel erlang rabbitmq-server; do
+        for package in python2-pip python2-virtualenv libev-devel libvirt-devel community-mysql-devel libffi-devel rabbitmq-server; do
 	    if [ "$(rpm -q $package)" == "package $package is not installed" ]; then
 		missing="${missing:+$missing }$package"
 	    fi
@@ -79,7 +82,7 @@ Linux)
 	fi
 	;;
     "openSUSE project"|"SUSE LINUX"|"openSUSE")
-        for package in python-pip python-devel python-virtualenv libev-devel libvirt-devel libmysqlclient-devel libffi-devel; do
+        for package in python-pip python-devel python-virtualenv libev-devel libvirt-devel libmysqlclient-devel libffi-devel rabbitmq-server; do
             if [ "$(rpm -q $package)" == "package $package is not installed" ]; then
                 if [ "$(rpm -q --whatprovides $package)" == "no package provides $package" ]; then
                     missing="${missing:+$missing }$package"
