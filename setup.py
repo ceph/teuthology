@@ -94,7 +94,7 @@ setup(
                       'xmltodict',
                       'boto3',
                       # For bucket notification to amqp
-                      'pika'
+                      'pika',
                       ],
 
 
