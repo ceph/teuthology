@@ -46,9 +46,12 @@ Linux)
             echo "$missing"
             if [ "$install" = true ]; then
                 echo "Installing missing packages..."
-                # install epel, required for rabbitmq-server
-                ver=$(awk -F= '$1=="VERSION_ID" {gsub(/"/, "", $2); print $2;}' /etc/os-release)
-                sudo yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-$ver.noarch.rpm
+                epel_exist=$(yum repolist | grep "^epel" | wc -l)
+                if [ "$epel_exist" == 0 ]; then
+                    # install epel, required for rabbitmq-server
+                    ver=$(awk -F= '$1=="VERSION_ID" {gsub(/"/, "", $2); print $2;}' /etc/os-release)
+                    sudo yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-$ver.noarch.rpm
+                fi
                 sudo yum -y install $missing
             else
                 echo "Please install missing packages or run './bootstrap install' if you have sudo"
