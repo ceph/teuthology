@@ -401,6 +401,13 @@ class Remote(object):
             self.remove(path)
         return local_path
 
+    def write_file(self, path, data, sudo=False):
+        """
+        Write a file on a remote machine.
+        """
+        args = 'sudo tee' if sudo else 'tee'
+        self.run('%s %s' % (args, path), stdin=data)
+
     def get_tar(self, path, to_path, sudo=False):
         """
         Tar a remote directory and copy it locally
