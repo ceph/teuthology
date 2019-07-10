@@ -64,47 +64,6 @@ def verify_package_version(ctx, config, remote):
         )
 
 
-def purge_data(ctx):
-    """
-    Purge /var/lib/ceph on every remote in ctx.
-
-    :param ctx: the argparse.Namespace object
-    """
-    with parallel() as p:
-        for remote in ctx.cluster.remotes.iterkeys():
-            p.spawn(_purge_data, remote)
-
-
-def _purge_data(remote):
-    """
-    Purge /var/lib/ceph on remote.
-
-    :param remote: the teuthology.orchestra.remote.Remote object
-    """
-    log.info('Purging /var/lib/ceph on %s', remote)
-    remote.run(args=[
-        'sudo',
-        'rm', '-rf', '--one-file-system', '--', '/var/lib/ceph',
-        run.Raw('||'),
-        'true',
-        run.Raw(';'),
-        'test', '-d', '/var/lib/ceph',
-        run.Raw('&&'),
-        'sudo',
-        'find', '/var/lib/ceph',
-        '-mindepth', '1',
-        '-maxdepth', '2',
-        '-type', 'd',
-        '-exec', 'umount', '{}', ';',
-        run.Raw(';'),
-        'sudo', 'umount', '/var/lib/ceph',
-        run.Raw('||'),
-        'true',
-        run.Raw(';'),
-        'sudo',
-        'rm', '-rf', '--one-file-system', '--', '/var/lib/ceph',
-    ])
-
 def install_packages(ctx, pkgs, config):
     """
     Installs packages on each remote in ctx.
@@ -259,8 +218,6 @@ def install(ctx, config):
     finally:
         remove_packages(ctx, config, package_list)
         remove_sources(ctx, config)
-        if config.get('project', 'ceph') == 'ceph':
-            purge_data(ctx)
 
 
 def upgrade_old_style(ctx, node, remote, pkgs, system_type):
