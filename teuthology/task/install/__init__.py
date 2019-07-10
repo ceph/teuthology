@@ -8,7 +8,6 @@ import yaml
 from teuthology import misc as teuthology
 from teuthology import contextutil, packaging
 from teuthology.parallel import parallel
-from teuthology.orchestra import run
 from teuthology.task import ansible
 
 from distutils.version import LooseVersion

@@ -355,7 +355,6 @@ def _remove_sources_list(ctx, config, remote):
     """
     builder = _get_builder_project(ctx, remote, config)
     builder.remove_repo()
-    proj = builder.project
     if remote.os.name not in ['opensuse', 'sle']:
         _yum_unset_check_obsoletes(remote)
 
