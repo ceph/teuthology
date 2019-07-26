@@ -11,6 +11,7 @@ import teuthology.parallel
 import teuthology.provision
 from teuthology import misc
 from teuthology.config import set_config_attr
+from teuthology.config import config
 
 from teuthology.lock import (
     ops,
@@ -148,7 +149,11 @@ def main(ctx):
                 ctx.machine_type, ctx.os_type, ctx.os_version):
             log.error('Invalid os-type or version detected -- lock failed')
             return 1
-        reimage_types = teuthology.provision.fog.get_types()
+        reimage_types = None
+        if config.get('provision_system', 'FOG') == 'pelagos':
+            reimage_types = teuthology.provision.pelagos.get_types()
+        else:
+            reimage_types = teuthology.provision.fog.get_types()
         reimage_machines = list()
         updatekeys_machines = list()
         for machine in machines:

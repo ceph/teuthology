@@ -1,14 +1,15 @@
 import logging
 
 import teuthology.lock.query
-from teuthology.misc import decanonicalize_hostname, get_distro, get_distro_version
+from teuthology.misc import canonicalize_hostname, decanonicalize_hostname, get_distro, get_distro_version
+from teuthology.config import config
 
 from teuthology.provision import cloud
 from teuthology.provision import downburst
 from teuthology.provision import fog
 from teuthology.provision import openstack
+from teuthology.provision import pelagos
 import os
-
 
 log = logging.getLogger(__name__)
 
@@ -22,8 +23,12 @@ def _logfile(ctx, shortname):
 def reimage(ctx, machine_name):
     os_type = get_distro(ctx)
     os_version = get_distro_version(ctx)
-    fog_obj = fog.FOG(machine_name, os_type, os_version)
-    return fog_obj.create()
+
+    if config.get('provision_system', 'FOG') == 'pelagos':
+        obj = pelagos.Pelagos(machine_name, os_type, os_version)
+    else:
+        obj = fog.FOG(machine_name, os_type, os_version)
+    return obj.create()
 
 
 def create_if_vm(ctx, machine_name, _downburst=None):

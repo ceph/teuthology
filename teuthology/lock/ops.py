@@ -96,7 +96,11 @@ def lock_many(ctx, num, machine_type, user=None, description=None,
         # Only query for os_type/os_version if non-vps and non-libcloud, since
         # in that case we just create them.
         vm_types = ['vps'] + teuthology.provision.cloud.get_types()
-        reimage_types = teuthology.provision.fog.get_types()
+        reimage_types = None
+        if config.get('provision_system', 'FOG') == 'pelagos':
+            reimage_types = teuthology.provision.pelagos.get_types()
+        else:
+            reimage_types = teuthology.provision.fog.get_types()
         if machine_type not in vm_types + reimage_types:
             if os_type:
                 data['os_type'] = os_type
