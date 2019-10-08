@@ -21,6 +21,8 @@ import json
 import re
 import pprint
 
+from io import BytesIO
+
 from netaddr.strategy.ipv4 import valid_str as _is_ipv4
 from netaddr.strategy.ipv6 import valid_str as _is_ipv6
 from teuthology import safepath
@@ -325,9 +327,10 @@ def skeleton_config(ctx, roles, ips, cluster='ceph',
     Use conf.write to write it out, override .filename first if you want.
     """
     path = os.path.join(os.path.dirname(__file__), 'ceph.conf.template')
-    t = open(path, 'r')
-    skconf = t.read().format(testdir=get_testdir(ctx))
-    conf = configobj.ConfigObj(StringIO(skconf), file_error=True)
+    with open(path, 'r') as f:
+        conf_text = f.read().format(testdir=get_testdir(ctx))
+        conf_io = BytesIO(conf_text.encode('utf-8'))
+    conf = configobj.ConfigObj(conf_io, file_error=True)
     mons = get_mons(roles=roles, ips=ips,
                     mon_bind_msgr2=mon_bind_msgr2,
                     mon_bind_addrvec=mon_bind_addrvec)
