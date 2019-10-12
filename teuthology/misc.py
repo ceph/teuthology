@@ -808,7 +808,7 @@ def get_wwn_id_map(remote, devs):
     """
     stdout = None
     try:
-        stdout = remote.sh('ls -l /dev/disk/by-id/wwn-*')
+        stdout = remote.sh('ls -l /dev/disk/by-id/dm-name-*')
     except Exception:
         log.info('Failed to get wwn devices! Using /dev/sd* devices...')
         return dict((d, d) for d in devs)
