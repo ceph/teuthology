@@ -800,40 +800,16 @@ def pull_directory_tarball(remote, remotedir, localfile):
 
 def get_wwn_id_map(remote, devs):
     """
-    Extract ww_id_map information from ls output on the associated devs.
-
-    Sample dev information:    /dev/sdb: /dev/disk/by-id/wwn-0xf00bad
-
-    :returns: map of devices to device id links
+    This function was originally intended to extract "wwn_id_map" information
+    from ls output on devices passed to it, but was implemented with a bug
+    that caused it to always simply return the same devices back to the caller,
+    just transformed into a dict. This bug remained in place for a whole seven
+    years, before being fixed by 41a13eca480e38cfeeba7a180b4516b90598c39b. Since
+    that caused breakage in Sepia, revert to the old behavior pending a "proper"
+    fix on the qa/tasks/ceph.py side.
     """
-    stdout = None
-    try:
-        stdout = remote.sh('ls -l /dev/disk/by-id/wwn-*')
-    except Exception:
-        log.info('Failed to get wwn devices! Using /dev/sd* devices...')
-        return dict((d, d) for d in devs)
-
-    devmap = {}
-
-    # lines will be:
-    # lrwxrwxrwx 1 root root  9 Jan 22 14:58
-    # /dev/disk/by-id/wwn-0x50014ee002ddecaf -> ../../sdb
-    for line in stdout.splitlines():
-        comps = line.split(' ')
-        # comps[-1] should be:
-        # ../../sdb
-        rdev = comps[-1]
-        # translate to /dev/sdb
-        dev = '/dev/{d}'.format(d=rdev.split('/')[-1])
-
-        # comps[-3] should be:
-        # /dev/disk/by-id/wwn-0x50014ee002ddecaf
-        iddev = comps[-3]
-
-        if dev in devs:
-            devmap[dev] = iddev
-
-    return devmap
+    log.warn("Entering get_wwn_id_map, a deprecated function that will be removed")
+    return dict((d, d) for d in devs)
 
 
 def get_scratch_devices(remote):
