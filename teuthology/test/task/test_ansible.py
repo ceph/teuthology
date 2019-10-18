@@ -13,8 +13,7 @@ from teuthology.orchestra.remote import Remote
 from teuthology.task import ansible
 from teuthology.task.ansible import Ansible, CephLab
 
-from . import TestTask
-
+from teuthology.test.task import TestTask
 
 class TestAnsibleTask(TestTask):
     klass = Ansible
@@ -48,7 +47,7 @@ class TestAnsibleTask(TestTask):
             m_NTF,
         )
         self.patchers['file'] = patch(
-            'teuthology.task.ansible.file', create=True)
+            'teuthology.task.ansible.open', create=True)
         self.patchers['os_mkdir'] = patch(
             'teuthology.task.ansible.os.mkdir',
         )

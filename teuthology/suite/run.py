@@ -10,16 +10,16 @@ from datetime import datetime
 from tempfile import NamedTemporaryFile
 from math import floor
 
-from ..config import config, JobConfig
-from ..exceptions import (
+from teuthology.config import config, JobConfig
+from teuthology.exceptions import (
     BranchNotFoundError, CommitNotFoundError, VersionNotFoundError
 )
-from ..misc import deep_merge, get_results_url
-from ..orchestra.opsys import OS
+from teuthology.misc import deep_merge, get_results_url
+from teuthology.orchestra.opsys import OS
 
-from . import util
-from .build_matrix import combine_path, build_matrix
-from .placeholder import substitute_placeholders, dict_templ
+from teuthology.suite import util
+from teuthology.suite.build_matrix import combine_path, build_matrix
+from teuthology.suite.placeholder import substitute_placeholders, dict_templ
 
 log = logging.getLogger(__name__)
 
@@ -120,8 +120,9 @@ class Run(object):
         # Put together a stanza specifying the kernel hash
         if self.args.kernel_branch == 'distro':
             kernel_hash = 'distro'
-        # Skip the stanza if no -k given
-        elif self.args.kernel_branch is None:
+        # Skip the stanza if '-k none' is given
+        elif self.args.kernel_branch is None or \
+             self.args.kernel_branch.lower() == 'none':
             kernel_hash = None
         else:
             kernel_hash = util.get_gitbuilder_hash(
@@ -381,9 +382,9 @@ class Run(object):
                 if not is_collected:
                     continue
 
-            raw_yaml = '\n'.join([file(a, 'r').read() for a in fragment_paths])
+            raw_yaml = '\n'.join([open(a, 'r').read() for a in fragment_paths])
 
-            parsed_yaml = yaml.load(raw_yaml)
+            parsed_yaml = yaml.safe_load(raw_yaml)
             os_type = parsed_yaml.get('os_type') or self.base_config.os_type
             os_version = parsed_yaml.get('os_version') or self.base_config.os_version
             exclude_arch = parsed_yaml.get('exclude_arch')

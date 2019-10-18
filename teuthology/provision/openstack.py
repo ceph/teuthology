@@ -9,12 +9,12 @@ import tempfile
 
 from subprocess import CalledProcessError
 
-from .. import misc
+from teuthology import misc
 
-from ..openstack import OpenStack, OpenStackInstance
-from ..config import config
-from ..contextutil import safe_while
-from ..exceptions import QuotaExceededError
+from teuthology.openstack import OpenStack, OpenStackInstance
+from teuthology.config import config
+from teuthology.contextutil import safe_while
+from teuthology.exceptions import QuotaExceededError
 
 
 log = logging.getLogger(__name__)
@@ -55,52 +55,104 @@ class ProvisionOpenStack(OpenStack):
             lab_domain=config.lab_domain)
         open(self.user_data, 'w').write(user_data)
 
-    def attach_volumes(self, name, volumes):
+    def _openstack(self, subcommand, get=None):
+        # do not use OpenStack().run because its
+        # bugous for volume create as of openstackclient 3.2.0
+        # https://bugs.launchpad.net/python-openstackclient/+bug/1619726
+        #r = OpenStack().run("%s -f json " % command)
+        json_result = misc.sh("openstack %s -f json" % subcommand)
+        r = json.loads(json_result)
+        if get:
+            return self.get_value(r, get)
+        return r
+
+    def _create_volume(self, volume_name, size):
+        """
+        Create a volume and return valume id
+        """
+        volume_id = None
+        try:
+            volume_id = self._openstack("volume show %s" % volume_name, 'id')
+        except subprocess.CalledProcessError as e:
+            if 'No volume with a name or ID' not in e.output:
+                raise e
+        if volume_id:
+            log.warn("Volume {} already exists with ID {}; using it"
+                     .format(volume_name, volume_id))
+        volume_id = self._openstack(
+            "volume create %s" % config['openstack'].get('volume-create','')
+            + " --property ownedby=%s" % config['openstack']['ip']
+            + " --size %s" % str(size) + ' ' + volume_name, 'id')
+        if volume_id:
+            log.info("Volume {} created with ID {}"
+                     .format(volume_name, volume_id))
+            return volume_id
+        else:
+            raise Exception("Failed to create volume %s" % volume_name)
+
+    def _await_volume_status(self, volume_id, status='available'):
+        """
+        Wait for volume to have status, like 'available' or 'in-use'
+        """
+        with safe_while(sleep=4, tries=50,
+                        action="volume " + volume_id) as proceed:
+            while proceed():
+                try:
+                    volume_status = \
+                        self._openstack("volume show %s" % volume_id, 'status')
+                    if volume_status == status:
+                        break
+                    else:
+                        log.debug("volume %s not in '%s' status yet"
+                                  % (volume_id, status))
+                except subprocess.CalledProcessError:
+                        log.warn("volume " + volume_id +
+                                 " not information available yet")
+
+    def _attach_volume(self, volume_id, name):
+        """
+        Attach volume to OpenStack instance.
+
+        Try and attach volume to server, wait until volume gets in-use state.
+        """
+        with safe_while(sleep=20, increment=20, tries=3,
+                        action="add volume " + volume_id) as proceed:
+            while proceed():
+                try:
+                    misc.sh("openstack server add volume " + name + " " + volume_id)
+                    break
+                except subprocess.CalledProcessError:
+                    log.warning("openstack add volume failed unexpectedly; retrying")
+        self._await_volume_status(volume_id, 'in-use')
+
+    def attach_volumes(self, server_name, volumes):
         """
         Create and attach volumes to the named OpenStack instance.
+        If attachment is failed, make another try.
         """
         for i in range(volumes['count']):
-            volume_name = name + '-' + str(i)
-            try:
-                self.run("volume show -f json " + volume_name)
-            except subprocess.CalledProcessError as e:
-                if 'No volume with a name or ID' not in e.output:
-                    raise e
-                # do not use OpenStack().run because its
-                # bugous for volume create as of openstackclient 3.2.0
-                # https://bugs.launchpad.net/python-openstackclient/+bug/1619726
-                misc.sh(
-                    "openstack volume create -f json " +
-                    config['openstack'].get('volume-create', '') + " " +
-                    " --property ownedby=" + config.openstack['ip'] +
-                    " --size " + str(volumes['size']) + " " +
-                    volume_name)
-            with safe_while(sleep=2, tries=100,
+            volume_name = server_name + '-' + str(i)
+            volume_id = None
+            with safe_while(sleep=10, tries=3,
                             action="volume " + volume_name) as proceed:
                 while proceed():
                     try:
-                        r = OpenStack().run("volume show  -f json " +
-                                            volume_name)
-                        status = self.get_value(json.loads(r), 'status')
-                        if status == 'available':
-                            break
-                        else:
-                            log.info("volume " + volume_name +
-                                     " not available yet")
-                    except subprocess.CalledProcessError:
-                            log.info("volume " + volume_name +
-                                     " not information available yet")
-            # do not use OpenStack().run because its
-            # bugous for volume
-            misc.sh("openstack server add volume " + name + " " + volume_name)
+                        volume_id = self._create_volume(volume_name, volumes['size'])
+                        self._await_volume_status(volume_id, 'available')
+                        self._attach_volume(volume_id, server_name)
+                        break
+                    except Exception as e:
+                        log.warning("%s" % e)
+                        if volume_id:
+                            OpenStack().volume_delete(volume_id)
 
     @staticmethod
     def ip2name(prefix, ip):
         """
-        return the instance name suffixed with the /16 part of the IP.
+        return the instance name suffixed with the IP address.
         """
-        digits = map(int, re.findall('.*\.(\d+)\.(\d+)', ip)[0])
-        return prefix + "%03d%03d" % tuple(digits)
+        digits = map(int, re.findall('(\d+)\.(\d+)\.(\d+)\.(\d+)', ip)[0])
+        return prefix + "%03d%03d%03d%03d" % tuple(digits)
 
     def create(self, num, os_type, os_version, arch, resources_hint):
         """
@@ -109,30 +161,33 @@ class ProvisionOpenStack(OpenStack):
         described in resources_hint.
         """
         log.debug('ProvisionOpenStack:create')
+        if arch is None:
+            arch = self.get_default_arch()
         resources_hint = self.interpret_hints({
             'machine': config['openstack']['machine'],
             'volumes': config['openstack']['volumes'],
         }, resources_hint)
         self.init_user_data(os_type, os_version)
-        image = self.image(os_type, os_version)
+        image = self.image(os_type, os_version, arch)
         if 'network' in config['openstack']:
             net = "--nic net-id=" + str(self.net_id(config['openstack']['network']))
         else:
             net = ''
-        flavor = self.flavor(resources_hint['machine'],
-                             config['openstack'].get('flavor-select-regexp'))
+        flavor = self.flavor(resources_hint['machine'], arch)
+        keypair = config['openstack']['keypair'] or 'teuthology'
+        worker_group = config['openstack']['worker_group'] or 'teuthology-worker'
         cmd = ("flock --close --timeout 28800 /tmp/teuthology-server-create.lock" +
                " openstack server create" +
                " " + config['openstack'].get('server-create', '') +
                " -f json " +
                " --image '" + str(image) + "'" +
                " --flavor '" + str(flavor) + "'" +
-               " --key-name teuthology " +
+               " --key-name %s " % keypair +
                " --user-data " + str(self.user_data) +
                " " + net +
                " --min " + str(num) +
                " --max " + str(num) +
-               " --security-group teuthology" +
+               " --security-group %s" % worker_group +
                " --property teuthology=" + self.property +
                " --property ownedby=" + config.openstack['ip'] +
                " --wait " +

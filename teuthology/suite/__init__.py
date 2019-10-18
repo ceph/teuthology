@@ -9,14 +9,33 @@ import time
 from distutils.util import strtobool
 
 import teuthology
-from ..config import config, YamlConfig
-from ..report import ResultsReporter
-from ..results import UNFINISHED_STATUSES
+from teuthology.config import config, YamlConfig
+from teuthology.report import ResultsReporter
+from teuthology.results import UNFINISHED_STATUSES
 
-from .run import Run
-from .util import schedule_fail
+from teuthology.suite.run import Run
+from teuthology.suite.util import schedule_fail
 
 log = logging.getLogger(__name__)
+
+
+def override_arg_defaults(name, default, env=os.environ):
+    env_arg = {
+        '--ceph-repo'         : 'TEUTH_CEPH_REPO',
+        '--suite-repo'        : 'TEUTH_SUITE_REPO',
+        '--ceph-branch'       : 'TEUTH_CEPH_BRANCH',
+        '--suite-branch'      : 'TEUTH_SUITE_BRANCH',
+        '--teuthology-branch' : 'TEUTH_BRANCH',
+    }
+    if name in env_arg and env_arg[name] in env.keys():
+        variable = env_arg[name]
+        value = env[variable]
+        log.debug("Default value for '{arg}' is overridden "
+                  "from environment with: {val}"
+                  .format(arg=name, val=value))
+        return value
+    else:
+        return default
 
 
 def process_args(args):
@@ -30,11 +49,13 @@ def process_args(args):
         '<config_yaml>': 'base_yaml_paths',
         'filter': 'filter_in',
     }
-    for (key, value) in args.iteritems():
+    for (key, value) in args.items():
         # Translate --foo-bar to foo_bar
         key = key.lstrip('--').replace('-', '_')
         # Rename the key if necessary
         key = rename_args.get(key) or key
+        if key == 'suite_branch':
+            value = value or override_arg_defaults('--suite-branch', None)
         if key == 'suite' and value is not None:
             value = normalize_suite_name(value)
         if key == 'suite_relpath' and value is None:

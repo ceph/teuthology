@@ -3,8 +3,7 @@ import os
 
 from teuthology.orchestra.cluster import Cluster
 from teuthology.exit import exiter
-
-from . import Task
+from teuthology.task import Task
 
 log = logging.getLogger(__name__)
 
@@ -30,7 +29,7 @@ class ConsoleLog(Task):
         if not hasattr(self.ctx, 'cluster'):
             return
         new_cluster = Cluster()
-        for (remote, roles) in self.cluster.remotes.iteritems():
+        for (remote, roles) in self.cluster.remotes.items():
             if not hasattr(remote.console, 'spawn_sol_log'):
                 log.debug("%s does not support IPMI; excluding",
                           remote.shortname)

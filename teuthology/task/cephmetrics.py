@@ -6,7 +6,7 @@ import time
 from teuthology.config import config as teuth_config
 from teuthology.exceptions import CommandFailedError
 
-from .ansible import Ansible, LoggerFile
+from teuthology.ansible import Ansible, LoggerFile
 
 log = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ class CephMetrics(Ansible):
             if group not in hosts_dict:
                 hosts_dict[group] = dict(hosts=dict())
             group_dict = hosts_dict[group]['hosts']
-            for (remote, roles) in self.cluster.only(want).remotes.iteritems():
+            for (remote, roles) in self.cluster.only(want).remotes.items():
                 hostname = remote.hostname
                 group_dict[hostname] = dict(
                     ansible_user=remote.user,

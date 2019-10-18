@@ -8,10 +8,10 @@ import tempfile
 import logging
 import getpass
 
-from . import beanstalk
-from . import report
-from .config import config
-from . import misc
+from teuthology import beanstalk
+from teuthology import report
+from teuthology.config import config
+from teuthology import misc
 
 log = logging.getLogger(__name__)
 
@@ -88,7 +88,7 @@ def find_run_info(serializer, run_name):
     job_num = 0
     jobs = serializer.jobs_for_run(run_name)
     job_total = len(jobs)
-    for (job_id, job_dir) in jobs.iteritems():
+    for (job_id, job_dir) in jobs.items():
         if not os.path.isdir(job_dir):
             continue
         job_num += 1
@@ -142,7 +142,7 @@ def remove_beanstalk_jobs(run_name, tube_name):
                 log.info(msg)
                 job.delete()
     else:
-        print "No jobs in Beanstalk Queue"
+        print("No jobs in Beanstalk Queue")
     beanstalk_conn.close()
 
 

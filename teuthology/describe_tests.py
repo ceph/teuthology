@@ -198,7 +198,7 @@ def extract_info(file_name, fields):
         return empty_result
 
     with open(file_name, 'r') as f:
-        parsed = yaml.load(f)
+        parsed = yaml.safe_load(f)
 
     if not isinstance(parsed, dict):
         return empty_result
@@ -207,9 +207,9 @@ def extract_info(file_name, fields):
     if not (isinstance(meta, list) and
             len(meta) == 1 and
             isinstance(meta[0], dict)):
-        print 'Error in meta format in', file_name
-        print 'Meta must be a list containing exactly one dict.'
-        print 'Meta is:', meta
+        print('Error in meta format in %s' % file_name)
+        print('Meta must be a list containing exactly one dict.')
+        print('Meta is: %s' % meta)
         raise ParseError()
 
     return {field: meta[0].get(field, '') for field in fields}
@@ -243,6 +243,9 @@ def tree_with_info(cur_dir, fields, include_facet, prefix, rows,
     has_yamls = any([x.endswith('.yaml') for x in files])
     facet = os.path.basename(cur_dir) if has_yamls else ''
     for i, f in enumerate(files):
+        # skip any hidden files
+        if f.startswith('.'):
+            continue
         path = os.path.join(cur_dir, f)
         if i == len(files) - 1:
             file_pad = '└── '

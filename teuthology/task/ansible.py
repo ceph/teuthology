@@ -14,7 +14,7 @@ from teuthology.exceptions import CommandFailedError, AnsibleFailedError
 from teuthology.job_status import set_status
 from teuthology.repo_utils import fetch_repo
 
-from . import Task
+from teuthology.task import Task
 
 log = logging.getLogger(__name__)
 
@@ -171,7 +171,7 @@ class Ansible(Task):
                     pb_in_repo = os.path.join(self.repo_path, playbook_path)
                     if os.path.exists(pb_in_repo):
                         playbook_path = pb_in_repo
-                self.playbook_file = file(playbook_path)
+                self.playbook_file = open(playbook_path)
                 playbook_yaml = yaml.safe_load(self.playbook_file)
                 self.playbook = playbook_yaml
             except Exception:
@@ -227,7 +227,7 @@ class Ansible(Task):
         if inv_suffix:
             inv_fn = '.'.join(inv_fn, inv_suffix)
         # Write out the inventory file
-        inv_file = file(inv_fn, 'w')
+        inv_file = open(inv_fn, 'w')
         inv_file.write(inventory)
         # Next, write the group_vars files
         all_group_vars = self.config.get('group_vars')
@@ -239,7 +239,7 @@ class Ansible(Task):
             for group_name in sorted(all_group_vars):
                 group_vars = all_group_vars[group_name]
                 path = os.path.join(group_vars_dir, group_name + '.yml')
-                gv_file = file(path, 'w')
+                gv_file = open(path, 'w')
                 yaml.safe_dump(group_vars, gv_file)
 
         return inventory_dir
@@ -306,10 +306,10 @@ class Ansible(Task):
         with open(self.failure_log.name, 'r') as fail_log:
             try:
                 failures = yaml.safe_load(fail_log)
-            except yaml.parser.ParserError:
+            except yaml.YAMLError as e:
                 log.error(
-                    "Failed to parse ansible failure log: {0}".format(
-                        self.failure_log.name,
+                    "Failed to parse ansible failure log: {0} ({1})".format(
+                        self.failure_log.name, e
                     )
                 )
                 failures = fail_log.read().replace('\n', '')
@@ -335,7 +335,7 @@ class Ansible(Task):
                 self.failure_log.name,
                 archive_path
             )
-            os.chmod(archive_path, 0664)
+            os.chmod(archive_path, 0o664)
 
     def _build_args(self):
         """
@@ -411,8 +411,7 @@ class CephLab(Ansible):
         if 'playbook' not in config:
             config['playbook'] = 'cephlab.yml'
         if 'repo' not in config:
-            config['repo'] = os.path.join(teuth_config.ceph_git_base_url,
-                                          'ceph-cm-ansible.git')
+            config['repo'] = teuth_config.get_ceph_cm_ansible_git_url()
         super(CephLab, self).__init__(ctx, config)
 
     def begin(self):

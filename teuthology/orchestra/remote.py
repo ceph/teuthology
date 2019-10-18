@@ -3,8 +3,8 @@ Support for paramiko remote objects.
 """
 import teuthology.lock.query
 import teuthology.lock.util
-from . import run
-from .opsys import OS
+from teuthology.orchestra import run
+from teuthology.orchestra.opsys import OS
 import connection
 from teuthology import misc
 from teuthology.misc import host_shortname
@@ -52,9 +52,17 @@ class Remote(object):
         self._console = console
         self.ssh = ssh
 
-    def connect(self, timeout=None):
+    def connect(self, timeout=None, create_key=None, context='connect'):
         args = dict(user_at_host=self.name, host_key=self._host_key,
-                    keep_alive=self.keep_alive)
+                    keep_alive=self.keep_alive, _create_key=create_key)
+        if context == 'reconnect':
+            # The reason for the 'context' workaround is not very
+            # clear from the technical side.
+            # I'll get "[Errno 98] Address already in use" altough
+            # there are no open tcp(ssh) connections.
+            # When connecting without keepalive, host_key and _create_key 
+            # set, it will proceed.
+            args = dict(user_at_host=self.name, _create_key=False, host_key=None)
         if timeout:
             args['timeout'] = timeout
 
@@ -75,6 +83,7 @@ class Remote(object):
         while elapsed_time() < timeout:
             success = self._reconnect(timeout=socket_timeout)
             if success:
+                log.info('Successfully reconnected to host')
                 break
             # Don't let time_remaining be < 0
             time_remaining = max(0, timeout - elapsed_time())
@@ -83,8 +92,9 @@ class Remote(object):
         return success
 
     def _reconnect(self, timeout=None):
+        log.info("Trying to reconnect to host")
         try:
-            self.connect(timeout=timeout)
+            self.connect(timeout=timeout, context='reconnect')
             return self.is_online
         except Exception as e:
             log.debug(e)
@@ -188,35 +198,41 @@ class Remote(object):
 
         TODO refactor to move run.run here?
         """
-        if self.ssh is None:
+        if not self.ssh or \
+           not self.ssh.get_transport() or \
+           not self.ssh.get_transport().is_active():
             self.reconnect()
         r = self._runner(client=self.ssh, name=self.shortname, **kwargs)
         r.remote = self
         return r
 
-    def mktemp(self):
+    def mkdtemp(self, suffix=None, parentdir=None):
+        """
+        Create a temporary directory on remote machine and return it's path.
+        """
+        args = ['mktemp', '-d']
+
+        if suffix:
+            args.append('--suffix=%s' % suffix)
+        if parentdir:
+            args.append('--tmpdir=%s' % parentdir)
+
+        return self.sh(args).strip()
+
+    def mktemp(self, suffix=None, parentdir=None):
         """
         Make a remote temporary file
 
-        Returns: the name of the temp file created using
-                 tempfile.mkstemp
+        Returns: the path of the temp file created.
         """
-        py_cmd = "import os; import tempfile; import sys;" + \
-            "(fd,fname) = tempfile.mkstemp();" + \
-            "os.close(fd);" + \
-            "sys.stdout.write(fname.rstrip());" + \
-            "sys.stdout.flush()"
-        args = [
-            'python',
-            '-c',
-            py_cmd,
-            ]
-        proc = self.run(
-            args=args,
-            stdout=StringIO(),
-            )
-        data = proc.stdout.getvalue()
-        return data
+        args = ['mktemp']
+
+        if suffix:
+            args.append('--suffix=%s' % suffix)
+        if parentdir:
+            args.append('--tmpdir=%s' % parentdir)
+
+        return self.sh(args).strip()
 
     def sh(self, script, **kwargs):
         """

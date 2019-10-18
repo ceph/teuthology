@@ -98,13 +98,19 @@ class DaemonState(object):
 
     def signal(self, sig, silent=False):
         """
-        Send a signal to associated remote commnad
+        Send a signal to associated remote command.
 
         :param sig: signal to send
         """
-        self.proc.stdin.write(struct.pack('!b', sig))
-        if not silent:
-            self.log.info('Sent signal %d', sig)
+        if self.running():
+            try:
+                self.proc.stdin.write(struct.pack('!b', sig))
+            except IOError as e:
+                log.exception('Failed to send signal %d: %s', sig, e.strerror)
+            if not silent:
+                self.log.info('Sent signal %d', sig)
+        else:
+            self.log.error('No such daemon running')
 
     def start(self, timeout=300):
         """

@@ -46,7 +46,7 @@ def connect_to_db():
 def store_coverage(test_coverage, rev, suite):
     with closing(connect_to_db()) as db:
         rows = []
-        for test, coverage in test_coverage.iteritems():
+        for test, coverage in test_coverage.items():
             flattened_cov = [item for sublist in coverage for item in sublist]
             rows.append([rev, test, suite] + flattened_cov)
         log.debug('inserting rows into db: %s', str(rows))
@@ -122,7 +122,7 @@ def analyze(test_dir, cov_tools_dir, lcov_output, html_output, skip_init):
     test_summaries = {}
     for test in tests:
         summary = {}
-        with file(os.path.join(test_dir, test, 'summary.yaml')) as f:
+        with open(os.path.join(test_dir, test, 'summary.yaml')) as f:
             g = yaml.safe_load_all(f)
             for new in g:
                 summary.update(new)
@@ -156,7 +156,7 @@ def analyze(test_dir, cov_tools_dir, lcov_output, html_output, skip_init):
         )
 
     test_coverage = {}
-    for test, summary in test_summaries.iteritems():
+    for test, summary in test_summaries.items():
         lcov_file = '{name}.lcov'.format(name=test)
 
         log.info('analyzing coverage for %s', test)

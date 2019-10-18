@@ -6,8 +6,8 @@ import paramiko
 import os
 import logging
 
-from ..config import config
-from ..contextutil import safe_while
+from teuthology.config import config
+from teuthology.contextutil import safe_while
 
 log = logging.getLogger(__name__)
 
@@ -89,8 +89,7 @@ def connect(user_at_host, host_key=None, keep_alive=False, timeout=60,
             key_filename = opts['identityfile']
 
     if key_filename:
-        key_filename = [os.path.expanduser(f) for f in key_filename]
-        connect_args['key_filename'] = key_filename
+        connect_args['key_filename'] = os.path.expanduser(key_filename)
 
     log.debug(connect_args)
 
