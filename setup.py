@@ -51,11 +51,9 @@ setup(
     install_requires=['pip-tools',
                       'tox',
                       'gevent',
-                      # For teuthology-coverage
-                      'MySQL-python == 1.2.3',
                       'PyYAML',
                       'argparse >= 1.2.1',
-                      'beanstalkc >= 0.2.0',
+                      'beanstalkc3 >= 0.4.0',
                       'boto >= 2.0b4',
                       'bunch >= 1.0.0',
                       'configobj',
@@ -90,7 +88,13 @@ setup(
                       'apache-libcloud',
                       # For apache-libcloud when using python < 2.7.9
                       'backports.ssl_match_hostname',
+                      # For bucket notification testing in multisite
+                      'xmltodict',
+                      'boto3',
                       ],
+    extras_require = {
+        'coverage': [ 'mysqlclient == 1.4.2'],
+    },
 
 
     # to find the code associated with entry point

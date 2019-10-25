@@ -8,15 +8,14 @@ import yaml
 from teuthology import misc as teuthology
 from teuthology import contextutil, packaging
 from teuthology.parallel import parallel
-from teuthology.orchestra import run
 from teuthology.task import ansible
 
 from distutils.version import LooseVersion
-from .util import (
+from teuthology.task.install.util import (
     _get_builder_project, get_flavor, ship_utilities,
 )
 
-from . import rpm, deb, redhat
+from teuthology.task.install import rpm, deb, redhat
 
 log = logging.getLogger(__name__)
 
@@ -64,47 +63,6 @@ def verify_package_version(ctx, config, remote):
         )
 
 
-def purge_data(ctx):
-    """
-    Purge /var/lib/ceph on every remote in ctx.
-
-    :param ctx: the argparse.Namespace object
-    """
-    with parallel() as p:
-        for remote in ctx.cluster.remotes.iterkeys():
-            p.spawn(_purge_data, remote)
-
-
-def _purge_data(remote):
-    """
-    Purge /var/lib/ceph on remote.
-
-    :param remote: the teuthology.orchestra.remote.Remote object
-    """
-    log.info('Purging /var/lib/ceph on %s', remote)
-    remote.run(args=[
-        'sudo',
-        'rm', '-rf', '--one-file-system', '--', '/var/lib/ceph',
-        run.Raw('||'),
-        'true',
-        run.Raw(';'),
-        'test', '-d', '/var/lib/ceph',
-        run.Raw('&&'),
-        'sudo',
-        'find', '/var/lib/ceph',
-        '-mindepth', '1',
-        '-maxdepth', '2',
-        '-type', 'd',
-        '-exec', 'umount', '{}', ';',
-        run.Raw(';'),
-        'sudo', 'umount', '/var/lib/ceph',
-        run.Raw('||'),
-        'true',
-        run.Raw(';'),
-        'sudo',
-        'rm', '-rf', '--one-file-system', '--', '/var/lib/ceph',
-    ])
-
 def install_packages(ctx, pkgs, config):
     """
     Installs packages on each remote in ctx.
@@ -118,13 +76,13 @@ def install_packages(ctx, pkgs, config):
         "rpm": rpm._update_package_list_and_install,
     }
     with parallel() as p:
-        for remote in ctx.cluster.remotes.iterkeys():
+        for remote in ctx.cluster.remotes.keys():
             system_type = teuthology.get_system_type(remote)
             p.spawn(
                 install_pkgs[system_type],
                 ctx, remote, pkgs[system_type], config)
 
-    for remote in ctx.cluster.remotes.iterkeys():
+    for remote in ctx.cluster.remotes.keys():
         # verifies that the install worked as expected
         verify_package_version(ctx, config, remote)
 
@@ -142,7 +100,7 @@ def remove_packages(ctx, config, pkgs):
         "rpm": rpm._remove,
     }
     with parallel() as p:
-        for remote in ctx.cluster.remotes.iterkeys():
+        for remote in ctx.cluster.remotes.keys():
             system_type = teuthology.get_system_type(remote)
             p.spawn(remove_pkgs[
                     system_type], ctx, config, remote, pkgs[system_type])
@@ -163,7 +121,7 @@ def remove_sources(ctx, config):
         project = config.get('project', 'ceph')
         log.info("Removing {proj} sources lists".format(
             proj=project))
-        for remote in ctx.cluster.remotes.iterkeys():
+        for remote in ctx.cluster.remotes.keys():
             remove_fn = remove_sources_pkgs[remote.os.package_type]
             p.spawn(remove_fn, ctx, config, remote)
 
@@ -259,8 +217,6 @@ def install(ctx, config):
     finally:
         remove_packages(ctx, config, package_list)
         remove_sources(ctx, config)
-        if config.get('project', 'ceph') == 'ceph':
-            purge_data(ctx)
 
 
 def upgrade_old_style(ctx, node, remote, pkgs, system_type):
@@ -311,7 +267,7 @@ def upgrade_remote_to_config(ctx, config):
     # build a normalized remote -> config dict
     remotes = {}
     if 'all' in config:
-        for remote in ctx.cluster.remotes.iterkeys():
+        for remote in ctx.cluster.remotes.keys():
             remotes[remote] = config.get('all')
     else:
         for role in config.keys():
@@ -326,7 +282,7 @@ def upgrade_remote_to_config(ctx, config):
             remotes[remote] = config.get(role)
 
     result = {}
-    for remote, node in remotes.iteritems():
+    for remote, node in remotes.items():
         if not node:
             node = {}
 
@@ -360,7 +316,7 @@ def upgrade_common(ctx, config, deploy_style):
     extra_pkgs = config.get('extra_packages', [])
     log.info('extra packages: {packages}'.format(packages=extra_pkgs))
 
-    for remote, node in remotes.iteritems():
+    for remote, node in remotes.items():
 
         system_type = teuthology.get_system_type(remote)
         assert system_type in ('deb', 'rpm')
@@ -379,7 +335,7 @@ def upgrade_common(ctx, config, deploy_style):
             i=installed_version,
             u=upgrade_version
         ))
-	if _upgrade_is_downgrade(installed_version, upgrade_version):
+        if _upgrade_is_downgrade(installed_version, upgrade_version):
             raise RuntimeError(
                 "An attempt to upgrade from a higher version to a lower one "
                 "will always fail. Hint: check tags in the target git branch."
@@ -629,6 +585,8 @@ def task(ctx, config):
                 wait_for_package=config.get('wait_for_package', False),
                 project=project,
                 packages=config.get('packages', dict()),
+                install_ceph_packages=config.get('install_ceph_packages', True),
+                repos_only=config.get('repos_only', False),
         )
         if repos:
             nested_config['repos'] = repos

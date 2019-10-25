@@ -21,6 +21,7 @@ from teuthology.job_status import get_status, set_status
 from teuthology.orchestra import cluster, remote, run
 from .redhat import setup_cdn_repo, setup_base_repo, setup_additional_repo, setup_stage_cdn # noqa
 
+
 log = logging.getLogger(__name__)
 
 
@@ -59,7 +60,7 @@ def save_config(ctx, config):
     """
     log.info('Saving configuration')
     if ctx.archive is not None:
-        with file(os.path.join(ctx.archive, 'config.yaml'), 'w') as f:
+        with open(os.path.join(ctx.archive, 'config.yaml'), 'w') as f:
             yaml.safe_dump(ctx.config, f, default_flow_style=False)
 
 
@@ -141,9 +142,9 @@ def add_remotes(ctx, config):
         return
     remotes = []
     machs = []
-    for name in ctx.config['targets'].iterkeys():
+    for name in ctx.config['targets'].keys():
         machs.append(name)
-    for t, key in ctx.config['targets'].iteritems():
+    for t, key in ctx.config['targets'].items():
         t = misc.canonicalize_hostname(t)
         try:
             if ctx.config['sshkeys'] == 'ignore':
@@ -168,7 +169,7 @@ def connect(ctx, config):
     Connect to all remotes in ctx.cluster
     """
     log.info('Opening connections...')
-    for rem in ctx.cluster.remotes.iterkeys():
+    for rem in ctx.cluster.remotes.keys():
         log.debug('connecting to %s', rem.name)
         rem.connect()
 
@@ -243,10 +244,10 @@ def serialize_remote_roles(ctx, config):
     So that other software can be loosely coupled to teuthology
     """
     if ctx.archive is not None:
-        with file(os.path.join(ctx.archive, 'info.yaml'), 'r+') as info_file:
+        with open(os.path.join(ctx.archive, 'info.yaml'), 'r+') as info_file:
             info_yaml = yaml.safe_load(info_file)
             info_file.seek(0)
-            info_yaml['cluster'] = dict([(rem.name, {'roles': roles}) for rem, roles in ctx.cluster.remotes.iteritems()])
+            info_yaml['cluster'] = dict([(rem.name, {'roles': roles}) for rem, roles in ctx.cluster.remotes.items()])
             yaml.safe_dump(info_yaml, info_file, default_flow_style=False)
 
 
@@ -358,7 +359,7 @@ def archive(ctx, config):
             logdir = os.path.join(ctx.archive, 'remote')
             if (not os.path.exists(logdir)):
                 os.mkdir(logdir)
-            for rem in ctx.cluster.remotes.iterkeys():
+            for rem in ctx.cluster.remotes.keys():
                 path = os.path.join(logdir, rem.shortname)
                 misc.pull_directory(rem, archive_dir, path)
                 # Check for coredumps and pull binaries
@@ -443,7 +444,7 @@ def coredump(ctx, config):
 
         # set status = 'fail' if the dir is still there = coredumps were
         # seen
-        for rem in ctx.cluster.remotes.iterkeys():
+        for rem in ctx.cluster.remotes.keys():
             r = rem.run(
                 args=[
                     'if', 'test', '!', '-e', '{adir}/coredump'.format(adir=archive_dir), run.Raw(';'), 'then',

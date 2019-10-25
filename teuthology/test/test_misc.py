@@ -2,9 +2,9 @@ import argparse
 from datetime import datetime
 
 from mock import Mock, patch
-from ..orchestra import cluster
-from .. import misc
-from ..config import config
+from teuthology.orchestra import cluster
+from teuthology.config import config
+from teuthology import misc
 import subprocess
 
 import pytest
@@ -56,13 +56,10 @@ def test_wait_until_osds_up():
     ctx.daemons.iter_daemons_of_role.return_value = list()
     remote = FakeRemote()
 
-    class r():
-        class o:
-            def getvalue(self):
-                return 'IGNORED\n{"osds":[{"state":["up"]}]}'
-        stdout = o()
+    def s(self, **kwargs):
+        return 'IGNORED\n{"osds":[{"state":["up"]}]}'
 
-    remote.run = lambda **kwargs: r()
+    remote.sh = s
     ctx.cluster = cluster.Cluster(
         remotes=[
             (remote, ['osd.0', 'client.1'])
@@ -301,8 +298,8 @@ class TestMergeConfigs(object):
 
     @patch("os.path.exists")
     @patch("yaml.safe_load")
-    @patch("__builtin__.file")
-    def test_merge_configs(self, m_file, m_safe_load, m_exists):
+    @patch("__builtin__.open")
+    def test_merge_configs(self, m_open, m_safe_load, m_exists):
         """ Only tests with one yaml file being passed, mainly just to test
             the loop logic.  The actual merge will be tested in subsequent
             tests.
@@ -312,7 +309,7 @@ class TestMergeConfigs(object):
         m_safe_load.return_value = expected
         result = misc.merge_configs(["path/to/config1"])
         assert result == expected
-        m_file.assert_called_once_with("path/to/config1")
+        m_open.assert_called_once_with("path/to/config1")
 
     def test_merge_configs_empty(self):
         assert misc.merge_configs([]) == {}

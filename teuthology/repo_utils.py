@@ -6,9 +6,9 @@ import subprocess
 import time
 
 from teuthology.util.flock import FileLock
-from .config import config
-from .contextutil import MaxWhileTries, safe_while
-from .exceptions import BootstrapError, BranchNotFoundError, GitError
+from teuthology.config import config
+from teuthology.contextutil import MaxWhileTries, safe_while
+from teuthology.exceptions import BootstrapError, BranchNotFoundError, GitError
 
 log = logging.getLogger(__name__)
 
@@ -43,6 +43,8 @@ def build_git_url(project, project_owner='ceph'):
     """
     if project == 'ceph-qa-suite':
         base = config.get_ceph_qa_suite_git_url()
+    elif project == 'ceph-cm-ansible':
+        base = config.get_ceph_cm_ansible_git_url()
     elif project == 'ceph':
         base = config.get_ceph_git_url()
     else:

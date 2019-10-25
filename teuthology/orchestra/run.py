@@ -11,9 +11,9 @@ import pipes
 import logging
 import shutil
 
-from ..contextutil import safe_while
-from ..exceptions import (CommandCrashedError, CommandFailedError,
-                          ConnectionLostError)
+from teuthology.contextutil import safe_while
+from teuthology.exceptions import (CommandCrashedError, CommandFailedError,
+                                   ConnectionLostError)
 
 log = logging.getLogger(__name__)
 
@@ -377,6 +377,8 @@ def run(
     label=None,
     timeout=None,
     cwd=None,
+    # omit_sudo is used by vstart_runner.py
+    omit_sudo=False
 ):
     """
     Run a command remotely.  If any of 'args' contains shell metacharacters

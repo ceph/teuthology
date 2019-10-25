@@ -11,7 +11,7 @@ from textwrap import fill
 import teuthology
 from teuthology.config import config
 from teuthology import misc
-from .report import ResultsReporter
+from teuthology.report import ResultsReporter
 
 log = logging.getLogger(__name__)
 
@@ -73,10 +73,10 @@ def results(archive_dir, name, email, timeout, dry_run):
 
     try:
         if email and dry_run:
-            print "From: %s" % (config.results_sending_email or 'teuthology')
-            print "To: %s" % email
-            print "Subject: %s" % subject
-            print body
+            print("From: %s" % (config.results_sending_email or 'teuthology'))
+            print("To: %s" % email)
+            print("Subject: %s" % subject)
+            print(body)
         elif email:
             email_results(
                 subject=subject,

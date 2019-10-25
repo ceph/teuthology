@@ -6,7 +6,7 @@ import logging
 
 from teuthology import misc as teuthology
 from teuthology import contextutil
-from ..orchestra import run
+from teuthology.orchestra import run
 
 log = logging.getLogger(__name__)
 
@@ -27,11 +27,11 @@ def parallel_test(ctx, config):
         log.info('Executing command on all hosts concurrently with role "%s"' % role)
         cluster = ctx.cluster.only(role)
         nodes = {}
-        for remote in cluster.remotes.iterkeys():
+        for remote in cluster.remotes.keys():
             """Call run for each remote host, but use 'wait=False' to have it return immediately."""
             proc = remote.run(args=['sleep', '5', run.Raw(';'), 'date', run.Raw(';'), 'hostname'], wait=False,)
             nodes[remote.name] = proc
-        for name, proc in nodes.iteritems():
+        for name, proc in nodes.items():
             """Wait for each process to finish before yielding and allowing other contextmanagers to run."""
             proc.wait()
     yield

@@ -1,10 +1,10 @@
 import logging
 import time
 
-from ..misc import get_testdir, reconnect
-from ..orchestra import run
-from ..orchestra.remote import Remote
-from ..task import install as install_task
+from teuthology.misc import get_testdir, reconnect
+from teuthology.orchestra import run
+from teuthology.orchestra.remote import Remote
+from teuthology.task import install as install_task
 
 
 log = logging.getLogger(__name__)
@@ -176,7 +176,7 @@ def reboot(ctx, remotes):
 def reset_syslog_dir(ctx):
     log.info('Resetting syslog output locations...')
     nodes = {}
-    for remote in ctx.cluster.remotes.iterkeys():
+    for remote in ctx.cluster.remotes.keys():
         proc = remote.run(
             args=[
                 'if', 'test', '-e', '/etc/rsyslog.d/80-cephtest.conf',
@@ -193,13 +193,13 @@ def reset_syslog_dir(ctx):
         )
         nodes[remote.name] = proc
 
-    for name, proc in nodes.iteritems():
+    for name, proc in nodes.items():
         log.info('Waiting for %s to restart syslog...', name)
         proc.wait()
 
 
 def dpkg_configure(ctx):
-    for remote in ctx.cluster.remotes.iterkeys():
+    for remote in ctx.cluster.remotes.keys():
         if remote.os.package_type != 'deb':
             continue
         log.info(
@@ -221,7 +221,7 @@ def dpkg_configure(ctx):
 def remove_yum_timedhosts(ctx):
     # Workaround for https://bugzilla.redhat.com/show_bug.cgi?id=1233329
     log.info("Removing yum timedhosts files...")
-    for remote in ctx.cluster.remotes.iterkeys():
+    for remote in ctx.cluster.remotes.keys():
         if remote.os.package_type != 'rpm':
             continue
         remote.run(
@@ -247,7 +247,7 @@ def remove_ceph_packages(ctx):
                                'ceph-deploy', 'libapache2-mod-fastcgi'
                                ]
     pkgs = str.join(' ', ceph_packages_to_remove)
-    for remote in ctx.cluster.remotes.iterkeys():
+    for remote in ctx.cluster.remotes.keys():
         if remote.os.package_type == 'rpm':
             log.info("Remove any broken repos")
             remote.run(
@@ -381,7 +381,7 @@ def undo_multipath(ctx):
     come back unless specifically requested by the test.
     """
     log.info('Removing any multipath config/pkgs...')
-    for remote in ctx.cluster.remotes.iterkeys():
+    for remote in ctx.cluster.remotes.keys():
         remote.run(
             args=[
                 'sudo', 'multipath', '-F',
@@ -396,13 +396,20 @@ def synch_clocks(remotes):
     for remote in remotes:
         remote.run(
             args=[
-                'sudo', 'service', 'ntp', 'stop',
+                'sudo', 'systemctl', 'stop', 'ntp.service', run.Raw('||'),
+                'sudo', 'systemctl', 'stop', 'ntpd.service', run.Raw('||'),
+                'sudo', 'systemctl', 'stop', 'chronyd.service',
                 run.Raw('&&'),
-                'sudo', 'ntpdate-debian',
+                'sudo', 'ntpdate-debian', run.Raw('||'),
+                'sudo', 'ntp', '-gq', run.Raw('||'),
+                'sudo', 'ntpd', '-gq', run.Raw('||'),
+                'sudo', 'chronyc', 'sources',
                 run.Raw('&&'),
                 'sudo', 'hwclock', '--systohc', '--utc',
                 run.Raw('&&'),
-                'sudo', 'service', 'ntp', 'start',
+                'sudo', 'systemctl', 'start', 'ntp.service', run.Raw('||'),
+                'sudo', 'systemctl', 'start', 'ntpd.service', run.Raw('||'),
+                'sudo', 'systemctl', 'start', 'chronyd.service',
                 run.Raw('||'),
                 'true',    # ignore errors; we may be racing with ntpd startup
             ],

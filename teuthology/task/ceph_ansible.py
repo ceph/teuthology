@@ -8,10 +8,10 @@ import errno
 import socket
 from cStringIO import StringIO
 
-from . import Task
+from teuthology.task import Task
 from tempfile import NamedTemporaryFile
-from ..config import config as teuth_config
-from ..misc import get_scratch_devices
+from teuthology.config import config as teuth_config
+from teuthology.misc import get_scratch_devices
 from teuthology import contextutil
 from teuthology.orchestra import run
 from teuthology.orchestra.daemon import DaemonGroup
@@ -174,8 +174,9 @@ class CephAnsible(Task):
 #        self.remove_cluster_prefix()
         (ceph_first_mon,) = self.ctx.cluster.only(misc.get_first_mon(
             self.ctx, self.config, self.cluster_name)).remotes.iterkeys()
+
         if ansible_loc.remotes:
-            (ceph_installer,) = ansible_loc.remotes.iterkeys()
+            (ceph_installer,) = ansible_loc.remotes.keys()
         else:
             ceph_installer = ceph_first_mon
         self.ceph_first_mon = ceph_first_mon

@@ -8,7 +8,7 @@ from teuthology.misc import get_archive_dir
 from teuthology.orchestra.cluster import Cluster
 from teuthology.orchestra import run
 
-from . import Task
+from teuthology.task import Task
 
 log = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ class SELinux(Task):
         """
         super(SELinux, self).filter_hosts()
         new_cluster = Cluster()
-        for (remote, roles) in self.cluster.remotes.iteritems():
+        for (remote, roles) in self.cluster.remotes.items():
             if remote.is_vm:
                 msg = "Excluding {host}: VMs are not yet supported"
                 log.info(msg.format(host=remote.shortname))
@@ -79,7 +79,7 @@ class SELinux(Task):
 
         log.debug("Getting current SELinux state")
         modes = dict()
-        for remote in self.cluster.remotes.iterkeys():
+        for remote in self.cluster.remotes.keys():
             result = remote.run(
                 args=['/usr/sbin/getenforce'],
                 stdout=StringIO(),
@@ -93,7 +93,7 @@ class SELinux(Task):
         Set the requested SELinux mode
         """
         log.info("Putting SELinux into %s mode", self.mode)
-        for remote in self.cluster.remotes.iterkeys():
+        for remote in self.cluster.remotes.keys():
             mode = self.old_modes[remote.name]
             if mode == "Disabled" or mode == "disabled":
                 continue
@@ -119,12 +119,15 @@ class SELinux(Task):
             'scontext=system_u:system_r:pcp_pmcd_t:s0',
             'comm="rhsmd"',
             'scontext=system_u:system_r:syslogd_t:s0',
+            'tcontext=system_u:system_r:nrpe_t:s0',
+            'comm="updatedb"',
+            'comm="smartd"',
         ]
         se_whitelist = self.config.get('whitelist', [])
         if se_whitelist:
             known_denials.extend(se_whitelist)
         ignore_known_denials = '\'\(' + str.join('\|', known_denials) + '\)\''
-        for remote in self.cluster.remotes.iterkeys():
+        for remote in self.cluster.remotes.keys():
             proc = remote.run(
                 args=['sudo', 'grep', 'avc: .*denied',
                       '/var/log/audit/audit.log', run.Raw('|'), 'grep', '-v',
@@ -154,7 +157,7 @@ class SELinux(Task):
         if not set(self.old_modes.values()).difference(set([self.mode])):
             return
         log.info("Restoring old SELinux modes")
-        for remote in self.cluster.remotes.iterkeys():
+        for remote in self.cluster.remotes.keys():
             mode = self.old_modes[remote.name]
             if mode == "Disabled" or mode == "disabled":
                 continue
@@ -183,7 +186,7 @@ class SELinux(Task):
         """
         all_denials = self.get_denials()
         new_denials = dict()
-        for remote in self.cluster.remotes.iterkeys():
+        for remote in self.cluster.remotes.keys():
             old_host_denials = self.old_denials[remote.name]
             all_host_denials = all_denials[remote.name]
             new_host_denials = set(all_host_denials).difference(
@@ -191,7 +194,7 @@ class SELinux(Task):
             )
             new_denials[remote.name] = list(new_host_denials)
 
-        for remote in self.cluster.remotes.iterkeys():
+        for remote in self.cluster.remotes.keys():
             if len(new_denials[remote.name]):
                 raise SELinuxError(node=remote,
                                    denials=new_denials[remote.name])

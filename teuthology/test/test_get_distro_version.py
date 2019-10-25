@@ -1,4 +1,4 @@
-from ..misc import get_distro_version
+from teuthology.misc import get_distro_version
 
 
 class Mock:
@@ -20,7 +20,7 @@ class TestGetDistroVersion(object):
         # Default distro is ubuntu, default version of ubuntu is 16.04
         self.fake_ctx.os_version = None
         distroversion = get_distro_version(self.fake_ctx)
-        assert distroversion == '16.04'
+        assert distroversion == '18.04'
 
     def test_argument_version(self):
         self.fake_ctx.os_version = '13.04'

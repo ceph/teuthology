@@ -2,6 +2,7 @@ import os
 import pytest
 import requests
 import yaml
+import contextlib
 
 from datetime import datetime
 from mock import patch, call, ANY, DEFAULT
@@ -200,7 +201,7 @@ class TestScheduleSuite(object):
     @patch('teuthology.suite.util.has_packages_for_distro')
     @patch('teuthology.suite.util.get_package_versions')
     @patch('teuthology.suite.util.get_install_task_flavor')
-    @patch('__builtin__.file')
+    @patch('__builtin__.open')
     @patch('teuthology.suite.run.build_matrix')
     @patch('teuthology.suite.util.git_ls_remote')
     @patch('teuthology.suite.util.package_version_for_hash')
@@ -213,7 +214,7 @@ class TestScheduleSuite(object):
         m_package_version_for_hash,
         m_git_ls_remote,
         m_build_matrix,
-        m_file,
+        m_open,
         m_get_install_task_flavor,
         m_get_package_versions,
         m_has_packages_for_distro,
@@ -232,9 +233,10 @@ class TestScheduleSuite(object):
         m_build_matrix.return_value = build_matrix_output
         frag1_read_output = 'field1: val1'
         frag2_read_output = 'field2: val2'
-        m_file.side_effect = [
+        m_open.side_effect = [
             StringIO(frag1_read_output),
             StringIO(frag2_read_output),
+            contextlib.closing(StringIO())
         ]
         m_get_install_task_flavor.return_value = 'basic'
         m_get_package_versions.return_value = dict()
@@ -252,7 +254,7 @@ class TestScheduleSuite(object):
         )
         frags = (frag1_read_output, frag2_read_output)
         expected_job = dict(
-            yaml=yaml.load('\n'.join(frags)),
+            yaml=yaml.safe_load('\n'.join(frags)),
             sha1='ceph_sha1',
             args=[
                 '--description',
@@ -275,7 +277,7 @@ class TestScheduleSuite(object):
     @patch('teuthology.suite.util.has_packages_for_distro')
     @patch('teuthology.suite.util.get_package_versions')
     @patch('teuthology.suite.util.get_install_task_flavor')
-    @patch('__builtin__.file')
+    @patch('__builtin__.open', create=True)
     @patch('teuthology.suite.run.build_matrix')
     @patch('teuthology.suite.util.git_ls_remote')
     @patch('teuthology.suite.util.package_version_for_hash')
@@ -288,7 +290,7 @@ class TestScheduleSuite(object):
         m_package_version_for_hash,
         m_git_ls_remote,
         m_build_matrix,
-        m_file,
+        m_open,
         m_get_install_task_flavor,
         m_get_package_versions,
         m_has_packages_for_distro,
@@ -305,11 +307,11 @@ class TestScheduleSuite(object):
             (build_matrix_desc, build_matrix_frags),
         ]
         m_build_matrix.return_value = build_matrix_output
-        m_file.side_effect = [StringIO('field: val\n') for i in xrange(11)]
+        m_open.side_effect = [StringIO('field: val\n') for i in range(11)]
         m_get_install_task_flavor.return_value = 'basic'
         m_get_package_versions.return_value = dict()
         m_has_packages_for_distro.side_effect = [
-            False for i in xrange(11)
+            False for i in range(11)
         ]
 
         m_find_git_parent.side_effect = lambda proj, sha1: sha1 + '^'
@@ -321,7 +323,7 @@ class TestScheduleSuite(object):
             runobj.schedule_suite()
         assert 'Exceeded 10 backtracks' in str(exc.value)
         m_find_git_parent.assert_has_calls(
-            [call('ceph', 'ceph_sha1' + i * '^') for i in xrange(10)]
+            [call('ceph', 'ceph_sha1' + i * '^') for i in range(10)]
         )
 
     @patch('teuthology.suite.util.find_git_parent')
@@ -330,7 +332,7 @@ class TestScheduleSuite(object):
     @patch('teuthology.suite.util.has_packages_for_distro')
     @patch('teuthology.suite.util.get_package_versions')
     @patch('teuthology.suite.util.get_install_task_flavor')
-    @patch('__builtin__.file')
+    @patch('__builtin__.open', create=True)
     @patch('teuthology.suite.run.build_matrix')
     @patch('teuthology.suite.util.git_ls_remote')
     @patch('teuthology.suite.util.package_version_for_hash')
@@ -343,7 +345,7 @@ class TestScheduleSuite(object):
         m_package_version_for_hash,
         m_git_ls_remote,
         m_build_matrix,
-        m_file,
+        m_open,
         m_get_install_task_flavor,
         m_get_package_versions,
         m_has_packages_for_distro,
@@ -364,14 +366,16 @@ class TestScheduleSuite(object):
             (build_matrix_desc, build_matrix_frags),
         ]
         m_build_matrix.return_value = build_matrix_output
-        m_file.side_effect = [
-            StringIO('field: val\n') for i in xrange(NUM_FAILS+1)
-        ]
+        m_open.side_effect = [
+            StringIO('field: val\n') for i in range(NUM_FAILS+1)
+        ] + [
+            contextlib.closing(StringIO())
+        ] 
         m_get_install_task_flavor.return_value = 'basic'
         m_get_package_versions.return_value = dict()
         # NUM_FAILS, then success
         m_has_packages_for_distro.side_effect = \
-            [False for i in xrange(NUM_FAILS)] + [True]
+            [False for i in range(NUM_FAILS)] + [True]
 
         m_find_git_parent.side_effect = lambda proj, sha1: sha1 + '^'
 
@@ -382,8 +386,8 @@ class TestScheduleSuite(object):
         assert count == 1
         m_has_packages_for_distro.assert_has_calls(
             [call('ceph_sha1' + '^' * i, 'ubuntu', '14.04', 'basic', {})
-             for i in xrange(NUM_FAILS+1)]
+             for i in range(NUM_FAILS+1)]
         )
         m_find_git_parent.assert_has_calls(
-            [call('ceph', 'ceph_sha1' + i * '^') for i in xrange(NUM_FAILS)]
+            [call('ceph', 'ceph_sha1' + i * '^') for i in range(NUM_FAILS)]
         )

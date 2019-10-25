@@ -13,7 +13,7 @@ from teuthology.lock.ops import unlock_one
 from teuthology.lock.query import is_vm, list_locks, \
     find_stale_locks, get_status
 from teuthology.lock.util import locked_since_seconds
-from .actions import (
+from teuthology.nuke.actions import (
     check_console, clear_firewall, shutdown_daemons, remove_installed_packages,
     reboot, remove_osd_mounts, remove_osd_tmpfs, kill_hadoop,
     remove_ceph_packages, synch_clocks, unlock_firmware_repo,
@@ -21,15 +21,15 @@ from .actions import (
     remove_ceph_data, remove_testing_tree, remove_yum_timedhosts,
     kill_valgrind,
 )
-from ..config import config, FakeNamespace
-from ..misc import (
+from teuthology.config import config, FakeNamespace
+from teuthology.misc import (
     canonicalize_hostname, config_file, decanonicalize_hostname, merge_configs,
     get_user, sh
 )
-from ..openstack import OpenStack, OpenStackInstance, enforce_json_dictionary
-from ..orchestra.remote import Remote
-from ..parallel import parallel
-from ..task.internal import check_lock, add_remotes, connect
+from teuthology.openstack import OpenStack, OpenStackInstance, enforce_json_dictionary
+from teuthology.orchestra.remote import Remote
+from teuthology.parallel import parallel
+from teuthology.task.internal import check_lock, add_remotes, connect
 
 log = logging.getLogger(__name__)
 
@@ -63,7 +63,7 @@ OPENSTACK_DELAY = 30 * 60
 
 
 def stale_openstack_instances(ctx, instances, locked_nodes):
-    for (instance_id, instance) in instances.iteritems():
+    for (instance_id, instance) in instances.items():
         i = OpenStackInstance(instance_id)
         if not i.exists():
             log.debug("stale-openstack: {instance} disappeared, ignored"
@@ -136,7 +136,7 @@ def stale_openstack_volumes(ctx, volumes):
 
 def stale_openstack_nodes(ctx, instances, locked_nodes):
     names = set([ i['Name'] for i in instances.values() ])
-    for (name, node) in locked_nodes.iteritems():
+    for (name, node) in locked_nodes.items():
         name = decanonicalize_hostname(name)
         if node['machine_type'] != 'openstack':
             continue
@@ -184,7 +184,7 @@ def main(args):
         ctx.config = config_file(ctx.archive + '/config.yaml')
         ifn = os.path.join(ctx.archive, 'info.yaml')
         if os.path.exists(ifn):
-            with file(ifn, 'r') as fd:
+            with open(ifn, 'r') as fd:
                 info = yaml.load(fd.read())
         if not ctx.pid:
             ctx.pid = info.get('pid')
@@ -253,7 +253,7 @@ def nuke(ctx, should_unlock, sync_clocks=True, reboot_all=True, noipmi=False):
                             "Not nuking %s because description doesn't match",
                             lock['name'])
     with parallel() as p:
-        for target, hostkey in ctx.config['targets'].iteritems():
+        for target, hostkey in ctx.config['targets'].items():
             p.spawn(
                 nuke_one,
                 ctx,

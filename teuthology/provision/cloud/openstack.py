@@ -75,6 +75,12 @@ class OpenStackProvider(Provider):
         return driver_args
 
     @property
+    def ssh_interface(self):
+        if not hasattr(self, '_ssh_interface'):
+            self._ssh_interface = self.conf.get('ssh_interface', 'public_ips')
+        return self._ssh_interface
+
+    @property
     def images(self):
         if not hasattr(self, '_images'):
             self._images = retry(self.driver.list_images)
@@ -83,26 +89,51 @@ class OpenStackProvider(Provider):
     @property
     def sizes(self):
         if not hasattr(self, '_sizes'):
+            allow_sizes = self.conf.get('allow_sizes', '.*')
+            if isinstance(allow_sizes, basestring):
+                allow_sizes = [allow_sizes]
+            allow_re = [re.compile(x) for x in allow_sizes]
             # By default, exclude instance types meant for Windows
             exclude_sizes = self.conf.get('exclude_sizes', 'win-.*')
+            if isinstance(exclude_sizes, basestring):
+                exclude_sizes = [exclude_sizes]
+            exclude_re = [re.compile(x) for x in exclude_sizes]
             sizes = retry(self.driver.list_sizes)
-            if exclude_sizes:
-                sizes = filter(
-                    lambda s: not re.match(exclude_sizes, s.name),
-                    sizes
-                )
-            self._sizes = sizes
+            self._sizes = filter(
+                lambda s:
+                    any(x.match(s.name) for x in allow_re)
+                    and not
+                    all(x.match(s.name) for x in exclude_re),
+                sizes
+            )
         return self._sizes
 
     @property
     def networks(self):
         if not hasattr(self, '_networks'):
+            allow_networks = self.conf.get('allow_networks', '.*')
+            if isinstance(allow_networks, basestring):
+                allow_networks=[allow_networks]
+            networks_re = [re.compile(x) for x in allow_networks]
             try:
-                self._networks = retry(self.driver.ex_list_networks)
+                networks = retry(self.driver.ex_list_networks)
+                if networks:
+                    self._networks = filter(
+                        lambda s: any(x.match(s.name) for x in networks_re),
+                        networks
+                    )
+                else:
+                    self._networks = list()
             except AttributeError:
                 log.warn("Unable to list networks for %s", self.driver)
                 self._networks = list()
         return self._networks
+
+    @property
+    def default_userdata(self):
+        if not hasattr(self, '_default_userdata'):
+            self._default_userdata = self.conf.get('userdata', dict())
+        return self._default_userdata
 
     @property
     def security_groups(self):
@@ -179,14 +210,16 @@ class OpenStackProvisioner(base.Provisioner):
         self.conf = util.combine_dicts(confs, lambda x, y: x > y)
 
     def _create(self):
+        userdata = self.userdata
         log.debug("Creating node: %s", self)
         log.debug("Selected size: %s", self.size)
         log.debug("Selected image: %s", self.image)
+        log.debug("Using userdata: %s", userdata)
         create_args = dict(
             name=self.name,
             size=self.size,
             image=self.image,
-            ex_userdata=self.userdata,
+            ex_userdata=userdata,
         )
         networks = self.provider.networks
         if networks:
@@ -202,6 +235,7 @@ class OpenStackProvisioner(base.Provisioner):
         results = retry(
             self.provider.driver.wait_until_running,
             nodes=[self.node],
+            ssh_interface=self.provider.ssh_interface,
         )
         self._node, self.ips = results[0]
         log.debug("Node started: %s", self.node)
@@ -344,22 +378,33 @@ class OpenStackProvisioner(base.Provisioner):
 
     @property
     def userdata(self):
+        spec="{t}-{v}".format(t=self.os_type,
+                              v=self.os_version)
         base_config = dict(
-            user=self.user,
-            manage_etc_hosts=True,
-            hostname=self.hostname,
             packages=[
                 'git',
                 'wget',
                 'python',
-            ],
-            runcmd=[
-                # Remove the user's password so that console logins are
-                # possible
-                ['passwd', '-d', self.user],
-                ['touch', self._sentinel_path]
+                'ntp',
             ],
         )
+        runcmd=[
+            # Remove the user's password so that console logins are
+            # possible
+            ['passwd', '-d', self.user],
+            ['touch', self._sentinel_path]
+        ]
+        if spec in self.provider.default_userdata:
+            base_config = deepcopy(
+                    self.provider.default_userdata.get(spec, dict()))
+        base_config.update(user=self.user)
+        if 'manage_etc_hosts' not in base_config:
+            base_config.update(
+                manage_etc_hosts=True,
+                hostname=self.hostname,
+            )
+        base_config['runcmd'] = base_config.get('runcmd', list())
+        base_config['runcmd'].extend(runcmd)
         ssh_pubkey = util.get_user_ssh_pubkey()
         if ssh_pubkey:
             authorized_keys = base_config.get('ssh_authorized_keys', list())

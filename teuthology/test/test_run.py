@@ -45,8 +45,8 @@ class TestRun(object):
         with pytest.raises(AssertionError):
             run.setup_config(["some/config.yaml"])
 
-    @patch("__builtin__.file")
-    def test_write_initial_metadata(self, m_file):
+    @patch("__builtin__.open")
+    def test_write_initial_metadata(self, m_open):
         config = {"job_id": "123", "foo": "bar"}
         run.write_initial_metadata(
             "some/archive/dir",
@@ -61,7 +61,7 @@ class TestRun(object):
             call('some/archive/dir/orig.config.yaml', 'w'),
             call('some/archive/dir/info.yaml', 'w')
         ]
-        assert m_file.call_args_list == expected
+        assert m_open.call_args_list == expected
 
     def test_get_machine_type(self):
         result = run.get_machine_type(None, {"machine-type": "the_machine_type"})
@@ -77,7 +77,7 @@ class TestRun(object):
         config = {"tasks": [{"kernel": "can't be here"}]}
         with pytest.raises(AssertionError) as excinfo:
             run.validate_tasks(config)
-        assert excinfo.value.message.startswith("kernel installation")
+        assert excinfo.value.args[0].startswith("kernel installation")
 
     def test_validate_task_no_tasks(self):
         result = run.validate_tasks({})
@@ -91,13 +91,13 @@ class TestRun(object):
     def test_validate_tasks_is_list(self):
         with pytest.raises(AssertionError) as excinfo:
             run.validate_tasks({"tasks": {"foo": "bar"}})
-        assert excinfo.value.message.startswith("Expected list")
+        assert excinfo.value.args[0].startswith("Expected list")
 
     def test_get_initial_tasks_invalid(self):
         with pytest.raises(AssertionError) as excinfo:
             run.get_initial_tasks(True, {"targets": "can't be here",
                                          "roles": "roles" }, "machine_type")
-        assert excinfo.value.message.startswith("You cannot")
+        assert excinfo.value.args[0].startswith("You cannot")
 
     def test_get_inital_tasks(self):
         config = {"roles": range(2), "kernel": "the_kernel", "use_existing_cluster": False}
@@ -121,9 +121,9 @@ class TestRun(object):
     @patch("yaml.safe_dump")
     @patch("teuthology.report.try_push_job_info")
     @patch("teuthology.run.email_results")
-    @patch("__builtin__.file")
+    @patch("__builtin__.open")
     @patch("sys.exit")
-    def test_report_outcome(self, m_sys_exit, m_file, m_email_results, m_try_push_job_info, m_safe_dump, m_nuke, m_get_status):
+    def test_report_outcome(self, m_sys_exit, m_open, m_email_results, m_try_push_job_info, m_safe_dump, m_nuke, m_get_status):
         config = {"nuke-on-error": True, "email-on-error": True}
         m_get_status.return_value = "fail"
         fake_ctx = Mock()
@@ -131,9 +131,9 @@ class TestRun(object):
         run.report_outcome(config, "the/archive/path", summary, fake_ctx)
         assert m_nuke.called
         m_try_push_job_info.assert_called_with(config, summary)
-        m_file.assert_called_with("the/archive/path/summary.yaml", "w")
+        m_open.assert_called_with("the/archive/path/summary.yaml", "w")
         assert m_email_results.called
-        assert m_file.called
+        assert m_open.called
         assert m_sys_exit.called
 
     @patch("teuthology.run.set_up_logging")

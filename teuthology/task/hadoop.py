@@ -3,8 +3,8 @@ import contextlib
 import logging
 from teuthology import misc as teuthology
 from teuthology import contextutil
-from ..orchestra import run
-from ..exceptions import UnsupportedPackageTypeError
+from teuthology.orchestra import run
+from teuthology.exceptions import UnsupportedPackageTypeError
 
 log = logging.getLogger(__name__)
 
@@ -12,7 +12,7 @@ HADOOP_2x_URL = "https://archive.apache.org/dist/hadoop/core/hadoop-2.5.2/hadoop
 
 def dict_to_hadoop_conf(items):
     out = "<configuration>\n"
-    for key, value in items.iteritems():
+    for key, value in items.items():
         out += "  <property>\n"
         out += "    <name>" + key + "</name>\n"
         out += "    <value>" + value + "</value>\n"

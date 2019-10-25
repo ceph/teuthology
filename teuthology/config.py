@@ -29,9 +29,16 @@ class YamlConfig(collections.MutableMapping):
         else:
             self._conf = dict()
 
-    def load(self):
+    def load(self, conf=None):
+        if conf:
+            if isinstance(conf, dict):
+                self._conf = conf
+            else:
+                self._conf = yaml.safe_load(conf)
+            return
         if os.path.exists(self.yaml_path):
-            self._conf = yaml.safe_load(file(self.yaml_path))
+            with open(self.yaml_path) as f:
+                self._conf = yaml.safe_load(f)
         else:
             log.debug("%s not found", self.yaml_path)
             self._conf = dict()
@@ -137,6 +144,7 @@ class TeuthologyConfig(YamlConfig):
         'ceph_git_base_url': 'https://github.com/ceph/',
         'ceph_git_url': None,
         'ceph_qa_suite_git_url': None,
+        'ceph_cm_ansible_git_url': None,
         'use_conserver': False,
         'conserver_master': 'conserver.front.sepia.ceph.com',
         'conserver_port': 3109,
@@ -182,6 +190,10 @@ class TeuthologyConfig(YamlConfig):
     def __init__(self, yaml_path=None):
         super(TeuthologyConfig, self).__init__(yaml_path or self.yaml_path)
 
+    def get_ceph_cm_ansible_git_url(self):
+        return (self.ceph_cm_ansible_git_url or
+                self.ceph_git_base_url + 'ceph-cm-ansible.git')
+
     def get_ceph_qa_suite_git_url(self):
         return (self.ceph_qa_suite_git_url or
                 self.get_ceph_git_url())
@@ -215,7 +227,7 @@ class FakeNamespace(YamlConfig):
         correctly.
         """
         result = dict()
-        for key, value in config_dict.iteritems():
+        for key, value in config_dict.items():
             new_key = key
             if new_key.startswith("--"):
                 new_key = new_key[2:]

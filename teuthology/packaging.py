@@ -8,15 +8,15 @@ import urlparse
 from collections import OrderedDict
 from cStringIO import StringIO
 
-from . import repo_utils
+from teuthology import repo_utils
 
-from .config import config
-from .contextutil import safe_while
-from .exceptions import (VersionNotFoundError, CommitNotFoundError,
+from teuthology.config import config
+from teuthology.contextutil import safe_while
+from teuthology.exceptions import (VersionNotFoundError, CommitNotFoundError,
                          NoRemoteError)
-from .misc import sudo_write_file
-from .orchestra.opsys import OS, DEFAULT_OS_VERSION
-from .orchestra.run import Raw
+from teuthology.misc import sudo_write_file
+from teuthology.orchestra.opsys import OS, DEFAULT_OS_VERSION
+from teuthology.orchestra.run import Raw
 
 log = logging.getLogger(__name__)
 
@@ -145,7 +145,7 @@ def get_koji_task_result(task_id, remote, ctx):
     """
     py_cmd = ('import koji; '
               'hub = koji.ClientSession("{kojihub_url}"); '
-              'print hub.getTaskResult({task_id})')
+              'print(hub.getTaskResult({task_id}))')
     py_cmd = py_cmd.format(
         task_id=task_id,
         kojihub_url=config.kojihub_url
@@ -265,7 +265,7 @@ def get_koji_build_info(build_id, remote, ctx):
     """
     py_cmd = ('import koji; '
               'hub = koji.ClientSession("{kojihub_url}"); '
-              'print hub.getBuild({build_id})')
+              'print(hub.getBuild({build_id}))')
     py_cmd = py_cmd.format(
         build_id=build_id,
         kojihub_url=config.kojihub_url

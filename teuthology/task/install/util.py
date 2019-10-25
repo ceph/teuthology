@@ -68,19 +68,23 @@ def ship_utilities(ctx, config):
         config = dict()
     log.info(config)
     log.info('Shipping valgrind.supp...')
-    with file(
-        os.path.join(os.path.dirname(__file__), 'valgrind.supp'),
-        'rb'
-            ) as f:
-        fn = os.path.join(testdir, 'valgrind.supp')
-        filenames.append(fn)
-        for rem in ctx.cluster.remotes.iterkeys():
-            teuthology.sudo_write_file(
-                remote=rem,
-                path=fn,
-                data=f,
-                )
-            f.seek(0)
+    assert 'suite_path' in ctx.config
+    try:
+        with open(
+            os.path.join(ctx.config['suite_path'], 'valgrind.supp'),
+            'rb'
+                ) as f:
+            fn = os.path.join(testdir, 'valgrind.supp')
+            filenames.append(fn)
+            for rem in ctx.cluster.remotes.keys():
+                teuthology.sudo_write_file(
+                    remote=rem,
+                    path=fn,
+                    data=f,
+                    )
+                f.seek(0)
+    except IOError as e:
+        log.info('Cannot ship supression file for valgrind: %s...', e.strerror)
 
     FILES = ['daemon-helper', 'adjust-ulimits', 'ceph-coverage']
     destdir = '/usr/bin'
@@ -89,8 +93,8 @@ def ship_utilities(ctx, config):
         src = os.path.join(os.path.dirname(__file__), filename)
         dst = os.path.join(destdir, filename)
         filenames.append(dst)
-        with file(src, 'rb') as f:
-            for rem in ctx.cluster.remotes.iterkeys():
+        with open(src, 'rb') as f:
+            for rem in ctx.cluster.remotes.keys():
                 teuthology.sudo_write_file(
                     remote=rem,
                     path=dst,

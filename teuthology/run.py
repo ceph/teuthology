@@ -7,15 +7,15 @@ import logging
 
 import teuthology
 from teuthology import install_except_hook
-from . import report
-from .job_status import get_status
-from .misc import get_user, merge_configs
-from .nuke import nuke
-from .run_tasks import run_tasks
-from .repo_utils import fetch_qa_suite
-from .results import email_results
-from .config import FakeNamespace
-from .config import config as teuth_config
+from teuthology import report
+from teuthology.job_status import get_status
+from teuthology.misc import get_user, merge_configs
+from teuthology.nuke import nuke
+from teuthology.run_tasks import run_tasks
+from teuthology.repo_utils import fetch_qa_suite
+from teuthology.results import email_results
+from teuthology.config import FakeNamespace
+from teuthology.config import config as teuth_config
 
 log = logging.getLogger(__name__)
 
@@ -35,13 +35,13 @@ def set_up_logging(verbose, archive):
 
 def write_initial_metadata(archive, config, name, description, owner):
     if archive is not None:
-        with file(os.path.join(archive, 'pid'), 'w') as f:
+        with open(os.path.join(archive, 'pid'), 'w') as f:
             f.write('%d' % os.getpid())
 
-        with file(os.path.join(archive, 'owner'), 'w') as f:
+        with open(os.path.join(archive, 'owner'), 'w') as f:
             f.write(owner + '\n')
 
-        with file(os.path.join(archive, 'orig.config.yaml'), 'w') as f:
+        with open(os.path.join(archive, 'orig.config.yaml'), 'w') as f:
             yaml.safe_dump(config, f, default_flow_style=False)
 
         info = {
@@ -53,7 +53,7 @@ def write_initial_metadata(archive, config, name, description, owner):
         if 'job_id' in config:
             info['job_id'] = config['job_id']
 
-        with file(os.path.join(archive, 'info.yaml'), 'w') as f:
+        with open(os.path.join(archive, 'info.yaml'), 'w') as f:
             yaml.safe_dump(info, f, default_flow_style=False)
 
 
@@ -228,8 +228,11 @@ def get_initial_tasks(lock, config, machine_type):
         init_tasks.extend([
             {'pcp': None},
             {'selinux': None},
-            {'clock': None}
         ])
+
+    # clock_sync_task: 'clock' or 'clock.check'
+    clock_sync_task = config.get('clock_sync_task', 'clock')
+    init_tasks.append({clock_sync_task: None})
 
     if 'redhat' in config:
         init_tasks.extend([
@@ -263,7 +266,7 @@ def report_outcome(config, archive, summary, fake_ctx):
         nuke(fake_ctx, fake_ctx.lock)
 
     if archive is not None:
-        with file(os.path.join(archive, 'summary.yaml'), 'w') as f:
+        with open(os.path.join(archive, 'summary.yaml'), 'w') as f:
             yaml.safe_dump(summary, f, default_flow_style=False)
 
     with contextlib.closing(StringIO.StringIO()) as f:
@@ -296,7 +299,7 @@ def get_teuthology_command(args):
     and returns it as a string.
     """
     cmd = ["teuthology"]
-    for key, value in args.iteritems():
+    for key, value in args.items():
         if value:
             # an option, not an argument
             if not key.startswith("<"):

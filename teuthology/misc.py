@@ -2,7 +2,6 @@
 Miscellaneous teuthology functions.
 Used by other modules, but mostly called from tasks.
 """
-from cStringIO import StringIO
 
 import argparse
 import os
@@ -28,10 +27,10 @@ from teuthology import safepath
 from teuthology.parallel import parallel
 from teuthology.exceptions import (CommandCrashedError, CommandFailedError,
                                    ConnectionLostError)
-from .orchestra import run
-from .config import config
-from .contextutil import safe_while
-from .orchestra.opsys import DEFAULT_OS_VERSION
+from teuthology.orchestra import run
+from teuthology.config import config
+from teuthology.contextutil import safe_while
+from teuthology.orchestra.opsys import DEFAULT_OS_VERSION
 
 log = logging.getLogger(__name__)
 
@@ -94,7 +93,7 @@ def config_file(string):
     """
     config_dict = {}
     try:
-        with file(string) as f:
+        with open(string) as f:
             g = yaml.safe_load_all(f)
             for new in g:
                 config_dict.update(new)
@@ -126,7 +125,7 @@ def merge_configs(config_paths):
         if not os.path.exists(conf_path):
             log.debug("The config path {0} does not exist, skipping.".format(conf_path))
             continue
-        with file(conf_path) as partial_file:
+        with open(conf_path) as partial_file:
             partial_dict = yaml.safe_load(partial_file)
         try:
             conf_dict = deep_merge(conf_dict, partial_dict)
@@ -327,13 +326,11 @@ def skeleton_config(ctx, roles, ips, cluster='ceph',
     Use conf.write to write it out, override .filename first if you want.
     """
     path = os.path.join(os.path.dirname(__file__), 'ceph.conf.template')
-    t = open(path, 'r')
-    skconf = t.read().format(testdir=get_testdir(ctx))
-    conf = configobj.ConfigObj(StringIO(skconf), file_error=True)
+    conf = configobj.ConfigObj(path, file_error=True)
     mons = get_mons(roles=roles, ips=ips,
                     mon_bind_msgr2=mon_bind_msgr2,
                     mon_bind_addrvec=mon_bind_addrvec)
-    for role, addr in mons.iteritems():
+    for role, addr in mons.items():
         mon_cluster, _, _ = split_role(role)
         if mon_cluster != cluster:
             continue
@@ -408,7 +405,7 @@ def all_roles(cluster):
 
     :param cluster: Cluster extracted from the ctx.
     """
-    for _, roles_for_host in cluster.remotes.iteritems():
+    for _, roles_for_host in cluster.remotes.items():
         for name in roles_for_host:
             yield name
 
@@ -421,7 +418,7 @@ def all_roles_of_type(cluster, type_):
     :param cluster: Cluster extracted from the ctx.
     :param type_: role type
     """
-    for _, roles_for_host in cluster.remotes.iteritems():
+    for _, roles_for_host in cluster.remotes.items():
         for id_ in roles_of_type(roles_for_host, type_):
             yield id_
 
@@ -480,7 +477,7 @@ def create_simple_monmap(ctx, remote, conf, path=None,
 
         Each invocation returns the next monitor address
         """
-        for section, data in conf.iteritems():
+        for section, data in conf.items():
             PREFIX = 'mon.'
             if not section.startswith(PREFIX):
                 continue
@@ -513,11 +510,7 @@ def create_simple_monmap(ctx, remote, conf, path=None,
         path
     ])
 
-    r = remote.run(
-        args=args,
-        stdout=StringIO()
-    )
-    monmap_output = r.stdout.getvalue()
+    monmap_output = remote.sh(args)
     fsid = re.search("generated fsid (.+)$",
                      monmap_output, re.MULTILINE).group(1)
     return fsid
@@ -533,9 +526,8 @@ def write_file(remote, path, data):
     """
     remote.run(
         args=[
-            'python',
-            '-c',
-            'import shutil, sys; shutil.copyfileobj(sys.stdin, file(sys.argv[1], "wb"))',
+            'cat',
+            run.Raw('>'),
             path,
         ],
         stdin=data,
@@ -563,10 +555,9 @@ def sudo_write_file(remote, path, data, perms=None, owner=None):
     remote.run(
         args=[
             'sudo',
-            'python',
+            'sh',
             '-c',
-            'import shutil, sys; shutil.copyfileobj(sys.stdin, file(sys.argv[1], "wb"))',
-            path,
+            'cat > ' + path,
         ] + owner_args + permargs,
         stdin=data,
     )
@@ -604,11 +595,7 @@ def move_file(remote, from_path, to_path, sudo=False, preserve_perms=True):
             '\"%a\"',
             to_path
         ])
-        proc = remote.run(
-            args=args,
-            stdout=StringIO(),
-        )
-        perms = proc.stdout.getvalue().rstrip().strip('\"')
+        perms = remote.sh(args).rstrip().strip('\"')
 
     args = []
     if sudo:
@@ -619,10 +606,7 @@ def move_file(remote, from_path, to_path, sudo=False, preserve_perms=True):
         from_path,
         to_path,
     ])
-    proc = remote.run(
-        args=args,
-        stdout=StringIO(),
-    )
+    remote.sh(args)
 
     if preserve_perms:
         # reset the file back to the original permissions
@@ -634,13 +618,10 @@ def move_file(remote, from_path, to_path, sudo=False, preserve_perms=True):
             perms,
             to_path,
         ])
-        proc = remote.run(
-            args=args,
-            stdout=StringIO(),
-        )
+        remote.sh(args)
 
 
-def delete_file(remote, path, sudo=False, force=False):
+def delete_file(remote, path, sudo=False, force=False, check=True):
     """
     rm a file on a remote site. Use force=True if the call should succeed even
     if the file is absent or rm path would otherwise fail.
@@ -655,10 +636,7 @@ def delete_file(remote, path, sudo=False, force=False):
         '--',
         path,
     ])
-    remote.run(
-        args=args,
-        stdout=StringIO(),
-    )
+    remote.sh(args, check_status=check)
 
 
 def remove_lines_from_file(remote, path, line_is_valid_test,
@@ -760,10 +738,7 @@ def create_file(remote, path, data="", permissions=str(644), sudo=False):
         '--',
         path
     ])
-    remote.run(
-        args=args,
-        stdout=StringIO(),
-    )
+    remote.sh(args)
     # now write out the data if any was passed in
     if "" != data:
         append_lines_to_file(remote, path, data, sudo)
@@ -826,49 +801,8 @@ def pull_directory_tarball(remote, remotedir, localfile):
 
 
 def get_wwn_id_map(remote, devs):
-    """
-    Extract ww_id_map information from ls output on the associated devs.
-
-    Sample dev information:    /dev/sdb: /dev/disk/by-id/wwn-0xf00bad
-
-    :returns: map of devices to device id links
-    """
-    stdout = None
-    try:
-        r = remote.run(
-            args=[
-                'ls',
-                '-l',
-                '/dev/disk/by-id/wwn-*',
-            ],
-            stdout=StringIO(),
-        )
-        stdout = r.stdout.getvalue()
-    except Exception:
-        log.info('Failed to get wwn devices! Using /dev/sd* devices...')
-        return dict((d, d) for d in devs)
-
-    devmap = {}
-
-    # lines will be:
-    # lrwxrwxrwx 1 root root  9 Jan 22 14:58
-    # /dev/disk/by-id/wwn-0x50014ee002ddecaf -> ../../sdb
-    for line in stdout.splitlines():
-        comps = line.split(' ')
-        # comps[-1] should be:
-        # ../../sdb
-        rdev = comps[-1]
-        # translate to /dev/sdb
-        dev = '/dev/{d}'.format(d=rdev.split('/')[-1])
-
-        # comps[-3] should be:
-        # /dev/disk/by-id/wwn-0x50014ee002ddecaf
-        iddev = comps[-3]
-
-        if dev in devs:
-            devmap[dev] = iddev
-
-    return devmap
+    log.warn("Entering get_wwn_id_map, a deprecated function that will be removed")
+    return dict((d, d) for d in devs)
 
 
 def get_scratch_devices(remote):
@@ -880,11 +814,7 @@ def get_scratch_devices(remote):
         file_data = get_file(remote, "/scratch_devs")
         devs = file_data.split()
     except Exception:
-        r = remote.run(
-            args=['ls', run.Raw('/dev/[sv]d?')],
-            stdout=StringIO()
-        )
-        devs = r.stdout.getvalue().strip().split('\n')
+        devs = remote.sh('ls /dev/[sv]d?').strip().split('\n')
 
     # Remove root device (vm guests) from the disk list
     for dev in devs:
@@ -936,12 +866,7 @@ def wait_until_healthy(ctx, remote, ceph_cluster='ceph', use_sudo=False):
     args.extend(cmd)
     with safe_while(tries=(900 / 6), action="wait_until_healthy") as proceed:
         while proceed():
-            r = remote.run(
-                args=args,
-                stdout=StringIO(),
-                logger=log.getChild('health'),
-            )
-            out = r.stdout.getvalue()
+            out = remote.sh(args, logger=log.getChild('health'))
             log.debug('Ceph health: %s', out.rstrip('\n'))
             if out.split(None, 1)[0] == 'HEALTH_OK':
                 break
@@ -957,8 +882,8 @@ def wait_until_osds_up(ctx, cluster, remote, ceph_cluster='ceph'):
             daemons = ctx.daemons.iter_daemons_of_role('osd', ceph_cluster)
             for daemon in daemons:
                 daemon.check_status()
-            r = remote.run(
-                args=[
+            out = remote.sh(
+                [
                     'adjust-ulimits',
                     'ceph-coverage',
                     '{tdir}/archive/coverage'.format(tdir=testdir),
@@ -966,10 +891,8 @@ def wait_until_osds_up(ctx, cluster, remote, ceph_cluster='ceph'):
                     '--cluster', ceph_cluster,
                     'osd', 'dump', '--format=json'
                 ],
-                stdout=StringIO(),
                 logger=log.getChild('health'),
             )
-            out = r.stdout.getvalue()
             j = json.loads('\n'.join(out.split('\n')[1:]))
             up = len(filter(lambda o: 'up' in o['state'], j['osds']))
             log.debug('%d of %d OSDs are up' % (up, num_osds))
@@ -1048,7 +971,7 @@ def get_clients(ctx, roles):
         assert isinstance(role, basestring)
         assert 'client.' in role
         _, _, id_ = split_role(role)
-        (remote,) = ctx.cluster.only(role).remotes.iterkeys()
+        (remote,) = ctx.cluster.only(role).remotes.keys()
         yield (id_, remote)
 
 
@@ -1113,7 +1036,7 @@ def deep_merge(a, b):
         return a
     if isinstance(a, dict):
         assert isinstance(b, dict)
-        for (k, v) in b.iteritems():
+        for (k, v) in b.items():
             if k in a:
                 a[k] = deep_merge(a[k], v)
             else:
@@ -1265,17 +1188,10 @@ def get_system_type(remote, distro=False, version=False):
     If neither, return 'deb' or 'rpm' if distro is known to be one of those
     Finally, if unknown, return the unfiltered distro (from lsb_release -is)
     """
-    r = remote.run(
-        args=[
-            'sudo', 'lsb_release', '-is',
-        ],
-        stdout=StringIO(),
-    )
-    system_value = r.stdout.getvalue().strip()
+    system_value = remote.sh('sudo lsb_release -is').strip()
     log.debug("System to be installed: %s" % system_value)
     if version:
-        v = remote.run(args=['sudo', 'lsb_release', '-rs'], stdout=StringIO())
-        version = v.stdout.getvalue().strip()
+        version = remote.sh('sudo lsb_release -rs').strip()
     if distro and version:
         return system_value.lower(), version
     if distro:
@@ -1285,7 +1201,7 @@ def get_system_type(remote, distro=False, version=False):
     if system_value in ['Ubuntu', 'Debian']:
         return "deb"
     if system_value in ['CentOS', 'Fedora', 'RedHatEnterpriseServer',
-                        'openSUSE project', 'SUSE LINUX']:
+                        'openSUSE', 'openSUSE project', 'SUSE', 'SUSE LINUX']:
         return "rpm"
     return system_value
 
@@ -1380,7 +1296,7 @@ def is_in_dict(searchkey, searchval, d):
     """
     val = d.get(searchkey, None)
     if isinstance(val, dict) and isinstance(searchval, dict):
-        for foundkey, foundval in searchval.iteritems():
+        for foundkey, foundval in searchval.items():
             if not is_in_dict(foundkey, foundval, val):
                 return False
         return True

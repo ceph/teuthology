@@ -43,7 +43,7 @@ def syslog(ctx, config):
     ]
     conf_fp = StringIO('\n'.join(conf_lines))
     try:
-        for rem in ctx.cluster.remotes.iterkeys():
+        for rem in ctx.cluster.remotes.keys():
             log_context = 'system_u:object_r:var_log_t:s0'
             for log_path in (kern_log, misc_log):
                 rem.run(args=['install', '-m', '666', '/dev/null', log_path])
@@ -93,7 +93,7 @@ def syslog(ctx, config):
         # flush the file fully. oh well.
 
         log.info('Checking logs for errors...')
-        for rem in ctx.cluster.remotes.iterkeys():
+        for rem in ctx.cluster.remotes.keys():
             log.debug('Checking %s', rem.name)
             r = rem.run(
                 args=[
@@ -134,7 +134,11 @@ def syslog(ctx, config):
                     run.Raw('|'),
                     'grep', '-v', 'container-storage-setup: INFO: Volume group backing root filesystem could not be determined',  # noqa
                     run.Raw('|'),
+                    'egrep', '-v', '\\bsalt-master\\b|\\bsalt-minion\\b|\\bsalt-api\\b',
+                    run.Raw('|'),
                     'grep', '-v', 'ceph-crash',
+                    run.Raw('|'),
+                    'egrep', '-v', '\\btcmu-runner\\b.*\\bINFO\\b',
                     run.Raw('|'),
                     'head', '-n', '1',
                 ],
