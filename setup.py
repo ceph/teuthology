@@ -65,7 +65,6 @@ setup(
                       'nose', # for qa/tasks/rgw_multisite_tests.py',
                       'requests != 2.13.0',
                       'raven',
-                      'web.py',
                       'docopt',
                       'psutil >= 2.1.0',
                       'configparser',
