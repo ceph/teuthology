@@ -252,6 +252,8 @@ def get_initial_tasks(lock, config, machine_type):
             {'internal.setup_additional_repo': None},
             {'kernel.install_latest_rh_kernel': None}
         ])
+        # removing check_packages from init_tasks for now
+        init_tasks.remove({'internal.check_packages': None})
 
     return init_tasks
 

@@ -169,7 +169,7 @@ class TeuthologyConfig(YamlConfig):
         'use_shaman': True,
         'shaman_host': 'shaman.ceph.com',
         'teuthology_path': None,
-        'suite_verify_ceph_hash': True,
+        'suite_verify_ceph_hash': False,
         'suite_allow_missing_packages': False,
         'openstack': {
             'clone': 'git clone http://github.com/ceph/teuthology',
