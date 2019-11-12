@@ -101,7 +101,14 @@ def _enable_rhel_repos(remote):
                    'rhel-7-server-optional-rpms',
                    'rhel-7-server-extras-rpms',
                    'rhel-7-server-ansible-2.6-rpms']
-    for repo in rhel_7_rpms:
+
+    rhel_8_rpms = ['rhel-8-for-x86_64-appstream-rpms',
+                   'rhel-8-for-x86_64-baseos-rpms']
+
+    repos_to_subscribe = {'7': rhel_7_rpms,
+                          '8': rhel_8_rpms}
+
+    for repo in repos_to_subscribe.get(remote.os.version[0]):
         remote.run(args=['sudo', 'subscription-manager',
                          'repos', '--enable={r}'.format(r=repo)])
 
