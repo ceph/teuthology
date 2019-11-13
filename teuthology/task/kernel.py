@@ -342,7 +342,7 @@ def download_kernel(ctx, config):
             # local package - src is path
             log.info('Copying kernel package {path} to {role}...'.format(
                 path=src, role=role))
-	    role_remote.put_file(src,remote_pkg_path(role_remote))    
+            role_remote.put_file(src,remote_pkg_path(role_remote))    
         else:
             # gitbuilder package - src is sha1
             log.info('Downloading kernel {sha1} on {role}...'.format(
