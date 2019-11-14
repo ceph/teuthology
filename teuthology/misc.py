@@ -1319,7 +1319,7 @@ def reimage_fog(args):
             p.spawn(reimage, ctx, node)
 
 
-def sh(command, log_limit=1024):
+def sh(command, log_limit=1024, cwd=None, env=None):
     """
     Run the shell command and return the output in ascii (stderr and
     stdout).  If the command fails, raise an exception. The command
@@ -1328,6 +1328,8 @@ def sh(command, log_limit=1024):
     log.debug(":sh: " + command)
     proc = subprocess.Popen(
         args=command,
+        cwd=cwd,
+        env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         shell=True,
