@@ -1,6 +1,14 @@
-from cStringIO import StringIO
+from teuthology.util.compat import PY3
+if PY3:
+    from io import StringIO
+else:
+    from cStringIO import StringIO
 from contextlib import closing
 
+try:
+     FileNotFoundError, NotADirectoryError
+except NameError:
+     FileNotFoundError = NotADirectoryError = OSError
 
 def make_fake_fstools(fake_filesystem):
     """
@@ -41,13 +49,13 @@ def make_fake_fstools(fake_filesystem):
         while '/' in remainder:
             next_dir, remainder = remainder.split('/', 1)
             if next_dir not in subdict:
-                raise OSError(
+                raise FileNotFoundError(
                     '[Errno 2] No such file or directory: %s' % next_dir)
             subdict = subdict.get(next_dir)
             if not isinstance(subdict, dict):
-                raise OSError('[Errno 20] Not a directory: %s' % next_dir)
+                raise NotADirectoryError('[Errno 20] Not a directory: %s' % next_dir)
             if subdict and not remainder:
-                return subdict.keys()
+                return list(subdict)
         return []
 
     def fake_isfile(path, fsdict=False):
@@ -58,7 +66,7 @@ def make_fake_fstools(fake_filesystem):
         subdict = fsdict
         for component in components:
             if component not in subdict:
-                raise OSError(
+                raise FileNotFoundError(
                     '[Errno 2] No such file or directory: %s' % component)
             subdict = subdict.get(component)
         return subdict is None or isinstance(subdict, str)

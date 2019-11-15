@@ -10,10 +10,11 @@ from teuthology.orchestra.opsys import OS
 from teuthology import misc
 from teuthology.exceptions import CommandFailedError
 from teuthology.misc import host_shortname
+from teuthology.util.compat import stringify
 import time
 import re
 import logging
-from cStringIO import StringIO
+from io import BytesIO
 import os
 import pwd
 import tempfile
@@ -236,12 +237,12 @@ class Remote(object):
             remote_date = remote.sh('date')
         """
         if 'stdout' not in kwargs:
-            kwargs['stdout'] = StringIO()
+            kwargs['stdout'] = BytesIO()
         if 'args' not in kwargs:
             kwargs['args'] = script
         proc=self.run(**kwargs)
-        return proc.stdout.getvalue()
-
+        out=proc.stdout.getvalue()
+        return stringify(out)
 
     def sh_file(self, script, label="script", sudo=False, **kwargs):
         """

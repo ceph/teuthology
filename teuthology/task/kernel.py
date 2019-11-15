@@ -1,7 +1,7 @@
 """
 Kernel installation task
 """
-from cStringIO import StringIO
+from io import StringIO
 
 import logging
 import os

@@ -14,3 +14,22 @@ else:
     from urllib import urlencode # noqa: F401
     from urllib2 import urlopen, Request, HTTPError # noqa: F401
 
+
+if PY3:
+    def stringify(s):
+        if isinstance(s, bytes):
+            return s.decode()
+        else:
+            return s
+else:
+    def stringify(s):
+        if isinstance(s, bytes):
+            return s
+        else:
+            return str(s)
+
+def bytify(b):
+    if isinstance(b, bytes):
+        return b
+    else:
+        return b.encode()
