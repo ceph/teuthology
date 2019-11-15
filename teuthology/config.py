@@ -2,7 +2,10 @@ import os
 import yaml
 import logging
 import collections
-
+try:
+    from typing import Any, Dict
+except ImportError:
+    pass
 
 def init_logging():
     log = logging.getLogger(__name__)
@@ -20,7 +23,7 @@ class YamlConfig(collections.MutableMapping):
     yield confusing results; if you need to do modify defaults, use the class
     variable or create a subclass.
     """
-    _defaults = dict()
+    _defaults = dict() # type: Dict[Any, Any]
 
     def __init__(self, yaml_path=None):
         self.yaml_path = yaml_path

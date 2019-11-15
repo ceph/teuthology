@@ -1,5 +1,9 @@
 from mock import patch, DEFAULT
 from pytest import raises
+try:
+    from typing import Any
+except ImportError:
+    pass
 
 from teuthology.config import FakeNamespace
 from teuthology.orchestra.cluster import Cluster
@@ -8,7 +12,7 @@ from teuthology.task import Task
 
 
 class TestTask(object):
-    klass = Task
+    klass = Task # type: Any
     task_name = 'task'
 
     def setup(self):

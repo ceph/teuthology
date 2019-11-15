@@ -404,7 +404,7 @@ class CephLab(Ansible):
     # Set the name so that Task knows to look up overrides for
     # 'ansible.cephlab' instead of just 'cephlab'
     name = 'ansible.cephlab'
-    inventory_group = 'testnodes'
+    inventory_group = 'testnodes' # type: ignore
 
     def __init__(self, ctx, config):
         config = config or dict()

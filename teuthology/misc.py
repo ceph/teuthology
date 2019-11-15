@@ -1057,7 +1057,7 @@ def get_valgrind_args(testdir, name, preamble, v):
         return preamble
     if not isinstance(v, list):
         v = [v]
-    val_path = '/var/log/ceph/valgrind'.format(tdir=testdir)
+    val_path = '/var/log/ceph/valgrind'
     if '--tool=memcheck' in v or '--tool=helgrind' in v:
         extra_args = [
             'valgrind',

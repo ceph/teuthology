@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 
 
 class Provider(object):
-    _driver_posargs = list()
+    _driver_posargs = list() # type: ignore
 
     def __init__(self, name, conf):
         self.name = name

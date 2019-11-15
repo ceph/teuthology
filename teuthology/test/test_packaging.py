@@ -1,6 +1,10 @@
 import pytest
 
 from mock import patch, Mock
+try:
+    from typing import Any, List, Optional, Tuple
+except ImportError:
+    pass
 
 from teuthology import packaging
 from teuthology.exceptions import VersionNotFoundError
@@ -304,7 +308,8 @@ class TestPackaging(object):
 
 
 class TestBuilderProject(object):
-    klass = None
+    klass = None # type: Optional[Any]
+    DISTRO_MATRIX = [] # type: List[Tuple[Any, Any, Any, Any]]
 
     def setup(self):
         if self.klass is None:
@@ -459,7 +464,7 @@ class TestBuilderProject(object):
         gp = self.klass("ceph", {}, ctx=ctx, remote=rem)
         assert not gp.sha1
 
-    DISTRO_MATRIX = [None] * 12
+    DISTRO_MATRIX = [(None, None, None, None)] * 12
 
     @pytest.mark.parametrize(
         "matrix_index",
@@ -524,7 +529,7 @@ class TestBuilderProject(object):
 
 
 class TestGitbuilderProject(TestBuilderProject):
-    klass = packaging.GitbuilderProject
+    klass = packaging.GitbuilderProject # type: ignore
 
     def setup(self):
         self.p_config = patch('teuthology.packaging.config')
@@ -610,7 +615,7 @@ class TestGitbuilderProject(TestBuilderProject):
         ('debian', '7.1', None, 'wheezy'),
         ('ubuntu', '12.04', None, 'precise'),
         ('ubuntu', '14.04', None, 'trusty'),
-    ]
+    ] # type: ignore
 
 
 class TestShamanProject(TestBuilderProject):
