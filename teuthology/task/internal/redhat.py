@@ -91,7 +91,8 @@ def setup_additional_repo(ctx, config):
             if remote.os.package_type == 'rpm':
                 remote.run(args=['sudo', 'wget', '-O', '/etc/yum.repos.d/rh_add.repo',
                                  add_repo])
-                remote.run(args=['sudo', 'yum', 'update', 'metadata'])
+                if not remote.os.version.startswith('8'):
+                    remote.run(args=['sudo', 'yum', 'update', 'metadata'])
 
     yield
 
@@ -153,13 +154,16 @@ def _setup_latest_repo(ctx, config):
                 remote.run(args=['sudo', 'rm', run.Raw('/etc/yum.repos.d/rh*')],
                            check_status=False)
                 remote.run(args=['sudo', 'yum', 'clean', 'metadata'])
-                remote.run(args=['sudo', 'yum', 'update', 'metadata'])
+                if not remote.os.version.startswith('8'):
+                    remote.run(args=['sudo', 'yum', 'update', 'metadata'])
                 # skip is required for beta iso testing
                 if config.get('skip-subscription-manager', False) is True:
                     log.info("Skipping subscription-manager command")
                 else:
                     remote.run(args=['sudo', 'subscription-manager', 'repos',
-                                    run.Raw('--disable=*ceph*')])
+                                    run.Raw('--disable=*ceph*')],
+                               check_status=False
+                               )
                 base_url = config.get('base-repo-url', '')
                 installer_url = config.get('installer-repo-url', '')
                 repos = ['MON', 'OSD', 'Tools', 'Calamari', 'Installer']
@@ -186,7 +190,8 @@ def _setup_latest_repo(ctx, config):
                     remote.run(args=['sudo', 'cp', installer_file.name,
                                      '/etc/yum.repos.d/rh_inst.repo'])
                     remote.run(args=['sudo', 'yum', 'clean', 'metadata'])
-                    remote.run(args=['sudo', 'yum', 'update', 'metadata'])
+                    if not remote.os.version.startswith('8'):
+                        remote.run(args=['sudo', 'yum', 'update', 'metadata'])
             else:
                 if config.get('deb-repo-url'):
                     deb_repo = config.get('deb-repo-url')
