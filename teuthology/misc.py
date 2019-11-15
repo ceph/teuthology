@@ -18,6 +18,7 @@ import re
 import pprint
 
 from teuthology.util.compat import urljoin, urlopen, HTTPError
+from teuthology.util.compat import stringify
 
 from netaddr.strategy.ipv4 import valid_str as _is_ipv4
 from netaddr.strategy.ipv6 import valid_str as _is_ipv6
@@ -1309,15 +1310,16 @@ def sh(command, log_limit=1024, cwd=None, env=None):
     truncated = False
     with proc.stdout:
         for line in iter(proc.stdout.readline, b''):
+            line = stringify(line)
             lines.append(line)
             line = line.strip()
             if len(line) > log_limit:
                 truncated = True
-                log.debug(str(line)[:log_limit] +
+                log.debug(line[:log_limit] +
                           "... (truncated to the first " + str(log_limit) +
                           " characters)")
             else:
-                log.debug(str(line))
+                log.debug(line)
     output = "".join(lines)
     if proc.wait() != 0:
         if truncated:
@@ -1330,4 +1332,4 @@ def sh(command, log_limit=1024, cwd=None, env=None):
             cmd=command,
             output=output
         )
-    return output.decode('utf-8')
+    return output
