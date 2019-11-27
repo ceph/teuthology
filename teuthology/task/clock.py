@@ -49,7 +49,7 @@ def task(ctx, config):
                 run.Raw('||'),
                 'true'
             ],
-            timeout=4200
+            timeout=60
         )
 
     try:
