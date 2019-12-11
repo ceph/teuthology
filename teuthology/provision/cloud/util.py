@@ -5,14 +5,14 @@ import json
 import os
 
 from teuthology.util.flock import FileLock
-
+from teuthology.util.compat import stringify
 
 def get_user_ssh_pubkey(path='~/.ssh/id_rsa.pub'):
     full_path = os.path.expanduser(path)
     if not os.path.exists(full_path):
         return
     with open(full_path, 'rb') as f:
-        return f.read().strip()
+        return stringify(f.read().strip())
 
 
 def combine_dicts(list_of_dicts, func):
