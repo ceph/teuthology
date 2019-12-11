@@ -54,7 +54,7 @@ setup(
                       'boto >= 2.0b4',
                       'configobj',
                       'six >= 1.9', # python-openstackclient won't work properly with less
-                      'pexpect',
+                      'pexpect >= 4.7.0',
                       'nose', # for qa/tasks/rgw_multisite_tests.py',
                       'docopt',
                       'psutil >= 2.1.0',
