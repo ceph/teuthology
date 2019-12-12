@@ -64,7 +64,7 @@ def ls_remote(url, ref):
     cmd = "git ls-remote {} {}".format(url, ref)
     result = subprocess.check_output(
         cmd, shell=True).split()
-    sha1 = result[0] if result else None
+    sha1 = stringify(result[0]) if result else None
     log.debug("{} -> {}".format(cmd, sha1))
     return sha1
 
