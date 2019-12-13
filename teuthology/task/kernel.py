@@ -1,12 +1,13 @@
 """
 Kernel installation task
 """
-from cStringIO import StringIO
+from io import StringIO
 
 import logging
 import os
 import re
 import shlex
+from six import ensure_str
 
 from teuthology.util.compat import urljoin
 
@@ -860,7 +861,8 @@ def install_kernel(remote, path=None, version=None):
     if package_type == 'deb':
         newversion = get_latest_image_version_deb(remote, dist_release)
         if 'ubuntu' in dist_release:
-            grub2conf = teuthology.get_file(remote, '/boot/grub/grub.cfg', True)
+            grub2conf = ensure_str(teuthology.get_file(remote,
+                '/boot/grub/grub.cfg', sudo=True))
             submenu = ''
             menuentry = ''
             for line in grub2conf.split('\n'):
@@ -935,7 +937,7 @@ def grub2_kernel_select_generic(remote, newversion, ostype):
         grubconfig = '/boot/grub/grub.cfg'
         mkconfig = 'grub-mkconfig'
     remote.run(args=['sudo', mkconfig, '-o', grubconfig, ])
-    grub2conf = teuthology.get_file(remote, grubconfig, True)
+    grub2conf = ensure_str(teuthology.get_file(remote, grubconfig, sudo=True))
     entry_num = 0
     if '\nmenuentry ' not in grub2conf:
         # okay, do the newer (el8) grub2 thing
@@ -966,7 +968,8 @@ def generate_legacy_grub_entry(remote, newversion):
     a kernel just via a command. This generates an entry in legacy
     grub for a new kernel version using the existing entry as a base.
     """
-    grubconf = teuthology.get_file(remote, '/boot/grub/grub.conf', True)
+    grubconf = ensure_str(teuthology.get_file(remote,
+        '/boot/grub/grub.conf', sudo=True))
     titleline = ''
     rootline = ''
     kernelline = ''
