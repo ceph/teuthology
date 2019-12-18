@@ -15,7 +15,7 @@ from teuthology.timer import Timer
 log = logging.getLogger(__name__)
 
 
-def get_task(name):
+def get_task(name, ctx):
     if '.' in name:
         module_name, task_name = name.split('.')
     else:
@@ -25,6 +25,9 @@ def get_task(name):
     module = _import('teuthology.task', module_name, task_name)
     # If it is not found, try qa/ directory (if it is in sys.path)
     if not module:
+        module = _import('tasks', module_name, task_name)
+    if not module:
+        sys.path.append(ctx.config.get("suite_path") + "/qa")
         module = _import('tasks', module_name, task_name, fail_on_import_error=True)
     try:
         # Attempt to locate the task object inside the module
@@ -61,7 +64,7 @@ def _import(from_package, module_name, task_name, fail_on_import_error=False):
 
 def run_one_task(taskname, **kwargs):
     taskname = taskname.replace('-', '_')
-    task = get_task(taskname)
+    task = get_task(taskname, kwargs['ctx'])
     return task(**kwargs)
 
 
