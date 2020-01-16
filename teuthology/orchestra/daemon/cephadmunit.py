@@ -44,7 +44,7 @@ class CephadmUnit(DaemonState):
         name = '%s.%s' % (self.type_, self.id_)
         self.remote_logger = self.remote.run(
             args=['sudo', self.use_cephadm, 'logs',
-                  '-f',
+                  '-f', '--logger', 'podman'
                   '--fsid', self.fsid,
                   '--name', name],
             logger=logging.getLogger(self.cluster + '.' + name),
