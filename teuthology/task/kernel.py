@@ -713,6 +713,7 @@ def need_to_install_distro(remote):
     :returns: False if running the newest distro kernel. Returns the version of
               the newest if it is not running.
     """
+    dist_release = remote.os.name
     package_type = remote.os.package_type
     output, err_mess = StringIO(), StringIO()
     remote.run(args=['uname', '-r'], stdout=output)
@@ -721,30 +722,38 @@ def need_to_install_distro(remote):
         node=remote.shortname, version=current))
     installed_version = None
     if package_type == 'rpm':
-        remote.run(args=['sudo', 'yum', 'install', '-y', 'kernel'],
-                   stdout=output)
-        install_stdout = output.getvalue()
-        match = re.search(
-            "Package (.*) already installed",
-            install_stdout, flags=re.MULTILINE)
-        installed_version = match.groups()[0] if match else ''
-        if 'Nothing to do' in install_stdout:
-            err_mess.truncate(0)
-            remote.run(args=['echo', 'no', run.Raw('|'), 'sudo', 'yum',
-                             'reinstall', 'kernel', run.Raw('||'), 'true'],
-                       stderr=err_mess)
-            reinstall_stderr = err_mess.getvalue()
-            if 'Skipping the running kernel' in reinstall_stderr:
-                running_version = re.search(
-                    "Skipping the running kernel: (.*)",
-                    reinstall_stderr, flags=re.MULTILINE).groups()[0]
-                if installed_version == running_version:
-                    log.info(
-                        'Newest distro kernel already installed and running')
-                    return False
-            else:
-                remote.run(args=['sudo', 'yum', 'reinstall', '-y', 'kernel',
-                                 run.Raw('||'), 'true'])
+        if dist_release in ['opensuse', 'sle']:
+            install_stdout = remote.sh(
+                'sudo zypper --non-interactive install kernel-default'
+                )
+            match = re.search(
+                "Package (.*) already installed",
+                install_stdout, flags=re.MULTILINE)
+        else:
+            install_stdout = remote.sh(
+                'sudo yum install -y kernel'
+                )
+            match = re.search(
+                "Package (.*) already installed",
+                install_stdout, flags=re.MULTILINE)
+            if 'Nothing to do' in install_stdout:
+                installed_version = match.groups()[0] if match else ''
+                err_mess.truncate(0)
+                remote.run(args=['echo', 'no', run.Raw('|'), 'sudo', 'yum',
+                                 'reinstall', 'kernel', run.Raw('||'), 'true'],
+                           stderr=err_mess)
+                reinstall_stderr = err_mess.getvalue()
+                if 'Skipping the running kernel' in reinstall_stderr:
+                    running_version = re.search(
+                        "Skipping the running kernel: (.*)",
+                        reinstall_stderr, flags=re.MULTILINE).groups()[0]
+                    if installed_version == running_version:
+                        log.info(
+                            'Newest distro kernel already installed and running')
+                        return False
+                else:
+                    remote.run(args=['sudo', 'yum', 'reinstall', '-y', 'kernel',
+                                     run.Raw('||'), 'true'])
         # reset stringIO output.
         output.truncate(0)
         newest = get_latest_image_version_rpm(remote)
