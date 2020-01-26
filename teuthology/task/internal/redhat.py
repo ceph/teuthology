@@ -104,7 +104,8 @@ def _enable_rhel_repos(remote):
                    'rhel-7-server-ansible-2.6-rpms']
 
     rhel_8_rpms = ['rhel-8-for-x86_64-appstream-rpms',
-                   'rhel-8-for-x86_64-baseos-rpms']
+                   'rhel-8-for-x86_64-baseos-rpms',
+                   'ansible-2.8-for-rhel-8-x86_64-rpms']
 
     repos_to_subscribe = {'7': rhel_7_rpms,
                           '8': rhel_8_rpms}
