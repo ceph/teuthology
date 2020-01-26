@@ -654,9 +654,9 @@ class CephAnsible(Task):
                 'install',
                 '-y',
                 'libffi-devel',
-                'python-devel',
+                'python3-devel',
                 'openssl-devel',
-                'libselinux-python'
+                'libselinux-python3'
             ])
         else:
             # update ansible from ppa
