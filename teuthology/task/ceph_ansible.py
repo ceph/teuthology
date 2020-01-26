@@ -418,9 +418,9 @@ class CephAnsible(Task):
                     'remove',
                     '-y',
                     'libffi-devel',
-                    'python-devel',
+                    'python3-devel',
                     'openssl-devel',
-                    'libselinux-python'
+                    'libselinux-python3'
                 ])
 
     def collect_logs(self):
