@@ -685,7 +685,7 @@ class CephAnsible(Task):
         branch = 'master'
         if self.config.get('branch'):
             branch = self.config.get('branch')
-        ansible_ver = 'ansible==2.5'
+        ansible_ver = 'ansible==2.8'
         if self.config.get('ansible-version'):
             ansible_ver = 'ansible==' + self.config.get('ansible-version')
         ceph_installer.run(
