@@ -101,7 +101,7 @@ def _enable_rhel_repos(remote):
     rhel_7_rpms = ['rhel-7-server-rpms',
                    'rhel-7-server-optional-rpms',
                    'rhel-7-server-extras-rpms',
-                   'rhel-7-server-ansible-2.6-rpms']
+                   'rhel-7-server-ansible-2.8-rpms']
 
     rhel_8_rpms = ['rhel-8-for-x86_64-appstream-rpms',
                    'rhel-8-for-x86_64-baseos-rpms',
