@@ -7,7 +7,7 @@ import yaml
 from teuthology.task import Task
 from tempfile import NamedTemporaryFile
 from teuthology.config import config as teuth_config
-from teuthology.misc import get_scratch_devices
+from teuthology.misc import get_scratch_devices, get_file
 from teuthology import contextutil
 from teuthology.orchestra import run
 from teuthology import misc
@@ -56,6 +56,8 @@ class CephAnsible(Task):
 
     def __init__(self, ctx, config):
         super(CephAnsible, self).__init__(ctx, config)
+        print(ctx)
+        print(config)
         config = self.config or dict()
         self.playbook = None
         if 'playbook' in config:
@@ -302,13 +304,36 @@ class CephAnsible(Task):
                     break
 
     def get_host_vars(self, remote):
+        print("get_host_vars")
         extra_vars = self.config.get('vars', dict())
+        print(extra_vars)
         host_vars = dict()
         if not extra_vars.get('osd_auto_discovery', False):
             roles = self.ctx.cluster.remotes[remote]
             dev_needed = len([role for role in roles
                               if role.startswith('osd')])
-            host_vars['devices'] = get_scratch_devices(remote)[0:dev_needed]
+            if self.ctx.machine_type in teuth_config['ceph_ansible']['has_lvm_scratch_disks']:
+                devices = get_file(remote, "/scratch_devs").split()
+                print("[[[[]]]]")
+                print(devices)
+                vols = []
+
+                print("[[[[]]]]")
+                print(self.config.get('vars', dict()))
+
+                for dev in devices:
+                   if 'vg_nvme' in dev:
+                       splitpath = dev.split('/')
+                       vol = dict()
+                       vol['data_vg'] = splitpath[2]
+                       vol['data'] = splitpath[3]
+                       vols.append(dict(vol))
+                extra_vars['lvm_volumes'] = vols
+                self.config.update({'vars': extra_vars})
+                print("[[[[]]]]")
+                print(self.config.get('vars', dict()))
+            else:
+                host_vars['devices'] = get_scratch_devices(remote)[0:dev_needed]
         if 'monitor_interface' not in extra_vars:
             host_vars['monitor_interface'] = remote.interface
         if 'radosgw_interface' not in extra_vars:
