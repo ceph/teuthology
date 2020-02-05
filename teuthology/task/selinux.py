@@ -116,6 +116,8 @@ class SELinux(Task):
         #  http://tracker.ceph.com/issues/14244
         known_denials = [
             'comm="dmidecode"',
+            'comm="setroubleshootd"',
+            'comm="rpm"',
             'chronyd.service',
             'name="cephtest"',
             'scontext=system_u:system_r:nrpe_t:s0',
