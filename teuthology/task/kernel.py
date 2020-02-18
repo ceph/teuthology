@@ -782,7 +782,7 @@ def need_to_install_distro(remote):
 
     if current in newest or current.replace('-', '_') in newest:
         log.info('Newest distro kernel installed and running')
-        return False
+        return newest
     log.info(
         'Not newest distro kernel. Current: {cur} Expected: {new}'.format(
             cur=current, new=newest))
