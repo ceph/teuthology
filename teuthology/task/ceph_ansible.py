@@ -33,7 +33,7 @@ class CephAnsible(Task):
         in case of multisite
         repo: {git_base}ceph-ansible.git
         branch: mybranch # defaults to master
-        ansible-version: 2.4 # defaults to 2.5
+        ansible-version: 2.8 for RHCS 4.x and 2.6 for RHCS 3.x
         vars:
           ceph_dev: True ( default)
           ceph_conf_overrides:
@@ -62,8 +62,9 @@ class CephAnsible(Task):
         rgws='rgw',
         clients='client',
         nfss='nfs',
-        haproxys='haproxy'
+        haproxys='haproxy',
     )
+    groups_to_roles ['grafana-server'] = 'grafana-server'
 
     def __init__(self, ctx, config):
         super(CephAnsible, self).__init__(ctx, config)
@@ -685,7 +686,7 @@ class CephAnsible(Task):
         branch = 'master'
         if self.config.get('branch'):
             branch = self.config.get('branch')
-        ansible_ver = 'ansible==2.8'
+        ansible_ver = 'ansible==2.8' if teuth_config.rhbuild >= 4.0 else 'ansible==2.6'
         if self.config.get('ansible-version'):
             ansible_ver = 'ansible==' + self.config.get('ansible-version')
         ceph_installer.run(

@@ -100,12 +100,15 @@ def setup_additional_repo(ctx, config):
 def _enable_rhel_repos(remote):
     rhel_7_rpms = ['rhel-7-server-rpms',
                    'rhel-7-server-optional-rpms',
-                   'rhel-7-server-extras-rpms',
-                   'rhel-7-server-ansible-2.8-rpms']
+		   'rhel-7-server-extras-rpms']
 
     rhel_8_rpms = ['rhel-8-for-x86_64-appstream-rpms',
                    'rhel-8-for-x86_64-baseos-rpms',
                    'ansible-2.8-for-rhel-8-x86_64-rpms']
+    
+    rhel_7_rpms.append('rhel-7-server-ansible-2.8-rpms') \
+    if teuthconfig.rhbuild >= 4.0 else \
+    rhel_7_rpms.append('rhel-7-server-ansible-2.6-rpms')
 
     repos_to_subscribe = {'7': rhel_7_rpms,
                           '8': rhel_8_rpms}
