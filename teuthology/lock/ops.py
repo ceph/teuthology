@@ -203,7 +203,8 @@ def unlock_one(ctx, name, user, description=None):
     name = misc.canonicalize_hostname(name, user=None)
     if not teuthology.provision.destroy_if_vm(ctx, name, user, description):
         log.error('destroy failed for %s', name)
-        return False
+        # continue unlocking even when destroy fails for VM
+        # this will free up the paddles for new reservation
     request = dict(name=name, locked=False, locked_by=user,
                    description=description)
     uri = os.path.join(config.lock_server, 'nodes', name, 'lock', '')
