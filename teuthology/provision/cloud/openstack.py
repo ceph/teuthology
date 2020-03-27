@@ -7,6 +7,7 @@ import urllib
 import yaml
 
 from copy import deepcopy
+from datetime import datetime, timedelta
 from libcloud.common.exceptions import RateLimitReachedError, BaseHTTPError
 
 from paramiko import AuthenticationException
@@ -94,7 +95,7 @@ class OpenStackProvider(Provider):
                 allow_sizes = [allow_sizes]
             allow_re = [re.compile(x) for x in allow_sizes]
             # By default, exclude instance types meant for Windows
-            exclude_sizes = self.conf.get('exclude_sizes', 'win-.*')
+            exclude_sizes = self.conf.get('exclude_sizes', 'win*')
             if isinstance(exclude_sizes, basestring):
                 exclude_sizes = [exclude_sizes]
             exclude_re = [re.compile(x) for x in exclude_sizes]
@@ -111,9 +112,10 @@ class OpenStackProvider(Provider):
     @property
     def networks(self):
         if not hasattr(self, '_networks'):
-            allow_networks = self.conf.get('allow_networks', '.*')
+            ds_network = "provider_net_cci_1"
+            allow_networks = self.conf.get('allow_networks', ds_network)
             if isinstance(allow_networks, basestring):
-                allow_networks=[allow_networks]
+                allow_networks = [allow_networks]
             networks_re = [re.compile(x) for x in allow_networks]
             try:
                 networks = retry(self.driver.ex_list_networks)
@@ -154,13 +156,13 @@ class OpenStackProvisioner(base.Provisioner):
     defaults = dict(
         openstack=dict(
             machine=dict(
-                disk=20,
-                ram=8000,
-                cpus=1,
+                disk=40,
+                ram=4048,
+                cpus=2,
             ),
             volumes=dict(
-                count=0,
-                size=0,
+                count=1,
+                size=20,
             ),
         )
     )
@@ -227,17 +229,30 @@ class OpenStackProvisioner(base.Provisioner):
         security_groups = self.security_groups
         if security_groups:
             create_args['ex_security_groups'] = security_groups
-        self._node = retry(
-            self.provider.driver.create_node,
-            **create_args
-        )
+        # workaround for downstream openstack, since wait_until_running fails
+        self._node = self.provider.driver.create_node(**create_args)
+        time.sleep(30)
         log.debug("Created node: %s", self.node)
-        results = retry(
-            self.provider.driver.wait_until_running,
-            nodes=[self.node],
-            ssh_interface=self.provider.ssh_interface,
-        )
-        self._node, self.ips = results[0]
+        timeout = timedelta(seconds=240)
+        starttime = datetime.now()
+        while True:
+            log.info("Waiting for node %s to become available", self.name)
+            all_nodes = self.provider.driver.list_nodes()
+            new_node_state = [node.state for node in all_nodes
+                              if node.uuid == self._node.uuid]
+            if new_node_state[0] == 'running':
+                break
+            if datetime.now() - starttime > timeout:
+                log.info(
+                    "Failed to bring the node in running state in \
+                    {timeout}s".format(timeout=timeout)
+                )
+                raise RuntimeError("Failed to bring up nodes in PSI")
+            time.sleep(30)
+        new_node = [node for node in all_nodes
+                    if node.uuid == self._node.uuid]
+        self._node = new_node[0]
+        self.ips = self._node.private_ips[0]
         log.debug("Node started: %s", self.node)
         if not self._create_volumes():
             self._destroy_volumes()
@@ -291,7 +306,7 @@ class OpenStackProvisioner(base.Provisioner):
     def _update_dns(self):
         query = urllib.urlencode(dict(
             name=self.name,
-            ip=self.ips[0],
+            ip=self.ips,
         ))
         nsupdate_url = "%s?%s" % (
             config.nsupdate_url,
