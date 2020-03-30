@@ -568,6 +568,9 @@ def task(ctx, config):
                 0,
                 lambda: ansible.CephLab(ctx, config=ansible_config)
             )
+        nested_config = dict(extra_system_packages=config.get('extra_system_packages', []),
+                             extra_packages=config.get('extra_packages', []),
+                             )
         with contextutil.nested(*nested_tasks):
                 yield
     else:
