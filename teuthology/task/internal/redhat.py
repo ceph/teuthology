@@ -19,12 +19,13 @@ def setup_stage_cdn(ctx, config):
     """
     Configure internal stage cdn
     """
+    rhbuild = ctx.config.get('redhat').get('rhbuild', "3.x")
+    teuthconfig.rhbuild = str(rhbuild)
     with parallel() as p:
         for remote in ctx.cluster.remotes.iterkeys():
             if remote.os.name == 'rhel':
                 log.info("subscribing stage cdn on : %s", remote.shortname)
-                p.spawn(_subscribe_stage_cdn, remote, teuthconfig)
-
+                p.spawn(_subscribe_stage_cdn, remote)
     try:
         yield
     finally:
@@ -33,7 +34,7 @@ def setup_stage_cdn(ctx, config):
                 p.spawn(_unsubscribe_stage_cdn, remote)
 
 
-def _subscribe_stage_cdn(remote, teuthconfig):
+def _subscribe_stage_cdn(remote):
     _unsubscribe_stage_cdn(remote)
     cdn_config = teuthconfig.get('cdn-config', dict())
     server_url = cdn_config.get('server-url', 'subscription.rhsm.stage.redhat.com:443/subscription')
@@ -100,11 +101,16 @@ def setup_additional_repo(ctx, config):
 def _enable_rhel_repos(remote):
     rhel_7_rpms = ['rhel-7-server-rpms',
                    'rhel-7-server-optional-rpms',
-                   'rhel-7-server-extras-rpms',
-                   'rhel-7-server-ansible-2.6-rpms']
+                   'rhel-7-server-extras-rpms']
 
     rhel_8_rpms = ['rhel-8-for-x86_64-appstream-rpms',
-                   'rhel-8-for-x86_64-baseos-rpms']
+                   'rhel-8-for-x86_64-baseos-rpms',
+                   'ansible-2.8-for-rhel-8-x86_64-rpms']
+
+    if teuthconfig.rhbuild.startswith("3"):
+        rhel_7_rpms.append('rhel-7-server-ansible-2.6-rpms')
+    elif teuthconfig.rhbuild.startswith("4"):
+        rhel_7_rpms.append('rhel-7-server-ansible-2.8-rpms')
 
     repos_to_subscribe = {'7': rhel_7_rpms,
                           '8': rhel_8_rpms}
@@ -236,3 +242,4 @@ def workaround(remote):
                      'yum',
                      'install', '-y',
                      'http://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/d/dbench-4.0-10.el7.x86_64.rpm'])
+
