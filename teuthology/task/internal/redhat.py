@@ -9,7 +9,7 @@ from teuthology.config import config as teuthconfig
 from teuthology.parallel import parallel
 from teuthology.orchestra import run
 from teuthology.task.install.redhat import set_deb_repo
-from teuthology.exceptions import CommandFailedError
+from teuthology.exceptions import CommandFailedError, ConfigError
 
 log = logging.getLogger(__name__)
 
@@ -19,11 +19,15 @@ def setup_stage_cdn(ctx, config):
     """
     Configure internal stage cdn
     """
+    rhbuild = ctx.config.get('redhat').get('rhbuild')
+    if not rhbuild:
+        raise ConfigError("Provide rhbuild attribute")
+    teuthconfig.rhbuild = str(rhbuild)
     with parallel() as p:
         for remote in ctx.cluster.remotes.iterkeys():
             if remote.os.name == 'rhel':
                 log.info("subscribing stage cdn on : %s", remote.shortname)
-                p.spawn(_subscribe_stage_cdn, remote, teuthconfig)
+                p.spawn(_subscribe_stage_cdn, remote)
 
     try:
         yield
@@ -33,7 +37,7 @@ def setup_stage_cdn(ctx, config):
                 p.spawn(_unsubscribe_stage_cdn, remote)
 
 
-def _subscribe_stage_cdn(remote, teuthconfig):
+def _subscribe_stage_cdn(remote):
     _unsubscribe_stage_cdn(remote)
     cdn_config = teuthconfig.get('cdn-config', dict())
     server_url = cdn_config.get('server-url', 'subscription.rhsm.stage.redhat.com:443/subscription')
@@ -105,10 +109,11 @@ def _enable_rhel_repos(remote):
     rhel_8_rpms = ['rhel-8-for-x86_64-appstream-rpms',
                    'rhel-8-for-x86_64-baseos-rpms',
                    'ansible-2.8-for-rhel-8-x86_64-rpms']
-    
-    rhel_7_rpms.append('rhel-7-server-ansible-2.8-rpms') \
-    if teuthconfig.rhbuild >= 4.0 else \
-    rhel_7_rpms.append('rhel-7-server-ansible-2.6-rpms')
+
+    if teuthconfig.rhbuild.startswith("3"):
+        rhel_7_rpms.append('rhel-7-server-ansible-2.6-rpms')
+    elif teuthconfig.rhbuild.startswith("4"):
+        rhel_7_rpms.append('rhel-7-server-ansible-2.8-rpms')
 
     repos_to_subscribe = {'7': rhel_7_rpms,
                           '8': rhel_8_rpms}
