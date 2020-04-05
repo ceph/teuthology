@@ -100,7 +100,7 @@ class SystemDState(DaemonState):
     @property
     def pid(self):
         proc_name = 'ceph-%s' % self.type_
-        proc_regex = '"%s.*--id %s"' % (proc_name, self.id_)
+        proc_regex = '"%s.*--id %s "' % (proc_name, self.id_)
         args = ['ps', '-ef',
                 run.Raw('|'),
                 'grep',
