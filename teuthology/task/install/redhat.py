@@ -57,6 +57,10 @@ def install(ctx, config):
     log.info("using yaml path %s", yaml_path)
     downstream_config = yaml.safe_load(open(yaml_path))
     rh_versions = downstream_config.get('versions', dict()).get('supported', [])
+    external_config = dict(extra_system_packages=config.get('extra_system_packages', {}),
+                           extra_packages=config.get('extra_packages', {}),
+                           )
+    downstream_config.update(external_config)
     version = config['rhbuild']
     if version in rh_versions:
         log.info("%s is a supported version", version)
@@ -91,7 +95,9 @@ def install_pkgs(ctx, remote, version, downstream_config):
     :param downstream_config the dict object that has downstream pkg info
     """
     rh_version_check = downstream_config.get('versions').get('rpm').get('mapped')
-    rh_rpm_pkgs = downstream_config.get('pkgs').get('rpm')
+    rh_rpm_pkgs = downstream_config.get('pkgs').get('rpm') + \
+                  downstream_config.get('extra_system_packages').get('rpm', []) + \
+                  downstream_config.get('extra_packages').get('rpm', [])
     pkgs = str.join(' ', rh_rpm_pkgs)
     log.info("Remove any epel packages installed on node %s", remote.shortname)
     # below packages can come from epel and still work, ensure we use cdn pkgs
@@ -103,6 +109,7 @@ def install_pkgs(ctx, remote, version, downstream_config):
             run.Raw("leveldb xmlstarlet fcgi"),
             '-y'],
         check_status=False)
+
     log.info("Installing redhat ceph packages")
     remote.run(args=['sudo', 'yum', '-y', 'install',
                      run.Raw(pkgs)])
@@ -165,7 +172,9 @@ def install_deb_pkgs(
     : param downstream_config the dict object that has downstream pkg info
     """
     rh_version_check = downstream_config.get('versions').get('deb').get('mapped')
-    rh_deb_pkgs = downstream_config.get('pkgs').get('deb')
+    rh_deb_pkgs = downstream_config.get('pkgs').get('deb') + \
+                  downstream_config.get('extra_system_packages').get('deb', []) + \
+                  downstream_config.get('extra_packages').get('deb', [])
     pkgs = str.join(' ', rh_deb_pkgs)
     log.info("Installing redhat ceph packages")
     remote.run(args=['sudo', 'apt-get', '-y', 'install',
