@@ -9,7 +9,7 @@ from teuthology.config import config as teuthconfig
 from teuthology.parallel import parallel
 from teuthology.orchestra import run
 from teuthology.task.install.redhat import set_deb_repo
-from teuthology.exceptions import CommandFailedError
+from teuthology.exceptions import CommandFailedError, ConfigError
 
 log = logging.getLogger(__name__)
 
@@ -19,7 +19,9 @@ def setup_stage_cdn(ctx, config):
     """
     Configure internal stage cdn
     """
-    rhbuild = ctx.config.get('redhat').get('rhbuild', "3.x")
+    rhbuild = ctx.config.get('redhat').get('rhbuild')
+    if not rhbuild:
+        raise ConfigError("Provide rhbuild attribute")
     teuthconfig.rhbuild = str(rhbuild)
     with parallel() as p:
         for remote in ctx.cluster.remotes.iterkeys():
