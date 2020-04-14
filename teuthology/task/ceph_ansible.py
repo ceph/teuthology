@@ -33,7 +33,7 @@ class CephAnsible(Task):
         in case of multisite
         repo: {git_base}ceph-ansible.git
         branch: mybranch # defaults to master
-        ansible-version: 2.4 # defaults to 2.5
+        ansible-version: 2.8 for RHCS 4.x and 2.6 for RHCS 3.x
         vars:
           ceph_dev: True ( default)
           ceph_conf_overrides:
@@ -64,6 +64,7 @@ class CephAnsible(Task):
         nfss='nfs',
         haproxys='haproxy'
     )
+    groups_to_roles ['grafana-server'] = 'grafana-server'
 
     def __init__(self, ctx, config):
         super(CephAnsible, self).__init__(ctx, config)
