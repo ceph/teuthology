@@ -101,6 +101,10 @@ class SystemDState(DaemonState):
     def pid(self):
         proc_name = 'ceph-%s' % self.type_
         proc_regex = '"%s.*--id %s "' % (proc_name, self.id_)
+
+        if self.type_ == "rgw":
+            proc_regex = "{}.*--name.*{}".format(self.daemon_type, self.id_)
+
         args = ['ps', '-ef',
                 run.Raw('|'),
                 'grep',
@@ -110,12 +114,12 @@ class SystemDState(DaemonState):
                 'grep', run.Raw('|'),
                 'awk',
                 run.Raw("{'print $2'}")]
+
         proc = self.remote.run(args=args, stdout=StringIO())
         pid_string = proc.stdout.getvalue().strip()
         if not pid_string.isdigit():
             return None
         return int(pid_string)
-
 
     def reset(self):
         """

@@ -508,11 +508,13 @@ class CephAnsible(Task):
         ceph_installer = self.ceph_installer
         from tasks.set_repo import GA_BUILDS, set_cdn_repo
         rhbuild = self.config.get('rhbuild')
+
         # skip cdn's for rhel beta tests which will use GA builds from Repo
         if self.ctx.config.get('redhat').get('skip-subscription-manager',
                                              False) is False:
             if rhbuild in GA_BUILDS:
                 set_cdn_repo(self.ctx, self.config)
+
         # install ceph-ansible
         if ceph_installer.os.package_type == 'rpm':
             ceph_installer.run(args=[
@@ -782,6 +784,17 @@ class CephAnsible(Task):
 
     def _fix_roles_map(self):
         ctx = self.ctx
+
+        # Find rhbuild from config and check for cluster version
+        # In case 4.x, support multiple RGW daemons in single node
+        # else, continue
+        multi_rgw_support = False
+        try:
+            if str(ctx.config.get('redhat', str()).get("rhbuild")).startswith("4"):
+                multi_rgw_support = True
+        except AttributeError:
+            pass
+
         if not hasattr(ctx, 'managers'):
             ctx.managers = {}
         ctx.daemons = DaemonGroup(use_systemd=True)
@@ -793,6 +806,7 @@ class CephAnsible(Task):
         for remote, roles in self.ready_cluster.remotes.iteritems():
             new_remote_role[remote] = []
             generate_osd_list = True
+            rgw_count = 0
             for role in roles:
                 cluster, rol, id = misc.split_role(role)
                 if rol.startswith('osd'):
@@ -835,10 +849,14 @@ class CephAnsible(Task):
                 elif rol.startswith('rgw'):
                     hostname = remote.shortname
                     new_remote_role[remote].append(role)
-                    log.info(
-                        "Registering Daemon {rol} {id}".format(
-                            rol=rol, id=id))
-                    ctx.daemons.add_daemon(remote, rol, id_='rgw.' + hostname)
+                    id_ = "{}.{}".format('rgw', hostname)
+                    if multi_rgw_support:
+                        id_ = "{}.{}.rgw{}".format('rgw', hostname, rgw_count)
+                        rgw_count += 1
+                    log.info("Registering Daemon {rol} {id}".format(rol=rol,
+                                                                    id=id_))
+                    ctx.daemons.add_daemon(remote, rol, id_=id_)
+
                 else:
                     new_remote_role[remote].append(role)
         self.each_cluster.remotes.update(new_remote_role)
