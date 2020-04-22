@@ -88,10 +88,10 @@ def schedule_job(job_config, num=1):
     beanstalk = teuthology.beanstalk.connect()
     beanstalk.use(tube)
     while num > 0:
-        jid = beanstalk.put(
+        jid = beanstalk.put_job(
             job,
             ttr=60 * 60 * 24,
-            priority=job_config['priority'],
+            pri=job_config['priority'],
         )
         print('Job scheduled with name {name} and ID {jid}'.format(
             name=job_config['name'], jid=jid))

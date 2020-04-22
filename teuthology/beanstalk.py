@@ -1,4 +1,4 @@
-import beanstalkc
+from pystalk.client
 import yaml
 import logging
 import pprint
@@ -18,7 +18,7 @@ def connect():
         raise RuntimeError(
             'Beanstalk queue information not found in {conf_path}'.format(
                 conf_path=config.teuthology_yaml))
-    return beanstalkc.Connection(host=host, port=port)
+    return pystalk.client.BeanstalkClient(host=host, port=port)
 
 
 def watch_tube(connection, tube_name):

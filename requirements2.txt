@@ -13,7 +13,7 @@ attrs==18.1.0             # via pytest
 babel==2.4.0              # via osc-lib, oslo.i18n, python-cinderclient, python-glanceclient, python-neutronclient, python-novaclient, python-openstackclient
 backports.ssl-match-hostname==3.5.0.1  # via apache-libcloud, teuthology
 bcrypt==3.1.6             # via paramiko
-beanstalkc3==0.4.0        # via teuthology
+pystalk==1.14.0           # via teuthology
 boto3==1.9.161            # via teuthology
 boto==2.46.1              # via teuthology
 botocore==1.12.161        # via boto3, s3transfer
