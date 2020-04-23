@@ -33,7 +33,7 @@ class CephAnsible(Task):
         in case of multisite
         repo: {git_base}ceph-ansible.git
         branch: mybranch # defaults to master
-        ansible-version: 2.4 # defaults to 2.5
+        ansible-version: 2.8 for RHCS 4.x and 2.6 for RHCS 3.x
         vars:
           ceph_dev: True ( default)
           ceph_conf_overrides:
@@ -64,6 +64,7 @@ class CephAnsible(Task):
         nfss='nfs',
         haproxys='haproxy'
     )
+    groups_to_roles ['grafana-server'] = 'grafana-server'
 
     def __init__(self, ctx, config):
         super(CephAnsible, self).__init__(ctx, config)
@@ -77,10 +78,7 @@ class CephAnsible(Task):
             self.config['repo'] = os.path.join(teuth_config.ceph_git_base_url,
                                                'ceph-ansible.git')
 
-        if 'cluster' in config:
-            self.cluster_name = self.config.get('cluster')
-        else:
-            self.cluster_name = None
+        self.cluster_name = self.config.get('cluster', 'ceph')
 
         # Legacy option set to true in case we are running a test
         # which was earlier using "ceph" task for configuration
@@ -132,15 +130,14 @@ class CephAnsible(Task):
     def remove_cluster_prefix(self):
 
         stripped_role = {}
-        if self.cluster_name:
-            self.each_cluster = self.ctx.cluster.only(
-                lambda role: role.startswith(self.cluster_name))
-            for remote, roles in self.each_cluster.remotes.iteritems():
-                stripped_role[remote] = []
-                for rol in roles:
-                    stripped_role[remote].append(teuthology.ceph_role(rol))
-            self.each_cluster.remotes = stripped_role
-        else:
+        self.each_cluster = self.ctx.cluster.only(
+            lambda role: role.startswith(self.cluster_name))
+        for remote, roles in self.each_cluster.remotes.iteritems():
+            stripped_role[remote] = []
+            for rol in roles:
+                stripped_role[remote].append(teuthology.ceph_role(rol))
+        self.each_cluster.remotes = stripped_role
+        if not stripped_role:
             self.each_cluster = self.ctx.cluster
         log.info('updated cluster {}'.format(self.each_cluster))
 
@@ -201,7 +198,7 @@ class CephAnsible(Task):
 
         for group in sorted(self.groups_to_roles.keys()):
             role_prefix = self.groups_to_roles[group]
-            log.info("role_prefix: ".format(role_prefix))
+            log.info("role_prefix: {}".format(role_prefix))
 
             def want(role): return role.startswith(role_prefix)
             for (remote, roles) in self.each_cluster.only(
@@ -508,11 +505,13 @@ class CephAnsible(Task):
         ceph_installer = self.ceph_installer
         from tasks.set_repo import GA_BUILDS, set_cdn_repo
         rhbuild = self.config.get('rhbuild')
+
         # skip cdn's for rhel beta tests which will use GA builds from Repo
         if self.ctx.config.get('redhat').get('skip-subscription-manager',
                                              False) is False:
             if rhbuild in GA_BUILDS:
                 set_cdn_repo(self.ctx, self.config)
+
         # install ceph-ansible
         if ceph_installer.os.package_type == 'rpm':
             ceph_installer.run(args=[
@@ -782,6 +781,17 @@ class CephAnsible(Task):
 
     def _fix_roles_map(self):
         ctx = self.ctx
+
+        # Find rhbuild from config and check for cluster version
+        # In case 4.x, support multiple RGW daemons in single node
+        # else, continue
+        multi_rgw_support = False
+        try:
+            if str(ctx.config.get('redhat', str()).get("rhbuild")).startswith("4"):
+                multi_rgw_support = True
+        except AttributeError:
+            pass
+
         if not hasattr(ctx, 'managers'):
             ctx.managers = {}
         ctx.daemons = DaemonGroup(use_systemd=True)
@@ -793,6 +803,7 @@ class CephAnsible(Task):
         for remote, roles in self.ready_cluster.remotes.iteritems():
             new_remote_role[remote] = []
             generate_osd_list = True
+            rgw_count = 0
             for role in roles:
                 cluster, rol, id = misc.split_role(role)
                 if rol.startswith('osd'):
@@ -835,10 +846,14 @@ class CephAnsible(Task):
                 elif rol.startswith('rgw'):
                     hostname = remote.shortname
                     new_remote_role[remote].append(role)
-                    log.info(
-                        "Registering Daemon {rol} {id}".format(
-                            rol=rol, id=id))
-                    ctx.daemons.add_daemon(remote, rol, id_='rgw.' + hostname)
+                    id_ = "{}.{}".format('rgw', hostname)
+                    if multi_rgw_support:
+                        id_ = "{}.{}.rgw{}".format('rgw', hostname, rgw_count)
+                        rgw_count += 1
+                    log.info("Registering Daemon {rol} {id}".format(rol=rol,
+                                                                    id=id_))
+                    ctx.daemons.add_daemon(remote, rol, id_=id_)
+
                 else:
                     new_remote_role[remote].append(role)
         self.each_cluster.remotes.update(new_remote_role)
@@ -928,8 +943,7 @@ class CephAnsible(Task):
                     roles_for_host, 'client', self.cluster_name):
                 name = teuthology.ceph_role(role)
                 log.info("Creating keyring for {}".format(name))
-                client_keyring = '/etc/ceph/{0}.{1}.keyring'.format(
-                    self.cluster_name, name)
+                client_keyring = '/etc/ceph/ceph.{}.keyring'.format(name)
                 remote.run(
                     args=[
                         'sudo',
