@@ -17,6 +17,7 @@ import time
 import re
 import logging
 from io import BytesIO
+from io import StringIO
 import os
 import pwd
 import tempfile
@@ -448,7 +449,8 @@ class Remote(object):
     def os(self):
         if not hasattr(self, '_os'):
             try:
-                os_release = self.sh('cat /etc/os-release').strip()
+                os_release = self.sh('cat /etc/os-release',
+                                     stdout=StringIO()).strip()
                 self._os = OS.from_os_release(os_release)
                 return self._os
             except CommandFailedError:
