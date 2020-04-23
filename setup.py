@@ -128,6 +128,8 @@ setup(
             'teuthology-queue = scripts.queue:main',
             'teuthology-prune-logs = scripts.prune_logs:main',
             'teuthology-describe-tests = scripts.describe_tests:main',
+            'teuthology-gencov = scripts.gencov:main',
+            'teuthology-polarion = scripts.polarion:main'
             ],
         },
 
