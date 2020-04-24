@@ -79,7 +79,7 @@ def main(ctx):
     result_proc = None
 
     if teuth_config.teuthology_path is None:
-        fetch_teuthology('master')
+        fetch_teuthology('rh')
     fetch_qa_suite('master')
 
     keep_running = True
