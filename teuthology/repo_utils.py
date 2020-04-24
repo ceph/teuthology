@@ -376,7 +376,7 @@ def fetch_qa_suite(branch, lock=True):
                       branch, lock=lock)
 
 
-def fetch_teuthology(branch, lock=True):
+def fetch_teuthology(branch='rh', lock=True):
     """
     Make sure we have the correct teuthology branch checked out and up-to-date
 
