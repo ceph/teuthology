@@ -78,10 +78,7 @@ class CephAnsible(Task):
             self.config['repo'] = os.path.join(teuth_config.ceph_git_base_url,
                                                'ceph-ansible.git')
 
-        if 'cluster' in config:
-            self.cluster_name = self.config.get('cluster')
-        else:
-            self.cluster_name = None
+        self.cluster_name = self.config.get('cluster', 'ceph')
 
         # Legacy option set to true in case we are running a test
         # which was earlier using "ceph" task for configuration
@@ -133,15 +130,14 @@ class CephAnsible(Task):
     def remove_cluster_prefix(self):
 
         stripped_role = {}
-        if self.cluster_name:
-            self.each_cluster = self.ctx.cluster.only(
-                lambda role: role.startswith(self.cluster_name))
-            for remote, roles in self.each_cluster.remotes.iteritems():
-                stripped_role[remote] = []
-                for rol in roles:
-                    stripped_role[remote].append(teuthology.ceph_role(rol))
-            self.each_cluster.remotes = stripped_role
-        else:
+        self.each_cluster = self.ctx.cluster.only(
+            lambda role: role.startswith(self.cluster_name))
+        for remote, roles in self.each_cluster.remotes.iteritems():
+            stripped_role[remote] = []
+            for rol in roles:
+                stripped_role[remote].append(teuthology.ceph_role(rol))
+        self.each_cluster.remotes = stripped_role
+        if not stripped_role:
             self.each_cluster = self.ctx.cluster
         log.info('updated cluster {}'.format(self.each_cluster))
 
@@ -202,7 +198,7 @@ class CephAnsible(Task):
 
         for group in sorted(self.groups_to_roles.keys()):
             role_prefix = self.groups_to_roles[group]
-            log.info("role_prefix: ".format(role_prefix))
+            log.info("role_prefix: {}".format(role_prefix))
 
             def want(role): return role.startswith(role_prefix)
             for (remote, roles) in self.each_cluster.only(
@@ -947,8 +943,7 @@ class CephAnsible(Task):
                     roles_for_host, 'client', self.cluster_name):
                 name = teuthology.ceph_role(role)
                 log.info("Creating keyring for {}".format(name))
-                client_keyring = '/etc/ceph/{0}.{1}.keyring'.format(
-                    self.cluster_name, name)
+                client_keyring = '/etc/ceph/ceph.{}.keyring'.format(name)
                 remote.run(
                     args=[
                         'sudo',
