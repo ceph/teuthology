@@ -98,7 +98,7 @@ class Remote(object):
         log.info("Trying to reconnect to host")
         try:
             self.connect(timeout=timeout, context='reconnect')
-            return self.is_online
+            return self.is_online(do_test=True)
         except Exception as e:
             log.debug(e)
             return False
@@ -158,23 +158,22 @@ class Remote(object):
             self._shortname = host_shortname(self.hostname)
         return self._shortname
 
-    @property
-    def is_online(self):
+    def is_online(self, do_test):
         if self.ssh is None:
             return False
         if self.ssh.get_transport() is None:
             return False
-        try:
-            self._runner(args="true", client=self.ssh, name=self.shortname)
-        except Exception:
-            return False
+        if do_test:
+            try:
+                self._runner(args="true", client=self.ssh, name=self.shortname)
+            except Exception:
+                return False
         return self.ssh.get_transport().is_active()
 
     def ensure_online(self):
-        if self.is_online:
+        if self.is_online(do_test=False):
             return
-        self.connect()
-        if not self.is_online:
+        if not self.reconnect()
             raise Exception('unable to connect')
 
     @property
