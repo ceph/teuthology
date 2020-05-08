@@ -160,22 +160,23 @@ class Remote(object):
 
     @property
     def is_online(self):
-        if self.ssh is None:
+        """
+        This function does not give a comprehensive answer
+        if the connection is still alive, for this purpose
+        the one must use `ensure_online` method.
+        """
+        return self.is_active()
+
+    def is_active(self):
+        if self.ssh and \
+           self.ssh.get_transport() and \
+           self.ssh.get_transport().is_active():
+               return True
+        else:
             return False
-        if self.ssh.get_transport() is None:
-            return False
-        try:
-            self._runner(args="true", client=self.ssh, name=self.shortname)
-        except Exception:
-            return False
-        return self.ssh.get_transport().is_active()
 
     def ensure_online(self):
-        if self.is_online:
-            return
-        self.connect()
-        if not self.is_online:
-            raise Exception('unable to connect')
+        self.run(args="true")
 
     @property
     def system_type(self):
@@ -199,8 +200,21 @@ class Remote(object):
 
         TODO refactor to move run.run here?
         """
-        self.ensure_online()
-        r = self._runner(client=self.ssh, name=self.shortname, **kwargs)
+        if not self.is_active():
+            if not self.reconnect():
+                raise Exception('Unable to reconnect')
+        tries = 2
+        while tries:
+            tries -= 1
+            try:
+                r = self._runner(client=self.ssh, name=self.shortname, **kwargs)
+                break
+            except EOFError:
+                log.debug('Socket was closed unexpectedly, trying to reconnect')
+                self.reconnect()
+        else:
+            # unable to run
+            raise Exception('Unable to run command, connection lost')
         r.remote = self
         return r
 

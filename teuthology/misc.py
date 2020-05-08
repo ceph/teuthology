@@ -917,8 +917,11 @@ def reboot(node, timeout=300, interval=30):
     reboot_start_time = time.time()
     while time.time() - reboot_start_time < timeout:
         time.sleep(interval)
-        if node.is_online or node.reconnect():
+        try:
+            node.ensure_online()
             return
+        except:
+            log.debug("Was not able to ensure node '%s' is online" % node.name)
     raise RuntimeError(
         "{host} did not come up after reboot within {time}s".format(
             host=node.hostname, time=timeout))
