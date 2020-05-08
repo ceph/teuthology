@@ -913,7 +913,7 @@ def reboot(node, timeout=300, interval=30):
                      down first.
     """
     log.info("Rebooting {host}...".format(host=node.hostname))
-    node.run(args=['sudo', 'shutdown', '-r', 'now'])
+    node.run(args=['sudo', 'shutdown', '-r', 'now'], wait=False)
     reboot_start_time = time.time()
     while time.time() - reboot_start_time < timeout:
         time.sleep(interval)
