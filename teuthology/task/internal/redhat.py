@@ -24,7 +24,7 @@ def setup_stage_cdn(ctx, config):
         raise ConfigError("Provide rhbuild attribute")
     teuthconfig.rhbuild = str(rhbuild)
     with parallel() as p:
-        for remote in ctx.cluster.remotes.iterkeys():
+        for remote in ctx.cluster.remotes.keys():
             if remote.os.name == 'rhel':
                 log.info("subscribing stage cdn on : %s", remote.shortname)
                 p.spawn(_subscribe_stage_cdn, remote)
@@ -32,7 +32,7 @@ def setup_stage_cdn(ctx, config):
         yield
     finally:
         with parallel() as p:
-            for remote in ctx.cluster.remotes.iterkeys():
+            for remote in ctx.cluster.remotes.keys():
                 p.spawn(_unsubscribe_stage_cdn, remote)
 
 
