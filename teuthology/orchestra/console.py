@@ -274,8 +274,7 @@ class PhysicalConsole(RemoteConsole):
         child = self._pexpect_spawn_ipmi('power on')
         child.expect('Chassis Power Control: Up/On', timeout=self.timeout)
         self._wait_for_login()
-        log.info('Power off for {i} seconds completed'.format(
-            s=self.shortname, i=interval))
+        log.info('Power off for {i} seconds completed'.format(i=interval))
 
     def spawn_sol_log(self, dest_path):
         """
@@ -286,7 +285,7 @@ class PhysicalConsole(RemoteConsole):
         """
         pexpect_templ = \
             "import pexpect; " \
-            "pexpect.run('{cmd}', logfile=file('{log}', 'w'), timeout=None)"
+            "pexpect.run('{cmd}', logfile=open('{log}', 'wb'), timeout=None)"
 
         def start():
             console_cmd = self._console_command()
@@ -385,5 +384,4 @@ class VirtualConsole(RemoteConsole):
         self.vm_domain.info().destroy()
         time.sleep(interval)
         self.vm_domain.info().create()
-        log.info('Power off for {i} seconds completed'.format(
-            s=self.shortname, i=interval))
+        log.info('Power off for {i} seconds completed'.format(i=interval))
