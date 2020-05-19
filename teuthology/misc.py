@@ -764,7 +764,15 @@ def pull_directory(remote, remotedir, localdir):
     if not os.path.exists(localdir):
         os.mkdir(localdir)
     r = remote.get_tar_stream(remotedir, sudo=True)
-    tar = tarfile.open(mode='r|gz', fileobj=r.stdout)
+    try:
+        tar = tarfile.open(mode='r|gz', fileobj=r.stdout)
+    except (tarfile.EmptyHeaderError, tarfile.ReadError) as e:
+        # bail out if remotedir does not exist, otherwise teuthology
+        # will take this exception as the cause of failure instead.
+        log.warn("Failed to pull remote directory '%s': %r",
+                 remotedir, e)
+        return
+
     while True:
         ti = tar.next()
         if ti is None:
