@@ -158,25 +158,6 @@ class TestWorker(object):
             dict(status='dead')
         )
 
-    @patch("subprocess.Popen")
-    @patch("teuthology.worker.symlink_worker_log")
-    @patch("time.sleep")
-    def test_run_with_watchdog_with_reporting(self, m_sleep, m_symlink_log, m_popen):
-        config = {
-            "name": "the_name",
-            "job_id": "1",
-            "worker_log": "worker_log",
-            "archive_path": "archive/path",
-            "teuthology_branch": "jewel"
-        }
-        process = Mock()
-        process.poll.return_value = "not None"
-        m_proc = Mock()
-        m_proc.poll.return_value = "not None"
-        m_popen.return_value = m_proc
-        worker.run_with_watchdog(process, config)
-        m_symlink_log.assert_called_with(config["worker_log"], config["archive_path"])
-
     @patch("os.path.isdir")
     @patch("teuthology.worker.fetch_teuthology")
     @patch("teuthology.worker.fetch_qa_suite")
