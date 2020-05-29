@@ -186,6 +186,10 @@ class TeuthologyConfig(YamlConfig):
             },
         },
         'sleep_before_teardown': 0,
+        'container_images': {
+            'base_registry_mirror': 'vossi04.front.sepia.ceph.com:5000',
+            'ci_image': 'quay.io/ceph-ci/ceph'
+        }
     }
 
     def __init__(self, yaml_path=None):

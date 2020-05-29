@@ -242,3 +242,15 @@ Here is a sample configuration with many of the options set and documented::
     pelagos:
       endpoint: http://head.ses.suse.de:5000/
       machine_types: ['type1', 'type2', 'type3']
+
+    # Defines the bases for container images
+    container_images:
+      # This is a read-only mirror to limit the number of requests for downloading
+      # prometheus, grafana, node-exporter and alertmanager. Typically, this is a mirror
+      # for docker.io, but could be a mirror for any search registry, as the images are
+      # referenced without an explicit registry name.
+      base_registry_mirror: 'vossi04.front.sepia.ceph.com:5000'
+
+      # Container image name for CI images.
+      ci_image: 'quay.io/ceph-ci/ceph'
+
