@@ -119,6 +119,12 @@ Scheduler arguments:
                               piece <index>.  Scheduling 0/<outof>, 1/<outof>,
                               2/<outof> ... <outof>-1/<outof> will schedule all
                               jobs in the suite (many more than once).
+  --simple-subset <index/outof>
+                              Instead of scheduling the entire suite, break the
+                              set of jobs into <outof> pieces, If --dry-run
+                              produces 400 jobs, with <outof> value of 4, each
+                              subset will produce 100 jobs, eg: 1/4 for above
+                              will produce 100 jobs, 2/4 will produce next 100 jobs
   -p <priority>, --priority <priority>
                               Job priority (lower is sooner)
                               [default: 1000]
