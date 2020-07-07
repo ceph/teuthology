@@ -62,6 +62,15 @@ def ls_remote(url, ref):
     """
     sha1 = None
     cmd = "git ls-remote {} {}".format(url, ref)
+    # workaround for the refs/for/master branch, sometimes happens when
+    # we run ls-remote against master and we get refs/for/master in
+    # first place instead of only refs/heads/master ref, for example:
+    #
+    # > git ls-remote https://github.com/ceph/ceph.git master
+    # baa1ea6a9656c3db06c66032fa80b476721947ba	refs/for/master
+    # f7f156db5ee98495e4225b56620737ea545fc66b	refs/heads/master
+    if not ref.startswith('refs/for'):
+        cmd += ' | grep -v refs/for'
     result = subprocess.check_output(
         cmd, shell=True).split()
     if result:
