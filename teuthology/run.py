@@ -165,7 +165,7 @@ def validate_tasks(config):
     return config["tasks"]
 
 
-def get_initial_tasks(lock, config, machine_type):
+def get_initial_tasks(lock, unlock, config, machine_type):
     init_tasks = []
     overrides = config.get('overrides', {})
     having_repos = ('repos' in config.get('install', {}) or
@@ -252,18 +252,25 @@ def get_initial_tasks(lock, config, machine_type):
             {'internal.setup_additional_repo': None},
             {'kernel.install_latest_rh_kernel': None}
         ])
- 
+
+    if unlock and 'targets' in config:
+        msg = ('You cannot use --lock and --unlock options together')
+        assert not lock, msg
+        init_tasks.append({'internal.unlock_targets': None})
+
     return init_tasks
 
 
-def report_outcome(config, archive, summary, fake_ctx):
+def report_outcome(config, archive, summary, fake_ctx, unlock):
     """ Reports on the final outcome of the command. """
     status = get_status(summary)
     passed = status == 'pass'
 
     if not passed and bool(config.get('nuke-on-error')):
         # only unlock if we locked them in the first place
-        nuke(fake_ctx, fake_ctx.lock)
+        # or if --unlock flag is provided
+        lock = fake_ctx.lock or unlock
+        nuke(fake_ctx, lock)
 
     if archive is not None:
         with open(os.path.join(archive, 'summary.yaml'), 'w') as f:
@@ -324,6 +331,7 @@ def main(args):
     suite_path = args["--suite-path"]
     os_type = args["--os-type"]
     os_version = args["--os-version"]
+    unlock_targets = args["--unlock"]
 
     set_up_logging(verbose, archive)
 
@@ -361,7 +369,7 @@ def main(args):
     if suite_repo:
         teuth_config.ceph_qa_suite_git_url = suite_repo
 
-    # overwrite the config values of os_{type,version} if corresponding 
+    # overwrite the config values of os_{type,version} if corresponding
     # command-line arguments are provided
     if os_type:
         config["os_type"] = os_type
@@ -370,7 +378,7 @@ def main(args):
 
     config["tasks"] = validate_tasks(config)
 
-    init_tasks = get_initial_tasks(lock, config, machine_type)
+    init_tasks = get_initial_tasks(lock, unlock_targets, config, machine_type)
 
     # prepend init_tasks to the front of the task list
     config['tasks'][:0] = init_tasks
@@ -402,4 +410,4 @@ def main(args):
         run_tasks(tasks=config['tasks'], ctx=fake_ctx)
     finally:
         # print to stdout the results and possibly send an email on any errors
-        report_outcome(config, archive, fake_ctx.summary, fake_ctx)
+        report_outcome(config, archive, fake_ctx.summary, fake_ctx, unlock_targets)

@@ -103,8 +103,7 @@ def run_job(job_config, teuth_bin_path, archive_dir, verbose):
         arg.append('-v')
 
     arg.extend([
-        '--lock',
-        '--block',
+        '--unlock',
         '--owner', job_config['owner'],
         '--archive', job_config['archive_path'],
         '--name', job_config['name'],

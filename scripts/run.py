@@ -16,6 +16,7 @@ optional arguments:
   --description DESCRIPTION      job description
   --owner OWNER                  job owner
   --lock                         lock machines for the duration of the run
+  --unlock                       unlock machine targets after run
   --machine-type MACHINE_TYPE    Type of machine to lock/run tests on.
   --os-type OS_TYPE              Distro/OS of machine to run test on.
   --os-version OS_VERSION        Distro/OS version of machine to run test on.
