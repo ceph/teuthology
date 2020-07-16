@@ -549,7 +549,7 @@ def sudo_write_file(remote, path, data, perms=None, owner=None):
     owner_args = []
     if owner:
         owner_args = [run.Raw('&&'), 'sudo', 'chown', owner, path]
-    remote.run(
+    return remote.run(
         args=[
             'sudo',
             'sh',
@@ -557,6 +557,7 @@ def sudo_write_file(remote, path, data, perms=None, owner=None):
             'cat > ' + path,
         ] + owner_args + permargs,
         stdin=data,
+        omit_sudo=False
     )
 
 
