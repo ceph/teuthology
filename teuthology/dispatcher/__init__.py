@@ -2,14 +2,11 @@ import logging
 import os
 import subprocess
 import sys
-import tempfile
-import time
 import yaml
 import json
 
 from datetime import datetime
 
-import teuthology
 from teuthology import setup_log_file, install_except_hook
 from teuthology import beanstalk
 from teuthology import report
@@ -17,7 +14,6 @@ from teuthology import safepath
 from teuthology.config import config as teuth_config
 from teuthology.config import set_config_attr
 from teuthology.exceptions import BranchNotFoundError, SkipJob, MaxWhileTries
-from teuthology.kill import kill_job
 from teuthology.repo_utils import fetch_qa_suite, fetch_teuthology
 from teuthology.misc import get_user
 from teuthology.config import FakeNamespace
@@ -123,7 +119,9 @@ def main(ctx):
             log_file_path,
             ctx.archive_dir,
         )
-        if not job_config.get('first_in_suite') and not job_config.get('last_in_suite'):
+        if not job_config.get('first_in_suite') \
+                and not job_config.get('last_in_suite') \
+                and 'roles' in job_config:
             job_config = lock_machines(job_config)
 
         run_args = [
@@ -198,13 +196,16 @@ def prep_job(job_config, log_file_path, archive_dir):
                            (teuthology_branch, teuth_bin_path))
     return job_config, teuth_bin_path
 
+
 def lock_machines(job_config):
-    fake_ctx = create_fake_context(job_config, True)
-    lock_machines_helper(fake_ctx, [len(job_config['roles']), job_config['machine_type']])
+    fake_ctx = create_fake_context(job_config, block=True)
+    lock_machines_helper(fake_ctx, [len(job_config['roles']),
+                         job_config['machine_type']])
     job_config = fake_ctx.config
     return job_config
 
-def create_fake_context(job_config, block):
+
+def create_fake_context(job_config, block=False):
     if job_config['owner'] is None:
         job_config['owner'] = get_user()
 
@@ -216,8 +217,8 @@ def create_fake_context(job_config, block):
     ctx_args = {
         'config': job_config,
         'block': block,
-        'owner':job_config['owner'],
-        'archive':job_config['archive_path'],
+        'owner': job_config['owner'],
+        'archive': job_config['archive_path'],
         'machine_type': job_config['machine_type'],
         'os_type': job_config['os_type'],
         'os_version': os_version,
@@ -225,5 +226,3 @@ def create_fake_context(job_config, block):
 
     fake_ctx = FakeNamespace(ctx_args)
     return fake_ctx
-
-

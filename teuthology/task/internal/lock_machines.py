@@ -86,7 +86,7 @@ def lock_machines_helper(ctx, config):
                                                          os_version, arch)
         except Exception:
             # Lock failures should map to the 'dead' status instead of 'fail'
-            if ctx.summary:
+            if 'summary' in ctx:
                 set_status(ctx.summary, 'dead')
             raise
         all_locked.update(newly_locked)

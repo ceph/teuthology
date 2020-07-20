@@ -1,7 +1,6 @@
 import logging
 import os
 import subprocess
-import sys
 import tempfile
 import time
 import yaml
@@ -9,16 +8,14 @@ import json
 
 from datetime import datetime
 
-from teuthology import setup_log_file, install_except_hook
-from teuthology import beanstalk
 from teuthology import report
 from teuthology import safepath
 from teuthology.config import config as teuth_config
-from teuthology.config import set_config_attr
-from teuthology.exceptions import BranchNotFoundError, SkipJob, MaxWhileTries
+from teuthology.exceptions import SkipJob
 from teuthology.kill import kill_job
-from teuthology.repo_utils import fetch_qa_suite, fetch_teuthology
-from teuthology.misc import merge_configs
+from teuthology.misc import pull_directory
+from teuthology.dispatcher import create_fake_context
+from teuthology.task.internal import add_remotes
 
 log = logging.getLogger(__name__)
 start_time = datetime.utcnow()
@@ -168,6 +165,8 @@ def run_with_watchdog(process, job_config):
         if total_seconds > teuth_config.max_job_time:
             log.warning("Job ran longer than {max}s. Killing...".format(
                 max=teuth_config.max_job_time))
+            transfer_archives(job_info['name'], job_info['job_id'],
+                              teuth_config.archive_base, job_config)
             kill_job(job_info['name'], job_info['job_id'],
                      teuth_config.archive_base, job_config['owner'])
 
@@ -192,3 +191,29 @@ def symlink_worker_log(worker_log_path, archive_dir):
         os.symlink(worker_log_path, os.path.join(archive_dir, 'worker.log'))
     except Exception:
         log.exception("Failed to symlink worker log")
+
+
+def transfer_archives(run_name, job_id, archive_base, job_config):
+    serializer = report.ResultsSerializer(archive_base)
+    job_info = serializer.job_info(run_name, job_id, simple=True)
+
+    if 'archive' in job_info:
+        ctx = create_fake_context(job_config)
+        add_remotes(ctx, job_config)
+
+        path = os.path.join(job_config['archive_path'], 'remote')
+        if (not os.path.exists(path)):
+            os.mkdir(path)
+
+        for remote in ctx.cluster.remotes.keys():
+            sub = os.path.join(path, remote.shortname)
+            try:
+                os.makedirs(sub)
+            except OSError:
+                pass
+            for log_type, log_path in job_info['archive'].items():
+                if log_type == 'init':
+                    log_type = ''
+                pull_directory(remote, log_path, os.path.join(sub, log_type))
+    else:
+        log.info('No archives to transfer.')
