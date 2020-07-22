@@ -3,7 +3,7 @@ import os
 import subprocess
 import sys
 import yaml
-import json
+import tempfile
 
 from datetime import datetime
 
@@ -131,10 +131,13 @@ def main(ctx):
             '--archive-dir', ctx.archive_dir,
         ]
 
-        job_config_bytes = bytes(json.dumps(job_config), 'utf-8')
+        with tempfile.NamedTemporaryFile(prefix='teuthology-worker.',
+                                         suffix='.tmp', mode='w+t') as tmp:
+            yaml.safe_dump(data=job_config, stream=tmp)
+            tmp.flush()
+            run_args.extend(["--config-fd", str(tmp.fileno())])
+            job_proc = subprocess.Popen(run_args, pass_fds=[tmp.fileno()])
 
-        job_proc = subprocess.Popen(args=run_args, stdin=subprocess.PIPE)
-        job_proc.communicate(job_config_bytes)
         log.info('Job subprocess PID: %s', job_proc.pid)
 
         # This try/except block is to keep the worker from dying when

@@ -4,7 +4,6 @@ import subprocess
 import tempfile
 import time
 import yaml
-import json
 
 from datetime import datetime
 
@@ -16,6 +15,7 @@ from teuthology.kill import kill_job
 from teuthology.misc import pull_directory
 from teuthology.dispatcher import create_fake_context
 from teuthology.task.internal import add_remotes
+from teuthology import setup_log_file, install_except_hook
 
 log = logging.getLogger(__name__)
 start_time = datetime.utcnow()
@@ -24,11 +24,29 @@ stop_file_path = '/tmp/teuthology-stop-workers'
 
 
 def main(args):
+
     verbose = args["--verbose"]
     archive_dir = args["--archive-dir"]
     teuth_bin_path = args["--bin-path"]
+    config_fd = int(args["--config-fd"])
 
-    job_config = json.loads(input())
+    with open(config_fd, 'r') as config_file:
+        config_file.seek(0)
+        job_config = yaml.safe_load(config_file)
+
+    loglevel = logging.INFO
+    if verbose:
+        loglevel = logging.DEBUG
+    log.setLevel(loglevel)
+
+    suite_dir = os.path.join(archive_dir, job_config['name'])
+    if (not os.path.exists(suite_dir)):
+        os.mkdir(suite_dir)
+    log_file_path = os.path.join(suite_dir, 'worker.{job_id}'.format(
+                                 job_id=job_config['job_id']))
+    setup_log_file(log_file_path)
+
+    install_except_hook()
 
     try:
         run_job(

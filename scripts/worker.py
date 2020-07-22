@@ -1,6 +1,6 @@
 """
 usage: teuthology-worker --help
-       teuthology-worker [options] --archive-dir DIR --bin-path BIN_PATH
+       teuthology-worker -v --bin-path BIN_PATH --config-fd FD --archive-dir DIR
 
 Run ceph integration tests
 
@@ -9,6 +9,7 @@ optional arguments:
   -v, --verbose                  be more verbose
   --archive-dir DIR              path to archive results in
   --bin-path BIN_PATH            teuth-bin-path
+  --config-fd FD                 file descriptor of job's config file
 """
 
 import docopt

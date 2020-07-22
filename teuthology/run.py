@@ -205,7 +205,7 @@ def get_initial_tasks(lock, unlock, config, machine_type):
         ])
 
     if ('roles' in config and
-        not config.get('use_existing_cluster', False)):
+            not config.get('use_existing_cluster', False)):
         init_tasks.extend([
             {'internal.check_ceph_data': None},
             {'internal.vm_setup': None},
@@ -284,7 +284,7 @@ def report_outcome(config, archive, summary, fake_ctx, unlock):
         config_dump = yaml.safe_dump(config)
         subject = "Teuthology error -- %s" % summary['failure_reason']
         email_results(subject, "Teuthology", config['email-on-error'],
-            "\n".join([summary_dump, config_dump]))
+                      "\n".join([summary_dump, config_dump]))
 
 
     report.try_push_job_info(config, summary)
