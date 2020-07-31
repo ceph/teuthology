@@ -11,6 +11,8 @@ supported_drivers = dict(
     openstack=dict(
         provider=openstack.OpenStackProvider,
         provisioner=openstack.OpenStackProvisioner,
+        rh_provider=openstack.RHOpenStackProvider,
+        rh_provisioner=openstack.RHOpenStackProvisioner
     ),
 )
 
@@ -32,6 +34,8 @@ def get_provider(node_type):
     provider_conf = get_provider_conf(node_type)
     driver = provider_conf['driver']
     provider_cls = supported_drivers[driver]['provider']
+    if provider_conf.get('driver_args', {}).get('ex_domain_name') == 'redhat.com':
+        provider_cls = supported_drivers[driver]['rh_provider']
     return provider_cls(name=node_type, conf=provider_conf)
 
 
@@ -40,6 +44,8 @@ def get_provisioner(node_type, name, os_type, os_version, conf=None):
     provider_conf = get_provider_conf(node_type)
     driver = provider_conf['driver']
     provisioner_cls = supported_drivers[driver]['provisioner']
+    if provider_conf.get('driver_args', {}).get('ex_domain_name') == 'redhat.com':
+        provisioner_cls = supported_drivers[driver]['rh_provisioner']
     return provisioner_cls(
         provider=provider,
         name=name,
