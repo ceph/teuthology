@@ -91,12 +91,12 @@ class OpenStackProvider(Provider):
     def sizes(self):
         if not hasattr(self, '_sizes'):
             allow_sizes = self.conf.get('allow_sizes', '.*')
-            if isinstance(allow_sizes, str):
+            if not isinstance(allow_sizes, list):
                 allow_sizes = [allow_sizes]
             allow_re = [re.compile(x) for x in allow_sizes]
             # By default, exclude instance types meant for Windows
-            exclude_sizes = self.conf.get('exclude_sizes', 'win*')
-            if isinstance(exclude_sizes, str):
+            exclude_sizes = self.conf.get('exclude_sizes', 'win-.*')
+            if not isinstance(exclude_sizes, list):
                 exclude_sizes = [exclude_sizes]
             exclude_re = [re.compile(x) for x in exclude_sizes]
             sizes = retry(self.driver.list_sizes)
@@ -112,10 +112,10 @@ class OpenStackProvider(Provider):
     @property
     def networks(self):
         if not hasattr(self, '_networks'):
-            ds_network = "provider_net_cci_1"
-            allow_networks = self.conf.get('allow_networks', ds_network)
-            if isinstance(allow_networks, str):
+            allow_networks = self.conf.get('allow_networks', '.*')
+            if not isinstance(allow_networks, list):
                 allow_networks = [allow_networks]
+
             networks_re = [re.compile(x) for x in allow_networks]
             try:
                 networks = retry(self.driver.ex_list_networks)
@@ -156,13 +156,13 @@ class OpenStackProvisioner(base.Provisioner):
     defaults = dict(
         openstack=dict(
             machine=dict(
-                disk=40,
-                ram=4048,
-                cpus=2,
+                disk=20,
+                ram=8000,
+                cpus=1,
             ),
             volumes=dict(
-                count=1,
-                size=20,
+                count=0,
+                size=0,
             ),
         )
     )
@@ -229,30 +229,17 @@ class OpenStackProvisioner(base.Provisioner):
         security_groups = self.security_groups
         if security_groups:
             create_args['ex_security_groups'] = security_groups
-        # workaround for downstream openstack, since wait_until_running fails
-        self._node = self.provider.driver.create_node(**create_args)
-        time.sleep(30)
+        self._node = retry(
+            self.provider.driver.create_node,
+            **create_args
+        )
         log.debug("Created node: %s", self.node)
-        timeout = timedelta(seconds=240)
-        starttime = datetime.now()
-        while True:
-            log.info("Waiting for node %s to become available", self.name)
-            all_nodes = self.provider.driver.list_nodes()
-            new_node_state = [node.state for node in all_nodes
-                              if node.uuid == self._node.uuid]
-            if new_node_state[0] == 'running':
-                break
-            if datetime.now() - starttime > timeout:
-                log.info(
-                    "Failed to bring the node in running state in \
-                    {timeout}s".format(timeout=timeout)
-                )
-                raise RuntimeError("Failed to bring up nodes in PSI")
-            time.sleep(30)
-        new_node = [node for node in all_nodes
-                    if node.uuid == self._node.uuid]
-        self._node = new_node[0]
-        self.ips = self._node.private_ips[0]
+        results = retry(
+            self.provider.driver.wait_until_running,
+            nodes=[self.node],
+            ssh_interface=self.provider.ssh_interface,
+        )
+        self._node, self.ips = results[0]
         log.debug("Node started: %s", self.node)
         if not self._create_volumes():
             self._destroy_volumes()
@@ -306,7 +293,7 @@ class OpenStackProvisioner(base.Provisioner):
     def _update_dns(self):
         query = urlencode(dict(
             name=self.name,
-            ip=self.ips,
+            ip=self.ips[0],
         ))
         nsupdate_url = "%s?%s" % (
             config.nsupdate_url,
@@ -460,3 +447,166 @@ class OpenStackProvisioner(base.Provisioner):
             log.warn("Found multiple nodes named '%s' to destroy!", self.name)
         log.info("Destroying nodes: %s", nodes)
         return all([node.destroy() for node in nodes])
+
+
+class RHOpenStackProvisioner(OpenStackProvisioner):
+
+    defaults = dict(
+        openstack=dict(
+            machine=dict(
+                disk=40,
+                ram=4048,
+                cpus=2,
+            ),
+            volumes=dict(
+                count=1,
+                size=20,
+            ),
+        )
+    )
+
+    def __init__(
+            self,
+            provider, name, os_type=None, os_version=None,
+            conf=None,
+            user='ubuntu',
+    ):
+        super(RHOpenStackProvisioner, self).__init__(
+            provider, name, os_type, os_version, conf=conf, user=user,
+        )
+        self._read_conf(conf)
+
+    def _create(self):
+        userdata = self.userdata
+        log.debug("Creating node: %s", self)
+        log.debug("Selected size: %s", self.size)
+        log.debug("Selected image: %s", self.image)
+        log.debug("Using userdata: %s", userdata)
+        create_args = dict(
+            name=self.name,
+            size=self.size,
+            image=self.image,
+            ex_userdata=userdata,
+        )
+        networks = self.provider.networks
+        if networks:
+            create_args['networks'] = networks
+        security_groups = self.security_groups
+        if security_groups:
+            create_args['ex_security_groups'] = security_groups
+        # workaround for downstream openstack, since wait_until_running fails
+        self._node = self.provider.driver.create_node(**create_args)
+        time.sleep(30)
+        log.debug("Created node: %s", self.node)
+        timeout = timedelta(seconds=240)
+        starttime = datetime.now()
+        while True:
+            log.info("Waiting for node %s to become available", self.name)
+            all_nodes = self.provider.driver.list_nodes()
+            new_node_state = [node.state for node in all_nodes
+                              if node.uuid == self._node.uuid]
+            if new_node_state[0] == 'running':
+                break
+            if datetime.now() - starttime > timeout:
+                log.info(
+                    "Failed to bring the node in running state in \
+                    {timeout}s".format(timeout=timeout)
+                )
+                raise RuntimeError("Failed to bring up nodes in PSI")
+            time.sleep(30)
+        new_node = [node for node in all_nodes
+                    if node.uuid == self._node.uuid]
+        self._node = new_node[0]
+        self.ips = self._node.private_ips[0]
+        log.debug("Node started: %s", self.node)
+        if not self._create_volumes():
+            self._destroy_volumes()
+            return False
+        self._update_dns()
+        # Give cloud-init a few seconds to bring up the network, start sshd,
+        # and install the public key
+        time.sleep(20)
+        self._wait_for_ready()
+        return self.node
+
+    def _update_dns(self):
+        query = urlencode(dict(
+            name=self.name,
+            ip=self.ips,
+        ))
+        nsupdate_url = "%s?%s" % (
+            config.nsupdate_url,
+            query,
+        )
+        resp = requests.get(nsupdate_url)
+        resp.raise_for_status()
+
+    @property
+    def image(self):
+        os_specs = [
+            '{os_type} {os_version}',
+            '{os_type}-{os_version}',
+        ]
+        for spec in os_specs:
+            matches = [image for image in self.provider.images
+                       if spec.format(
+                           os_type=self.os_type,
+                           os_version=self.os_version,
+                       ) in image.name.lower() and
+                       "-released" in image.name.lower()]
+            if matches:
+                break
+        if not matches:
+            raise RuntimeError(
+                "Could not find an image for %s %s",
+                self.os_type,
+                self.os_version,
+            )
+        return matches[0]
+
+
+class RHOpenStackProvider(OpenStackProvider):
+
+    @property
+    def sizes(self):
+        if not hasattr(self, '_sizes'):
+            allow_sizes = self.conf.get('allow_sizes', '.*')
+            if isinstance(allow_sizes, str):
+                allow_sizes = [allow_sizes]
+            allow_re = [re.compile(x) for x in allow_sizes]
+            # By default, exclude instance types meant for Windows
+            exclude_sizes = self.conf.get('exclude_sizes', 'win*')
+            if isinstance(exclude_sizes, str):
+                exclude_sizes = [exclude_sizes]
+            exclude_re = [re.compile(x) for x in exclude_sizes]
+            sizes = retry(self.driver.list_sizes)
+            self._sizes = list(filter(
+                lambda s:
+                    any(x.match(s.name) for x in allow_re)
+                    and not
+                    all(x.match(s.name) for x in exclude_re),
+                sizes
+            ))
+        return self._sizes
+
+    @property
+    def networks(self):
+        if not hasattr(self, '_networks'):
+            ds_network = "provider_net_cci_1"
+            allow_networks = self.conf.get('allow_networks', ds_network)
+            if isinstance(allow_networks, str):
+                allow_networks = [allow_networks]
+            networks_re = [re.compile(x) for x in allow_networks]
+            try:
+                networks = retry(self.driver.ex_list_networks)
+                if networks:
+                    self._networks = filter(
+                        lambda s: any(x.match(s.name) for x in networks_re),
+                        networks
+                    )
+                else:
+                    self._networks = list()
+            except AttributeError:
+                log.warn("Unable to list networks for %s", self.driver)
+                self._networks = list()
+        return self._networks
