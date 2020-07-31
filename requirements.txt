@@ -5,7 +5,7 @@
 #    pip-compile --output-file=requirements.txt
 #
 ansible==2.8.8            # via teuthology
-apache-libcloud==2.8.0    # via teuthology
+apache-libcloud==2.6.1    # via teuthology
 appdirs==1.4.4            # via openstacksdk, virtualenv
 argparse==1.4.0           # via teuthology
 atomicwrites==1.4.0       # via pytest
