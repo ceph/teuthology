@@ -30,7 +30,7 @@ def lock_machines(ctx, config):
         unlock_machines(ctx)
 
 
-def lock_machines_helper(ctx, config):
+def lock_machines_helper(ctx, config, reimage=True):
     # It's OK for os_type and os_version to be None here.  If we're trying
     # to lock a bare metal machine, we'll take whatever is available.  If
     # we want a vps, defaults will be provided by misc.get_distro and
@@ -83,7 +83,7 @@ def lock_machines_helper(ctx, config):
         try:
             newly_locked = teuthology.lock.ops.lock_many(ctx, requested, machine_type,
                                                          ctx.owner, ctx.archive, os_type,
-                                                         os_version, arch)
+                                                         os_version, arch, reimage=reimage)
         except Exception:
             # Lock failures should map to the 'dead' status instead of 'fail'
             if 'summary' in ctx:
@@ -153,6 +153,7 @@ def lock_machines_helper(ctx, config):
         )
         log.warn('Could not lock enough machines, waiting...')
         time.sleep(10)
+
 
 def unlock_machines(ctx):
     # If both unlock_on_failure and nuke-on-error are set, don't unlock now

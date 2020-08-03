@@ -48,10 +48,11 @@ database. Depending on the requirements (in terms of requested machines), the
 scheduler eventually determines when a job can get executed. At this point the
 master communicates with ``teuthology-dispatcher``, which checks the lock
 status of the requested machines (``teuthology-lock``) by querying ``paddles``,
-acquires locks of the nodes if they are available and invokes ``teuthology-worker``
-which in turn invokes ``teuthology`` (the command) which proceeds to execute
-the job (execute every task in the YAML job description). Results from the job
-are stored in the archive directory of the worker for forensic analysis.
+acquires locks of the nodes if they are available and invokes ``teuthology-worker``.
+``teuthology-worker`` reimages target machines and then invokes ``teuthology``
+(the command) which proceeds to execute the job (execute every task in the
+YAML job description). Results from the job are stored in the archive directory
+of the worker for forensic analysis.
 
 Since `QA suites <https://github.com/ceph/ceph-qa-suite>`__ usually
 specify ``install`` and ``ceph`` tasks, we briefly describe what they do. When

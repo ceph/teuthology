@@ -16,6 +16,7 @@ from teuthology.misc import pull_directory
 from teuthology.dispatcher import create_fake_context
 from teuthology.task.internal import add_remotes
 from teuthology import setup_log_file, install_except_hook
+from teuthology.lock.ops import reimage_many
 
 log = logging.getLogger(__name__)
 start_time = datetime.utcnow()
@@ -47,6 +48,10 @@ def main(args):
     setup_log_file(log_file_path)
 
     install_except_hook()
+
+    # reimage target machines before running the job
+    if 'targets' in job_config:
+        reimage_machines(job_config)
 
     try:
         run_job(
@@ -235,3 +240,16 @@ def transfer_archives(run_name, job_id, archive_base, job_config):
                 pull_directory(remote, log_path, os.path.join(sub, log_type))
     else:
         log.info('No archives to transfer.')
+
+
+def reimage_machines(job_config):
+    # Reimage the targets specified in job config
+    # and update their keys in config after reimaging
+    ctx = create_fake_context(job_config)
+    # change the status during the reimaging process
+    report.try_push_job_info(ctx.config, dict(status='waiting'))
+    targets = job_config['targets']
+    reimaged = reimage_many(ctx, targets, job_config['machine_type'])
+    ctx.config['targets'] = reimaged
+    # change the status to running after the reimaging process
+    report.try_push_job_info(ctx.config, dict(status='waiting'))

@@ -119,6 +119,8 @@ def main(ctx):
             log_file_path,
             ctx.archive_dir,
         )
+
+        # lock machines but do not reimage them
         if not job_config.get('first_in_suite') \
                 and not job_config.get('last_in_suite') \
                 and 'roles' in job_config:
@@ -203,7 +205,7 @@ def prep_job(job_config, log_file_path, archive_dir):
 def lock_machines(job_config):
     fake_ctx = create_fake_context(job_config, block=True)
     lock_machines_helper(fake_ctx, [len(job_config['roles']),
-                         job_config['machine_type']])
+                         job_config['machine_type']], reimage=False)
     job_config = fake_ctx.config
     return job_config
 
