@@ -114,8 +114,7 @@ class OpenStackProvider(Provider):
         if not hasattr(self, '_networks'):
             allow_networks = self.conf.get('allow_networks', '.*')
             if not isinstance(allow_networks, list):
-                allow_networks = [allow_networks]
-
+                allow_networks=[allow_networks]
             networks_re = [re.compile(x) for x in allow_networks]
             try:
                 networks = retry(self.driver.ex_list_networks)
@@ -334,10 +333,8 @@ class OpenStackProvisioner(base.Provisioner):
                 break
         if not matches:
             raise RuntimeError(
-                "Could not find an image for %s %s",
-                self.os_type,
-                self.os_version,
-            )
+                "Could not find an image for %s %s" %
+                (self.os_type, self.os_version))
         return matches[0]
 
     @property
@@ -475,6 +472,45 @@ class RHOpenStackProvisioner(OpenStackProvisioner):
             provider, name, os_type, os_version, conf=conf, user=user,
         )
         self._read_conf(conf)
+
+    @property
+    def userdata(self):
+        spec="{t}-{v}".format(t=self.os_type,
+                              v=self.os_version)
+        base_config = dict(
+            packages=[
+                'git',
+                'wget',
+                'python',
+                'ntp',
+            ],
+        )
+        runcmd=[
+            # Remove the user's password so that console logins are
+            # possible
+            # sudo systemctl restart NetworkManager.service
+            ['passwd', '-d', self.user],
+            ['touch', self._sentinel_path],
+            ['sudo', 'systemctl', 'restart', 'NetworkManager.service']
+        ]
+        if spec in self.provider.default_userdata:
+            base_config = deepcopy(
+                    self.provider.default_userdata.get(spec, dict()))
+        base_config.update(user=self.user)
+        if 'manage_etc_hosts' not in base_config:
+            base_config.update(
+                manage_etc_hosts=True,
+                hostname=self.hostname,
+            )
+        base_config['runcmd'] = base_config.get('runcmd', list())
+        base_config['runcmd'].extend(runcmd)
+        ssh_pubkey = util.get_user_ssh_pubkey()
+        if ssh_pubkey:
+            authorized_keys = base_config.get('ssh_authorized_keys', list())
+            authorized_keys.append(ssh_pubkey)
+            base_config['ssh_authorized_keys'] = authorized_keys
+        user_str = "#cloud-config\n" + yaml.safe_dump(base_config)
+        return user_str
 
     def _create(self):
         userdata = self.userdata
