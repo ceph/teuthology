@@ -131,6 +131,7 @@ setup(
             'teuthology-describe = scripts.describe:main',
             'teuthology-reimage = scripts.reimage:main',
             'teuthology-wait = scripts.wait:main',
+            'teuthology-dispatcher = scripts.dispatcher:main',
             ],
         },
 
