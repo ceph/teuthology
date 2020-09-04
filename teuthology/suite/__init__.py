@@ -141,8 +141,14 @@ def main(args):
     run = Run(conf)
     name = run.name
     run.prepare_and_schedule()
+
+    # set max job time for system tests
+    max_job_time = config.max_job_time
+    if 'system-tests' in conf.suite.split(":"):
+        max_job_time = 30 * 24 * 3600
+
     if not conf.dry_run and conf.wait:
-        return wait(name, config.max_job_time,
+        return wait(name, max_job_time,
                     conf.archive_upload_url)
 
 
