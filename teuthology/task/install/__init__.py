@@ -454,8 +454,16 @@ def task(ctx, config):
             priority: 1
             url: "http://location.repo"
 
-    Note: The 'repos' are supported for SUSE-based distros only, but patches
-    are welcome to add support for other distros.
+        repos:
+          - name: "project-name"
+            url: "https://1.chacra.ceph.com/r/project-name/{branch}/{sha1}/{os_type}/{os_version}/flavors/{flavor}/{arch}
+
+    Note: The 'repos' are supported for RHEL/SUSE-based distros only, but
+    patches are welcome to add support for other distros.
+
+    For RHEL-based distros, the "name" will be used to get the {branch} and
+    {sha1} for the "project-name" and "priority" will be ingored, and the dnf
+    config-manager will generate a new repo name based the "url".
 
 
     Overrides are project specific:

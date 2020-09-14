@@ -48,6 +48,8 @@ def _remove(ctx, config, remote, rpm):
     if repos:
         if dist_release in ['opensuse', 'sle']:
             _zypper_removerepo(remote, repos)
+        elif dist_release in ['rhel', 'fedora', 'centos']:
+            _yum_removerepo(ctx, config, remote)
         else:
             raise Exception('Custom repos were specified for %s ' % remote_os +
                             'but these are currently not supported')
@@ -61,6 +63,58 @@ def _remove(ctx, config, remote, rpm):
                  "because the test machine will be destroyed or reimaged anyway")
     else:
         remote.run(args='sudo yum clean expire-cache')
+
+def _yum_get_url(ctx, config, remote, repo):
+    builder = _get_builder_project(ctx, remote, config)
+    builder._init_from_remote()
+
+    os_type = builder.os_type
+    # such as for rhel 8.0, the repo link will use "8" instead.
+    os_version = builder.os_version.replace("8.0", "8")
+    flavor = builder.flavor
+    if flavor == "basic":
+        flavor = "default"
+    arch = builder.arch
+
+    branch = config.get(f"{repo['name']}-branch", 'master')
+    sha1 = config.get(f"{repo['name']}-sha1", '')
+    if sha1 == '':
+        raise
+
+    return repo['url'].format(branch=branch, sha1=sha1, os_type=os_type,
+                              os_version=os_version, flavor=flavor, arch=arch)
+
+def _yum_addrepo(ctx, config, remote):
+    """
+    Add yum repos to the remote system.
+
+    :param remote: remote node where to add packages
+    :param repo_list: list of dictionaries with keys 'url'.
+    :return:
+    """
+    repo_list = config.get('repos')
+    for repo in repo_list:
+        # add and enable the repo
+        url = _yum_get_url(ctx, config, remote, repo)
+        remote.sh(f'sudo dnf config-manager --add-repo --refresh --no-gpgcheck {url}')
+
+def _yum_removerepo(ctx, config, remote):
+    """
+    Remove yum repos on the remote system.
+
+    :param remote: remote node where to remove packages from
+    :param repo_list: list of dictionaries with keys 'url'
+    :return:
+    """
+    repo_list = config.get('repos')
+    for repo in repo_list:
+        # removes prefixed "https://" or "http://" and replaces
+        # all '/' with '_'
+        url = _yum_get_url(ctx, config, remote, repo)
+        repo_name = url.replace("https://", "") \
+                       .replace("http://", "") \
+                       .replace('/', '_')
+        remote.sh(f'sudo rm -f /etc/yum.repos.d/{repo_name}.repo')
 
 
 def _zypper_addrepo(remote, repo_list):
@@ -177,6 +231,8 @@ def _update_package_list_and_install(ctx, remote, rpm, config):
         if dist_release in ['opensuse', 'sle']:
             _zypper_wipe_all_repos(remote)
             _zypper_addrepo(remote, repos)
+        elif dist_release in ['rhel', 'fedora', 'centos']:
+            _yum_addrepo(ctx, config, remote)
         else:
             raise Exception('Custom repos were specified for %s ' % remote_os +
                             'but these are currently not supported')
