@@ -1,9 +1,7 @@
 import logging
 
-import teuthology
 from teuthology.config import YamlConfig
 from teuthology.polarion.frag_id import BuildPolarionFragmentIds
-from teuthology.polarion.write import Writer
 
 log = logging.getLogger(__name__)
 

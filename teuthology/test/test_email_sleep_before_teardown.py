@@ -76,6 +76,6 @@ class TestSleepBeforeTeardownEmail(object):
         ctx.owner   = owner
         ctx.name    = run_name
         ctx.archive_dir = archive_dir
-        tasks = [('a', None), ('b', None), ('c', None)]
+        tasks = [('a', None, None), ('b', None, None), ('c', None, None)]
         (subj, body) = email_body(ctx, tasks, dura)
         assert body == ref_body.lstrip('\n')
