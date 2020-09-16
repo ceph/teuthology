@@ -296,6 +296,14 @@ def run_job(job_config, teuth_bin_path, archive_dir, verbose):
 def run_with_watchdog(process, job_config):
     job_start_time = datetime.utcnow()
 
+    # change max job time for system tests
+    max_job_time = teuth_config.max_job_time
+    log.info("Job name : {}".format(job_config['name']))
+    if 'system-tests:' in job_config['name']:
+        max_job_time = 1800
+
+    log.info("max job time set to {}".format(max_job_time))
+
     # Only push the information that's relevant to the watchdog, to save db
     # load
     job_info = dict(
@@ -310,9 +318,10 @@ def run_with_watchdog(process, job_config):
         # Kill jobs that have been running longer than the global max
         run_time = datetime.utcnow() - job_start_time
         total_seconds = run_time.days * 60 * 60 * 24 + run_time.seconds
-        if total_seconds > teuth_config.max_job_time:
+        log.info("Total seconds elapsed : {} ".format(total_seconds))
+        if total_seconds > max_job_time:
             log.warning("Job ran longer than {max}s. Killing...".format(
-                max=teuth_config.max_job_time))
+                max=max_job_time))
             kill_job(job_info['name'], job_info['job_id'],
                      teuth_config.archive_base, job_config['owner'])
 

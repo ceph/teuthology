@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+    <style>
+    table.full-table{
+        font-family: arial, sans-serif;
+        border-collapse: collapse;
+        width: 100%;
+    }
+
+    td, th {
+        border: 1px solid #dddddd;
+        text-align: left;
+        padding: 5px;
+    }
+    </style>
+</head>
+<body>
+    <h2 style="color: black;" >Test Job Result</h2>
+    <table class="full-table">
+        <tr>
+            <th style="color: blue">Task Name</th>
+            <th style="color: blue">Task Log</th>
+            <th style="color: blue">Status</th>
+        </tr>
+        {% for test in test_results %}
+            <tr>
+                <td>{{ test.name }}</td>
+                <td>{{ test.log_file }}</td>
+                {% if test.status == 'PASS' %}
+                    <td><a style="color: green;" href="{{ test['log_link'] }}">{{ test.status }}</a></td>
+                {% elif test.status == 'FAIL' %}
+                    <td><a style="color: red;" href="{{ test['log_link'] }}">{{ test.status }}</a></td>
+                {% endif %}
+            </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
