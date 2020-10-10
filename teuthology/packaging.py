@@ -472,9 +472,13 @@ class GitbuilderProject(object):
         self.os_version = self.remote.os.version
         self.codename = self.remote.os.codename
         self.pkg_type = self.remote.system_type
+        _version = self.remote.os.version
+        _major_version = self.job_config.get('install_per_major_version', False)
+        if _major_version:
+            _version = _version.split('.')[0]
         self.distro = self._get_distro(
             distro=self.remote.os.name,
-            version=self.remote.os.version,
+            version=_version,
             codename=self.remote.os.codename,
         )
         # when we're initializing with a remote we most likely have

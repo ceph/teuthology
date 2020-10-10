@@ -431,6 +431,14 @@ def task(ctx, config):
         branch: foo
         extra_packages: ['samba']
     - install:
+        project: tcmu-runner
+        sha1: latest
+        install_per_major_version: True
+
+    Note: the install_per_major_version will make the GitbuilderProject
+    class discard the minor version, False as default.
+
+    - install:
         extra_packages:
            deb: ['librados-dev', 'libradosstriper-dev']
            rpm: ['librados-devel', 'libradosstriper-devel']
