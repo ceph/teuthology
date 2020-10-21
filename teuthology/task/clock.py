@@ -32,8 +32,13 @@ def task(ctx, config):
     log.info('Syncing clocks and checking initial clock skew...')
     for rem in ctx.cluster.remotes.keys():
         if rem.is_vm and ctx.config.get('redhat'):
-            rem.sh("sudo sed -i '/server*/d' /etc/ntp.conf")
-            rem.sh("echo 'server clock.corp.redhat.com iburst' | sudo tee -a /etc/ntp.conf",
+            ntp = "/etc/ntp.conf"
+            if rem.os.version.startswith('8'):
+                ntp = "/etc/chrony.conf"
+            rem.sh("sudo sed -i '/server*/d' {conf_file}".format(conf_file=ntp))
+            rem.sh("sudo sed -i '/pool*/d' {conf_file}".format(conf_file=ntp))
+            rem.sh("echo 'server clock.corp.redhat.com iburst'"
+                   " | sudo tee -a {conf_file}".format(conf_file=ntp),
                    check_status=False)
         rem.run(
             args = [
