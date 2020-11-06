@@ -73,11 +73,11 @@ dict_templ = {
                     'debug osd': 25
                 }
             },
-            'log-whitelist': ['\(MDS_ALL_DOWN\)',
-                              '\(MDS_UP_LESS_THAN_MAX\)',
+            'log-whitelist': ['MDS_ALL_DOWN',
+                              'MDS_UP_LESS_THAN_MAX',
                               'Health detail'],
-            'log-ignorelist': ['\(MDS_ALL_DOWN\)',
-                               '\(MDS_UP_LESS_THAN_MAX\)',
+            'log-ignorelist': ['MDS_ALL_DOWN',
+                               'MDS_UP_LESS_THAN_MAX',
                                'Health detail'],
             'sha1': Placeholder('ceph_hash'),
         },
