@@ -12,16 +12,18 @@ import teuthology.provision
 from teuthology import misc
 from teuthology.exceptions import CommandFailedError
 from teuthology.misc import host_shortname
-import errno
 import time
 import re
 import logging
-from io import BytesIO
-from io import StringIO
 import os
 import pwd
+import shutil
 import tempfile
 import netaddr
+
+from contextlib import contextmanager
+from io import BytesIO
+from io import StringIO
 
 log = logging.getLogger(__name__)
 
@@ -518,8 +520,22 @@ class Remote(object):
             args += ' && ' + chown + ' ' + owner + ' ' + dst
         self.run(args=args)
 
+    @contextmanager
+    def _maybe_copy_from(self, sudo, path):
+        try:
+            if sudo:
+                temp_path = self.mktemp()
+                self.sh(f'sudo cp ${path} ${temp_path}')
+                self.sh(f'sudo chmod 0666 ${temp_path}')
+                yield temp_path
+            else:
+                yield path
+        finally:
+            if sudo:
+                self.sh(f'rm ${temp_path}')
+
     def read_file(self, path, sudo=False, stdout=None,
-                              offset=0, length=0):
+                              offset=0, length=-1):
         """
         Read data from remote file
 
@@ -527,40 +543,36 @@ class Remote(object):
         :param sudo:    use sudo to read the file, defaults False
         :param stdout:  output object, defaults to io.BytesIO()
         :param offset:  number of bytes to skip from the file
-        :param length:  number of bytes to read from the file
-
-        :raises: :class:`FileNotFoundError`: there is no such file by the path
-        :raises: :class:`RuntimeError`:      unexpected error occurred
-
+        :param length:  number of bytes to read from the file, if the length is
+                        negative or omitted, read all data until EOF is reached
         :returns: the file contents in bytes, if stdout is `io.BytesIO`, by default
         :returns: the file contents in str, if stdout is `io.StringIO`
         """
-        dd = 'sudo dd' if sudo else 'dd'
-        args = dd + ' if=' + path + ' of=/dev/stdout'
-        iflags=[]
-        # we have to set defaults here instead of the method's signature,
-        # because python is reusing the object from call to call
-        stdout = stdout or BytesIO()
-        if offset:
-            args += ' skip=' + str(offset)
-            iflags += 'skip_bytes'
-        if length:
-            args += ' count=' + str(length)
-            iflags += 'count_bytes'
-        if iflags:
-            args += ' iflag=' + ','.join(iflags)
-        args = 'set -ex' + '\n' + args
-        proc = self.run(args=args, stdout=stdout, stderr=StringIO(), check_status=False)
-        if proc.returncode:
-            if 'No such file or directory' in proc.stderr.getvalue():
-                raise FileNotFoundError(errno.ENOENT,
-                        f"Cannot find file on the remote '{self.name}'", path)
+        log.debug(f'read_file({path}, {offset}, {length}')
+
+        with self._maybe_copy_from(sudo, path) as src_path:
+            sftp = self.ssh.open_sftp()
+            with sftp.open(src_path, 'r') as f:
+                if offset:
+                    f.seek(offset)
+                data = f.read(length)
+                if stdout is None or isinstance(stdout, BytesIO):
+                    return data
+                else:
+                    assert(isinstance(stdout, StringIO))
+                    return data.decode('utf8', 'replace')
+
+    @contextmanager
+    def _maybe_copy_to(self, sudo, path):
+        try:
+            if sudo:
+                temp_path = self.mktemp()
+                yield temp_path
             else:
-                raise RuntimeError("Unexpected error occurred while trying to "
-                        f"read '{path}' file on the remote '{self.name}'")
-
-        return proc.stdout.getvalue()
-
+                yield path
+        finally:
+            if sudo:
+                self.sh(f'sudo mv ${temp_path} ${path}')
 
     def write_file(self, path, data, sudo=False, mode=None, owner=None,
                                      mkdir=False, append=False):
@@ -575,23 +587,29 @@ class Remote(object):
         :param mkdir:   preliminary create the file directory, defaults False
         :param append:  append data to the file, defaults False
         """
-        dd = 'sudo dd' if sudo else 'dd'
-        args = dd + ' of=' + path
-        if append:
-            args += ' conv=notrunc oflag=append'
+        log.debug(f'write_file({path} ...)')
+
+        def maybe_sudo(cmd):
+            if sudo:
+                return f'sudo ${cmd}'
+            else:
+                return cmd
         if mkdir:
-            mkdirp = 'sudo mkdir -p' if sudo else 'mkdir -p'
-            dirpath = os.path.dirname(path)
-            if dirpath:
-                args = mkdirp + ' ' + dirpath + '\n' + args
-        if mode:
-            chmod = 'sudo chmod' if sudo else 'chmod'
-            args += '\n' + chmod + ' ' + mode + ' ' + path
-        if owner:
-            chown = 'sudo chown' if sudo else 'chown'
-            args += '\n' + chown + ' ' + owner + ' ' + path
-        args = 'set -ex' + '\n' + args
-        self.run(args=args, stdin=data)
+            self.sh(maybe_sudo('mkdir -p'))
+
+        with self._maybe_copy_to(sudo, path) as dest_path:
+            sftp = self.ssh.open_sftp()
+            open_mode = 'w+' if append else 'w'
+            with sftp.open(dest_path, open_mode) as f:
+                if isinstance(data, (str, bytes)):
+                    f.write(data)
+                else:
+                    shutil.copyfileobj(data, f)
+
+        if mode is not None:
+            self.sh(maybe_sudo(f'chmod ${mode} ${path}'))
+        if owner is not None:
+            self.sh(maybe_sudo(f'chown ${owner} ${path}'))
 
     def sudo_write_file(self, path, data, **kwargs):
         """
