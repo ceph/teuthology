@@ -203,6 +203,13 @@ def install(ctx, config):
         debs += extra_pkgs
         rpms += extra_pkgs
 
+    overrides_extra_packages = ctx.config.get(
+        'overrides', {}).get('install', {}).get('extra_packages', [])
+    log.info('extra packages from overrides: {packages}'.format(packages=overrides_extra_packages))
+    if isinstance(overrides_extra_packages, dict):
+        debs += overrides_extra_packages.get('deb', [])
+        rpms += overrides_extra_packages.get('rpm', [])
+
     # When extras is in the config we want to purposely not install ceph.
     # This is typically used on jobs that use ceph-deploy to install ceph
     # or when we are testing ceph-deploy directly.  The packages being
