@@ -29,6 +29,7 @@ class CephadmUnit(DaemonState):
     def _set_commands(self):
         self.start_cmd = self._get_systemd_cmd('start')
         self.stop_cmd = self._get_systemd_cmd('stop')
+        self.reset_failed_cmd = self._get_systemd_cmd('reset-failed')
         self.restart_cmd = self._get_systemd_cmd('restart')
         self.show_cmd = self._get_systemd_cmd('show')
         self.status_cmd = self._get_systemd_cmd('status')
@@ -90,8 +91,9 @@ class CephadmUnit(DaemonState):
         :param kwargs: keyword arguments passed to remote.run
         """
         if not self.running():
-            self.log.info('Restarting %s (starting--it wasn\'t running)...' % self.name())
+            self.log.info('Reset-failed/starting %s (it wasn\'t running)...' % self.name())
             self._start_logger()
+            self.remote.sh(self.reset_failed_cmd)
             self.remote.sh(self.start_cmd)
             self.is_started = True
         else:
