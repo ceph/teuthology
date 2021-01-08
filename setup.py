@@ -74,6 +74,7 @@ setup(
             'backports.ssl_match_hostname',
             'beanstalkc3 >= 0.4.0',
             'httplib2',
+            'libvirt-python',
             'ndg-httpsclient',  # for requests, urllib3
             'pyasn1',           # for requests, urllib3
             'pyopenssl>=0.13',  # for requests, urllib3

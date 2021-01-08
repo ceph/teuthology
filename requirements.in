@@ -19,6 +19,7 @@ humanfriendly
 backports.ssl-match-hostname
 beanstalkc3>=0.4.0
 httplib2
+libvirt-python
 ndg-httpsclient
 pyasn1
 pyopenssl>=0.13
