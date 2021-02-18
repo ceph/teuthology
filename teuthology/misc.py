@@ -1383,8 +1383,8 @@ def compress_logs(ctx, remote_dir):
     log.info('Compressing logs...')
     run.wait(
         ctx.cluster.run(
-            args=(f"sudo find {remote_dir} -name *.log -print0 | "
-                  f"sudo xargs -0 --no-run-if-empty -- gzip --"),
+            args=("sudo find {0} -name *.log -print0 | ".format(remote_dir) +
+                  "sudo xargs -0 --no-run-if-empty -- gzip --"),
             wait=False,
         ),
     )

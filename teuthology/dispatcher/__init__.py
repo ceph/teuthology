@@ -73,7 +73,8 @@ def main(args):
     if verbose:
         loglevel = logging.DEBUG
     log.setLevel(loglevel)
-    log_file_path = os.path.join(log_dir, f"dispatcher.{tube}.{os.getpid()}")
+    log_file_path = os.path.join(log_dir,
+                                 "dispatcher.{0}.{1}".format(tube, os.getpid()))
     setup_log_file(log_file_path)
     install_except_hook()
 
