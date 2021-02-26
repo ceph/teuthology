@@ -298,6 +298,7 @@ def copy_to_log(f, logger, loglevel=logging.INFO, capture=None, quiet=False):
             for s in segments:
                 logger.log(loglevel, partial + s)
                 partial = ''
+            partial += next_partial
         except (UnicodeDecodeError, UnicodeEncodeError):
             logger.exception("Encountered unprintable line in command output")
 
