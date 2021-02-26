@@ -285,7 +285,9 @@ def copy_to_log(f, logger, loglevel=logging.INFO, capture=None, quiet=False):
                     capture.write(line.encode())
                 else:
                     capture.write(line)
-        line = line.rstrip()
+        if line.endswith(b'\n'):
+            line.replace(b'\n', b'((ENDLINE))')
+        #line = line.rstrip()
         # Second part of work-around for http://tracker.ceph.com/issues/8313
         if quiet:
             continue
