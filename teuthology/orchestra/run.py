@@ -273,6 +273,7 @@ def copy_to_log(f, logger, loglevel=logging.INFO, capture=None, quiet=False):
     # Work-around for http://tracker.ceph.com/issues/8313
     if isinstance(f, ChannelFile):
         f._flags += ChannelFile.FLAG_BINARY
+    partial = ''
     for line in f:
         if capture:
             if isinstance(capture, io.StringIO):
@@ -285,16 +286,18 @@ def copy_to_log(f, logger, loglevel=logging.INFO, capture=None, quiet=False):
                     capture.write(line.encode())
                 else:
                     capture.write(line)
-        if line.endswith(b'\n'):
-            line.replace(b'\n', b'((ENDLINE))')
-        #line = line.rstrip()
         # Second part of work-around for http://tracker.ceph.com/issues/8313
         if quiet:
             continue
         try:
             if isinstance(line, bytes):
                 line = line.decode('utf-8', 'replace')
-            logger.log(loglevel, line)
+            logger.log(loglevel, f">>>segments = {segments}")
+            segments = line.split('\n')
+            next_partial = segments.pop(-1)
+            for s in segments:
+                logger.log(loglevel, partial + s)
+                partial = ''
         except (UnicodeDecodeError, UnicodeEncodeError):
             logger.exception("Encountered unprintable line in command output")
 
