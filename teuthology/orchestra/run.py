@@ -292,8 +292,8 @@ def copy_to_log(f, logger, loglevel=logging.INFO, capture=None, quiet=False):
         try:
             if isinstance(line, bytes):
                 line = line.decode('utf-8', 'replace')
+            segments = line.replace('\r', '\n').split('\n')
             logger.log(loglevel, f">>>segments = {segments}")
-            segments = line.split('\n')
             next_partial = segments.pop(-1)
             for s in segments:
                 logger.log(loglevel, partial + s)
