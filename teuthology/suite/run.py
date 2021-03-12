@@ -185,7 +185,7 @@ class Run(object):
         return ceph_hash
 
     def choose_ceph_version(self, ceph_hash):
-        if config.suite_verify_ceph_hash and not self.args.newest:
+        if self.args.verify_ceph_hash and config.suite_verify_ceph_hash and not self.args.newest:
             # don't bother if newest; we'll search for an older one
             # Get the ceph package version
             try:
@@ -443,7 +443,7 @@ class Run(object):
             )
 
             sha1 = self.base_config.sha1
-            if parsed_yaml.get('verify_ceph_hash',
+            if self.args.verify_ceph_hash and parsed_yaml.get('verify_ceph_hash',
                                config.suite_verify_ceph_hash):
                 full_job_config = copy.deepcopy(self.base_config.to_dict())
                 deep_merge(full_job_config, parsed_yaml)
