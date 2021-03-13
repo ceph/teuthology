@@ -93,15 +93,15 @@ class NonTransferRemoteOps(object):
         ftempl = '/tmp/teuthology-remote-$(date +%Y%m%d%H%M%S)-{}-XXXX'\
                  .format(label)
         script_file = self.sh("mktemp %s" % ftempl).strip()
-        self.sh("cat - | tee {script} ; chmod a+rx {script}"\
-            .format(script=script_file), stdin=script)
+        self.sh("cat - | tee {script} ; chmod a+rx {script}"
+                .format(script=script_file), stdin=script)
         if sudo:
             if isinstance(sudo, str):
-                command="sudo -u %s %s" % (sudo, script_file)
+                command = "sudo -u %s %s" % (sudo, script_file)
             else:
-                command="sudo %s" % script_file
+                command = "sudo %s" % script_file
         else:
-            command="%s" % script_file
+            command = "%s" % script_file
 
         return self.sh(command, **kwargs)
 
@@ -138,7 +138,7 @@ class NonTransferRemoteOps(object):
             con=context, path=file_path))
 
     def copy_file(self, src, dst, sudo=False, mode=None, owner=None,
-                                              mkdir=False, append=False):
+                  mkdir=False, append=False):
         """
         Copy data to remote file
 
@@ -170,7 +170,7 @@ class NonTransferRemoteOps(object):
         self.run(args=args)
 
     def move_file(self, src, dst, sudo=False, mode=None, owner=None,
-                                              mkdir=False):
+                  mkdir=False):
         """
         Move data to remote file
 
@@ -197,8 +197,7 @@ class NonTransferRemoteOps(object):
             args += ' && ' + chown + ' ' + owner + ' ' + dst
         self.run(args=args)
 
-    def read_file(self, path, sudo=False, stdout=None,
-                              offset=0, length=0):
+    def read_file(self, path, sudo=False, stdout=None, offset=0, length=0):
         """
         Read data from remote file
 
@@ -217,7 +216,7 @@ class NonTransferRemoteOps(object):
         """
         dd = 'sudo dd' if sudo else 'dd'
         args = dd + ' if=' + path + ' of=/dev/stdout'
-        iflags=[]
+        iflags = []
         # we have to set defaults here instead of the method's signature,
         # because python is reusing the object from call to call
         stdout = stdout or BytesIO()
@@ -234,17 +233,17 @@ class NonTransferRemoteOps(object):
                         check_status=False, quiet=True)
         if proc.returncode:
             if 'No such file or directory' in proc.stderr.getvalue():
-                raise FileNotFoundError(errno_ENOENT,
-                        f"Cannot find file on the remote '{self.name}'", path)
+                raise FileNotFoundError(errno_ENOENT, "Cannot find file on "
+                                        f"the remote '{self.name}'", path)
             else:
                 raise RuntimeError("Unexpected error occurred while trying to "
-                        f"read '{path}' file on the remote '{self.name}'")
+                                   f"read '{path}' file on the remote "
+                                   f"'{self.name}'")
 
         return proc.stdout.getvalue()
 
-
     def write_file(self, path, data, sudo=False, mode=None, owner=None,
-                                     mkdir=False, append=False):
+                   mkdir=False, append=False):
         """
         Write data to remote file
 
