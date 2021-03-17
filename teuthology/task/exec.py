@@ -23,6 +23,14 @@ def task(ctx, config):
     It stops and fails with the first command that does not return on success. It means
     that if the first command fails, the second won't run at all.
 
+    Execute commands for all roles. Note that ``all`` is propbably running the
+    commands multiple times per host. 
+
+        tasks:
+        - exec:
+          all:
+            - "echo 'this is executed for all roles'"
+
     To avoid confusion it is recommended to explicitly enclose the commands in 
     double quotes. For instance if the command is false (without double quotes) it will
     be interpreted as a boolean by the YAML parser.
