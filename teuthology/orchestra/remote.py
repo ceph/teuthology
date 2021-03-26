@@ -561,7 +561,6 @@ class Remote(object):
 
         return proc.stdout.getvalue()
 
-
     def write_file(self, path, data, sudo=False, mode=None, owner=None,
                                      mkdir=False, append=False):
         """
@@ -598,6 +597,22 @@ class Remote(object):
         Write data to remote file with sudo, for more info see `write_file()`.
         """
         self.write_file(path, data, sudo=True, **kwargs)
+
+    def write_temp_file(self, **kwargs):
+        """
+        This is a convenience method that call write_file() but without sudo.
+        Reason for excluding sudo is that files in /tmp can not be written by
+        any user (including the root user) besides the file owner.
+
+        Takes arguments of write_file() and of mktemp().
+        """
+        kwargs['sudo'] = False
+
+        if not kwargs.get('path'):
+            kwargs['path'] = self.mktemp(kwargs.pop('suffix',  None),
+                                         kwargs.pop('parentdir', None))
+        self.write_file(**kwargs)
+        return kwargs['path']
 
     @property
     def os(self):
