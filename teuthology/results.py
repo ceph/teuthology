@@ -42,6 +42,14 @@ def note_rerun_params(subset, seed):
         log.info('subset: %r', subset)
     if seed:
         log.info('seed: %r', seed)
+    if ceph_branch:
+        log.info('ceph_branch: %r', args['--ceph-branch'])
+    if sha1:
+        log.info('sha1: %r', args['--sha1'])
+    if suite_branch:
+        log.info('suite_branch %r', args['--suite-branch'])
+    if suite_repo:
+        log.info('suite_repo %r', args['--suite-repo'])
 
 
 def results(archive_dir, name, email, timeout, dry_run):

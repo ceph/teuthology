@@ -36,6 +36,49 @@ def override_arg_defaults(name, default, env=os.environ):
     else:
         return default
 
+def get_rerun_filters(name, statuses):
+    reporter = ResultsReporter()
+    run = reporter.get_run(name)
+    filters = dict()
+    filters['suite'] = run['suite']
+    jobs = []
+    for job in run['jobs']:
+        if job['status'] in statuses:
+            jobs.append(job)
+    filters['descriptions'] = [job['description'] for job in jobs if job['description']]
+    return filters
+
+def get_rerun_conf(conf):
+    reporter = ResultsReporter()
+    result_conf = reporter.get_rerun_conf(conf.rerun)
+    return result_conf
+
+def check_rerun_defaults(conf):
+    rerun_filters = get_rerun_filters(conf.rerun, conf.rerun_statuses)
+    if len(rerun_filters['descriptions']) == 0:
+        log.warn(
+            "No jobs matched the status filters: %s",
+            conf.rerun_statuses,
+        )
+        return
+    conf.filter_in.extend(rerun_filters['descriptions'])
+    conf.suite = normalize_suite_name(rerun_filters['suite'])
+    result_conf = get_rerun_conf(conf)
+    for (key, val) in result_conf.items():
+        if val is not None:
+            log.info("Using %s from previous run as %s", key, val)
+            if key == "ceph_branch":
+                conf.ceph = val
+            if key == "sha1":
+                conf.sha1 = val
+            if key == "suite_branch":
+                conf.suite_branch = val
+            if key == "suite_repo":
+                conf.suite_repo = val
+            if key == "seed":
+                conf.seed = val
+            if key == "subset":
+                conf.subset = val
 
 def process_args(args):
     conf = YamlConfig()
@@ -108,6 +151,9 @@ def expand_short_repo_name(name, orig):
 
 def main(args):
     conf = process_args(args)
+    #update rerun branch from job's config
+    if conf.rerun:
+        check_rerun_defaults(conf)
     if conf.verbose:
         teuthology.log.setLevel(logging.DEBUG)
 
@@ -123,17 +169,6 @@ def main(args):
         config.archive_upload = conf.archive_upload
         log.info('Will upload archives to ' + conf.archive_upload)
 
-    if conf.rerun:
-        rerun_filters = get_rerun_filters(conf.rerun, conf.rerun_statuses)
-        if len(rerun_filters['descriptions']) == 0:
-            log.warn(
-                "No jobs matched the status filters: %s",
-                conf.rerun_statuses,
-            )
-            return
-        conf.filter_in.extend(rerun_filters['descriptions'])
-        conf.suite = normalize_suite_name(rerun_filters['suite'])
-        conf.subset, conf.seed = get_rerun_conf(conf)
     if conf.seed < 0:
         conf.seed = random.randint(0, 9999)
         log.info('Using random seed=%s', conf.seed)
@@ -144,44 +179,6 @@ def main(args):
     if not conf.dry_run and conf.wait:
         return wait(name, config.max_job_time,
                     conf.archive_upload_url)
-
-
-def get_rerun_filters(name, statuses):
-    reporter = ResultsReporter()
-    run = reporter.get_run(name)
-    filters = dict()
-    filters['suite'] = run['suite']
-    jobs = []
-    for job in run['jobs']:
-        if job['status'] in statuses:
-            jobs.append(job)
-    filters['descriptions'] = [job['description'] for job in jobs if job['description']]
-    return filters
-
-
-def get_rerun_conf(conf):
-    reporter = ResultsReporter()
-    try:
-        subset, seed = reporter.get_rerun_conf(conf.rerun)
-    except IOError:
-        return conf.subset, conf.seed
-    if seed is None:
-        return conf.subset, conf.seed
-    if conf.seed < 0:
-        log.info('Using stored seed=%s', seed)
-    elif conf.seed != seed:
-        log.error('--seed {conf_seed} does not match with ' +
-                  'stored seed: {stored_seed}',
-                  conf_seed=conf.seed,
-                  stored_seed=seed)
-    if conf.subset is None:
-        log.info('Using stored subset=%s', subset)
-    elif conf.subset != subset:
-        log.error('--subset {conf_subset} does not match with ' +
-                  'stored subset: {stored_subset}',
-                  conf_subset=conf.subset,
-                  stored_subset=subset)
-    return subset, seed
 
 
 class WaitException(Exception):
