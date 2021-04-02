@@ -61,6 +61,8 @@ dict_templ = {
         'ceph': {
             'conf': {
                 'mon': {
+                    'auth mon ticket ttl': 660,  # 11m
+                    'auth service ticket ttl': 240,  # 4m
                     'debug mon': 20,
                     'debug ms': 1,
                     'debug paxos': 20},
