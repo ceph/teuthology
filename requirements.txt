@@ -5,15 +5,15 @@
 #    pip-compile --output-file=- requirements.in
 #
 ansible==2.9.18
-    # via teuthology
+    # via -r requirements.in
 apache-libcloud==3.3.1
-    # via teuthology
+    # via -r requirements.in
 appdirs==1.4.4
     # via
     #   openstacksdk
     #   virtualenv
 argparse==1.4.0
-    # via teuthology
+    # via -r requirements.in
 atomicwrites==1.4.0
     # via pytest
 attrs==20.3.0
@@ -21,15 +21,15 @@ attrs==20.3.0
     #   cmd2
     #   pytest
 backports.ssl-match-hostname==3.7.0.1
-    # via teuthology
+    # via -r requirements.in
 bcrypt==3.2.0
     # via paramiko
 beanstalkc3==0.4.0
-    # via teuthology
+    # via -r requirements.in
 boto3==1.17.16
-    # via teuthology
+    # via -r requirements.in
 boto==2.49.0
-    # via teuthology
+    # via -r requirements.in
 botocore==1.20.16
     # via
     #   boto3
@@ -56,12 +56,12 @@ cmd2==1.5.0
 colorama==0.4.4
     # via cmd2
 configobj==5.0.6
-    # via teuthology
+    # via -r requirements.in
 configparser==5.0.1
-    # via teuthology
+    # via -r requirements.in
 cryptography==3.4.6
     # via
-    #   teuthology
+    #   -r requirements.in
     #   ansible
     #   openstacksdk
     #   paramiko
@@ -78,7 +78,7 @@ decorator==4.4.2
 distlib==0.3.1
     # via virtualenv
 docopt==0.6.2
-    # via teuthology
+    # via -r requirements.in
 dogpile.cache==1.1.2
     # via openstacksdk
 filelock==3.0.12
@@ -86,17 +86,17 @@ filelock==3.0.12
     #   tox
     #   virtualenv
 gevent==21.1.2
-    # via teuthology
+    # via -r requirements.in
 greenlet==1.0.0
     # via gevent
 httplib2==0.19.0
-    # via teuthology
+    # via -r requirements.in
 humanfriendly==9.1
-    # via teuthology
+    # via -r requirements.in
 idna==2.10
     # via requests
 ipy==1.1
-    # via teuthology
+    # via -r requirements.in
 iso8601==0.1.14
     # via
     #   keystoneauth1
@@ -122,7 +122,7 @@ keystoneauth1==4.3.1
     #   python-keystoneclient
     #   python-novaclient
 manhole==1.6.0
-    # via teuthology
+    # via -r requirements.in
 markupsafe==1.1.1
     # via jinja2
 more-itertools==8.7.0
@@ -132,10 +132,10 @@ msgpack==1.0.2
 munch==2.5.0
     # via openstacksdk
 ndg-httpsclient==0.5.1
-    # via teuthology
+    # via -r requirements.in
 netaddr==0.8.0
     # via
-    #   teuthology
+    #   -r requirements.in
     #   oslo.config
     #   oslo.utils
 netifaces==0.10.9
@@ -143,7 +143,7 @@ netifaces==0.10.9
     #   openstacksdk
     #   oslo.utils
 nose==1.3.7
-    # via teuthology
+    # via -r requirements.in
 openstacksdk==0.53.0
     # via
     #   osc-lib
@@ -182,7 +182,7 @@ packaging==20.9
     #   oslo.utils
     #   tox
 paramiko==2.7.2
-    # via teuthology
+    # via -r requirements.in
 pbr==5.5.1
     # via
     #   cliff
@@ -200,21 +200,21 @@ pbr==5.5.1
     #   python-openstackclient
     #   stevedore
 pexpect==4.8.0
-    # via teuthology
+    # via -r requirements.in
 pip-tools==5.5.0
-    # via teuthology
+    # via -r requirements.in
 pluggy==0.13.1
     # via
     #   pytest
     #   tox
 prettytable==0.7.2
     # via
-    #   teuthology
+    #   -r requirements.in
     #   cliff
     #   python-cinderclient
     #   python-novaclient
 psutil==5.8.0
-    # via teuthology
+    # via -r requirements.in
 ptyprocess==0.7.0
     # via pexpect
 py==1.10.0
@@ -223,17 +223,17 @@ py==1.10.0
     #   tox
 pyasn1==0.4.8
     # via
-    #   teuthology
+    #   -r requirements.in
     #   ndg-httpsclient
 pycparser==2.20
     # via cffi
 pyjwt==2.0.1
-    # via teuthology
+    # via -r requirements.in
 pynacl==1.4.0
     # via paramiko
 pyopenssl==20.0.1
     # via
-    #   teuthology
+    #   -r requirements.in
     #   ndg-httpsclient
 pyparsing==2.4.7
     # via
@@ -244,35 +244,35 @@ pyparsing==2.4.7
 pyperclip==1.8.2
     # via cmd2
 pytest==3.7.1
-    # via teuthology
+    # via -r requirements.in
 python-cinderclient==7.3.0
     # via python-openstackclient
 python-dateutil==2.8.1
     # via
-    #   teuthology
+    #   -r requirements.in
     #   botocore
 python-keystoneclient==4.2.0
     # via python-openstackclient
 python-novaclient==17.3.0
     # via
-    #   teuthology
+    #   -r requirements.in
     #   python-openstackclient
 python-openstackclient==5.4.0
-    # via teuthology
+    # via -r requirements.in
 pytz==2021.1
     # via
     #   oslo.serialization
     #   oslo.utils
 pyyaml==5.4.1
     # via
-    #   teuthology
+    #   -r requirements.in
     #   ansible
     #   cliff
     #   openstacksdk
     #   oslo.config
 requests==2.25.1
     # via
-    #   teuthology
+    #   -r requirements.in
     #   apache-libcloud
     #   keystoneauth1
     #   oslo.config
@@ -285,7 +285,7 @@ rfc3986==1.4.0
 s3transfer==0.3.4
     # via boto3
 sentry-sdk==0.20.3
-    # via teuthology
+    # via -r requirements.in
 simplejson==3.17.2
     # via
     #   osc-lib
@@ -293,7 +293,7 @@ simplejson==3.17.2
     #   python-novaclient
 six==1.15.0
     # via
-    #   teuthology
+    #   -r requirements.in
     #   bcrypt
     #   configobj
     #   debtcollector
@@ -322,11 +322,11 @@ stevedore==3.3.0
     #   python-openstackclient
 toml==0.10.2
     # via
-    #   teuthology
+    #   -r requirements.in
     #   tox
 tox==3.22.0
-    # via teuthology
-urllib3==1.26.3
+    # via -r requirements.in
+urllib3==1.26.4
     # via
     #   botocore
     #   requests
@@ -338,7 +338,7 @@ wcwidth==0.2.5
 wrapt==1.12.1
     # via debtcollector
 xmltodict==0.12.0
-    # via teuthology
+    # via -r requirements.in
 zope.event==4.5.0
     # via gevent
 zope.interface==5.2.0
