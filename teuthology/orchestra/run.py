@@ -394,8 +394,8 @@ def run(
     quiet=False,
     timeout=None,
     cwd=None,
-    # omit_sudo is used by vstart_runner.py
-    omit_sudo=False
+    omit_sudo=False,
+    shell=True
 ):
     """
     Run a command remotely.  If any of 'args' contains shell metacharacters
@@ -429,6 +429,13 @@ def run(
     :param timeout: timeout value for args to complete on remote channel of
                     paramiko
     :param cwd: Directory in which the command should be executed.
+    :param omit_sudo: Just a place holder so that programs like
+                      vstart_runner.py can run without superuser privileges as
+                      far as possible
+    :param shell: All commands in teuthology are executed with shell set to
+                  True by default. Adding shell as a parameter does nothing
+                  for teuthology but helps programs like vstart_runner.py to
+                  choose their own behaviour.
     """
     try:
         transport = client.get_transport()
