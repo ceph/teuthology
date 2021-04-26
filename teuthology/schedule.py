@@ -1,9 +1,9 @@
 import os
 import yaml
 
-import teuthology.beanstalk
 from teuthology.misc import get_user, merge_configs
 from teuthology import report
+from teuthology.config import config
 
 
 def main(args):
@@ -35,13 +35,13 @@ def main(args):
     backend = args['--queue-backend']
     if args['--dry-run']:
         print('---\n' + yaml.safe_dump(job_config))
-    elif backend == 'beanstalk':
+    elif backend == 'paddles':
         schedule_job(job_config, args['--num'], report_status)
     elif backend.startswith('@'):
         dump_job_to_file(backend.lstrip('@'), job_config, args['--num'])
     else:
         raise ValueError("Provided schedule backend '%s' is not supported. "
-                         "Try 'beanstalk' or '@path-to-a-file" % backend)
+                         "Try 'paddles' or '@path-to-a-file" % backend)
 
 
 def build_config(args):
@@ -96,22 +96,19 @@ def schedule_job(job_config, num=1, report_status=True):
     """
     num = int(num)
     job = yaml.safe_dump(job_config)
-    tube = job_config.pop('tube')
-    beanstalk = teuthology.beanstalk.connect()
-    beanstalk.use(tube)
-    while num > 0:
-        jid = beanstalk.put(
-            job,
-            ttr=60 * 60 * 24,
-            priority=job_config['priority'],
-        )
-        print('Job scheduled with name {name} and ID {jid}'.format(
-            name=job_config['name'], jid=jid))
-        job_config['job_id'] = str(jid)
-        if report_status:
-            report.try_push_job_info(job_config, dict(status='queued'))
-        num -= 1
 
+    '''
+    Add 'machine_type' queue to DB here.
+    '''
+    report.create_machine_type_queue(job_config['machine_type'])
+    while num > 0:
+
+        job_id = report.try_create_job(job_config, dict(status='queued'))
+        print('Job scheduled with name {name} and ID {job_id}'.format(
+            name=job_config['name'], job_id=job_id))
+        job_config['job_id'] = str(job_id)
+        
+        num -= 1
 
 def dump_job_to_file(path, job_config, num=1):
     """
