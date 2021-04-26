@@ -136,7 +136,7 @@ def run_job(job_config, teuth_bin_path, archive_dir, verbose):
         '--archive', job_config['archive_path'],
         '--name', job_config['name'],
     ])
-    if job_config['description'] is not None:
+    if 'description' in job_config:
         arg.extend(['--description', job_config['description']])
     job_archive = os.path.join(job_config['archive_path'], 'orig.config.yaml')
     arg.extend(['--', job_archive])

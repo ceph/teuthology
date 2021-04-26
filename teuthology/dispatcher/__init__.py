@@ -5,6 +5,7 @@ import psutil
 import subprocess
 import sys
 import yaml
+import json
 
 from typing import Dict, List
 
@@ -64,6 +65,12 @@ def load_config(archive_dir=None):
         else:
             teuth_config.archive_base = archive_dir
 
+def clean_config(config):
+    result = {}
+    for key in config:
+        if config[key] is not None:
+            result[key] = config[key]
+    return result
 
 def main(args):
     archive_dir = args.archive_dir or teuth_config.archive_base
@@ -75,7 +82,17 @@ def main(args):
             "There is already a teuthology-dispatcher process running:"
             f" {procs}"
         )
+    verbose = args["--verbose"]
+    machine_type = args["--machine-type"]
+    log_dir = args["--log-dir"]
+    archive_dir = args["--archive-dir"]
+    exit_on_empty_queue = args["--exit-on-empty-queue"]
 
+    if archive_dir is None:
+        archive_dir = teuth_config.archive_base
+
+    if machine_type is None and teuth_config.machine_type is None:
+        return
     # setup logging for disoatcher in {log_dir}
     loglevel = logging.INFO
     if args.verbose:
@@ -88,8 +105,6 @@ def main(args):
 
     load_config(archive_dir=archive_dir)
 
-    connection = beanstalk.connect()
-    beanstalk.watch_tube(connection, args.tube)
     result_proc = None
 
     if teuth_config.teuthology_path is None:
@@ -118,21 +133,19 @@ def main(args):
             if rc is not None:
                 worst_returncode = max([worst_returncode, rc])
                 job_procs.remove(proc)
-        job = connection.reserve(timeout=60)
+        job = report.get_queued_job(machine_type)
         if job is None:
             if args.exit_on_empty_queue and not job_procs:
                 log.info("Queue is empty and no supervisor processes running; exiting!")
                 break
             continue
-
-        # bury the job so it won't be re-run if it fails
-        job.bury()
-        job_id = job.jid
-        log.info('Reserved job %d', job_id)
-        log.info('Config is: %s', job.body)
-        job_config = yaml.safe_load(job.body)
-        job_config['job_id'] = str(job_id)
-
+        job = clean_config(job)
+        report.try_push_job_info(job, dict(status='running'))
+        job_id = job.get('job_id')
+        log.info('Reserved job %s', job_id)
+        log.info('Config is: %s', job)
+        job_config = job
+        
         if job_config.get('stop_worker'):
             keep_running = False
 
@@ -192,12 +205,6 @@ def main(args):
                 status='fail',
                 failure_reason=error_message))
 
-        # This try/except block is to keep the worker from dying when
-        # beanstalkc throws a SocketError
-        try:
-            job.delete()
-        except Exception:
-            log.exception("Saw exception while trying to delete job")
 
     return worst_returncode
 
