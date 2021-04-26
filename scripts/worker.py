@@ -9,7 +9,7 @@ def main():
 
 def parse_args():
     parser = argparse.ArgumentParser(description="""
-Grab jobs from a beanstalk queue and run the teuthology tests they
+Grab jobs from a paddles queue and run the teuthology tests they
 describe. One job is run at a time.
 """)
     parser.add_argument(
@@ -29,8 +29,8 @@ describe. One job is run at a time.
         required=True,
     )
     parser.add_argument(
-        '-t', '--tube',
-        help='which beanstalk tube to read jobs from',
+        '-m', '--machine-type',
+        help='which machine type the jobs will run on',
         required=True,
     )
 

@@ -1,5 +1,3 @@
-import beanstalkc
-import yaml
 import logging
 import pprint
 import sys
@@ -7,6 +5,7 @@ from collections import OrderedDict
 
 from teuthology.config import config
 from teuthology import report
+
 
 log = logging.getLogger(__name__)
 
@@ -44,21 +43,28 @@ def walk_jobs(connection, tube_name, processor, pattern=None):
         log.info('No jobs in Beanstalk Queue')
         return
 
-    # Try to figure out a sane timeout based on how many jobs are in the queue
-    timeout = job_count / 2000.0 * 60
-    for i in range(1, job_count + 1):
-        print_progress(i, job_count, "Loading")
-        job = connection.reserve(timeout=timeout)
-        if job is None or job.body is None:
-            continue
-        job_config = yaml.safe_load(job.body)
-        job_name = job_config['name']
-        job_id = job.stats()['id']
-        if pattern is not None and pattern not in job_name:
-            continue
-        processor.add_job(job_id, job_config, job)
-    end_progress()
-    processor.complete()
+def stats_queue(machine_type):
+    stats = report.get_queue_stats(machine_type)
+    stats = report.get_queue_stats(machine_type)
+    if stats['paused'] is None:
+        log.info("%s queue is currently running with %s jobs queued",
+                 stats['name'],
+                 stats['count'])
+    else:
+        log.info("%s queue is paused with %s jobs queued",
+                 stats['name'],
+                 stats['count'])
+
+
+def update_priority(machine_type, priority, user):
+    jobs = report.get_user_jobs_queue(machine_type, user)
+    for job in jobs:
+        job['priority'] = priority
+        report.try_push_job_info(job)
+
+
+def pause_queue(machine_type, pause_duration, paused_by):
+    report.pause_queue(machine_type, paused_by, pause_duration)
 
 
 def print_progress(index, total, message=None):
@@ -71,6 +77,29 @@ def print_progress(index, total, message=None):
 def end_progress():
     sys.stderr.write('\n')
     sys.stderr.flush()
+
+
+def walk_jobs(machine_type, processor, user):
+    log.info("Checking paddles queue...")
+    job_count = report.get_queue_stats(machine_type)['count']
+
+    jobs = report.get_user_jobs_queue(machine_type, user)
+    if job_count == 0:
+        log.info('No jobs in queue')
+        return
+
+    # Try to figure out a sane timeout based on how many jobs are in the queue
+    timeout = job_count / 2000.0 * 60
+    for i in range(1, job_count + 1):
+        print_progress(i, job_count, "Loading")
+        job = jobs[i-1]
+        if job is None:
+            continue
+        job_name = job['name']
+        job_id = job['job_id']
+        processor.add_job(job_id, job)
+    end_progress()
+    processor.complete()
 
 
 class JobProcessor(object):
@@ -151,38 +180,13 @@ class JobDeleter(JobProcessor):
             job_id=job_id,
             job_name=job_name,
             ))
-        job_obj = self.jobs[job_id].get('job_obj')
-        if job_obj:
-            job_obj.delete()
         report.try_delete_jobs(job_name, job_id)
-
-
-def pause_tube(connection, tube, duration):
-    duration = int(duration)
-    if not tube:
-        tubes = sorted(connection.tubes())
-    else:
-        tubes = [tube]
-
-    prefix = 'Unpausing' if duration == 0 else "Pausing for {dur}s"
-    templ = prefix + ": {tubes}"
-    log.info(templ.format(dur=duration, tubes=tubes))
-    for tube in tubes:
-        connection.pause_tube(tube, duration)
-
-
-def stats_tube(connection, tube):
-    stats = connection.stats_tube(tube)
-    result = dict(
-        name=tube,
-        count=stats['current-jobs-ready'],
-        paused=(stats['pause'] != 0),
-    )
-    return result
 
 
 def main(args):
     machine_type = args['--machine_type']
+    user = args['--user']
+    priority = args['--priority']
     status = args['--status']
     delete = args['--delete']
     runs = args['--runs']
@@ -190,25 +194,21 @@ def main(args):
     full = args['--full']
     pause_duration = args['--pause']
     try:
-        connection = connect()
-        if machine_type and not pause_duration:
-            # watch_tube needs to be run before we inspect individual jobs;
-            # it is not needed for pausing tubes
-            watch_tube(connection, machine_type)
         if status:
-            print(stats_tube(connection, machine_type))
+            stats_queue(machine_type)
         elif pause_duration:
-            pause_tube(connection, machine_type, pause_duration)
+            pause_queue(machine_type, pause_duration, user)
+        elif priority:
+            update_priority(machine_type, priority, user)
         elif delete:
-            walk_jobs(connection, machine_type,
-                      JobDeleter(delete))
+            walk_jobs(machine_type,
+                      JobDeleter(delete), user)
         elif runs:
-            walk_jobs(connection, machine_type,
-                      RunPrinter())
+            walk_jobs(machine_type,
+                      RunPrinter(), user)
         else:
-            walk_jobs(connection, machine_type,
-                      JobPrinter(show_desc=show_desc, full=full))
+            walk_jobs(machine_type,
+                      JobPrinter(show_desc=show_desc, full=full),
+                      user)
     except KeyboardInterrupt:
         log.info("Interrupted.")
-    finally:
-        connection.close()
