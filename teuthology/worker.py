@@ -63,14 +63,22 @@ def load_config(ctx=None):
             teuth_config.archive_base = ctx.archive_dir
 
 
+def clean_config(config):
+    result = {}
+    for key in config:
+        if config[key] is not None:
+            result[key] = config[key]
+    return result
+
+
 def main(ctx):
     loglevel = logging.INFO
     if ctx.verbose:
         loglevel = logging.DEBUG
     log.setLevel(loglevel)
 
-    log_file_path = os.path.join(ctx.log_dir, 'worker.{tube}.{pid}'.format(
-        pid=os.getpid(), tube=ctx.tube,))
+    log_file_path = os.path.join(ctx.log_dir, 'worker.{machine_type}.{pid}'.format(
+        pid=os.getpid(), machine_type=ctx.machine_type,))
     setup_log_file(log_file_path)
 
     install_except_hook()
@@ -79,8 +87,6 @@ def main(ctx):
 
     set_config_attr(ctx)
 
-    connection = beanstalk.connect()
-    beanstalk.watch_tube(connection, ctx.tube)
     result_proc = None
 
     if teuth_config.teuthology_path is None:
@@ -103,17 +109,16 @@ def main(ctx):
 
         load_config()
 
-        job = connection.reserve(timeout=60)
+        job = report.get_queued_job(ctx.machine_type)
         if job is None:
             continue
 
-        # bury the job so it won't be re-run if it fails
-        job.bury()
-        job_id = job.jid
-        log.info('Reserved job %d', job_id)
-        log.info('Config is: %s', job.body)
-        job_config = yaml.safe_load(job.body)
-        job_config['job_id'] = str(job_id)
+        job = clean_config(job)
+        report.try_push_job_info(job, dict(status='running'))
+        job_id = job.get('job_id')
+        log.info('Reserved job %s', job_id)
+        log.info('Config is: %s', job)
+        job_config = job
 
         if job_config.get('stop_worker'):
             keep_running = False
@@ -132,13 +137,6 @@ def main(ctx):
             )
         except SkipJob:
             continue
-
-        # This try/except block is to keep the worker from dying when
-        # beanstalkc throws a SocketError
-        try:
-            job.delete()
-        except Exception:
-            log.exception("Saw exception while trying to delete job")
 
 
 def prep_job(job_config, log_file_path, archive_dir):
