@@ -12,7 +12,6 @@ from typing import Union
 import teuthology.exporter
 
 from teuthology import report
-from teuthology.config import config
 from teuthology.lock import ops as lock_ops
 
 log = logging.getLogger(__name__)
@@ -116,7 +115,6 @@ def find_run_info(serializer, run_name):
     job_info = {}
     job_num = 0
     jobs = serializer.jobs_for_run(run_name)
-    job_total = len(jobs)
     for (job_id, job_dir) in jobs.items():
         if not os.path.isdir(job_dir):
             continue

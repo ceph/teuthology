@@ -88,14 +88,11 @@ def walk_jobs(machine_type, processor, user):
         log.info('No jobs in queue')
         return
 
-    # Try to figure out a sane timeout based on how many jobs are in the queue
-    timeout = job_count / 2000.0 * 60
     for i in range(1, job_count + 1):
         print_progress(i, job_count, "Loading")
         job = jobs[i-1]
         if job is None:
             continue
-        job_name = job['name']
         job_id = job['job_id']
         processor.add_job(job_id, job)
     end_progress()

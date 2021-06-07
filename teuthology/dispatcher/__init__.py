@@ -5,7 +5,6 @@ import psutil
 import subprocess
 import sys
 import yaml
-import json
 
 from typing import Dict, List
 
