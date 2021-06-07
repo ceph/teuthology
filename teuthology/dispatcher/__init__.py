@@ -4,7 +4,6 @@ import psutil
 import subprocess
 import sys
 import yaml
-import json
 
 from datetime import datetime
 from typing import Dict, List

@@ -3,7 +3,6 @@ import yaml
 
 from teuthology.misc import get_user, merge_configs
 from teuthology import report
-from teuthology.config import config
 
 
 def main(args):
@@ -95,8 +94,6 @@ def schedule_job(job_config, num=1, report_status=True):
     :param num:      The number of times to schedule the job
     """
     num = int(num)
-    job = yaml.safe_dump(job_config)
-
     '''
     Add 'machine_type' queue to DB here.
     '''
