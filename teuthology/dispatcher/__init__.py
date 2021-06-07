@@ -3,7 +3,6 @@ import os
 import subprocess
 import sys
 import yaml
-import json
 
 from datetime import datetime
 
