@@ -1,3 +1,8 @@
+from re import sub
+
+from teuthology.orchestra.run_helper import Raw
+
+
 class BranchNotFoundError(ValueError):
     def __init__(self, branch, repo=None):
         self.branch = branch
@@ -50,13 +55,22 @@ class CommandFailedError(Exception):
     """
     Exception thrown on command failure
     """
-    def __init__(self, command, exitstatus, node=None, label=None):
-        self.command = command
+    def __init__(self, cmd, exitstatus, node=None, label=None):
+        self.cmd = cmd
         self.exitstatus = exitstatus
         self.node = node
         self.label = label
 
     def __str__(self):
+        if isinstance(self.cmd, (list, tuple)):
+            cmd = [str(Raw) if isinstance(x, Raw) else x
+                        for x in self.cmd]
+            cmd = ' '.join(self.cmd)
+        elif isinstance(self.cmd, str):
+            cmd = sub(r'Raw\([\'"](.*)[\'"]\)', r'\1', self.cmd)
+        else:
+            raise RuntimeError('variable "self.cmd" is not str, list or tuple')
+
         prefix = "Command failed"
         if self.label:
             prefix += " ({label})".format(label=self.label)
@@ -64,7 +78,7 @@ class CommandFailedError(Exception):
             prefix += " on {node}".format(node=self.node)
         return "{prefix} with status {status}: {cmd!r}".format(
             status=self.exitstatus,
-            cmd=self.command,
+            cmd=cmd,
             prefix=prefix,
             )
 
@@ -74,7 +88,7 @@ class CommandFailedError(Exception):
         Used by sentry instead of grouping by backtrace.
         """
         return [
-            self.label or self.command,
+            self.label or self.cmd,
             'exit status {}'.format(self.exitstatus),
             '{{ type }}',
         ]
