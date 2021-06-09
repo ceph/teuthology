@@ -4,6 +4,7 @@ import sys
 from collections import OrderedDict
 
 from teuthology import report
+from teuthology.dispatcher import pause_queue
 
 
 log = logging.getLogger(__name__)
@@ -44,7 +45,6 @@ def walk_jobs(connection, tube_name, processor, pattern=None):
 
 def stats_queue(machine_type):
     stats = report.get_queue_stats(machine_type)
-    stats = report.get_queue_stats(machine_type)
     if stats['paused'] is None:
         log.info("%s queue is currently running with %s jobs queued",
                  stats['name'],
@@ -55,15 +55,14 @@ def stats_queue(machine_type):
                  stats['count'])
 
 
-def update_priority(machine_type, priority, user):
-    jobs = report.get_user_jobs_queue(machine_type, user)
+def update_priority(machine_type, priority, user, run_name=None):
+    if run_name is not None:
+        jobs = report.get_user_jobs_queue(machine_type, user, run_name)
+    else:
+        jobs = report.get_user_jobs_queue(machine_type, user)
     for job in jobs:
         job['priority'] = priority
         report.try_push_job_info(job)
-
-
-def pause_queue(machine_type, pause_duration, paused_by):
-    report.pause_queue(machine_type, paused_by, pause_duration)
 
 
 def print_progress(index, total, message=None):
@@ -182,20 +181,29 @@ class JobDeleter(JobProcessor):
 def main(args):
     machine_type = args['--machine_type']
     user = args['--user']
+    run_name = args['--run_name']
     priority = args['--priority']
     status = args['--status']
     delete = args['--delete']
     runs = args['--runs']
     show_desc = args['--description']
     full = args['--full']
-    pause_duration = args['--pause']
+    pause = args['--pause']
+    unpause = args['--unpause']
+    pause_duration = args['--time']
     try:
         if status:
             stats_queue(machine_type)
-        elif pause_duration:
-            pause_queue(machine_type, pause_duration, user)
+        elif pause:
+            if pause_duration:
+                pause_queue(machine_type, pause, user, pause_duration)
+            else:
+                pause_queue(machine_type, pause, user)
+        elif unpause:
+            pause = False
+            pause_queue(machine_type, pause, user)
         elif priority:
-            update_priority(machine_type, priority, user)
+            update_priority(machine_type, priority, user, run_name)
         elif delete:
             walk_jobs(machine_type,
                       JobDeleter(delete), user)
