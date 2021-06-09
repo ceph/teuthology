@@ -6,10 +6,12 @@ import teuthology.paddles_queue
 doc = """
 usage: teuthology-queue -h
        teuthology-queue -s -m MACHINE_TYPE
-       teuthology-queue [-d|-f] -m MACHINE_TYPE [-P PRIORITY] -u USER
-       teuthology-queue [-r] -m MACHINE_TYPE -u USER
-       teuthology-queue -m MACHINE_TYPE -D PATTERN -u USER
-       teuthology-queue -p SECONDS -m MACHINE_TYPE -u USER
+       teuthology-queue [-d|-f] -m MACHINE_TYPE -U USER
+       teuthology-queue -m MACHINE_TYPE -P PRIORITY [-U USER|-R RUN_NAME]
+       teuthology-queue [-r] -m MACHINE_TYPE -U USER
+       teuthology-queue -m MACHINE_TYPE -D PATTERN -U USER
+       teuthology-queue -p [-t SECONDS] -m MACHINE_TYPE -U USER
+       teuthology-queue -u -m MACHINE_TYPE -U USER
 
 List Jobs in queue.
 If -D is passed, then jobs with PATTERN in the job name are deleted from the
@@ -26,12 +28,16 @@ optional arguments:
   -r, --runs            Only show run names
   -f, --full            Print the entire job config. Use with caution.
   -s, --status          Prints the status of the queue
-  -p, --pause SECONDS   Pause queues for a number of seconds. A value of 0
-                        will unpause. If -m is passed, pause that queue,
+  -t, --time SECONDS    Pause queues for a number of seconds.
+                        If -m is passed, pause that queue,
                         otherwise pause all queues.
+  -p, --pause           Pause queue
+  -u, --unpause         Unpause queue
   -P, --priority PRIORITY
                         Change priority of queued jobs
-  -u, --user USER       User who owns the jobs
+  -U, --user USER       User who owns the jobs
+  -R, --run_name RUN_NAME
+                        Used to change priority of all jobs in the run.
 """
 
 
