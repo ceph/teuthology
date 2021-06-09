@@ -5,6 +5,7 @@ import sys
 import yaml
 
 from datetime import datetime
+from time import sleep
 
 from teuthology import setup_log_file, install_except_hook
 from teuthology import report
@@ -197,3 +198,18 @@ def create_job_archive(job_name, job_archive_path, archive_dir):
     if not os.path.exists(run_archive):
         safepath.makedirs('/', run_archive)
     safepath.makedirs('/', job_archive_path)
+
+
+def pause_queue(machine_type, paused, paused_by, pause_duration=None):
+    if paused == True:
+        report.pause_queue(machine_type, paused, paused_by, pause_duration)
+        '''
+        If there is a pause duration specified
+        un-pause the queue after the time elapses
+        '''
+        if pause_duration is not None:
+            sleep(int(pause_duration))
+            paused = False
+            report.pause_queue(machine_type, paused, paused_by)
+    elif paused == False:
+        report.pause_queue(machine_type, paused, paused_by)
