@@ -53,8 +53,10 @@ class RemoteShell(object):
 
         if suffix:
             args.append('--suffix=%s' % suffix)
-        if parentdir:
-            args.append('--tmpdir=%s' % parentdir)
+        if parentdir is None:
+            parentdir = misc.get_tmpdir()
+            self.sh(f"mkdir -p {parentdir}")
+        args.append('--tmpdir=%s' % parentdir)
 
         return self.sh(args).strip()
 
@@ -69,10 +71,13 @@ class RemoteShell(object):
         Returns: the path of the temp file created.
         """
         args = ['mktemp']
+
         if suffix:
             args.append('--suffix=%s' % suffix)
-        if parentdir:
-            args.append('--tmpdir=%s' % parentdir)
+        if parentdir is None:
+            parentdir = misc.get_tmpdir()
+            self.sh(f"mkdir -p {parentdir}")
+        args.append('--tmpdir=%s' % parentdir)
 
         path = self.sh(args).strip()
 

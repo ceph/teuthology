@@ -154,6 +154,16 @@ def get_testdir(ctx=None):
     )
 
 
+def get_tmpdir():
+    """
+    :returns: A temporary directory for use by tests on the test node.
+    """
+    return config.get(
+        'test_tmpdir',
+        '/tmp/cephtest'
+    )
+
+
 def get_test_user(ctx=None):
     """
     :param ctx: Unused; accepted for compatibility
