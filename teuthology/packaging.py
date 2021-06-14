@@ -19,7 +19,7 @@ from teuthology.exceptions import (VersionNotFoundError, CommitNotFoundError,
                          NoRemoteError)
 from teuthology.misc import sudo_write_file
 from teuthology.orchestra.opsys import OS, DEFAULT_OS_VERSION
-from teuthology.orchestra.run import Raw
+from teuthology.orchestra.run_helper import Raw
 
 log = logging.getLogger(__name__)
 
