@@ -7,7 +7,6 @@ import io
 from paramiko import ChannelFile
 
 import gevent
-import gevent.event
 import socket
 import logging
 import shutil
@@ -284,32 +283,6 @@ def copy_file_to(src, logger, stream=None, quiet=False):
                   with `stream` parameter, defaults False.
     """
     copy_to_log(src, logger, capture=stream, quiet=quiet)
-
-def spawn_asyncresult(fn, *args, **kwargs):
-    """
-    Spawn a Greenlet and pass it's results to an AsyncResult.
-
-    This function is useful to shuffle data from a Greenlet to
-    AsyncResult, which then again is useful because any Greenlets that
-    raise exceptions will cause tracebacks to be shown on stderr by
-    gevent, even when ``.link_exception`` has been called. Using an
-    AsyncResult avoids this.
-    """
-    r = gevent.event.AsyncResult()
-
-    def wrapper():
-        """
-        Internal wrapper.
-        """
-        try:
-            value = fn(*args, **kwargs)
-        except Exception as e:
-            r.set_exception(e)
-        else:
-            r.set(value)
-    gevent.spawn(wrapper)
-
-    return r
 
 
 def run(
