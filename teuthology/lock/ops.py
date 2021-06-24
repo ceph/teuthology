@@ -110,39 +110,42 @@ def lock_many(ctx, num, machine_type, user=None, description=None,
         if arch:
             data['arch'] = arch
         log.debug("lock_many request: %s", repr(data))
-        response = requests.post(
-            uri,
-            data=json.dumps(data),
-            headers={'content-type': 'application/json'},
-        )
-        if response.ok:
-            machines = {misc.canonicalize_hostname(machine['name']):
-                        machine['ssh_pub_key'] for machine in response.json()}
-            log.debug('locked {machines}'.format(
-                machines=', '.join(machines.keys())))
-            if machine_type in vm_types:
-                ok_machs = {}
-                update_nodes(machines, True)
-                for machine in machines:
-                    if teuthology.provision.create_if_vm(ctx, machine):
-                        ok_machs[machine] = machines[machine]
-                    else:
-                        log.error('Unable to create virtual machine: %s',
-                                  machine)
-                        unlock_one(ctx, machine, user)
-                    ok_machs = do_update_keys(list(ok_machs.keys()))[1]
-                update_nodes(ok_machs)
-                return ok_machs
-            elif reimage and machine_type in reimage_types:
-                return reimage_machines(ctx, machines, machine_type)
-            return machines
-        elif response.status_code == 503:
-            log.error('Insufficient nodes available to lock %d %s nodes.',
-                      num, machine_type)
-            log.error(response.text)
-        else:
-            log.error('Could not lock %d %s nodes, reason: unknown.',
-                      num, machine_type)
+        inc = random.uniform(0, 1)
+        with safe_while(
+            sleep=1, increment=inc, action=f'lock many {machine_type}') as proceed:
+            while proceed():
+                response = requests.post(
+                    uri,
+                    data=json.dumps(data),
+                    headers={'content-type': 'application/json'},
+                )
+                if response.ok:
+                    machines = {misc.canonicalize_hostname(machine['name']):
+                                machine['ssh_pub_key'] for machine in response.json()}
+                    log.debug('locked {machines}'.format(
+                        machines=', '.join(machines.keys())))
+                    if machine_type in vm_types:
+                        ok_machs = {}
+                        update_nodes(machines, True)
+                        for machine in machines:
+                            if teuthology.provision.create_if_vm(ctx, machine):
+                                ok_machs[machine] = machines[machine]
+                            else:
+                                log.error('Unable to create virtual machine: %s',
+                                        machine)
+                                unlock_one(ctx, machine, user)
+                            ok_machs = do_update_keys(list(ok_machs.keys()))[1]
+                        update_nodes(ok_machs)
+                        return ok_machs
+                    elif reimage and machine_type in reimage_types:
+                        return reimage_machines(ctx, machines, machine_type)
+                    return machines
+                elif response.status_code == 503:
+                    log.error('Insufficient nodes available to lock %d %s nodes.',
+                            num, machine_type)
+                    log.error(response.text)
+    log.error('Could not lock %d %s nodes, reason: unknown.',
+                num, machine_type)
     return []
 
 
@@ -153,18 +156,18 @@ def lock_one(name, user=None, description=None):
     request = dict(name=name, locked=True, locked_by=user,
                    description=description)
     uri = os.path.join(config.lock_server, 'nodes', name, 'lock', '')
-    response = requests.put(uri, json.dumps(request))
-    success = response.ok
-    if success:
-        log.debug('locked %s as %s', name, user)
-    else:
-        try:
-            reason = response.json().get('message')
-        except ValueError:
-            reason = str(response.status_code)
-        log.error('failed to lock {node}. reason: {reason}'.format(
-            node=name, reason=reason))
-    return response
+    inc = random.uniform(0, 1)
+    with safe_while(
+        sleep=1, increment=inc, action=f'lock one {name}') as proceed:
+        while proceed():
+            response = requests.put(uri, json.dumps(request))
+            success = response.ok
+            if success:
+                log.debug('locked %s as %s', name, user)
+                return response
+    log.error('failed to lock {node}'.format(
+        node=name))
+    response.raise_for_status()
 
 
 def unlock_many(names, user):
@@ -204,21 +207,15 @@ def unlock_one(ctx, name, user, description=None):
         while proceed():
             try:
                 response = requests.put(uri, json.dumps(request))
-                break
+                if response.ok:
+                    log.info('Unlocked %s', name)
+                    return True
             # Work around https://github.com/kennethreitz/requests/issues/2364
             except requests.ConnectionError as e:
                 log.warn("Saw %s while unlocking; retrying...", str(e))
-    success = response.ok
-    if success:
-        log.info('unlocked %s', name)
-    else:
-        try:
-            reason = response.json().get('message')
-        except ValueError:
-            reason = str(response.status_code)
-        log.error('failed to unlock {node}. reason: {reason}'.format(
-            node=name, reason=reason))
-    return success
+    log.error('Failed to unlock {node}.'.format(
+            node=name))
+    return False
 
 
 def update_lock(name, description=None, status=None, ssh_pub_key=None):

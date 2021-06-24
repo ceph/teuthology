@@ -252,11 +252,15 @@ class ResultsReporter(object):
         ))
         if jobs:
             if not self.refresh:
-                response = self.session.head("{base}/runs/{name}/".format(
-                    base=self.base_uri, name=run_name))
-                if response.status_code == 200:
-                    self.log.info("    already present; skipped")
-                    return 0
+                inc = random.uniform(0, 1)
+                with safe_while(
+                    sleep=1, increment=inc, action=f'report run {run_name}') as proceed:
+                    while proceed():
+                        response = self.session.head("{base}/runs/{name}/".format(
+                            base=self.base_uri, name=run_name))
+                        if response.status_code == 200:
+                            self.log.info("    already present; skipped")
+                            return 0
             self.report_jobs(run_name, jobs.keys(), dead=dead)
         elif not jobs:
             self.log.debug("    no jobs; skipped")
@@ -369,9 +373,14 @@ class ResultsReporter(object):
             if 'job_id' not in fields:
                 fields.append('job_id')
             uri += "?fields=" + ','.join(fields)
-        response = self.session.get(uri)
+        inc = random.uniform(0, 1)
+        with safe_while(
+                sleep=1, increment=inc, action=f'get jobs for {run_name}') as proceed:
+            while proceed():
+                response = self.session.get(uri)
+                if response.status_code == 200:
+                    return response.json()
         response.raise_for_status()
-        return response.json()
 
     def get_run(self, run_name, fields=None):
         """
@@ -384,9 +393,14 @@ class ResultsReporter(object):
         uri = "{base}/runs/{name}".format(base=self.base_uri, name=run_name)
         if fields:
             uri += "?fields=" + ','.join(fields)
-        response = self.session.get(uri)
+        inc = random.uniform(0, 1)
+        with safe_while(
+                sleep=1, increment=inc, action=f'get run {run_name}') as proceed:
+            while proceed():
+                response = self.session.get(uri)
+                if response.status_code == 200:
+                    return response.json()
         response.raise_for_status()
-        return response.json()
 
     def _parse_log_line(self, line, prefix):
         # parse log lines like
@@ -429,7 +443,13 @@ class ResultsReporter(object):
         """
         uri = "{base}/runs/{name}/jobs/{job_id}/".format(
             base=self.base_uri, name=run_name, job_id=job_id)
-        response = self.session.delete(uri)
+        inc = random.uniform(0, 1)
+        with safe_while(
+                sleep=1, increment=inc, action=f'delete job {job_id}') as proceed:
+            while proceed():
+                response = self.session.delete(uri)
+                if response.status_code == 200:
+                    return
         response.raise_for_status()
 
     def delete_jobs(self, run_name, job_ids):
@@ -450,7 +470,13 @@ class ResultsReporter(object):
         """
         uri = "{base}/runs/{name}/".format(
             base=self.base_uri, name=run_name)
-        response = self.session.delete(uri)
+        inc = random.uniform(0, 1)
+        with safe_while(
+                sleep=1, increment=inc, action=f'delete run {run_name}') as proceed:
+            while proceed():
+                response = self.session.delete(uri)
+                if response.status_code == 200:
+                    return
         response.raise_for_status()
 
 

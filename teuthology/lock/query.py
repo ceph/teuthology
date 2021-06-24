@@ -68,15 +68,13 @@ def list_locks(keyed_by_name=False, **kwargs):
             try:
                 response = requests.get(uri)
                 if response.ok:
-                    break
+                    if not keyed_by_name:
+                        return response.json()
+                    else:
+                        return {node['name']: node
+                                for node in response.json()}
             except requests.ConnectionError:
                 log.exception("Could not contact lock server: %s, retrying...", config.lock_server)
-    if response.ok:
-        if not keyed_by_name:
-            return response.json()
-        else:
-            return {node['name']: node
-                    for node in response.json()}
     return dict()
 
 
@@ -132,13 +130,10 @@ def find_stale_locks(owner=None):
             while proceed():
                 resp = requests.get(url)
                 if resp.ok:
-                    break
-        if not resp.ok:
-            return False
-        job_info = resp.json()
-        if job_info['status'] in ('running', 'waiting'):
-            cache.add(description)
-            return True
+                    job_info = resp.json()
+                    if job_info['status'] in ('running', 'waiting'):
+                        cache.add(description)
+                    return True
         return False
 
     result = list()
