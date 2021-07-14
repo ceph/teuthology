@@ -58,7 +58,7 @@ class RemoteShell(object):
 
         return self.sh(args).strip()
 
-    def mktemp(self, suffix=None, parentdir=None, data=None):
+    def mktemp(self, suffix=None, parentdir=None, data=''):
         """
         Make a remote temporary file.
 
@@ -68,16 +68,17 @@ class RemoteShell(object):
 
         Returns: the path of the temp file created.
         """
+        if not isinstance(data, str):
+            raise RuntimeError('value of parameter data is not str type')
+
         args = ['mktemp']
         if suffix:
             args.append('--suffix=%s' % suffix)
         if parentdir:
             args.append('--tmpdir=%s' % parentdir)
-
         path = self.sh(args).strip()
 
-        if data is not None:
-            self.write_file(path=path, data=data)
+        self.write_file(path=path, data=data)
 
         return path
 
