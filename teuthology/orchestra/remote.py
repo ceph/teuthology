@@ -76,7 +76,7 @@ class RemoteShell(object):
 
         path = self.sh(args).strip()
 
-        if data:
+        if data is not None:
             self.write_file(path=path, data=data)
 
         return path
