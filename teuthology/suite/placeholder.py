@@ -98,6 +98,9 @@ dict_templ = {
             'sha1': Placeholder('suite_hash'),
         }
     },
+    'syslog': {
+        'ignorelist': ['WARNING*.*check_session_state', 'WARNING*.*__ceph_remove_cap'],
+    },
     'repo': Placeholder('ceph_repo'),
     'sleep_before_teardown': 0,
     'suite': Placeholder('suite'),
