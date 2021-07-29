@@ -100,6 +100,9 @@ dict_templ = {
             'sha1': Placeholder('suite_hash'),
         }
     },
+    'syslog': {
+        'ignorelist': [],
+    },
     'repo': Placeholder('ceph_repo'),
     'sleep_before_teardown': 0,
     'suite': Placeholder('suite'),
