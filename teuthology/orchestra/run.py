@@ -244,19 +244,14 @@ def quote(args):
     """
     Internal quote wrapper.
     """
-    def _quote(args):
-        """
-        Handle quoted string, testing for raw charaters.
-        """
-        for a in args:
-            if isinstance(a, Raw):
-                yield a.value
-            else:
-                yield pipes.quote(a)
-    if isinstance(args, list):
-        return ' '.join(_quote(args))
-    else:
+    if isinstance(args, str):
         return args
+
+    assert isinstance(args, list)
+
+    args = [pipes.quote(a) if isinstance(a, str) else a.value for a in args]
+
+    return ' '.join(args)
 
 
 def copy_to_log(f, logger, loglevel=logging.INFO, capture=None, quiet=False):
