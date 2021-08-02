@@ -251,8 +251,13 @@ def quote(args):
         for a in args:
             if isinstance(a, Raw):
                 yield a.value
-            else:
+            elif isinstance(a, str):
                 yield pipes.quote(a)
+            else:
+                raise TypeError('command arguments should either be instance '
+                                f'of str or Raw; not the case here arg "{a}" '
+                                f'is of type "{a.__class__}"')
+
     if isinstance(args, list):
         return ' '.join(_quote(args))
     else:
