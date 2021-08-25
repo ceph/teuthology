@@ -1,4 +1,8 @@
 #!/bin/bash
+
+cat /etc/os-release
+locale
+
 set -e
 if [ $# -eq 0 ]; then
   install=false
