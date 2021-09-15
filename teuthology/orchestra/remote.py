@@ -505,7 +505,8 @@ class Remote(RemoteShell):
         if not self.ssh or \
            not self.ssh.get_transport() or \
            not self.ssh.get_transport().is_active():
-            self.reconnect()
+            if not self.reconnect():
+                raise Exception(f'Cannot connect to remote host {self.shortname}')
         r = self._runner(client=self.ssh, name=self.shortname, **kwargs)
         r.remote = self
         return r
