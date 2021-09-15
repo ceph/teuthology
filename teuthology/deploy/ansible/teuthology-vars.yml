@@ -1,0 +1,29 @@
+---
+teuthology_rpm_repo:
+  'openSUSE Leap':
+    '42.3':
+      - https://download.opensuse.org/repositories/filesystems:/ceph:/teuthology/openSUSE_Leap_42.3/
+    '15.1':
+      - https://download.opensuse.org/repositories/filesystems:/ceph:/teuthology/openSUSE_Leap_15.1/
+    '15.2':
+      - https://download.opensuse.org/repositories/filesystems:/ceph:/teuthology/openSUSE_Leap_15.2/
+    '15.3':
+      - https://download.opensuse.org/repositories/filesystems:/ceph:/teuthology/openSUSE_Leap_15.3/
+paddles_address: http://127.0.0.1:8080
+#pulpito_address: http://{{ ansible_hostname }}:8081
+pulpito_address: http://{{ inventory_hostname }}:8081
+
+nsupdate_url: 'http://localhost:8888/update'
+nsupdate_web_port: '8888'
+#yaml_extra_path: "libcloud/{{ machine_type }}.cfg"
+pop_script: "roles/paddles_nodes/files/populate_nodes.psql"
+
+named_conf_dir: "/var/lib/named"
+named_conf_data_dir: "/var/lib/named/data"
+named_conf_zones_path: "/var/lib/named/zones"
+named_conf_recursion: "no"
+
+teuthology_ceph_git_base_url: 'http://github.com/ceph/'
+teuthology_scheduler_user: runner
+teuthology_execution_user: worker
+teuthology_yaml_extra: "{{ lookup('template', '{{ yaml_extra_path }}') }}"

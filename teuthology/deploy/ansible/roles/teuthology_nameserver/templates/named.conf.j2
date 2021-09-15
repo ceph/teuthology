@@ -1,0 +1,7 @@
+{{ named_conf_key }}
+
+zone "{{ zone_name }}" {
+        type master;
+        file "/var/lib/named/{{ zone_name }}.db";
+        allow-update { key "{{ zone_name }}."; };
+};

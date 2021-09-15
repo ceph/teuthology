@@ -1,0 +1,24 @@
+- name: Generate TSIG key
+  shell: "tsig-keygen {{ zone_name }}."
+  register: tsig_keygen
+
+- name: Set key vars
+  set_fact:
+    tsig_key: "{{ tsig_keygen.stdout }}"
+    pubkey_name: "{{ teuthology_name }}.{{ zone_name }}.key"
+    named_conf_key: |
+        {{ tsig_keygen.stdout }}
+
+- name: Save tsig key data to secrets local path
+  local_action: 
+    module: copy 
+    content: "{{ tsig_key }}"
+    dest: "{{ secrets_path }}/{{ pubkey_name }}"
+  # specifically disable become to avoid sudo on localhost
+  vars:
+    ansible_become: false
+
+- name: Copy tsig key to remote host
+  copy:
+    src: "{{ secrets_path }}/{{ pubkey_name }}"
+    dest: "{{ pubkey_name }}"

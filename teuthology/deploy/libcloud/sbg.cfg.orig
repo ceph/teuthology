@@ -1,0 +1,114 @@
+use_shaman: true
+check_package_signatures: false
+suite_verify_ceph_hash: false
+canonical_tags: true
+# comment the next line to enable --teuthology-branch
+#teuthology_path: "/home/{{ teuthology_execution_user }}/src/teuthology_master"
+ceph_git_url: "{{ ceph_repo }}"
+nsupdate_url: "http://localhost:{{ nsupdate_web_port }}/update"
+libcloud:
+  ovh_fix: &ovh_fix_ifcfg
+    |
+      cat > /tmp/ifcfg << EOF
+      BOOTPROTO=dhcp
+      MTU=
+      REMOTE_IPADDR=
+      STARTMODE=auto
+      ETHTOOL_OPTIONS=
+      USERCONTROL=no
+      EOF
+
+      cat > /tmp/fix-ifcfg << EOF
+      ETH=\$(ip route list | grep "scope link" | cut -f 3 -d ' ')
+      cp /etc/sysconfig/network/ifcfg-\$ETH /etc/sysconfig/network/ifcfg-\$ETH.backup
+      cp /tmp/ifcfg /etc/sysconfig/network/ifcfg-\$ETH
+      ifdown \$ETH
+      ifup \$ETH
+      EOF
+
+      bash /tmp/fix-ifcfg
+  common:
+    resolv_conf: &resolv_conf
+      |
+        cat > /etc/resolv.conf << EOF
+        search {{ lab_domain }}
+        nameserver {{ nameserver_addr }}
+        EOF
+    manage_resolv_conf: &manage_resolv_conf
+        manage_resolv_conf: true
+        nameservers:
+          - "{{ nameserver_addr }}"
+        searchdomains:
+          - "{{ lab_domain }}"
+  providers:
+    sbg:  # This string is the 'machine type' value you will use when locking these nodes
+      userdata:
+        "sle-15.1":
+          runcmd:
+            - *ovh_fix_ifcfg
+            - *resolv_conf
+            - zypper in -y git wget rsyslog || true
+            - zypper in -y lsb-release make gcc gcc-c++ chrony || true
+            - systemctl enable chronyd.service || true
+            - systemctl start chronyd.service || true
+        "sle-12.3":
+          bootcmd:
+            - SuSEfirewall2 stop
+          runcmd:
+            - *ovh_fix_ifcfg
+            - *resolv_conf
+            - zypper in -y git wget rsyslog || true
+            - zypper in -y lsb-release make gcc gcc-c++ ntpd || true
+            - |
+              if ! grep '^server' /etc/ntp.conf ; then
+                for i in 0 1 2 3 ; do
+                  echo "server $i.opensuse.pool.ntp.org iburst" >> /etc/ntp.conf
+                done
+              fi
+            - systemctl enable  ntpd.service
+            - systemctl restart ntpd.service
+      driver: openstack
+      driver_args:  # driver args are passed directly to the libcloud driver
+        ex_force_service_region: 'SBG5'
+        #ex_force_auth_url: 'https://auth.cloud.ovh.net/v2.0/tokens'
+        #ex_force_auth_version: '2.0_password'
+        ex_force_auth_url: 'https://auth.cloud.ovh.net/v3/auth/tokens'
+        ex_force_auth_version: '3.x_password'
+        ex_tenant_name: 'CHANGE_ME'
+        username: 'CHANGE_ME'
+        password: 'CHANGE_ME'
+openstack:
+  clone: git clone {{ teuthology_repo }}
+  user-data: teuthology/openstack/openstack-{os_type}-{os_version}-user-data.txt
+  ip: {{ teuthology_addr }}
+  nameserver: {{ nameserver_addr }}
+  selfname: {{ teuthology_name }}
+  keypair: teuth-ci
+  server_name: teuth-ci
+  server_group: teuth-ci
+  worker_group: teuth-ci-worker
+  package_repo: teuth-ci-repo
+  #
+  # OpenStack has predefined machine sizes (called flavors)
+  # For a given job requiring N machines, the following will select
+  # the smallest flavor that satisfies these requirements. For instance
+  # If there are three flavors
+  #
+  #   F1 (10GB disk, 2000MB RAM, 1CPU)
+  #   F2 (100GB disk, 7000MB RAM, 1CPU)
+  #   F3 (50GB disk, 7000MB RAM, 1CPU)
+  #
+  # and machine: { disk: 40, ram: 7000, cpus: 1 }, F3 will be chosen.
+  # F1 does not have enough RAM (2000 instead of the 7000 minimum) and
+  # although F2 satisfies all the requirements, it is larger than F3
+  # (100GB instead of 50GB) and presumably more expensive.
+  #
+  machine:
+    disk: 20 # GB
+    ram: 4000 # MB
+    cpus: 1
+  volumes:
+    count: 0
+    size: 1 # GB
+  subnet: 51.68.80.0/20
+
