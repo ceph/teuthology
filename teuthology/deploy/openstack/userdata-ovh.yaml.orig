@@ -1,0 +1,41 @@
+#cloud-config
+
+#chpasswd:
+#  list: |
+#    root:CHANGEME
+#  expire: False
+
+disable_root: false
+
+runcmd:
+  - [ sh, -c, echo "========= Teuthology setup started =========" ]
+  - |
+    su - -c 'cat > /tmp/ifcfg' root << EOF
+    BOOTPROTO=dhcp
+    MTU=
+    REMOTE_IPADDR=
+    STARTMODE=auto
+    ETHTOOL_OPTIONS=
+    USERCONTROL=no
+    EOF
+
+  - |
+    su - -c 'cat > /tmp/fix-ifcfg' root << EOF
+    ETH=\$(ip route list | grep "scope link" | cut -f 3 -d ' ')
+    cp /etc/sysconfig/network/ifcfg-\$ETH /etc/sysconfig/network/ifcfg-\$ETH.backup
+    cp /tmp/ifcfg /etc/sysconfig/network/ifcfg-\$ETH
+    ifdown \$ETH
+    ifup \$ETH
+    EOF
+
+  - bash /tmp/fix-ifcfg
+  - |
+    for i in $(seq 1 30) ; do
+        ping -q -c 1 8.8.8.8 && break
+        sleep 10
+    done
+  - zypper -n --gpg-auto-import-keys refresh
+  - zypper -n --gpg-auto-import-keys install -y python python-virtualenv python-xml ansible
+  #- zypper -n --gpg-auto-import-keys update --auto-agree-with-licenses
+
+final_message: "TEUTHOLOGYBOOT $UPTIME"

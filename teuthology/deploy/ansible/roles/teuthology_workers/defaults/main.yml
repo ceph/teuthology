@@ -1,0 +1,3 @@
+teuthology_execution_user: teuthworker
+libcloud_ssl_cert_file: ''
+
