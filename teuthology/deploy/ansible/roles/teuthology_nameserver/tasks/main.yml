@@ -1,0 +1,151 @@
+# Install and update system packages
+- import_tasks: packages.yml
+  tags:
+    - packages
+
+#- name: generate dnssec key
+#  import_tasks: dnssec-keygen.yml
+#  tags:
+#    - dnssec-keygen
+
+- name: Generate tsig key
+  import_tasks: tsig-keygen.yml
+  tags:
+    - tsig-keygen
+
+- name: Enable and start ntpd
+  service:
+    name: ntpd
+    state: started
+    enabled: yes
+  tags:
+    - always
+  when: ansible_os_family == "Suse"
+
+- name: Enable and start ntp for Debian based distro
+  service:
+    name: ntp
+    state: started
+    enabled: yes
+  when: ansible_os_family == "Debian"
+
+- name: nameserver list from resolv.conf
+  shell: |
+          grep -E -v '^\s*\#' /etc/resolv.conf | grep nameserver | sed -E 's/^.*nameserver\s+([^[:space:]\#]+).*$/\1/g'
+  register: resolv_conf_nameservers
+- name: name names
+  set_fact: nslist="{{resolv_conf_nameservers.stdout_lines}}"
+- name: printout {{ nslist }}
+  debug: var=nslist
+
+## We cannot use named.conf.include directly anymore
+## because on opensuse it is generated automatically,
+## that is why we have to use NAMED_CONF_INCLUDE_FILES
+#
+#- name: Check that named.conf.include exists
+#  stat:
+#    path: /etc/named.conf.include
+#  register: named_conf_include
+#
+#- name: Create the file, if it doesnt exist already
+#  file:
+#    path: /etc/named.conf.include
+#    state: touch
+#  when: named_conf_include.stat.exists == False
+#
+#- name: add zone config to named.conf.include
+#  blockinfile:
+#    create: yes
+#    block: "{{ lookup('template', 'named.conf.j2') }}"
+#    path: '/etc/named.conf.include'
+#
+- name: Create named.conf for the domain
+  template:
+    src: "named.conf.j2"
+    dest: "/etc/named.d/{{ zone_name }}.conf"
+
+- name: Set NAMED_CONF_INCLUDE_FILES in /etc/sysconfig/named
+  replace:
+    backup: yes
+    path: /etc/sysconfig/named
+    regexp: '^(NAMED_CONF_INCLUDE_FILES)=.*$'
+    replace: '\1="{{ zone_name }}.conf"'
+
+- name: copy zone db file
+  template:
+    src: "zone.db.j2" 
+    dest: "/var/lib/named/{{ zone_name }}.db"
+- name: set forwarders
+  lineinfile:
+    backrefs: yes
+    regexp: '#forwarders'
+    state: present
+    path: /etc/named.conf
+    line: |
+        forwarders { {% for i in nslist %}{{ i }}; {% endfor %} };
+- name: Allow recursion
+  lineinfile:
+    backup: yes
+    state: present
+    dest: /etc/named.conf
+    insertafter: 'options {'
+    line: "\tallow-recursion { any; };"
+- name: Restart named
+  service:
+    name: named
+    state: restarted
+    enabled: yes
+  tags:
+    - always
+
+- name: Add lab domain to DNS static search list
+  replace:
+    backup: yes
+    path: /etc/sysconfig/network/config
+    regexp: '^(NETCONFIG_DNS_STATIC_SEARCHLIST)=.*$'
+    replace: '\1="{{ lab_domain }}"'
+
+- name: Set DNS forwarder to bind
+  replace:
+    backup: yes
+    path: /etc/sysconfig/network/config
+    regexp: '^(NETCONFIG_DNS_FORWARDER)=.*$'
+    replace: '\1="bind"'
+
+- name: Force adjusting the /etc/resolv.conf
+  shell: |
+        netconfig update -f
+
+- name: Make nsupdate test script
+  blockinfile:
+    path: /tmp/nsupdate-test-create.txt
+    create: yes
+    marker: "; {mark}"
+    block: |
+        server master.ddns.{{ lab_domain }}
+        zone {{ lab_domain }}
+        update delete local.ddns.{{ lab_domain }}. A
+        update add local.ddns.{{ lab_domain }}. 600 A 127.0.0.1
+        show
+        send
+
+- name: Delete dns record test script
+  blockinfile:
+    path: /tmp/nsupdate-test-delete.txt
+    marker: "; {mark}"
+    create: yes
+    block: |
+        server master.ddns.{{ lab_domain }}
+        zone {{ lab_domain }}
+        update delete local.ddns.{{ lab_domain }}. A
+        show
+        send
+
+- name: Check nsupdate setup
+  shell: |
+          nsupdate -k {{ pubkey_name }} -v /tmp/nsupdate-test-create.txt
+- name: Check dns
+  shell: |
+          host local.ddns.{{ lab_domain }}
+          ping -c 1 local.ddns
+
