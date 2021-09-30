@@ -1,0 +1,49 @@
+2021-11-29T07:42:27.833 INFO:teuthology.orchestra.run.smithi053.stdout:Best match: botocore 1.23.14
+2021-11-29T07:42:27.833 INFO:teuthology.orchestra.run.smithi053.stdout:Adding botocore 1.23.14 to easy-install.pth file
+2021-11-29T07:42:27.833 INFO:teuthology.orchestra.run.smithi053.stdout:
+2021-11-29T07:42:27.833 INFO:teuthology.orchestra.run.smithi053.stdout:Using /home/ubuntu/cephtest/s3-tests/virtualenv/lib/python3.6/site-packages
+2021-11-29T07:42:27.834 INFO:teuthology.orchestra.run.smithi053.stdout:Searching for urllib3==1.26.7
+2021-11-29T07:42:27.834 INFO:teuthology.orchestra.run.smithi053.stdout:Best match: urllib3 1.26.7
+2021-11-29T07:42:27.834 INFO:teuthology.orchestra.run.smithi053.stdout:Adding urllib3 1.26.7 to easy-install.pth file
+2021-11-29T07:42:27.834 INFO:teuthology.orchestra.run.smithi053.stdout:
+2021-11-29T07:42:27.835 INFO:teuthology.orchestra.run.smithi053.stdout:Using /home/ubuntu/cephtest/s3-tests/virtualenv/lib/python3.6/site-packages
+2021-11-29T07:42:27.835 INFO:teuthology.orchestra.run.smithi053.stdout:Searching for python-dateutil==2.8.2
+2021-11-29T07:42:27.835 INFO:teuthology.orchestra.run.smithi053.stdout:Best match: python-dateutil 2.8.2
+2021-11-29T07:42:27.835 INFO:teuthology.orchestra.run.smithi053.stdout:Adding python-dateutil 2.8.2 to easy-install.pth file
+2021-11-29T07:42:27.836 INFO:teuthology.orchestra.run.smithi053.stdout:
+2021-11-29T07:42:27.836 INFO:teuthology.orchestra.run.smithi053.stdout:Using /home/ubuntu/cephtest/s3-tests/virtualenv/lib/python3.6/site-packages
+2021-11-29T07:42:27.836 INFO:teuthology.orchestra.run.smithi053.stdout:Finished processing dependencies for s3tests==0.0.1
+2021-11-29T07:42:27.840 DEBUG:teuthology.orchestra.run.smithi053:> set -ex
+2021-11-29T07:42:27.840 DEBUG:teuthology.orchestra.run.smithi053:> dd of=/home/ubuntu/cephtest/archive/s3-tests.client.0.conf
+2021-11-29T07:42:27.855 INFO:tasks.s3tests:Configuring boto...
+2021-11-29T07:42:27.856 DEBUG:teuthology.orchestra.run.smithi053:> set -ex
+2021-11-29T07:42:27.856 DEBUG:teuthology.orchestra.run.smithi053:> dd of=/home/ubuntu/cephtest/boto.cfg
+2021-11-29T07:42:27.910 DEBUG:teuthology.orchestra.run.smithi053:s3 tests against rgw> S3TEST_CONF=/home/ubuntu/cephtest/archive/s3-tests.client.0.conf BOTO_CONFIG=/home/ubuntu/cephtest/boto.cfg REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt /home/ubuntu/cephtest/s3-tests/virtualenv/bin/python -m nose -w /home/ubuntu/cephtest/s3-tests -v -a test_of_sts
+2021-11-29T07:42:28.691 INFO:teuthology.orchestra.run.smithi053.stderr:s3tests_boto3.functional.test_sts.test_get_session_token ... ok
+2021-11-29T07:42:28.722 INFO:teuthology.orchestra.run.smithi053.stderr:s3tests_boto3.functional.test_sts.test_get_session_token_permanent_creds_denied ... ok
+2021-11-29T07:42:28.852 INFO:teuthology.orchestra.run.smithi053.stderr:s3tests_boto3.functional.test_sts.test_assume_role_allow ... ok
+2021-11-29T07:42:28.954 INFO:teuthology.orchestra.run.smithi053.stderr:s3tests_boto3.functional.test_sts.test_assume_role_deny ... ok
+2021-11-29T07:57:29.138 INFO:teuthology.orchestra.run.smithi053.stderr:s3tests_boto3.functional.test_sts.test_assume_role_creds_expiry ... ok
+2021-11-29T07:57:29.258 INFO:teuthology.orchestra.run.smithi053.stderr:s3tests_boto3.functional.test_sts.test_assume_role_deny_head_nonexistent ... ok
+2021-11-29T07:57:29.561 INFO:teuthology.orchestra.run.smithi053.stderr:s3tests_boto3.functional.test_sts.test_assume_role_allow_head_nonexistent ... ok
+2021-11-29T07:57:29.561 INFO:teuthology.orchestra.run.smithi053.stderr:ERROR
+2021-11-29T07:57:29.562 INFO:teuthology.orchestra.run.smithi053.stderr:
+2021-11-29T07:57:29.562 INFO:teuthology.orchestra.run.smithi053.stderr:======================================================================
+2021-11-29T07:57:29.563 INFO:teuthology.orchestra.run.smithi053.stderr:ERROR: test suite for <module 's3tests_boto3.functional' from '/home/ubuntu/cephtest/s3-tests/s3tests_boto3/functional/__init__.py'>
+2021-11-29T07:57:29.563 INFO:teuthology.orchestra.run.smithi053.stderr:----------------------------------------------------------------------
+2021-11-29T07:57:29.563 INFO:teuthology.orchestra.run.smithi053.stderr:Traceback (most recent call last):
+2021-11-29T07:57:29.564 INFO:teuthology.orchestra.run.smithi053.stderr:  File "/home/ubuntu/cephtest/s3-tests/virtualenv/lib/python3.6/site-packages/nose/suite.py", line 229, in run
+2021-11-29T07:57:29.564 INFO:teuthology.orchestra.run.smithi053.stderr:    self.tearDown()
+2021-11-29T07:57:29.564 INFO:teuthology.orchestra.run.smithi053.stderr:  File "/home/ubuntu/cephtest/s3-tests/virtualenv/lib/python3.6/site-packages/nose/suite.py", line 352, in tearDown
+2021-11-29T07:57:29.565 INFO:teuthology.orchestra.run.smithi053.stderr:    self.teardownContext(ancestor)
+2021-11-29T07:57:29.565 INFO:teuthology.orchestra.run.smithi053.stderr:  File "/home/ubuntu/cephtest/s3-tests/virtualenv/lib/python3.6/site-packages/nose/suite.py", line 368, in teardownContext
+2021-11-29T07:57:29.566 INFO:teuthology.orchestra.run.smithi053.stderr:    try_run(context, names)
+2021-11-29T07:57:29.566 INFO:teuthology.orchestra.run.smithi053.stderr:  File "/home/ubuntu/cephtest/s3-tests/virtualenv/lib/python3.6/site-packages/nose/util.py", line 471, in try_run
+2021-11-29T07:57:29.566 INFO:teuthology.orchestra.run.smithi053.stderr:    return func()
+2021-11-29T07:57:29.567 INFO:teuthology.orchestra.run.smithi053.stderr:  File "/home/ubuntu/cephtest/s3-tests/s3tests_boto3/functional/__init__.py", line 259, in teardown
+2021-11-29T07:57:29.567 INFO:teuthology.orchestra.run.smithi053.stderr:    nuke_prefixed_buckets(prefix=prefix, client=alt_client)
+2021-11-29T07:57:29.568 INFO:teuthology.orchestra.run.smithi053.stderr:  File "/home/ubuntu/cephtest/s3-tests/s3tests_boto3/functional/__init__.py", line 148, in nuke_prefixed_buckets
+2021-11-29T07:57:29.569 INFO:teuthology.orchestra.run.smithi053.stderr:    buckets = get_buckets_list(client, prefix)
+2021-11-29T07:57:29.569 INFO:teuthology.orchestra.run.smithi053.stderr:  File "/home/ubuntu/cephtest/s3-tests/s3tests_boto3/functional/__init__.py", line 54, in get_buckets_list
+2021-11-29T07:57:29.569 INFO:teuthology.orchestra.run.smithi053.stderr:    response = client.list_buckets()
+

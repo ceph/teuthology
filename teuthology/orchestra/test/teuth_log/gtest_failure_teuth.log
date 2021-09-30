@@ -1,0 +1,54 @@
+2021-11-26T03:42:35.308 INFO:tasks.workunit.client.0.smithi063.stdout:created completion
+2021-11-26T03:42:35.308 INFO:tasks.workunit.client.0.smithi063.stdout:started writesame
+2021-11-26T03:42:35.308 INFO:tasks.workunit.client.0.smithi063.stdout:write completion cb called!
+2021-11-26T03:42:35.309 INFO:tasks.workunit.client.0.smithi063.stdout:return value is: 0
+2021-11-26T03:42:35.309 INFO:tasks.workunit.client.0.smithi063.stdout:finished writesame
+2021-11-26T03:42:35.309 INFO:tasks.workunit.client.0.smithi063.stdout:to verify the data
+2021-11-26T03:42:35.309 INFO:tasks.workunit.client.0.smithi063.stdout:verified
+2021-11-26T03:42:35.309 INFO:tasks.workunit.client.0.smithi063.stdout:created completion
+2021-11-26T03:42:35.310 INFO:tasks.workunit.client.0.smithi063.stdout:started writesame
+2021-11-26T03:42:35.310 INFO:tasks.workunit.client.0.smithi063.stdout:expected fail, finished writesame
+2021-11-26T03:42:35.310 INFO:tasks.workunit.client.0.smithi063.stdout:created completion
+2021-11-26T03:42:35.310 INFO:tasks.workunit.client.0.smithi063.stdout:started writesame
+2021-11-26T03:42:35.311 INFO:tasks.workunit.client.0.smithi063.stdout:expected fail, finished writesame
+2021-11-26T03:42:35.311 INFO:tasks.workunit.client.0.smithi063.stdout:read completion cb called!
+2021-11-26T03:42:35.311 INFO:tasks.workunit.client.0.smithi063.stdout:read completion cb called!
+2021-11-26T03:42:35.311 INFO:tasks.workunit.client.0.smithi063.stdout:wrote: 512
+2021-11-26T03:42:35.312 INFO:tasks.workunit.client.0.smithi063.stdout:read completion cb called!
+2021-11-26T03:42:35.312 INFO:tasks.workunit.client.0.smithi063.stdout:wrote: 4
+2021-11-26T03:42:35.312 INFO:tasks.workunit.client.0.smithi063.stdout:read: 4
+2021-11-26T03:42:35.312 INFO:tasks.workunit.client.0.smithi063.stdout:read: --42
+2021-11-26T03:42:35.313 INFO:tasks.workunit.client.0.smithi063.stdout:expected: test
+2021-11-26T03:42:35.313 INFO:tasks.workunit.client.0.smithi063.stdout:/build/ceph-16.2.6-681-gfdc003bc/src/test/librbd/test_librbd.cc:364: Failure
+2021-11-26T03:42:35.313 INFO:tasks.workunit.client.0.smithi063.stdout:Expected equality of these values:
+2021-11-26T03:42:35.313 INFO:tasks.workunit.client.0.smithi063.stdout:  0
+2021-11-26T03:42:35.313 INFO:tasks.workunit.client.0.smithi063.stdout:  memcmp(result, expected, len)
+2021-11-26T03:42:35.314 INFO:tasks.workunit.client.0.smithi063.stdout:    Which is: -1
+2021-11-26T03:42:35.317 INFO:tasks.workunit.client.0.smithi063.stdout:[  FAILED  ] TestLibRBD.TestEncryptionLUKS2 (12236 ms)
+2021-11-26T03:42:35.317 INFO:tasks.workunit.client.0.smithi063.stdout:[ RUN      ] TestLibRBD.TestIOWithIOHint
+2021-11-26T03:42:35.318 INFO:tasks.workunit.client.0.smithi063.stdout:using new format!
+2021-11-26T03:42:37.857 INFO:tasks.workunit.client.0.smithi063.stdout:wrote: 512
+2021-11-26T03:42:37.858 INFO:tasks.workunit.client.0.smithi063.stdout:wrote: 512
+2021-11-26T03:42:37.858 INFO:tasks.workunit.client.0.smithi063.stdout:wrote: 512
+2021-11-26T03:42:37.858 INFO:tasks.workunit.client.0.smithi063.stdout:wrote: 512
+2021-11-26T03:42:37.858 INFO:tasks.workunit.client.0.smithi063.stdout:wrote: 512
+2021-11-26T03:42:37.859 INFO:tasks.workunit.client.0.smithi063.stdout:created completion
+2021-11-26T03:42:37.859 INFO:tasks.workunit.client.0.smithi063.stdout:started write
+2021-11-26T03:42:37.859 INFO:tasks.workunit.client.0.smithi063.stdout:write completion cb called!
+2021-11-26T03:42:37.859 INFO:tasks.workunit.client.0.smithi063.stdout:return value is: 0
+2021-11-26T03:42:37.859 INFO:tasks.workunit.client.0.smithi063.stdout:finished write
+2021-11-26T03:42:37.860 INFO:tasks.workunit.client.0.smithi063.stdout:created completion
+2021-11-26T03:42:37.860 INFO:tasks.workunit.client.0.smithi063.stdout:started write
+2021-11-26T03:42:37.860 INFO:tasks.workunit.client.0.smithi063.stdout:write completion cb called!
+2021-11-26T03:42:37.860 INFO:tasks.workunit.client.0.smithi063.stdout:return value is: 0
+2021-11-26T03:42:37.861 INFO:tasks.workunit.client.0.smithi063.stdout:finished write
+2021-11-26T03:42:37.861 INFO:tasks.workunit.client.0.smithi063.stdout:created completion
+2021-11-26T03:42:37.861 INFO:tasks.workunit.client.0.smithi063.stdout:started write
+2021-11-26T03:42:37.861 INFO:tasks.workunit.client.0.smithi063.stdout:write completion cb called!
+2021-11-26T03:42:37.862 INFO:tasks.workunit.client.0.smithi063.stdout:return value is: 0
+2021-11-26T03:42:37.862 INFO:tasks.workunit.client.0.smithi063.stdout:finished write
+2021-11-26T03:42:37.862 INFO:tasks.workunit.client.0.smithi063.stdout:created completion
+2021-11-26T03:42:37.862 INFO:tasks.workunit.client.0.smithi063.stdout:started write
+2021-11-26T03:42:37.862 INFO:tasks.workunit.client.0.smithi063.stdout:write completion cb called!
+2021-11-26T03:42:37.863 INFO:tasks.workunit.client.0.smithi063.stdout:return value is: 0
+

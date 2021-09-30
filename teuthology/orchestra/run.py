@@ -3,7 +3,7 @@ Paramiko run support
 """
 
 import io
-
+import re
 from paramiko import ChannelFile
 
 import gevent
@@ -161,6 +161,29 @@ class RemoteProcess(object):
         self._raise_for_status()
         return status
 
+    def _open_file_path_from_handler(self):
+        log2 = logging.getLogger()
+        for h in log2.handlers:
+            # check the handler is a file handler
+            # h.stream should be an open file handle, it's name is the path
+            if isinstance(h, logging.FileHandler):
+                return h.stream.name
+        return None
+
+    def _scan_unittest_error(self):
+        file_path = self._open_file_path_from_handler()
+        if file_path:
+            with open(file_path, 'r') as f:
+                for line in f.readlines():
+                    # python nose test
+                    ret1 = re.search("ERROR:\s", line)
+                    if ret1:
+                        return line[ret1.start():].strip()
+                    # gtest c++
+                    ret2 = re.search("\[\s\sFAILED\s\s\]", line)
+                    if ret2:
+                        return line[ret2.start():].strip()
+        return None
     def _raise_for_status(self):
         if self.returncode is None:
             self._get_exitstatus()
@@ -180,7 +203,8 @@ class RemoteProcess(object):
             if self.returncode != 0:
                 raise CommandFailedError(
                     command=self.command, exitstatus=self.returncode,
-                    node=self.hostname, label=self.label
+                    node=self.hostname, label=self.label,
+                    unit_test_error=self._scan_unittest_error()
                 )
 
     def _get_exitstatus(self):
