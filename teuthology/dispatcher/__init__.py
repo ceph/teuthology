@@ -66,6 +66,8 @@ def load_config(archive_dir=None):
 def clean_config(config):
     result = {}
     for key in config:
+        if key == 'status':
+            continue
         if config[key] is not None:
             result[key] = config[key]
     return result
@@ -80,6 +82,7 @@ def main(args):
     log_dir = args["--log-dir"]
     archive_dir = args["--archive-dir"]
     exit_on_empty_queue = args["--exit-on-empty-queue"]
+    backend = args['--queue-backend']
 
     if archive_dir is None:
         archive_dir = teuth_config.archive_base
@@ -105,6 +108,10 @@ def main(args):
     install_except_hook()
 
     load_config(archive_dir=archive_dir)
+
+    if backend == 'beanstalk':
+        connection = beanstalk.connect()
+        beanstalk.watch_tube(connection, machine_type)
 
     result_proc = None
 
@@ -204,6 +211,13 @@ def main(args):
                 status='fail',
                 failure_reason=error_message))
 
+        # This try/except block is to keep the worker from dying when
+        # beanstalkc throws a SocketError
+        if backend == 'beanstalk':
+            try:
+                job.delete()
+            except Exception:
+                log.exception("Saw exception while trying to delete job")
 
     return worst_returncode
 
@@ -261,7 +275,7 @@ def create_job_archive(job_name, job_archive_path, archive_dir):
 
 
 def pause_queue(machine_type, paused, paused_by, pause_duration=None):
-    if paused == True:
+    if paused:
         report.pause_queue(machine_type, paused, paused_by, pause_duration)
         '''
         If there is a pause duration specified
@@ -271,5 +285,5 @@ def pause_queue(machine_type, paused, paused_by, pause_duration=None):
             sleep(int(pause_duration))
             paused = False
             report.pause_queue(machine_type, paused, paused_by)
-    elif paused == False:
+    elif not paused:
         report.pause_queue(machine_type, paused, paused_by)

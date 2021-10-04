@@ -4,14 +4,14 @@ import teuthology.config
 import teuthology.paddles_queue
 
 doc = """
-usage: teuthology-queue -h
-       teuthology-queue -s -m MACHINE_TYPE
-       teuthology-queue [-d|-f] -m MACHINE_TYPE -U USER
-       teuthology-queue -m MACHINE_TYPE -P PRIORITY [-U USER|-R RUN_NAME]
-       teuthology-queue [-r] -m MACHINE_TYPE -U USER
-       teuthology-queue -m MACHINE_TYPE -D PATTERN -U USER
-       teuthology-queue -p [-t SECONDS] -m MACHINE_TYPE -U USER
-       teuthology-queue -u -m MACHINE_TYPE -U USER
+usage: teuthology-paddles-queue -h
+       teuthology-paddles-queue -s -m MACHINE_TYPE
+       teuthology-paddles-queue [-d|-f] -m MACHINE_TYPE -U USER
+       teuthology-paddles-queue -m MACHINE_TYPE -P PRIORITY [-U USER|-R RUN_NAME]
+       teuthology-paddles-queue [-r] -m MACHINE_TYPE -U USER
+       teuthology-paddles-queue -m MACHINE_TYPE -D PATTERN -U USER
+       teuthology-paddles-queue -p [-t SECONDS] -m MACHINE_TYPE -U USER
+       teuthology-paddles-queue -u -m MACHINE_TYPE -U USER
 
 List Jobs in queue.
 If -D is passed, then jobs with PATTERN in the job name are deleted from the
@@ -36,7 +36,7 @@ optional arguments:
   -P, --priority PRIORITY
                         Change priority of queued jobs
   -U, --user USER       User who owns the jobs
-  -R, --run_name RUN_NAME
+  -R, --run-name RUN_NAME
                         Used to change priority of all jobs in the run.
 """
 

@@ -65,7 +65,8 @@ class TestDispatcher(unittest.TestCase):
             '--description': 'the_description',
             '--machine-type': 'test_queue',
             '--supervisor': False,
-            '--verbose': False
+            '--verbose': False,
+            '--queue-backend': 'paddles'
         }
 
         m = mock.MagicMock()
