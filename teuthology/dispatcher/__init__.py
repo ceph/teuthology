@@ -68,6 +68,8 @@ def load_config(archive_dir=None):
 def clean_config(config):
     result = {}
     for key in config:
+        if key == 'status':
+            continue
         if config[key] is not None:
             result[key] = config[key]
     return result
@@ -87,6 +89,7 @@ def main(args):
     log_dir = args["--log-dir"]
     archive_dir = args["--archive-dir"]
     exit_on_empty_queue = args["--exit-on-empty-queue"]
+    backend = args['--queue-backend']
 
     if archive_dir is None:
         archive_dir = teuth_config.archive_base
@@ -104,6 +107,10 @@ def main(args):
     install_except_hook()
 
     load_config(archive_dir=archive_dir)
+
+    if backend == 'beanstalk':
+        connection = beanstalk.connect()
+        beanstalk.watch_tube(connection, machine_type)
 
     result_proc = None
 
@@ -133,19 +140,26 @@ def main(args):
             if rc is not None:
                 worst_returncode = max([worst_returncode, rc])
                 job_procs.remove(proc)
-        job = report.get_queued_job(machine_type)
-        if job is None:
-            if args.exit_on_empty_queue and not job_procs:
-                log.info("Queue is empty and no supervisor processes running; exiting!")
-                break
-            continue
-        job = clean_config(job)
-        report.try_push_job_info(job, dict(status='running'))
-        job_id = job.get('job_id')
-        log.info('Reserved job %s', job_id)
-        log.info('Config is: %s', job)
-        job_config = job
-        
+        if backend == 'beanstalk':
+            job = connection.reserve(timeout=60)
+            if job is None:
+                continue
+            job.bury()
+            job_config = yaml.safe_load(job.body)
+            job_id = job_config.get('job_id')
+            log.info('Reserved job %s', job_id)
+            log.info('Config is: %s', job.body)
+        else:
+            job = report.get_queued_job(machine_type)
+            if job is None:
+                continue
+            job = clean_config(job)
+            report.try_push_job_info(job, dict(status='running'))
+            job_id = job.get('job_id')
+            log.info('Reserved job %s', job_id)
+            log.info('Config is: %s', job)
+            job_config = job
+
         if job_config.get('stop_worker'):
             keep_running = False
 
@@ -205,6 +219,13 @@ def main(args):
                 status='fail',
                 failure_reason=error_message))
 
+        # This try/except block is to keep the worker from dying when
+        # beanstalkc throws a SocketError
+        if backend == 'beanstalk':
+            try:
+                job.delete()
+            except Exception:
+                log.exception("Saw exception while trying to delete job")
 
     return worst_returncode
 
@@ -373,7 +394,7 @@ def create_job_archive(job_name, job_archive_path, archive_dir):
 
 
 def pause_queue(machine_type, paused, paused_by, pause_duration=None):
-    if paused == True:
+    if paused:
         report.pause_queue(machine_type, paused, paused_by, pause_duration)
         '''
         If there is a pause duration specified
@@ -383,5 +404,5 @@ def pause_queue(machine_type, paused, paused_by, pause_duration=None):
             sleep(int(pause_duration))
             paused = False
             report.pause_queue(machine_type, paused, paused_by)
-    elif paused == False:
+    elif not paused:
         report.pause_queue(machine_type, paused, paused_by)

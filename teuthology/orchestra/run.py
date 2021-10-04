@@ -182,7 +182,6 @@ class RemoteProcess(object):
                     command=self.command, exitstatus=self.returncode,
                     node=self.hostname, label=self.label
                 )
-
     def _get_exitstatus(self):
         """
         :returns: the remote command's exit status (return code). Note that
