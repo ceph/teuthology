@@ -385,13 +385,13 @@ class ResultsReporter(object):
         if os.path.exists(self.last_run_file):
             os.remove(self.last_run_file)
     
-    def get_top_job(self, machine_type):
+    def get_top_job(self, queue):
 
-        uri = "{base}/queue/pop_queue?machine_type={machine_type}".format(base=self.base_uri,
-                                                                          machine_type=machine_type)
+        uri = "{base}/queue/pop_queue?queue_name={queue}".format(base=self.base_uri,
+                                                                          queue=queue)
         inc = random.uniform(0, 1)
         with safe_while(
-                sleep=1, increment=inc, action=f'get job from {machine_type}') as proceed:
+                sleep=1, increment=inc, action=f'get job from {queue}') as proceed:
             while proceed():
                 response = self.session.get(uri)
                 if response.status_code == 200:
@@ -505,7 +505,7 @@ class ResultsReporter(object):
         response = self.session.delete(uri)
         response.raise_for_status()
 
-    def create_queue(self, machine_type):
+    def create_queue(self, queue):
         """
         Create a queue on the results server
 
@@ -514,19 +514,19 @@ class ResultsReporter(object):
         uri = "{base}/queue/".format(
             base=self.base_uri
         )
-        queue_info = {'machine_type': machine_type}
+        queue_info = {'queue': queue}
         queue_json = json.dumps(queue_info)
         headers = {'content-type': 'application/json'}
 
         inc = random.uniform(0, 1)
         with safe_while(
-                sleep=1, increment=inc, action=f'creating queue {machine_type}') as proceed:
+                sleep=1, increment=inc, action=f'creating queue {queue}') as proceed:
             while proceed():
                 response = self.session.post(uri, data=queue_json, headers=headers)
 
                 if response.status_code == 200:
-                    self.log.info("Successfully created queue for {machine_type}".format(
-                        machine_type=machine_type,
+                    self.log.info("Successfully created queue {queue}".format(
+                        queue=queue,
                     ))
                     return
                 else:
@@ -546,26 +546,26 @@ class ResultsReporter(object):
 
         response.raise_for_status()
 
-    def update_queue(self, machine_type, paused, paused_by, pause_duration=None):
+    def update_queue(self, queue, paused, paused_by, pause_duration=None):
         uri = "{base}/queue/".format(
             base=self.base_uri
         )
         if pause_duration is not None:
             pause_duration = int(pause_duration)
-        queue_info = {'machine_type': machine_type, 'paused': paused, 'paused_by': paused_by,
+        queue_info = {'queue': queue, 'paused': paused, 'paused_by': paused_by,
                       'pause_duration': pause_duration}
         queue_json = json.dumps(queue_info)
         headers = {'content-type': 'application/json'}
 
         inc = random.uniform(0, 1)
         with safe_while(
-                sleep=1, increment=inc, action=f'updating queue {machine_type}') as proceed:
+                sleep=1, increment=inc, action=f'updating queue {queue}') as proceed:
             while proceed():
                 response = self.session.put(uri, data=queue_json, headers=headers)
 
                 if response.status_code == 200:
-                    self.log.info("Successfully updated queue for {machine_type}".format(
-                        machine_type=machine_type,
+                    self.log.info("Successfully updated queue {queue}".format(
+                        queue=queue,
                     ))
                     return
                 else:
@@ -580,23 +580,23 @@ class ResultsReporter(object):
         response.raise_for_status()
     
 
-    def queue_stats(self, machine_type):
+    def queue_stats(self, queue):
         uri = "{base}/queue/stats/".format(
             base=self.base_uri
         )
-        queue_info = {'machine_type': machine_type}
+        queue_info = {'queue': queue}
         queue_json = json.dumps(queue_info)
 
         headers = {'content-type': 'application/json'}
         inc = random.uniform(0, 1)
         with safe_while(
-                sleep=1, increment=inc, action=f'stats for queue {machine_type}') as proceed:
+                sleep=1, increment=inc, action=f'stats for queue {queue}') as proceed:
             while proceed():
                 response = self.session.post(uri, data=queue_json, headers=headers)
 
                 if response.status_code == 200:
-                    self.log.info("Successfully retrieved stats for queue {machine_type}".format(
-                        machine_type=machine_type,
+                    self.log.info("Successfully retrieved stats for queue {queue}".format(
+                        queue=queue,
                     ))
                     return response.json()
                 else:
@@ -609,18 +609,18 @@ class ResultsReporter(object):
                         ))
         response.raise_for_status()
     
-    def queued_jobs(self, machine_type, user, run_name):
+    def queued_jobs(self, queue, user, run_name):
         uri = "{base}/queue/queued_jobs/".format(
             base=self.base_uri
         )
+        request_info = {'queue': queue}
         if run_name is not None:
             filter_field = run_name
-            request_info = {'machine_type': machine_type,
-                            'run_name': run_name}
+            uri += "?run_name=" + str(run_name)
         else:
             filter_field = user
-            request_info = {'machine_type': machine_type,
-                            'user': user}
+            uri += "?user=" + str(user)
+            
         request_json = json.dumps(request_info)
         headers = {'content-type': 'application/json'}
         inc = random.uniform(0, 1)
@@ -645,11 +645,14 @@ class ResultsReporter(object):
         response.raise_for_status()
 
 
-def create_machine_type_queue(machine_type):
+def create_machine_type_queue(queue):
     reporter = ResultsReporter()
     if not reporter.base_uri:
         return
-    reporter.create_queue(machine_type)
+    if ',' in queue:
+        queue = 'multi'
+    reporter.create_queue(queue)
+    return queue
 
 
 def get_user_jobs_queue(machine_type, user, run_name=None):
@@ -709,12 +712,16 @@ def get_queued_job(machine_type):
     reporter = ResultsReporter()
     if not reporter.base_uri:
         return
-    if is_queue_paused(machine_type) == True:
-        log.info("Teuthology queue for machine type %s is currently paused",
-                  machine_type)
+    if ',' in machine_type:
+        queue = 'multi'
+    else:
+        queue = machine_type
+    if is_queue_paused(queue) == True:
+        log.info("Teuthology queue %s is currently paused",
+                  queue)
         return None
     else:
-        return reporter.get_top_job(machine_type)
+        return reporter.get_top_job(queue)
 
 
 def try_push_job_info(job_config, extra_info=None):
