@@ -40,6 +40,9 @@ def nested(*managers):
             from teuthology.task import interactive
             log.warning('Saw failure, going into interactive mode...')
             interactive.task(ctx=config.ctx, config=None)
+        delay = 999999
+        log.warning('Saw failure, sleeping for {delay} seconds')
+        time.sleep(delay)
     finally:
         while exits:
             exit = exits.pop()
