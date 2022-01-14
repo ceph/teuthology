@@ -75,6 +75,35 @@ class Cycle(Matrix):
     def tostr(self, depth):
         return '\t'*depth + "Cycle({num}):\n".format(num=self.num) + self.mat.tostr(depth + 1)
 
+# Logically, inverse of Cycle
+class Subset(Matrix):
+    """
+    Run a matrix subset.
+    """
+    def __init__(self, mat, divisions, which=None):
+        self.mat = mat
+        self.divisions = divisions
+        if which is None:
+            self.which = random.randint(0, divisions-1)
+        else:
+            assert which < divisions
+            self.which = which
+
+    def size(self):
+        return self.mat.size() // self.divisions
+
+    def index(self, i):
+        i += self.which * self.size()
+        assert i < self.mat.size()
+        return self.mat.index(i)
+
+    def minscanlen(self):
+        return self.mat.minscanlen()
+
+    def tostr(self, depth):
+        return '\t'*depth + "Subset({num}, {index}):\n".format(num=self.num, index=self.index) + self.mat.tostr(depth + 1)
+
+
 class Base(Matrix):
     """
     Just a single item.
