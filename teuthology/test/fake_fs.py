@@ -64,8 +64,7 @@ def make_fake_fstools(fake_filesystem):
         subdict = fsdict
         for component in components:
             if component not in subdict:
-                raise FileNotFoundError(
-                    '[Errno 2] No such file or directory: %s' % component)
+                raise FileNotFoundError('[Errno 2] No such file or directory: %s' % component)
             subdict = subdict.get(component)
         return subdict is None or isinstance(subdict, str)
 
@@ -80,8 +79,7 @@ def make_fake_fstools(fake_filesystem):
         subdict = fake_filesystem
         for component in components:
             if component not in subdict:
-                raise IOError(
-                    '[Errno 2] No such file or directory: %s' % component)
+                raise FileNotFoundError('[Errno 2] No such file or directory: %s' % component)
             subdict = subdict.get(component)
         if isinstance(subdict, dict):
             raise IOError('[Errno 21] Is a directory: %s' % path)
