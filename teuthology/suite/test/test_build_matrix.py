@@ -651,8 +651,8 @@ class TestSubset(object):
 
     @staticmethod
     def generate_subset(maxsub):
-        den = random.choice(range(maxsub-1))+1
-        return (random.choice(range(den)), den)
+        divisions = random.choice(range(maxsub-1))+1
+        return (random.choice(range(divisions)), divisions)
 
     @staticmethod
     def generate_description_list(tree, subset):
