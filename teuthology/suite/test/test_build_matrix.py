@@ -24,7 +24,7 @@ class TestBuildMatrix(object):
         'os.listdir',
         'os.path.isfile',
         'os.path.isdir',
-        'teuthology.suite.open',
+        'builtins.open',
     ]
 
     def setup(self):
@@ -629,7 +629,7 @@ class TestSubset(object):
         'os.listdir',
         'os.path.isfile',
         'os.path.isdir',
-        'teuthology.suite.open',
+        'builtins.open',
     ]
 
     def setup(self):

@@ -137,6 +137,7 @@ class TestDescribeTests(object):
              'os.listdir': listdir,
              'os.path.isdir': isdir,
              'teuthology.describe_tests.open': open,
+             'builtins.open': open,
              'os.path.exists': exists,
              'os.listdir': listdir,
              'os.path.isfile': isfile,
