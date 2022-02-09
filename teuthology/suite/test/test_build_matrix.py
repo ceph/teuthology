@@ -190,6 +190,47 @@ class TestBuildMatrix(object):
             assert 'd0_0/d1_2/d1_2_2.yaml' in i[1]
             assert 'd0_0/d1_2/d1_2_3.yaml' in i[1]
 
+    def test_convolve_nested(self):
+        fake_fs = {
+            'd0_0': {
+                '%': None,
+                'd1_0': {
+                    'd1_0_0.yaml': None,
+                    '%': '2',
+                    'd1_0_1': {
+                        'd1_0_1_0.yaml': None,
+                        'd1_0_1_1.yaml': None,
+                    },
+                    'd1_0_2': {
+                        'd1_0_2_0.yaml': None,
+                        'd1_0_2_1.yaml': None,
+                    },
+                },
+                'd1_2': {
+                    'd1_2_0.yaml': None,
+                    'd1_2_1.yaml': None,
+                    'd1_2_2.yaml': None,
+                    'd1_2_3.yaml': None,
+                },
+            },
+        }
+        self.start_patchers(fake_fs)
+        try:
+            result = build_matrix.build_matrix('d0_0')
+        finally:
+            self.stop_patchers()
+        assert len(result) == 8
+        assert self.fragment_occurences(result, 'd1_0_0.yaml') == 1
+        assert self.fragment_occurences(result, 'd1_0_1_0.yaml') == 0.5
+        assert self.fragment_occurences(result, 'd1_0_1_1.yaml') == 0.5
+        assert self.fragment_occurences(result, 'd1_0_2_0.yaml') == 0.5
+        assert self.fragment_occurences(result, 'd1_0_2_1.yaml') == 0.5
+        assert self.fragment_occurences(result, 'd1_2_0.yaml') == 0.25
+        assert self.fragment_occurences(result, 'd1_2_1.yaml') == 0.25
+        assert self.fragment_occurences(result, 'd1_2_2.yaml') == 0.25
+        assert self.fragment_occurences(result, 'd1_2_3.yaml') == 0.25
+
+
     def test_random_dollar_sign_2x2x3(self):
         fake_fs = {
             'd0_0': {
