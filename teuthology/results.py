@@ -28,7 +28,7 @@ def main(args):
 
     try:
         if args['--seed']:
-            note_rerun_params(args['--subset'], args['--seed'])
+            note_rerun_params(args['--subset'], args['--no-nested-subset'], args['--seed'])
         else:
             results(args['--archive-dir'], args['--name'], args['--email'],
                     int(args['--timeout']), args['--dry-run'])
@@ -37,9 +37,11 @@ def main(args):
         raise
 
 
-def note_rerun_params(subset, seed):
+def note_rerun_params(subset, no_nested_subset, seed):
     if subset:
         log.info('subset: %r', subset)
+    if no_nested_subset:
+        log.info('no_nested_subset: %r', no_nested_subset)
     if seed:
         log.info('seed: %r', seed)
 

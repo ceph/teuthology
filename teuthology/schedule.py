@@ -8,11 +8,11 @@ from teuthology import report
 
 def main(args):
     if not args['--first-in-suite']:
-        first_job_args = ['subset', 'seed']
+        first_job_args = ['subset', 'no-nested-subset', 'seed']
         for arg in first_job_args:
             opt = '--{arg}'.format(arg=arg)
             msg_fmt = '{opt} is only applicable to the first job in a suite'
-            if args[opt]:
+            if args.get(opt):
                 raise ValueError(msg_fmt.format(opt=opt))
 
     if not args['--last-in-suite']:
@@ -78,7 +78,8 @@ def build_config(args):
     job_config.update(conf_dict)
     for arg,conf in {'--timeout':'results_timeout',
                      '--seed': 'seed',
-                     '--subset': 'subset'}.items():
+                     '--subset': 'subset',
+                     '--no-nested-subset': 'no_nested_subset'}.items():
         val = args.get(arg, None)
         if val is not None:
             job_config[conf] = val

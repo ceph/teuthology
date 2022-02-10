@@ -7,7 +7,7 @@ from teuthology.suite import matrix
 log = logging.getLogger(__name__)
 
 
-def build_matrix(path, subset=None, seed=None):
+def build_matrix(path, subset=None, no_nested_subset=False, seed=None):
     """
     Return a list of items descibed by path such that if the list of
     items is chunked into mincyclicity pieces, each piece is still a
@@ -48,6 +48,7 @@ def build_matrix(path, subset=None, seed=None):
 
     :param path:        The path to search for yaml fragments
     :param subset:	(index, outof)
+    :param no_nested_subset:	disable nested subsets
     :param seed:        The seed for repeatable random test
     """
     if subset:
@@ -55,22 +56,24 @@ def build_matrix(path, subset=None, seed=None):
             'Subset=%s/%s' %
             (str(subset[0]), str(subset[1]))
         )
+    if no_nested_subset:
+        log.info("no_nested_subset")
     random.seed(seed)
-    mat, first, matlimit = _get_matrix(path, subset)
+    mat, first, matlimit = _get_matrix(path, subset, no_nested_subset)
     return generate_combinations(path, mat, first, matlimit)
 
 
-def _get_matrix(path, subset=None):
+def _get_matrix(path, subset=None, no_nested_subset=False):
     (which, divisions) = (0,1) if subset is None else subset
     if divisions > 1:
-        mat = _build_matrix(path, mincyclicity=divisions)
+        mat = _build_matrix(path, mincyclicity=divisions, no_nested_subset=no_nested_subset)
         mat = matrix.Subset(mat, divisions, which=which)
     else:
-        mat = _build_matrix(path)
+        mat = _build_matrix(path, no_nested_subset=no_nested_subset)
     return mat, 0, mat.size()
 
 
-def _build_matrix(path, mincyclicity=0, item=''):
+def _build_matrix(path, mincyclicity=0, no_nested_subset=False, item=''):
     if os.path.basename(path)[0] == '.':
         return None
     if not os.path.exists(path):
@@ -93,6 +96,7 @@ def _build_matrix(path, mincyclicity=0, item=''):
                 submat = _build_matrix(
                     os.path.join(path, fn),
                     mincyclicity,
+                    no_nested_subset,
                     fn)
                 if submat is not None:
                     submats.append(submat)
@@ -108,6 +112,7 @@ def _build_matrix(path, mincyclicity=0, item=''):
                 submat = _build_matrix(
                     os.path.join(path, fn),
                     mincyclicity,
+                    no_nested_subset,
                     fn)
                 if submat is not None:
                     submats.append(submat)
@@ -117,7 +122,7 @@ def _build_matrix(path, mincyclicity=0, item=''):
             files.remove('%')
             with open(os.path.join(path, '%')) as f:
                 divisions = f.read()
-                if len(divisions) == 0:
+                if no_nested_subset or len(divisions) == 0:
                     divisions = 1
                 else:
                     divisions = int(divisions)
@@ -127,6 +132,7 @@ def _build_matrix(path, mincyclicity=0, item=''):
                 submat = _build_matrix(
                     os.path.join(path, fn),
                     0,
+                    no_nested_subset,
                     fn)
                 if submat is not None:
                     submats.append(submat)
@@ -146,6 +152,7 @@ def _build_matrix(path, mincyclicity=0, item=''):
                 submat = _build_matrix(
                     os.path.join(path, fn),
                     mincyclicity,
+                    no_nested_subset,
                     fn)
                 if submat is None:
                     continue

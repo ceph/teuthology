@@ -355,6 +355,8 @@ class Run(object):
         if self.args.subset:
             subset = '/'.join(str(i) for i in self.args.subset)
             args.extend(['--subset', subset])
+        if self.args.no_nested_subset:
+            args.extend(['--no-nested-subset'])
         args.extend(['--seed', str(self.args.seed)])
         util.teuthology_schedule(
             args=args,
@@ -555,8 +557,11 @@ Note: If you still want to go ahead, use --job-threshold 0'''
             self.base_config.suite.replace(':', '/'),
         ))
         log.debug('Suite %s in %s' % (suite_name, suite_path))
+        log.debug(f"subset = {self.args.subset}")
+        log.debug(f"no_nested_subset = {self.args.no_nested_subset}")
         configs = build_matrix(suite_path,
                                subset=self.args.subset,
+                               no_nested_subset=self.args.no_nested_subset,
                                seed=self.args.seed)
         log.info('Suite %s in %s generated %d jobs (not yet filtered)' % (
             suite_name, suite_path, len(configs)))

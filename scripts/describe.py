@@ -70,6 +70,7 @@ options only for describing combinations represented by a suite:
                                      operator, where negative value used for
                                      a random seed
                                      [default: -1]
+  --no-nested-subset                 Disable nested subsets
 """
 
 

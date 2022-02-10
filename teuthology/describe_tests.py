@@ -57,6 +57,7 @@ def describe_tests(args):
                                          limit=conf['limit'],
                                          seed=conf['seed'],
                                          subset=conf['subset'],
+                                         no_nested_subset=conf['no_nested_subset'],
                                          fields=conf['fields'],
                                          filter_in=conf['filter_in'],
                                          filter_out=conf['filter_out'],
@@ -69,6 +70,7 @@ def describe_tests(args):
                        limit=conf['limit'],
                        seed=conf['seed'],
                        subset=conf['subset'],
+                       no_nested_subset=conf['no_nested_subset'],
                        show_desc=conf['print_description'],
                        show_frag=conf['print_fragments'],
                        filter_in=conf['filter_in'],
@@ -109,6 +111,7 @@ def output_results(headers, rows, output_format, hrule):
 def output_summary(path, limit=0,
                          seed=None,
                          subset=None,
+                         no_nested_subset=None,
                          show_desc=True,
                          show_frag=False,
                          show_matrix=False,
@@ -124,7 +127,7 @@ def output_summary(path, limit=0,
     """
 
     random.seed(seed)
-    mat, first, matlimit = _get_matrix(path, subset)
+    mat, first, matlimit = _get_matrix(path, subset=subset, no_nested_subset=no_nested_subset)
     configs = generate_combinations(path, mat, first, matlimit)
     count = 0
     suite = os.path.basename(path)
@@ -151,6 +154,7 @@ def get_combinations(suite_dir,
                      limit=0,
                      seed=None,
                      subset=None,
+                     no_nested_subset=False,
                      fields=[],
                      filter_in=None,
                      filter_out=None,
@@ -166,7 +170,7 @@ def get_combinations(suite_dir,
     of strings.
     """
     suite = os.path.basename(suite_dir)
-    configs = build_matrix(suite_dir, subset, seed)
+    configs = build_matrix(suite_dir, subset=subset, no_nested_subset=no_nested_subset, seed=seed)
 
     num_listed = 0
     rows = []
