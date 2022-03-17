@@ -163,20 +163,14 @@ if [ -z "$NO_CLOBBER" ] || [ ! -e ./$VENV ]; then
     virtualenv --python=$PYTHON $VENV
 fi
 
-# Upgrade pip first - then we have a new pip version with the --use-feature flag
+# First, upgrade pip
 ./$VENV/bin/pip install --upgrade pip
-
-# Ensure setuptools is installed
-./$VENV/bin/pip install --use-feature=2020-resolver setuptools --upgrade
-
-# Install all requirements
-./$VENV/bin/pip install --use-feature=2020-resolver --upgrade -r requirements.txt
-
-# Check to make sure requirements are met
-./$VENV/bin/pip check
 
 # Remove leftover .pyc files
 find teuthology -name '*.pyc' -exec rm {} \;
 
-# Install teuthology
-./$VENV/bin/python setup.py develop
+# Install teuthology in editable mode
+./$VENV/bin/pip install --editable .
+
+# Check to make sure requirements are met
+./$VENV/bin/pip check
