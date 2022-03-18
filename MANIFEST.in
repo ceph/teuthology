@@ -1,2 +1,4 @@
 include *.rst
 include requirements.txt
+include tox.ini
+include pytest.ini
