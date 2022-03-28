@@ -12,10 +12,4 @@ RUN apt-get update && apt-get install -y \
     clean all
 RUN mkdir ../archive_dir
 RUN mkdir log
-CMD  ./bootstrap && ./virtualenv/bin/teuthology-suite \
--v --ceph-repo https://github.com/ceph/ceph.git \
---suite-repo https://github.com/ceph/ceph.git \
--c master -m smithi --subset 9000/100000 --limit 1 \
---suite dummy \
---suite-branch master -p 75 --force-priority -n 100 \
-&& tail -f /dev/null
+CMD  ./bootstrap && tail -f /dev/null

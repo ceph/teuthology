@@ -7,7 +7,7 @@ Postgres, Paddles, Pulpito, Beanstalk, Teuthology.
 For now, this guide will rely on the sepia lab cluster
 for test nodes.
 
-# Add/Edit Teuthology config file
+# Add/Edit Teuthology Config File
 
 First you need to add `.teuthology.yaml`
 to the same directory level as this 
@@ -50,7 +50,7 @@ Once you are finished you should have all 5 containers running
 and should be able to access them. The script will also 1 dummy
 job in the queue waiting to be executed by the teutholgy-dispatcher.
 
-# Adding id_rsa private key
+# Adding id_rsa Private Key
 
 Add your `id_rsa` key that you use to
 ssh into teuthology.front.sepia.com to your running 
@@ -71,7 +71,7 @@ Host *
    UserKnownHostsFile=/dev/null
 ```
 
-# Reserving a machine in Sepia
+# Reserving a Machine in Sepia
 
 ssh into teuthology.front.sepia.com,
 lock a random machine, mark it down and give it an 
@@ -79,7 +79,7 @@ appropriate description of why you are locking a machine.
 
 For example, to lock 1 random smithi machine use:
 ```bash
-./virtualenv/bin/teuthology-lock --lock many 1 --machine-type smithi
+./virtualenv/bin/teuthology-lock --lock-many 1 --machine-type smithi
 ```
 
 To update the status and description:
@@ -87,7 +87,7 @@ To update the status and description:
 ./virtualenv/bin/teuthology-lock --update --status down --desc teuthology-dev-testing smithi022
 ```
 
-# Adding test-nodes to Paddles
+# Adding Test-Nodes to Paddles
 
 After reserving your machine, you can now add the machine
 into your paddles inventory by following these steps
@@ -149,7 +149,7 @@ If the test-node is locked after adding it to paddles you can run this command t
 ./virtualenv/bin/teuthology-lock --unlock --owner initial@setup smithi022
 ```
 
-# Creating Ansible inventory
+# Creating Ansible Inventory
 
 In order for ansible to successfully perform certain tasks, in our teuthology container, we need
 to create and add the following line to
@@ -213,4 +213,12 @@ You can now test out your set up by running the dispatcher:
 
 ```bash
 ./virtualenv/bin/teuthology-dispatcher -v --archive-dir ../archive_dir  --log-dir log --tube smithi
+```
+
+# Schedule You First Job
+
+Schedule your teuthology job using the `teuthology-suite` command, here is an example of scheduling a dummy job:
+
+```bash
+./virtualenv/bin/teuthology-suite -v --ceph-repo https://github.com/ceph/ceph.git --suite-repo https://github.com/ceph/ceph.git -c master -m smithi --subset 9000/100000 --limit 1 --suite dummy --suite-branch master -p 75 --force-priority -n 100
 ```
