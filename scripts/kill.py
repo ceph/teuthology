@@ -1,4 +1,4 @@
-import docopt
+from docopt import docopt
 
 import teuthology.config
 import teuthology.kill
@@ -40,5 +40,5 @@ optional arguments:
 
 
 def main():
-    args = docopt.docopt(doc)
+    args = docopt(doc)
     teuthology.kill.main(args)
