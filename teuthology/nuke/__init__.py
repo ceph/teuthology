@@ -320,8 +320,7 @@ def nuke_helper(ctx, should_unlock, keep_logs, should_reboot):
         check_lock.check_lock(ctx, None, check_up=False)
     status = get_status(host)
     if status['machine_type'] in provision.fog.get_types():
-        remote = Remote(host)
-        remote.console.power_off()
+        log.info("Fog provisioned nodes, leaving it as is")
         return
     elif status['machine_type'] in provision.pelagos.get_types():
         provision.pelagos.park_node(host)
