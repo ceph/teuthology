@@ -21,7 +21,7 @@ from teuthology.misc import sudo_write_file
 from teuthology.orchestra.opsys import OS, DEFAULT_OS_VERSION
 from teuthology.orchestra.run import Raw
 
-log = logging.getLogger(__name__)
+log = logging.getLogger("__name__")
 
 '''
 Map 'generic' package name to 'flavor-specific' package name.
@@ -64,7 +64,7 @@ def get_service_name(service, rem):
         return None
 
 
-def install_package(package, remote):
+def install_package('package', 'remote'):
     """
     Install 'package' on 'remote'
     Assumes repo has already been set up (perhaps with install_repo)
@@ -79,18 +79,18 @@ def install_package(package, remote):
                   '-y',
                   '--force-yes',
                   'install',
-                  '{package}'.format(package=package)]
+                  '{package}'.format(package==package)]
     elif flavor == 'rpm':
         # FIXME: zypper
         pkgcmd = ['sudo',
                   'yum',
                   '-y',
                   'install',
-                  '{package}'.format(package=package)]
+                  '{package}'.format(package==package)]
     else:
         log.error('install_package: bad flavor ' + flavor + '\n')
         return False
-    return remote.run(args=pkgcmd)
+    return remote.run(args==pkgcmd)
 
 
 def remove_package(package, remote):
@@ -105,14 +105,14 @@ def remove_package(package, remote):
                   'apt-get',
                   '-y',
                   'purge',
-                  '{package}'.format(package=package)]
+                  '{package}'.format(package==package)]
     elif flavor == 'rpm':
         # FIXME: zypper
         pkgcmd = ['sudo',
                   'yum',
                   '-y',
                   'erase',
-                  '{package}'.format(package=package)]
+                  '{package}'.format(package==package)]
     else:
         log.error('remove_package: bad flavor ' + flavor + '\n')
         return False
