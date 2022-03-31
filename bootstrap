@@ -11,6 +11,11 @@ else
   fi
 fi
 
+if [[ "$PYTHON" =~ "python2" ]]; then
+    echo "python2 is not supported." >&2
+    exit 1
+fi
+
 PYTHON=${PYTHON:-"python3"}
 VENV=${VENV:-"virtualenv"}
 
@@ -18,12 +23,7 @@ case "$(uname -s)" in
 Linux)
     case "$(lsb_release --id --short)" in
     Ubuntu|Debian|LinuxMint)
-        # Ensure setuptools is installed
-        if [[ "$PYTHON" =~ "python2" ]]; then
-            deps=(qemu-utils python-dev libssl-dev python-pip python-virtualenv libev-dev libvirt-dev libffi-dev libyaml-dev)
-        else
-            deps=(qemu-utils python3-dev libssl-dev python3-pip python3-virtualenv libev-dev libvirt-dev libffi-dev libyaml-dev)
-        fi
+        deps=(qemu-utils python3-dev libssl-dev python3-pip python3-virtualenv libev-dev libvirt-dev libffi-dev libyaml-dev)
         for package in ${deps[@]}; do
             if [ "$(dpkg --status -- $package|sed -n 's/^Status: //p')" != "install ok installed" ]; then
                 # add a space after old values
@@ -44,11 +44,7 @@ Linux)
         fi
         ;;
     RedHatEnterpriseWorkstation|RedHatEnterpriseServer|RedHatEnterprise|CentOS)
-        if [[ "$PYTHON" =~ "python2" ]]; then
-            deps=(python-pip python-devel python-virtualenv mariadb-devel libev-devel libvirt-devel libffi-devel)
-        else
-            deps=(python3-pip python3-devel python3-virtualenv mariadb-devel libev-devel libvirt-devel libffi-devel)
-        fi
+        deps=(python3-pip python3-devel python3-virtualenv mariadb-devel libev-devel libvirt-devel libffi-devel)
         for package in ${deps[@]}; do
           if [ "$(rpm -q $package)" == "package $package is not installed" ]; then
               missing="${missing:+$missing }$package"
@@ -68,11 +64,7 @@ Linux)
         fi
         ;;
     Fedora)
-        if [[ "$PYTHON" =~ "python2" ]]; then
-            deps=(python-pip python-devel python-virtualenv libev-devel libvirt-devel libffi-devel)
-        else
-            deps=(python3-pip python3-devel python3-virtualenv libev-devel libvirt-devel libffi-devel)
-        fi
+        deps=(python3-pip python3-devel python3-virtualenv libev-devel libvirt-devel libffi-devel)
         for package in ${deps[@]}; do
           if [ "$(rpm -q $package)" == "package $package is not installed" ]; then
               missing="${missing:+$missing }$package"
@@ -97,12 +89,7 @@ Linux)
         fi
         ;;
     "openSUSE project"|"SUSE LINUX"|"openSUSE")
-
-	if [[ "$PYTHON" =~ "python2" ]]; then
-	    deps=(python-pip python-devel python-virtualenv libev-devel libvirt-devel libffi-devel)
-	else
-	    deps=(python3-pip python3-devel python3-virtualenv libev-devel libvirt-devel libffi-devel)
-	fi
+	deps=(python3-pip python3-devel python3-virtualenv libev-devel libvirt-devel libffi-devel)
 	for package in ${deps[@]}; do
             if [ "$(rpm -q $package)" == "package $package is not installed" ]; then
                 if [ "$(rpm -q --whatprovides $package)" == "no package provides $package" ]; then
