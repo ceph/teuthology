@@ -157,7 +157,7 @@ fi
 find teuthology -name '*.pyc' -exec rm {} \;
 
 # Install teuthology in editable mode
-./$VENV/bin/pip install --editable .
+./$VENV/bin/pip install --editable '.[test]'
 
 # Check to make sure requirements are met
 ./$VENV/bin/pip check
