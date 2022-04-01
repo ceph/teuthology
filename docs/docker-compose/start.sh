@@ -44,6 +44,7 @@ else
     export SSH_PRIVKEY_FILE=$(basename $SSH_PRIVKEY_PATH | cut -d. -f1)
 fi
 
+set +e
 trap "docker-compose down" SIGINT
 docker-compose up \
     --build \
