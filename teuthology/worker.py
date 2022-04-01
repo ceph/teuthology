@@ -114,14 +114,13 @@ def main(ctx):
             keep_running = False
 
         try:
-            job_config, teuth_bin_path = prep_job(
+            job_config = prep_job(
                 job_config,
                 log_file_path,
                 ctx.archive_dir,
             )
             run_job(
                 job_config,
-                teuth_bin_path,
                 ctx.archive_dir,
                 ctx.verbose,
             )
@@ -163,11 +162,6 @@ def prep_job(job_config, log_file_path, archive_dir):
         log.info('Using teuthology sha1 %s', teuthology_sha1)
 
     try:
-        if teuth_config.teuthology_path is not None:
-            teuth_path = teuth_config.teuthology_path
-        else:
-            teuth_path = fetch_teuthology(branch=teuthology_branch,
-                                          commit=teuthology_sha1)
         # For the teuthology tasks, we look for suite_branch, and if we
         # don't get that, we look for branch, and fall back to 'master'.
         # last-in-suite jobs don't have suite_branch or branch set.
@@ -196,14 +190,10 @@ def prep_job(job_config, log_file_path, archive_dir):
         )
         raise SkipJob()
 
-    teuth_bin_path = os.path.join(teuth_path, 'virtualenv', 'bin')
-    if not os.path.isdir(teuth_bin_path):
-        raise RuntimeError("teuthology branch %s at %s not bootstrapped!" %
-                           (teuthology_branch, teuth_bin_path))
-    return job_config, teuth_bin_path
+    return job_config
 
 
-def run_job(job_config, teuth_bin_path, archive_dir, verbose):
+def run_job(job_config, archive_dir, verbose):
     safe_archive = safepath.munge(job_config['name'])
     if job_config.get('first_in_suite') or job_config.get('last_in_suite'):
         if teuth_config.results_server:
@@ -215,7 +205,7 @@ def run_job(job_config, teuth_bin_path, archive_dir, verbose):
         suite_archive_dir = os.path.join(archive_dir, safe_archive)
         safepath.makedirs('/', suite_archive_dir)
         args = [
-            os.path.join(teuth_bin_path, 'teuthology-results'),
+            'teuthology-results',
             '--archive-dir', suite_archive_dir,
             '--name', job_config['name'],
         ]
@@ -244,9 +234,7 @@ def run_job(job_config, teuth_bin_path, archive_dir, verbose):
     log.info('Running job %s', job_config['job_id'])
 
     suite_path = job_config['suite_path']
-    arg = [
-        os.path.join(teuth_bin_path, 'teuthology'),
-    ]
+    arg = ['teuthology']
     # The following is for compatibility with older schedulers, from before we
     # started merging the contents of job_config['config'] into job_config
     # itself.

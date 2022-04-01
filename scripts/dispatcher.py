@@ -1,6 +1,6 @@
 """
 usage: teuthology-dispatcher --help
-       teuthology-dispatcher --supervisor [-v] --bin-path BIN_PATH --job-config COFNFIG --archive-dir DIR
+       teuthology-dispatcher --supervisor [-v] --job-config COFNFIG --archive-dir DIR
        teuthology-dispatcher [-v] [--archive-dir DIR] [--exit-on-empty-queue] --log-dir LOG_DIR --tube TUBE
 
 Start a dispatcher for the specified tube. Grab jobs from a beanstalk
@@ -19,7 +19,6 @@ standard arguments:
   -l, --log-dir LOG_DIR          path in which to store logs
   -a DIR, --archive-dir DIR      path to archive results in
   --supervisor                   run dispatcher in job supervisor mode
-  --bin-path BIN_PATH            teuthology bin path
   --job-config CONFIG            file descriptor of job's config file
   --exit-on-empty-queue          if the queue is empty, exit
 """
