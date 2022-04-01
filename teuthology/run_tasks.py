@@ -1,3 +1,4 @@
+import importlib
 import jinja2
 import logging
 import os
@@ -60,6 +61,17 @@ def _import(from_package, module_name, task_name, fail_on_import_error=False):
         if fail_on_import_error:
             raise
         else:
+            if (
+                importlib.util.find_spec(from_package) is not None and
+                importlib.util.find_spec(full_module_name) is not None
+            ):
+                # If we get here, it means we could _find_ both the module and
+                # the package that contains it, but still got an ImportError.
+                # Typically that means the module failed to import because it
+                # could not find one of its dependencies; if we don't raise
+                # here it will look like we just could't find the module,
+                # making the dependency issue difficult to discover.
+                raise
             return None
     return module
 
