@@ -14,6 +14,8 @@ Currently, there are two modes of execution:
   * Advantage: Can run all Ceph tests
   * Disadvantage: Requires lab access
 
+In both cases, the teuthology container will be built with code from the repository clone that's currently in use.
+
 ## Prerequisites
 
 ### Installing and Running Docker
@@ -65,11 +67,6 @@ export ANSIBLE_INVENTORY_REPO="https://github.com/ceph/ceph-sepia-secrets"
 This repo will be cloned locally, using your existing `git` configuration, and copied into the teuthology container at build time.
 
 ## Running Tests
-
-If you want the teuthology container to use a different teuthology branch:
-```bash
-export TEUTHOLOGY_BRANCH=my-branch
-```
 
 When you are ready to run tests:
 ```bash
