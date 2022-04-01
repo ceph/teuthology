@@ -19,22 +19,23 @@ RUN apt-get update && \
     lsb-release && \
     apt-get clean all
 WORKDIR /teuthology
-COPY teuthology /teuthology
+COPY . /teuthology
 RUN \
     cd /teuthology && \
     mkdir ../archive_dir && \
     mkdir log && \
     chmod +x /teuthology/bootstrap && \
-    ./bootstrap
-COPY containerized_node.yaml /teuthology
-COPY .teuthology.yaml /root
+    VENV=$VENV ./bootstrap
+COPY docs/docker-compose/teuthology/containerized_node.yaml /teuthology
+COPY docs/docker-compose/teuthology/.teuthology.yaml /root
 RUN \
     mkdir $HOME/.ssh && \
     touch $HOME/.ssh/${SSH_PRIVKEY_FILE} && \
     chmod 600 $HOME/.ssh/${SSH_PRIVKEY_FILE} && \
     echo "StrictHostKeyChecking=no" > $HOME/.ssh/config && \
     echo "UserKnownHostsFile=/dev/null" >> $HOME/.ssh/config
-COPY teuthology.sh /
+COPY docs/docker-compose/teuthology/teuthology.sh /
 RUN mkdir -p /etc/ansible
-COPY ansible_inventory/hosts ansible_inventory/secrets /etc/ansible/
+COPY docs/docker-compose/teuthology/ansible_inventory/hosts /etc/ansible/
+COPY docs/docker-compose/teuthology/ansible_inventory/secrets /etc/ansible/
 ENTRYPOINT /teuthology.sh

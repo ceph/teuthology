@@ -60,7 +60,8 @@ services:
             - "11300:11300"
   teuthology:
     build:
-      context: ./teuthology
+      context: ../../
+      dockerfile: ./docs/docker-compose/teuthology/Dockerfile
       args:
         SSH_PRIVKEY_FILE: $SSH_PRIVKEY_FILE
     depends_on:

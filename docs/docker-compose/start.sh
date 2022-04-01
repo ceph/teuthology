@@ -1,16 +1,5 @@
 #!/bin/bash
 set -e
-pushd teuthology
-if [ -z "$TEUTHOLOGY_BRANCH" -a -n "$GITHUB_HEAD_REF" ]; then
-    TEUTHOLOGY_BRANCH=${GITHUB_HEAD_REF}
-fi
-if [ ! -d ./teuthology ]; then
-    git clone \
-    --depth 1 \
-    -b ${TEUTHOLOGY_BRANCH:-$(git branch --show-current)} \
-    https://github.com/ceph/teuthology.git
-fi
-popd
 if [ -n "$ANSIBLE_INVENTORY_REPO" ]; then
     basename=$(basename $ANSIBLE_INVENTORY_REPO | cut -d. -f1)
     if [ ! -d "$basename" ]; then
