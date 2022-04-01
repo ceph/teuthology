@@ -3,7 +3,7 @@
 if [ -n "$SSH_PRIVKEY_FILE" ]; then
     echo "$SSH_PRIVKEY" > $HOME/.ssh/$SSH_PRIVKEY_FILE
 fi
-source /teuthology/virtualenv/bin/activate
+source $VENV/bin/activate
 set -x
 if [ -n "$TESTNODES" ]; then
     for node in $(echo $TESTNODES | tr , ' '); do

@@ -1,6 +1,7 @@
 FROM ubuntu:latest
 ARG SSH_PRIVKEY_FILE=id_ed25519
 ENV DEBIAN_FRONTEND=noninteractive
+ENV VENV=/venv
 RUN apt-get update && \
     apt-get install -y \
     git \
