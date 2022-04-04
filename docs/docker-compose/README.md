@@ -23,6 +23,10 @@ In both cases, the teuthology container will be built with code from the reposit
 For Docker installation see: 
 https://docs.docker.com/get-docker/
 
+### Using Containerized Nodes
+
+There's nothing special to do; see [Running Tests](#running)
+
 ### Using an Existing Lab
 
 This document assumes you have access to the lab that you intend to use, and that you're already familiar with its VPN and SSH infrastructure.
@@ -66,7 +70,7 @@ export ANSIBLE_INVENTORY_REPO="https://github.com/ceph/ceph-sepia-secrets"
 ```
 This repo will be cloned locally, using your existing `git` configuration, and copied into the teuthology container at build time.
 
-## Running Tests
+## Running Tests {#running}
 
 When you are ready to run tests:
 ```bash
