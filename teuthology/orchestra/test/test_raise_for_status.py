@@ -38,6 +38,8 @@ def _checking_raise_for_status(
     # to be any value other than zero
     r.returncode = 1
 
+
+    # just printing on console to check
     try:
         r._raise_for_status()
     except CommandFailedError:
