@@ -7,10 +7,10 @@ Postgres, Paddles, Pulpito, Beanstalk, and Teuthology.
 
 Currently, there are two modes of execution: 
 
-* Using containerized test nodes
+* [Using containerized test nodes](#containers)
   * Advantage: No need for a lab at all!
   * Disadvantage: Cannot run all Ceph tests; best for exercising the framework itself
-* Using nodes from an existing lab (e.g. the Sepia lab)
+* [Using nodes from an existing lab (e.g. the Sepia lab)](#existing_lab)
   * Advantage: Can run all Ceph tests
   * Disadvantage: Requires lab access
 
@@ -23,11 +23,11 @@ In both cases, the teuthology container will be built with code from the reposit
 For Docker installation see: 
 https://docs.docker.com/get-docker/
 
-### Using Containerized Nodes
+### Using Containerized Nodes {#containers}
 
 There's nothing special to do; see [Running Tests](#running)
 
-### Using an Existing Lab
+### Using an Existing Lab {#existing_lab}
 
 This document assumes you have access to the lab that you intend to use, and that you're already familiar with its VPN and SSH infrastructure.
 
