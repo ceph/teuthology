@@ -23,6 +23,10 @@ In both cases, the teuthology container will be built with code from the reposit
 For Docker installation see: 
 https://docs.docker.com/get-docker/
 
+### Using Containerized Nodes
+
+There's nothing special to do; see the Running Tests section below.
+
 ### Using an Existing Lab
 
 This document assumes you have access to the lab that you intend to use, and that you're already familiar with its VPN and SSH infrastructure.
