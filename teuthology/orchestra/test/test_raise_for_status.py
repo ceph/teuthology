@@ -40,6 +40,7 @@ def _checking_raise_for_status(
 
 
     # just printing on console to check
+    # using simple try catch and else
     try:
         r._raise_for_status()
     except CommandFailedError:
