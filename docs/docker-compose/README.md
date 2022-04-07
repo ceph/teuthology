@@ -5,7 +5,7 @@ up a development environment for Teuthology. We will be using
 Docker to set up all the containers for
 Postgres, Paddles, Pulpito, Beanstalk, and Teuthology.
 
-Currently, there are two modes of execution: 
+Currently, it's possible to execute against two classes of test nodes: 
 
 * [Using containerized test nodes](#containers)
   * Advantage: No need for a lab at all!
@@ -14,7 +14,12 @@ Currently, there are two modes of execution:
   * Advantage: Can run all Ceph tests
   * Disadvantage: Requires lab access
 
-In both cases, the teuthology container will be built with code from the repository clone that's currently in use.
+
+Additionally, there are two modes of execution:
+* One-shot (the default): Containers start up, schedule and run the `teuthology:no-ceph` suite, and shut down. Success or failure is indicated by the `start.sh` exit code.
+* Wait: Containers start up, and `teuthology-dispatcher` is started, but no jobs are scheduled. Runs until the user presses Ctrl-C or `docker-compose down` is run.
+  
+The teuthology container will be built with code from the repository clone that's currently in use.
 
 ## Prerequisites
 
@@ -72,7 +77,17 @@ This repo will be cloned locally, using your existing `git` configuration, and c
 
 ## Running Tests {#running}
 
-When you are ready to run tests:
+To run the default `teuthology:no-ceph` suite in one-shot mode:
 ```bash
 ./start.sh
+```
+
+To run in wait mode:
+```bash
+TEUTHOLOGY_WAIT=1 ./start.sh
+```
+
+To schedule tests in wait mode:
+```bash
+docker exec docker-compose_teuthology_1 /venv/bin/teuthology-suite ...
 ```
