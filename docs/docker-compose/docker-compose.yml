@@ -75,6 +75,7 @@ services:
       SSH_PRIVKEY_FILE:
       MACHINE_TYPE:
       TESTNODES:
+      TEUTHOLOGY_WAIT:
   testnode:
     build:
       context: ./testnode

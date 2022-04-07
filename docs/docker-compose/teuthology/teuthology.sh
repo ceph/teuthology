@@ -16,24 +16,27 @@ else
     CUSTOM_CONF=/teuthology/containerized_node.yaml
 fi
 export MACHINE_TYPE=${MACHINE_TYPE:-testnode}
-teuthology-suite -v \
-    --teuthology-branch $TEUTHOLOGY_BRANCH \
-    --ceph-repo https://github.com/ceph/ceph.git \
-    --suite-repo https://github.com/ceph/ceph.git \
-    -c master \
-    -m $MACHINE_TYPE \
-    --limit 1 \
-    -n 100 \
-    --suite teuthology:no-ceph \
-    --filter-out "libcephfs,kclient,stream,centos,rhel" \
-    -d ubuntu -D 20.04 \
-    --suite-branch master \
-    --subset 9000/100000 \
-    -p 75 \
-    --seed 349 \
-    --force-priority \
-    $CUSTOM_CONF
+if [ -z "$TEUTHOLOGY_WAIT" ]; then
+    teuthology-suite -v \
+        --teuthology-branch $TEUTHOLOGY_BRANCH \
+        --ceph-repo https://github.com/ceph/ceph.git \
+        --suite-repo https://github.com/ceph/ceph.git \
+        -c master \
+        -m $MACHINE_TYPE \
+        --limit 1 \
+        -n 100 \
+        --suite teuthology:no-ceph \
+        --filter-out "libcephfs,kclient,stream,centos,rhel" \
+        -d ubuntu -D 20.04 \
+        --suite-branch master \
+        --subset 9000/100000 \
+        -p 75 \
+        --seed 349 \
+        --force-priority \
+        $CUSTOM_CONF
+    DISPATCHER_EXIT_FLAG='--exit-on-empty-queue'
+fi
 teuthology-dispatcher -v \
     --log-dir /teuthology/log \
     --tube $MACHINE_TYPE \
-    --exit-on-empty-queue
+    $DISPATCHER_EXIT_FLAG

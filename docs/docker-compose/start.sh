@@ -33,10 +33,15 @@ else
     export SSH_PRIVKEY_FILE=$(basename $SSH_PRIVKEY_PATH | cut -d. -f1)
 fi
 
+if [ -z "$TEUTHOLOGY_WAIT" ]; then
+    DC_EXIT_FLAG='--abort-on-container-exit --exit-code-from teuthology'
+    DC_AUTO_DOWN_CMD='docker-compose down'
+fi
+export TEUTHOLOGY_WAIT
+
 set +e
 trap "docker-compose down" SIGINT
 docker-compose up \
     --build \
-    --abort-on-container-exit \
-    --exit-code-from teuthology
-docker-compose down
+    $DC_EXIT_FLAG
+$DC_AUTO_DOWN_CMD
