@@ -152,8 +152,8 @@ $VENV/bin/pip install --upgrade pip
 # Remove leftover .pyc files
 find teuthology -name '*.pyc' -exec rm {} \;
 
-# Install teuthology in editable mode
-$VENV/bin/pip install --editable '.[test]'
+# By default, install teuthology in editable mode
+$VENV/bin/pip install ${PIP_INSTALL_FLAGS:---editable '.[test]'}
 
 # Check to make sure requirements are met
 $VENV/bin/pip check
