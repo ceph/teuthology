@@ -124,7 +124,7 @@ def main(args):
             keep_running = False
 
         try:
-            job_config, teuth_bin_path = prep_job(
+            job_config = prep_job(
                 job_config,
                 log_file_path,
                 archive_dir,
@@ -137,10 +137,9 @@ def main(args):
             job_config = lock_machines(job_config)
 
         run_args = [
-            os.path.join(teuth_bin_path, 'teuthology-dispatcher'),
+            'teuthology-dispatcher',
             '--supervisor',
             '-v',
-            '--bin-path', teuth_bin_path,
             '--archive-dir', archive_dir,
         ]
 

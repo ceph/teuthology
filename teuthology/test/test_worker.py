@@ -85,10 +85,10 @@ class TestWorker(object):
         m_p.returncode = 0
         m_popen.return_value = m_p
         m_t_config.results_server = True
-        worker.run_job(config, "teuth/bin/path", "archive/dir", verbose=False)
+        worker.run_job(config, "archive/dir", verbose=False)
         m_run_watchdog.assert_called_with(m_p, config)
         expected_args = [
-            'teuth/bin/path/teuthology',
+            'teuthology',
             '-v',
             '--lock',
             '--block',
@@ -135,7 +135,7 @@ class TestWorker(object):
         m_p.returncode = 1
         m_popen.return_value = m_p
         m_t_config.results_server = False
-        worker.run_job(config, "teuth/bin/path", "archive/dir", verbose=False)
+        worker.run_job(config, "archive/dir", verbose=False)
         m_symlink_log.assert_called_with(config["worker_log"], config["archive_path"])
 
     @patch("teuthology.worker.report.try_push_job_info")
@@ -195,7 +195,7 @@ class TestWorker(object):
         m_fetch_qa_suite.return_value = '/suite/path'
         m_isdir.return_value = True
         m_teuth_config.teuthology_path = None
-        got_config, teuth_bin_path = worker.prep_job(
+        got_config = worker.prep_job(
             config,
             log_file_path,
             archive_dir,
@@ -208,7 +208,6 @@ class TestWorker(object):
         )
         assert got_config['teuthology_branch'] == 'master'
         assert m_fetch_teuthology.called_once_with_args(branch='master')
-        assert teuth_bin_path == '/teuth/path/virtualenv/bin'
         assert m_fetch_qa_suite.called_once_with_args(branch='master')
         assert got_config['suite_path'] == '/suite/path'
 
@@ -255,7 +254,7 @@ class TestWorker(object):
         )
         m_connection.reserve.side_effect = jobs
         m_connect.return_value = m_connection
-        m_prep_job.return_value = (dict(), '/bin/path')
+        m_prep_job.return_value = dict()
         worker.main(self.ctx)
         # There should be one reserve call per item in the jobs list
         expected_reserve_calls = [

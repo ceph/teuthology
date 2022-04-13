@@ -31,7 +31,6 @@ def main(args):
 
     verbose = args["--verbose"]
     archive_dir = args["--archive-dir"]
-    teuth_bin_path = args["--bin-path"]
     config_file_path = args["--job-config"]
 
     with open(config_file_path, 'r') as config_file:
@@ -56,7 +55,6 @@ def main(args):
     try:
         return run_job(
             job_config,
-            teuth_bin_path,
             archive_dir,
             verbose
         )
@@ -64,12 +62,12 @@ def main(args):
         return 0
 
 
-def run_job(job_config, teuth_bin_path, archive_dir, verbose):
+def run_job(job_config, archive_dir, verbose):
     safe_archive = safepath.munge(job_config['name'])
     if job_config.get('first_in_suite') or job_config.get('last_in_suite'):
         job_archive = os.path.join(archive_dir, safe_archive)
         args = [
-            os.path.join(teuth_bin_path, 'teuthology-results'),
+            'teuthology-results',
             '--archive-dir', job_archive,
             '--name', job_config['name'],
         ]
@@ -100,9 +98,7 @@ def run_job(job_config, teuth_bin_path, archive_dir, verbose):
 
     log.info('Running job %s', job_config['job_id'])
 
-    arg = [
-        os.path.join(teuth_bin_path, 'teuthology'),
-    ]
+    arg = ['teuthology']
     # The following is for compatibility with older schedulers, from before we
     # started merging the contents of job_config['config'] into job_config
     # itself.

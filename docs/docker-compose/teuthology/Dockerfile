@@ -9,7 +9,7 @@ RUN apt-get update && \
     libssl-dev \
     ipmitool \
     python3-pip \
-    python3-virtualenv \
+    python3-venv \
     vim \
     libev-dev \
     libvirt-dev \

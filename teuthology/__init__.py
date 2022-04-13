@@ -1,5 +1,11 @@
 from __future__ import print_function
 import os
+try:
+    import importlib.metadata as importlib_metadata
+except ImportError:
+    import importlib_metadata
+
+__version__ = importlib_metadata.version("teuthology")
 
 # Tell gevent not to patch os.waitpid() since it is susceptible to race
 # conditions. See:
@@ -8,12 +14,15 @@ os.environ['GEVENT_NOWAITPID'] = 'true'
 
 # Use manhole to give us a way to debug hung processes
 # https://pypi.python.org/pypi/manhole
-import manhole
-manhole.install(
-    verbose=False,
-    # Listen for SIGUSR1
-    oneshot_on="USR1"
-)
+try:
+    import manhole
+    manhole.install(
+        verbose=False,
+        # Listen for SIGUSR1
+        oneshot_on="USR1"
+    )
+except ImportError:
+    pass
 from gevent import monkey
 monkey.patch_all(
     dns=False,
@@ -30,25 +39,6 @@ from teuthology.orchestra import monkey
 monkey.patch_all()
 
 import logging
-import subprocess
-
-__version__ = '1.1.0'
-
-# do our best, but if it fails, continue with above
-
-try:
-    teuthology_dir = os.path.dirname(os.path.realpath(__file__))
-    site_dir = os.path.dirname(teuthology_dir)
-    git_dir = os.path.join(site_dir, '.git')
-    # make sure we use git repo otherwise it is a released version
-    if os.path.exists(git_dir):
-        __version__ += '-' + str(subprocess.check_output(
-            'git rev-parse --short HEAD'.split(),
-            cwd=site_dir
-        ).decode()).strip()
-except Exception as e:
-    # before logging; should be unusual
-    print("Can't get version from git rev-parse %s" % e, file=sys.stderr)
 
 # If we are running inside a virtualenv, ensure we have its 'bin' directory in
 # our PATH. This doesn't happen automatically if scripts are called without
