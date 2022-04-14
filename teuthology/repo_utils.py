@@ -430,7 +430,7 @@ def bootstrap_teuthology(dest_path):
         returncode = boot_proc.wait()
         log.info("Bootstrap exited with status %s", returncode)
         if returncode != 0:
-            for line in out.split():
+            for line in out.split("\n"):
                 log.warning(line.strip())
             venv_path = os.path.join(dest_path, 'virtualenv')
             log.info("Removing %s", venv_path)
