@@ -5,6 +5,8 @@ if [ -n "$SSH_PRIVKEY_FILE" ]; then
 fi
 source /teuthology/virtualenv/bin/activate
 set -x
+cd /teuthology
+export TEUTHOLOGY_BRANCH=${TEUTHOLOGY_BRANCH:-$(git branch --show-current)}
 if [ -n "$TESTNODES" ]; then
     for node in $(echo $TESTNODES | tr , ' '); do
         teuthology-update-inventory -m $MACHINE_TYPE $node
@@ -15,6 +17,7 @@ else
 fi
 export MACHINE_TYPE=${MACHINE_TYPE:-testnode}
 teuthology-suite -v \
+    --teuthology-branch $TEUTHOLOGY_BRANCH \
     --ceph-repo https://github.com/ceph/ceph.git \
     --suite-repo https://github.com/ceph/ceph.git \
     -c master \
