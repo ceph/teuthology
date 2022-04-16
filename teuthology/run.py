@@ -167,7 +167,7 @@ def validate_tasks(config):
 
 
 def get_initial_tasks(lock, config, machine_type):
-    init_tasks = []remo
+    init_tasks = []
     overrides = config.get('overrides', {})
     having_repos = ('repos' in config.get('install', {}) or
                     'repos' in overrides.get('install', {}))
