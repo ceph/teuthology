@@ -160,7 +160,8 @@ def prep_job(job_config, log_file_path, archive_dir):
                 dict(status='dead', failure_reason=reason)
             )
             raise SkipJob()
-        log.info('Using teuthology sha1 %s', teuthology_sha1)
+        if teuth_config.teuthology_path is None:
+            log.info('Using teuthology sha1 %s', teuthology_sha1)
 
     try:
         if teuth_config.teuthology_path is not None:
