@@ -13,12 +13,12 @@ from teuthology import (
     setup_log_file,
     install_except_hook,
     # modules
-    beanstalk,
     kill,
     report,
     repo_utils,
     safepath,
 )
+from teuthology.queue import beanstalk
 from teuthology.config import config as teuth_config
 from teuthology.config import set_config_attr
 from teuthology.exceptions import BranchNotFoundError, CommitNotFoundError, SkipJob, MaxWhileTries

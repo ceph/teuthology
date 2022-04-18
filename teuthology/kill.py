@@ -10,7 +10,7 @@ import getpass
 
 import teuthology.exporter
 
-from teuthology import beanstalk
+from teuthology.queue import beanstalk
 from teuthology import report
 from teuthology.config import config
 from teuthology import misc

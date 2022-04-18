@@ -14,13 +14,13 @@ from teuthology import (
     setup_log_file,
     install_except_hook,
     # modules
-    beanstalk,
     exporter,
     nuke,
     report,
     repo_utils,
     worker,
 )
+from teuthology.queue import beanstalk
 from teuthology.config import config as teuth_config
 from teuthology.dispatcher import supervisor
 from teuthology.exceptions import SkipJob

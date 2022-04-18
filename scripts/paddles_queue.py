@@ -1,8 +1,7 @@
 import docopt
 
 import teuthology.config
-import teuthology.paddles_queue
-
+import teuthology.queue.paddles_queue
 doc = """
 usage: teuthology-paddles-queue -h
        teuthology-paddles-queue -s -m MACHINE_TYPE
