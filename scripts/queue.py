@@ -2,19 +2,23 @@ import docopt
 
 import teuthology.config
 import teuthology.queue.beanstalk
+import teuthology.queue.paddles
 
 doc = """
-usage: teuthology-beanstalk-queue -h
-       teuthology-beanstalk-queue [-s|-d|-f] -m MACHINE_TYPE
-       teuthology-beanstalk-queue [-r] -m MACHINE_TYPE
-       teuthology-beanstalk-queue -m MACHINE_TYPE -D PATTERN
-       teuthology-beanstalk-queue -p SECONDS [-m MACHINE_TYPE]
+usage: teuthology-queue -h
+       teuthology-queue [-s|-d|-f] -m MACHINE_TYPE 
+       teuthology-queue [-r] -m MACHINE_TYPE
+       teuthology-queue -m MACHINE_TYPE -D PATTERN
+       teuthology-queue -p SECONDS [-m MACHINE_TYPE]
+
 List Jobs in queue.
 If -D is passed, then jobs with PATTERN in the job name are deleted from the
 queue.
+
 Arguments:
   -m, --machine_type MACHINE_TYPE [default: multi]
                         Which machine type queue to work on.
+
 optional arguments:
   -h, --help            Show this help message and exit
   -D, --delete PATTERN  Delete Jobs with PATTERN in their name
@@ -29,7 +33,5 @@ optional arguments:
 
 
 def main():
-
     args = docopt.docopt(doc)
-    print(args)
-    teuthology.beanstalk.main(args)
+    teuthology.queue.main(args)
