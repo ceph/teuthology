@@ -9,7 +9,7 @@ import yaml
 from datetime import datetime
 
 from teuthology import setup_log_file, install_except_hook
-from teuthology import beanstalk
+from teuthology.queue import beanstalk
 from teuthology import report
 from teuthology import safepath
 from teuthology.config import config as teuth_config

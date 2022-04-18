@@ -8,7 +8,7 @@ from datetime import datetime
 from time import sleep
 
 from teuthology import setup_log_file, install_except_hook
-from teuthology import beanstalk
+from teuthology.queue import beanstalk
 from teuthology import report
 from teuthology.config import config as teuth_config
 from teuthology.exceptions import SkipJob
@@ -73,11 +73,8 @@ def main(args):
     machine_type = args["--machine-type"]
     log_dir = args["--log-dir"]
     archive_dir = args["--archive-dir"]
-<<<<<<< HEAD
     exit_on_empty_queue = args["--exit-on-empty-queue"]
-=======
     backend = args['--queue-backend']
->>>>>>> 79c4d9bf... Add beanstalk as a possible queue backend for Teuthology Jobs along with Paddles
 
     if archive_dir is None:
         archive_dir = teuth_config.archive_base
