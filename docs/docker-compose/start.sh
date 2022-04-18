@@ -1,16 +1,5 @@
 #!/bin/bash
 set -e
-pushd teuthology
-if [ -z "$TEUTHOLOGY_BRANCH" -a -n "$GITHUB_HEAD_REF" ]; then
-    TEUTHOLOGY_BRANCH=${GITHUB_HEAD_REF}
-fi
-if [ ! -d ./teuthology ]; then
-    git clone \
-    --depth 1 \
-    -b ${TEUTHOLOGY_BRANCH:-$(git branch --show-current)} \
-    https://github.com/ceph/teuthology.git
-fi
-popd
 if [ -n "$ANSIBLE_INVENTORY_REPO" ]; then
     basename=$(basename $ANSIBLE_INVENTORY_REPO | cut -d. -f1)
     if [ ! -d "$basename" ]; then
@@ -35,18 +24,24 @@ fi
 # Generate an SSH keypair to use if necessary
 if [ -z "$SSH_PRIVKEY_PATH" ]; then
     SSH_PRIVKEY_PATH=$(mktemp -u /tmp/teuthology-ssh-key-XXXXXX)
-    ssh-keygen -t ed25519 -N '' -f $SSH_PRIVKEY_PATH
+    ssh-keygen -t rsa -N '' -f $SSH_PRIVKEY_PATH
     export SSH_PRIVKEY=$(cat $SSH_PRIVKEY_PATH)
     export SSH_PUBKEY=$(cat $SSH_PRIVKEY_PATH.pub)
-    export SSH_PRIVKEY_FILE=id_ed25519
+    export SSH_PRIVKEY_FILE=id_rsa
 else
     export SSH_PRIVKEY=$(cat $SSH_PRIVKEY_PATH)
     export SSH_PRIVKEY_FILE=$(basename $SSH_PRIVKEY_PATH | cut -d. -f1)
 fi
 
+if [ -z "$TEUTHOLOGY_WAIT" ]; then
+    DC_EXIT_FLAG='--abort-on-container-exit --exit-code-from teuthology'
+    DC_AUTO_DOWN_CMD='docker-compose down'
+fi
+export TEUTHOLOGY_WAIT
+
+set +e
 trap "docker-compose down" SIGINT
 docker-compose up \
     --build \
-    --abort-on-container-exit \
-    --exit-code-from teuthology
-docker-compose down
+    $DC_EXIT_FLAG
+$DC_AUTO_DOWN_CMD
