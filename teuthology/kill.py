@@ -11,6 +11,7 @@ from typing import Union
 
 import teuthology.exporter
 
+from teuthology.queue import beanstalk
 from teuthology import report
 from teuthology.lock import ops as lock_ops
 from teuthology import beanstalk

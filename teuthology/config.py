@@ -144,7 +144,7 @@ class TeuthologyConfig(YamlConfig):
         'archive_upload_key': None,
         'archive_upload_url': None,
         'automated_scheduling': False,
-        'backend': 'paddles',
+        'backend': 'beanstalk',
         'reserve_machines': 5,
         'ceph_git_base_url': 'https://github.com/ceph/',
         'ceph_git_url': None,

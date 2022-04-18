@@ -508,7 +508,7 @@ class ResultsReporter(object):
         """
         Create a queue on the results server
 
-        :param machine_type: The machine type specified for the job
+        :param queue: The queue specified for the job
         """
         uri = "{base}/queue/".format(
             base=self.base_uri
@@ -613,10 +613,11 @@ class ResultsReporter(object):
             base=self.base_uri
         )
         request_info = {'queue': queue}
+        filter_field = queue
         if run_name is not None:
             filter_field = run_name
             uri += "?run_name=" + str(run_name)
-        else:
+        elif user is not None:
             filter_field = user
             uri += "?user=" + str(user)
             
@@ -653,36 +654,43 @@ def create_machine_type_queue(queue):
     reporter.create_queue(queue)
     return queue
 
-
-def get_user_jobs_queue(machine_type, user, run_name=None):
+def get_all_jobs_in_queue(queue, user=None, run_name=None):
     reporter = ResultsReporter()
     if not reporter.base_uri:
         return
-    return reporter.queued_jobs(machine_type, user, run_name)
+    if ',' in queue:
+        queue = 'multi'
+    return reporter.queued_jobs(queue)
 
-
-def pause_queue(machine_type, paused, paused_by, pause_duration=None):
+def get_user_jobs_queue(queue, user, run_name=None):
     reporter = ResultsReporter()
     if not reporter.base_uri:
         return
-    reporter.update_queue(machine_type, paused, paused_by, pause_duration)
+    return reporter.queued_jobs(queue, user, run_name)
 
 
-def is_queue_paused(machine_type):
+def pause_queue(queue, paused, paused_by, pause_duration=None):
     reporter = ResultsReporter()
     if not reporter.base_uri:
         return
-    stats = reporter.queue_stats(machine_type)
+    reporter.update_queue(queue, paused, paused_by, pause_duration)
+
+
+def is_queue_paused(queue):
+    reporter = ResultsReporter()
+    if not reporter.base_uri:
+        return
+    stats = reporter.queue_stats(queue)
     if stats['paused'] != 0 and stats['paused'] is not None:
         return True
     return False
 
 
-def get_queue_stats(machine_type):
+def get_queue_stats(queue):
     reporter = ResultsReporter()
     if not reporter.base_uri:
         return  
-    stats = reporter.queue_stats(machine_type)
+    stats = reporter.queue_stats(queue)
     return stats
 
 
