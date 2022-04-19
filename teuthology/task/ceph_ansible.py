@@ -296,8 +296,11 @@ class CephAnsible(Task):
             roles = self.ctx.cluster.remotes[remote]
             dev_needed = len([role for role in roles
                               if role.startswith('osd')])
-            if teuth_config.get('ceph_ansible') and \
-                    self.ctx.machine_type in teuth_config['ceph_ansible']['has_lvm_scratch_disks']:
+            if (
+                    teuth_config.get('ceph_ansible') and 
+                    hasattr(self.ctx, "machine_type") and
+                    self.ctx.machine_type in teuth_config['ceph_ansible']['has_lvm_scratch_disks']
+                ):
                 devices = get_file(remote, "/scratch_devs").decode().split()
                 vols = []
 
