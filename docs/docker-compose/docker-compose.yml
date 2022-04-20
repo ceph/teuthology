@@ -73,6 +73,7 @@ services:
       MACHINE_TYPE:
       TESTNODES:
       TEUTHOLOGY_WAIT:
+      TEUTH_BRANCH:
   testnode:
     build:
       context: ./testnode
