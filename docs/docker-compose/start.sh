@@ -1,5 +1,7 @@
 #!/bin/bash
 set -e
+export TEUTHOLOGY_BRANCH=${TEUTHOLOGY_BRANCH:-$(git branch --show-current)}
+export TEUTH_BRANCH=${TEUTHOLOGY_BRANCH}
 if [ -n "$ANSIBLE_INVENTORY_REPO" ]; then
     basename=$(basename $ANSIBLE_INVENTORY_REPO | cut -d. -f1)
     if [ ! -d "$basename" ]; then
