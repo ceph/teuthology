@@ -6,6 +6,7 @@ from pytest import raises, mark
 import shutil
 import subprocess
 import tempfile
+from packaging.version import parse
 
 from teuthology.exceptions import BranchNotFoundError, CommitNotFoundError
 from teuthology import repo_utils
@@ -28,17 +29,26 @@ class TestRepoUtils(object):
             cls.repo_url = 'file://' + cls.src_path
             cls.commit = None
 
+        cls.git_version = parse(
+            subprocess.check_output(('git', 'version')
+        ).decode().strip().split(' ')[-1])
+
     @classmethod
     def teardown_class(cls):
         shutil.rmtree(cls.temp_path)
 
     def setup_method(self, method):
-        assert not os.path.exists(self.dest_path)
-        proc = subprocess.Popen(
-            ('git', 'init', self.src_path),
-            stdout=subprocess.PIPE,
-        )
-        assert proc.wait() == 0
+        # In git 2.28.0, the --initial-branch flag was added.
+        if self.git_version >= parse("2.28.0"):
+            subprocess.check_call(
+                ('git', 'init', '--initial-branch', 'main', self.src_path)
+            )
+        else:
+            subprocess.check_call(('git', 'init', self.src_path))
+            subprocess.check_call(
+                ('git', 'checkout', '-b', 'main'),
+                cwd=self.src_path,
+            )
         proc = subprocess.Popen(
             ('git', 'config', 'user.email', 'test@ceph.com'),
             cwd=self.src_path,
@@ -68,10 +78,11 @@ class TestRepoUtils(object):
             self.commit = result[0].decode()
 
     def teardown_method(self, method):
+        shutil.rmtree(self.src_path, ignore_errors=True)
         shutil.rmtree(self.dest_path, ignore_errors=True)
 
     def test_clone_repo_existing_branch(self):
-        repo_utils.clone_repo(self.repo_url, self.dest_path, 'master', self.commit)
+        repo_utils.clone_repo(self.repo_url, self.dest_path, 'main', self.commit)
         assert os.path.exists(self.dest_path)
 
     def test_clone_repo_non_existing_branch(self):
@@ -87,7 +98,7 @@ class TestRepoUtils(object):
         assert not os.path.exists(fake_dest_path)
 
     def test_fetch_noop(self):
-        repo_utils.clone_repo(self.repo_url, self.dest_path, 'master', self.commit)
+        repo_utils.clone_repo(self.repo_url, self.dest_path, 'main', self.commit)
         repo_utils.fetch(self.dest_path)
         assert os.path.exists(self.dest_path)
 
@@ -95,11 +106,11 @@ class TestRepoUtils(object):
         fake_dest_path = self.temp_path + '/not_a_repo'
         assert not os.path.exists(fake_dest_path)
         with raises(OSError):
-            repo_utils.fetch_branch(fake_dest_path, 'master')
+            repo_utils.fetch_branch(fake_dest_path, 'main')
         assert not os.path.exists(fake_dest_path)
 
     def test_fetch_branch_fake_branch(self):
-        repo_utils.clone_repo(self.repo_url, self.dest_path, 'master', self.commit)
+        repo_utils.clone_repo(self.repo_url, self.dest_path, 'main', self.commit)
         with raises(BranchNotFoundError):
             repo_utils.fetch_branch(self.dest_path, 'nobranch')
 
@@ -125,12 +136,14 @@ class TestRepoUtils(object):
 
     def test_enforce_existing_branch(self):
         repo_utils.enforce_repo_state(self.repo_url, self.dest_path,
-                                      'master')
+                                      'main')
         assert os.path.exists(self.dest_path)
 
     def test_enforce_existing_commit(self):
+        import logging
+        logging.getLogger().info(subprocess.check_output("git branch", shell=True, cwd=self.src_path))
         repo_utils.enforce_repo_state(self.repo_url, self.dest_path,
-                                      'master', self.commit)
+                                      'main', self.commit)
         assert os.path.exists(self.dest_path)
 
     def test_enforce_non_existing_branch(self):
@@ -142,18 +155,18 @@ class TestRepoUtils(object):
     def test_enforce_non_existing_commit(self):
         with raises(CommitNotFoundError):
             repo_utils.enforce_repo_state(self.repo_url, self.dest_path,
-                                          'master', 'c69e90807d222c1719c45c8c758bf6fac3d985f1')
+                                          'main', 'c69e90807d222c1719c45c8c758bf6fac3d985f1')
         assert not os.path.exists(self.dest_path)
 
     def test_enforce_multiple_calls_same_branch(self):
         repo_utils.enforce_repo_state(self.repo_url, self.dest_path,
-                                      'master', self.commit)
+                                      'main', self.commit)
         assert os.path.exists(self.dest_path)
         repo_utils.enforce_repo_state(self.repo_url, self.dest_path,
-                                      'master', self.commit)
+                                      'main', self.commit)
         assert os.path.exists(self.dest_path)
         repo_utils.enforce_repo_state(self.repo_url, self.dest_path,
-                                      'master', self.commit)
+                                      'main', self.commit)
         assert os.path.exists(self.dest_path)
 
     def test_enforce_multiple_calls_different_branches(self):
@@ -162,17 +175,17 @@ class TestRepoUtils(object):
                                           'blah1')
         assert not os.path.exists(self.dest_path)
         repo_utils.enforce_repo_state(self.repo_url, self.dest_path,
-                                      'master', self.commit)
+                                      'main', self.commit)
         assert os.path.exists(self.dest_path)
         repo_utils.enforce_repo_state(self.repo_url, self.dest_path,
-                                      'master', self.commit)
+                                      'main', self.commit)
         assert os.path.exists(self.dest_path)
         with raises(BranchNotFoundError):
             repo_utils.enforce_repo_state(self.repo_url, self.dest_path,
                                           'blah2')
         assert not os.path.exists(self.dest_path)
         repo_utils.enforce_repo_state(self.repo_url, self.dest_path,
-                                      'master', self.commit)
+                                      'main', self.commit)
         assert os.path.exists(self.dest_path)
 
     def test_enforce_invalid_branch(self):
@@ -184,17 +197,17 @@ class TestRepoUtils(object):
         with parallel.parallel() as p:
             for i in range(count):
                 p.spawn(repo_utils.enforce_repo_state, self.repo_url,
-                        self.dest_path, 'master', self.commit)
+                        self.dest_path, 'main', self.commit)
             for result in p:
                 assert result is None
 
     def test_simultaneous_access_different_branches(self):
-        branches = [('master', self.commit),  ('master', self.commit), ('nobranch', 'nocommit'),
-                    ('nobranch', 'nocommit'), ('master', self.commit), ('nobranch', 'nocommit')]
+        branches = [('main', self.commit),  ('main', self.commit), ('nobranch', 'nocommit'),
+                    ('nobranch', 'nocommit'), ('main', self.commit), ('nobranch', 'nocommit')]
 
         with parallel.parallel() as p:
             for branch, commit in branches:
-                if branch == 'master':
+                if branch == 'main':
                     p.spawn(repo_utils.enforce_repo_state, self.repo_url,
                             self.dest_path, branch, commit)
                 else:
@@ -225,7 +238,5 @@ class TestRepoUtils(object):
         assert repo_utils.url_to_dirname(input_) == expected
 
     def test_current_branch(self):
-        #repo_utils.enforce_repo_state(self.repo_url, self.dest_path,
-        #                              'master', self.commit)
-        repo_utils.clone_repo(self.repo_url, self.dest_path, 'master', self.commit)
-        assert repo_utils.current_branch(self.dest_path) == "master"
+        repo_utils.clone_repo(self.repo_url, self.dest_path, 'main', self.commit)
+        assert repo_utils.current_branch(self.dest_path) == "main"
