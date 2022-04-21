@@ -44,10 +44,12 @@ class TeuthologyContextPlugin(object):
             metafunc.parametrize(["ctx", "config"], [(self.ctx, self.config),])
 
     # log the outcome of each test
-    def pytest_runtest_makereport(self, __multicall__, item, call):
-        report = __multicall__.execute()
+    @pytest.hookimpl(hookwrapper=True)
+    def pytest_runtest_makereport(self, item, call):
+        outcome = yield
+        report = outcome.get_result()
 
-        # after the test has been called, get it's report and log it
+        # after the test has been called, get its report and log it
         if call.when == 'call':
             # item.location[0] is a slash delimeted path to the test file
             # being ran. We only want the portion after teuthology.task.tests
