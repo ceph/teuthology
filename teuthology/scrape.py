@@ -12,7 +12,6 @@ import re
 import logging
 import subprocess
 
-import six
 
 log = logging.getLogger('scrape')
 log.addHandler(logging.StreamHandler())
@@ -31,11 +30,12 @@ def grep(path, expr):
     """
     Call out to native grep rather than feeding massive log files through python line by line
     """
-    p = subprocess.Popen(["grep", expr, path], stdout=subprocess.PIPE)
+    p = subprocess.Popen(["grep", expr, path], stdout=subprocess.PIPE,
+                         universal_newlines=True)
     p.wait()
     out, err = p.communicate()
     if p.returncode == 0:
-        return six.ensure_str(out).split("\n")
+        return out.split("\n")
     else:
         return []
 
@@ -410,7 +410,7 @@ class ValgrindReason(Reason):
                 log.warning("Misunderstood line: {0}".format(line))
                 continue
             err_typ, log_basename = match.groups()
-            svc_typ = six.ensure_str(log_basename).split(".")[0]
+            svc_typ = log_basename.split(".")[0]
             if err_typ not in result[svc_typ]:
                 result[svc_typ].append(err_typ)
                 result[svc_typ] = sorted(result[svc_typ])
