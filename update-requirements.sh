@@ -1,3 +1,3 @@
 #!/bin/bash
 
-pip-compile $@ pyproject.toml
+pip-compile --extra=test $@ pyproject.toml
