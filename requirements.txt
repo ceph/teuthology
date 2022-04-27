@@ -4,8 +4,10 @@
 #
 #    pip-compile --extra=test pyproject.toml
 #
-ansible==2.9.27
+ansible==2.10.7
     # via teuthology (pyproject.toml)
+ansible-base==2.10.17
+    # via ansible
 apache-libcloud==3.3.1
     # via teuthology (pyproject.toml)
 appdirs==1.4.4
@@ -57,7 +59,7 @@ configparser==5.0.2
     # via teuthology (pyproject.toml)
 cryptography==3.4.7
     # via
-    #   ansible
+    #   ansible-base
     #   openstacksdk
     #   paramiko
     #   pyopenssl
@@ -120,7 +122,7 @@ iso8601==0.1.16
     #   python-novaclient
     #   python-openstackclient
 jinja2==3.0.1
-    # via ansible
+    # via ansible-base
 jmespath==0.10.0
     # via
     #   boto3
@@ -193,6 +195,7 @@ oslo.utils==4.12.2
     #   python-openstackclient
 packaging==21.0
     # via
+    #   ansible-base
     #   oslo.utils
     #   pytest
     #   tox
@@ -286,7 +289,7 @@ pytz==2021.1
     #   oslo.utils
 pyyaml==5.4.1
     # via
-    #   ansible
+    #   ansible-base
     #   cliff
     #   openstacksdk
     #   oslo.config
