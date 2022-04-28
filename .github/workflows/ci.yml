@@ -45,6 +45,8 @@ jobs:
         run: |
           pip install --user virtualenv
           virtualenv ./virtualenv
+          cd ./virtualenv/lib/python*
+          touch no-global-site-packages.txt
         working-directory: ./teuthology
       - name: Initial bootstrap
         run: ./bootstrap install
