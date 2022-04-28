@@ -30,12 +30,16 @@ jobs:
         run: tox -e docs
   deps:
     name: Test dependencies
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python: [3.6, 3.8]
     steps:
       - name: Set up Python
         uses: actions/setup-python@v3
         with:
-          python-version: 3.9
+          python-version: ${{ matrix.python }}
       - name: Checkout default branch
         uses: actions/checkout@v3
         with:
