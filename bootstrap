@@ -159,7 +159,7 @@ if [ -f "$VENV/bin/ansible" ]; then
     ansible_version=$($VENV/bin/pip list --format json | python3 -c "import sys; import json; print(list(filter(lambda i: i['name'] == 'ansible', json.loads(sys.stdin.read())))[0]['version'])")
     uninstall_ansible=$(./$VENV/bin/python3 -c "from packaging.version import parse; print(parse('$ansible_version') < parse('5.0'))")
     if [ "$uninstall_ansible" = "True" ]; then
-        ./$VENV/bin/pip uninstall -y ansible
+        ./$VENV/bin/pip uninstall -y ansible ansible-base ansible-core
     fi
 fi
 
