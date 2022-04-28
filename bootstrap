@@ -150,11 +150,13 @@ if [ -z "$NO_CLOBBER" ] || [ ! -e ./$VENV ]; then
     virtualenv --python=$PYTHON $VENV
 fi
 
+./$VENV/bin/pip install packaging
+
 # It is impossible to upgrade ansible from 2.9 to 2.10 via pip.
 # See https://docs.ansible.com/ansible/devel/porting_guides/porting_guide_2.10.html#known-issues
 if [ -f "$VENV/bin/ansible" ]; then
     ansible_version=$($VENV/bin/pip list --format json | python3 -c "import sys; import json; print(list(filter(lambda i: i['name'] == 'ansible', json.loads(sys.stdin.read())))[0]['version'])")
-    uninstall_ansible=$(python3 -c "from packaging.version import parse; print(parse('$ansible_version') < parse('2.10.0'))")
+    uninstall_ansible=$(./$VENV/bin/python3 -c "from packaging.version import parse; print(parse('$ansible_version') < parse('2.10.0'))")
     if [ "$uninstall_ansible" = "True" ]; then
         ./$VENV/bin/pip uninstall -y ansible
     fi
