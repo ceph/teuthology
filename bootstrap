@@ -137,8 +137,9 @@ esac
 
 # Forcibly remove old virtualenvs which used system site-packages
 if [ -e ./$VENV ]  && [ ! -e ./$VENV/pyvenv.cfg ] && [ ! -e ./$VENV/lib/python*/no-global-site-packages.txt ]; then
-    echo "Removing old virtualenv because it uses system site-packages"
-    rm -rf ./$VENV
+    echo "would have removed virtualenv"
+    #echo "Removing old virtualenv because it uses system site-packages"
+    #rm -rf ./$VENV
 fi
 
 export LC_ALL=en_US.UTF-8
