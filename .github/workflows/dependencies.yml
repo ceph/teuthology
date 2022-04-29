@@ -1,0 +1,47 @@
+name: dependencies
+
+on:
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  upgrade:
+    name: Test dependencies
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python: [3.6, 3.8]
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Checkout default branch
+        uses: actions/checkout@v3
+        with:
+          ref: master
+          path: teuthology
+      - name: virtualenv
+        run: |
+          pip install --user virtualenv
+          virtualenv ./virtualenv
+          cd ./virtualenv/lib/python*
+          touch no-global-site-packages.txt
+        working-directory: ./teuthology
+      - name: Initial bootstrap
+        run: ./bootstrap install
+        working-directory: ./teuthology
+      - name: Move initial repository
+        run: mv teuthology teuthology.orig
+      - name: Checkout desired ref
+        uses: actions/checkout@v3
+        with:
+          path: teuthology
+      - name: Move virtualenv to new checkout
+        run: mv ./teuthology.orig/virtualenv ./teuthology/
+      - name: Re-run bootstrap
+        run: ./bootstrap install
+        working-directory: ./teuthology
