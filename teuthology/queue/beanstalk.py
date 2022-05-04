@@ -1,12 +1,10 @@
 import beanstalkc
 import yaml
 import logging
-import pprint
-import sys
-from collections import OrderedDict
 
 from teuthology.config import config
-from teuthology import report
+from teuthology.queue import util
+
 
 log = logging.getLogger(__name__)
 
@@ -47,7 +45,7 @@ def walk_jobs(connection, tube_name, processor, pattern=None):
     # Try to figure out a sane timeout based on how many jobs are in the queue
     timeout = job_count / 2000.0 * 60
     for i in range(1, job_count + 1):
-        print_progress(i, job_count, "Loading")
+        util.print_progress(i, job_count, "Loading")
         job = connection.reserve(timeout=timeout)
         if job is None or job.body is None:
             continue
@@ -57,7 +55,7 @@ def walk_jobs(connection, tube_name, processor, pattern=None):
         if pattern is not None and pattern not in job_name:
             continue
         processor.add_job(job_id, job_config, job)
-    end_progress()
+    util.end_progress()
     processor.complete()
 
 
@@ -105,13 +103,13 @@ def main(args):
             pause_tube(connection, machine_type, pause_duration)
         elif delete:
             walk_jobs(connection, machine_type,
-                      JobDeleter(delete))
+                      util.JobDeleter(delete))
         elif runs:
             walk_jobs(connection, machine_type,
-                      RunPrinter())
+                      util.RunPrinter())
         else:
             walk_jobs(connection, machine_type,
-                      JobPrinter(show_desc=show_desc, full=full))
+                      util.JobPrinter(show_desc=show_desc, full=full))
     except KeyboardInterrupt:
         log.info("Interrupted.")
     finally:

@@ -1,7 +1,7 @@
 import os
 import yaml
 
-import teuthology.beanstalk
+import teuthology.queue.beanstalk
 from teuthology.misc import get_user, merge_configs
 from teuthology import report
 
@@ -115,9 +115,9 @@ def beanstalk_schedule_job(job_config, backend, num=1):
     """
     num = int(num)
     tube = job_config.pop('tube')
-    beanstalk = teuthology.beanstalk.connect()
+    beanstalk = teuthology.queue.beanstalk.connect()
     beanstalk.use(tube)
-    queue = report.create_machine_type_queue(job_config['machine_type'])
+    queue = report.create_machine_type_queue(tube)
     job_config['queue'] = queue
     while num > 0:
         job_id = report.try_create_job(job_config, dict(status='queued'))
