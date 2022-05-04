@@ -1,9 +1,10 @@
 import os
 import yaml
 
-import teuthology.beanstalk
+import teuthology.queue.beanstalk
 from teuthology.misc import get_user, merge_configs
 from teuthology import report
+from teuthology.config import config
 
 
 def main(args):
@@ -27,7 +28,7 @@ def main(args):
     if not name or name.isdigit():
         raise ValueError("Please use a more descriptive value for --name")
     job_config = build_config(args)
-    backend = args['--queue-backend']
+    backend = config.queue_backend
     if args['--dry-run']:
         print('---\n' + yaml.safe_dump(job_config))
     elif backend.startswith('@'):
@@ -115,9 +116,9 @@ def beanstalk_schedule_job(job_config, backend, num=1):
     """
     num = int(num)
     tube = job_config.pop('tube')
-    beanstalk = teuthology.beanstalk.connect()
+    beanstalk = teuthology.queue.beanstalk.connect()
     beanstalk.use(tube)
-    queue = report.create_machine_type_queue(job_config['machine_type'])
+    queue = report.create_machine_type_queue(tube)
     job_config['queue'] = queue
     while num > 0:
         job_id = report.try_create_job(job_config, dict(status='queued'))

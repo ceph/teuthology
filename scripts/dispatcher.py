@@ -1,9 +1,9 @@
 """
 usage: teuthology-dispatcher --help
        teuthology-dispatcher --supervisor [-v] --bin-path BIN_PATH --job-config CONFIG --archive-dir DIR
-       teuthology-dispatcher [-v] [--archive-dir DIR] --log-dir LOG_DIR --machine-type MACHINE_TYPE --queue-backend BACKEND
+       teuthology-dispatcher [-v] [--archive-dir DIR] [--exit-on-empty-queue] --log-dir LOG_DIR --tube TUBE --machine-type MACHINE_TYPE
 
-Start a dispatcher for the specified machine type. Grab jobs from a paddles/beanstalk
+Start a dispatcher for the specified tube. Grab jobs from a paddles/beanstalk
 queue and run the teuthology tests they describe as subprocesses. The
 subprocess invoked is a teuthology-dispatcher command run in supervisor
 mode.
@@ -17,12 +17,12 @@ standard arguments:
   -v, --verbose                  be more verbose
   -l, --log-dir LOG_DIR          path in which to store logs
   -a DIR, --archive-dir DIR      path to archive results in
-  --machine-type MACHINE_TYPE    the machine type for the job
+  -t, --tube TUBE                which queue to read jobs from
   --supervisor                   run dispatcher in job supervisor mode
   --bin-path BIN_PATH            teuthology bin path
   --job-config CONFIG            file descriptor of job's config file
   --exit-on-empty-queue          if the queue is empty, exit
-  --queue-backend BACKEND        choose between paddles and beanstalk
+  --machine-type MACHINE_TYPE    specify machine type eg. smithi, mira
 """
 
 import docopt

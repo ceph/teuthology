@@ -1,4 +1,3 @@
-import beanstalkc
 import os
 
 from unittest.mock import patch, Mock, MagicMock
@@ -275,49 +274,11 @@ class TestWorker(object):
             job.bury.assert_called_once_with()
             job.delete.assert_called_once_with()
 
-    @patch("teuthology.worker.run_job")
-    @patch("teuthology.worker.prep_job")
-    @patch("beanstalkc.Job", autospec=True)
-    @patch("teuthology.worker.fetch_qa_suite")
-    @patch("teuthology.worker.fetch_teuthology")
-    @patch("teuthology.worker.beanstalk.watch_tube")
-    @patch("teuthology.worker.beanstalk.connect")
-    @patch("os.path.isdir", return_value=True)
-    @patch("teuthology.worker.setup_log_file")
-    def test_main_loop(
-        self, m_setup_log_file, m_isdir, m_connect, m_watch_tube,
-        m_fetch_teuthology, m_fetch_qa_suite, m_job, m_prep_job, m_run_job,
-    ):
-        m_connection = Mock()
-        jobs = self.build_fake_jobs(
-            m_connection,
-            m_job,
-            [
-                'foo: bar',
-                'stop_worker: true',
-            ],
-        )
-        m_connection.reserve.side_effect = jobs
-        m_connect.return_value = m_connection
-        m_prep_job.return_value = (dict(), '/bin/path')
-        worker.main(self.ctx)
-        # There should be one reserve call per item in the jobs list
-        expected_reserve_calls = [
-            dict(timeout=60) for i in range(len(jobs))
-        ]
-        got_reserve_calls = [
-            call[1] for call in m_connection.reserve.call_args_list
-        ]
-        assert got_reserve_calls == expected_reserve_calls
-        for job in jobs:
-            job.bury.assert_called_once_with()
-            job.delete.assert_called_once_with()
-
     @patch("teuthology.worker.report.try_push_job_info")
     @patch("teuthology.worker.run_job")
     @patch("beanstalkc.Job", autospec=True)
-    @patch("teuthology.worker.fetch_qa_suite")
-    @patch("teuthology.worker.fetch_teuthology")
+    @patch("teuthology.repo_utils.fetch_qa_suite")
+    @patch("teuthology.repo_utils.fetch_teuthology")
     @patch("teuthology.worker.beanstalk.watch_tube")
     @patch("teuthology.worker.beanstalk.connect")
     @patch("os.path.isdir", return_value=True)

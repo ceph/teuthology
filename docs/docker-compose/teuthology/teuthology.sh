@@ -43,4 +43,6 @@ fi
 teuthology-dispatcher -v \
     --log-dir /teuthology/log \
     --tube $MACHINE_TYPE \
+    --machine-type $MACHINE_TYPE \
     $DISPATCHER_EXIT_FLAG
+

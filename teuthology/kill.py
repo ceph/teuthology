@@ -117,7 +117,7 @@ def find_run_info(serializer, run_name):
         if not os.path.isdir(job_dir):
             continue
         job_num += 1
-        if config.backend == 'beanstalk':
+        if config.queue_backend == 'beanstalk':
             beanstalk.print_progress(job_num, job_total, 'Reading Job: ')
         job_info = serializer.job_info(run_name, job_id, simple=True)
         for key in job_info.keys():

@@ -7,7 +7,6 @@ import yaml
 
 from datetime import datetime
 from typing import Dict, List
-from time import sleep
 
 from teuthology import (
     # non-modules
@@ -78,11 +77,15 @@ def main(args):
         return supervisor.main(args)
 
     verbose = args["--verbose"]
-    machine_type = args["--machine-type"]
+    tube = args["--tube"]
     log_dir = args["--log-dir"]
     archive_dir = args["--archive-dir"]
     exit_on_empty_queue = args["--exit-on-empty-queue"]
-    backend = args['--queue-backend']
+    machine_type = args['--machine-type']
+    backend = teuth_config.queue_backend
+
+    if backend is None:
+        backend = 'beanstalk'
 
     if archive_dir is None:
         archive_dir = teuth_config.archive_base
@@ -97,13 +100,14 @@ def main(args):
 
     if machine_type is None and teuth_config.machine_type is None:
         return
+
     # setup logging for disoatcher in {log_dir}
     loglevel = logging.INFO
     if verbose:
         loglevel = logging.DEBUG
     logging.getLogger().setLevel(loglevel)
     log.setLevel(loglevel)
-    log_file_path = os.path.join(log_dir, f"dispatcher.{machine_type}.{os.getpid()}")
+    log_file_path = os.path.join(log_dir, f"dispatcher.{tube}.{os.getpid()}")
     setup_log_file(log_file_path)
     install_except_hook()
 
@@ -111,7 +115,7 @@ def main(args):
 
     if backend == 'beanstalk':
         connection = beanstalk.connect()
-        beanstalk.watch_tube(connection, machine_type)
+        beanstalk.watch_tube(connection, tube)
 
     result_proc = None
 
@@ -141,21 +145,25 @@ def main(args):
             if rc is not None:
                 worst_returncode = max([worst_returncode, rc])
                 job_procs.remove(proc)
-        if config.backend == 'beanstalk':
+        if teuth_config.queue_backend == 'beanstalk':
             job = connection.reserve(timeout=60)
+            if job is not None:
+                job_id = job.jid
+                job_config = yaml.safe_load(job.body)
         else:
             job = report.get_queued_job(machine_type)
+            if job is not None:
+                job = clean_config(job)
+                job_id = job.get('job_id')
+                job_config = job
         if job is None:
             if exit_on_empty_queue and not job_procs:
                 log.info("Queue is empty and no supervisor processes running; exiting!")
                 break
             continue
-        job = clean_config(job)
-        report.try_push_job_info(job, dict(status='running'))
-        job_id = job.get('job_id')
+        report.try_push_job_info(job_config, dict(status='running'))
         log.info('Reserved job %s', job_id)
-        log.info('Config is: %s', job)
-        job_config = job
+        log.info('Config is: %s', job_config)
         
         if job_config.get('stop_worker'):
             keep_running = False
@@ -272,18 +280,3 @@ def create_job_archive(job_name, job_archive_path, archive_dir):
     if not os.path.exists(run_archive):
         safepath.makedirs('/', run_archive)
     safepath.makedirs('/', job_archive_path)
-
-
-def pause_queue(machine_type, paused, paused_by, pause_duration=None):
-    if paused:
-        report.pause_queue(machine_type, paused, paused_by, pause_duration)
-        '''
-        If there is a pause duration specified
-        un-pause the queue after the time elapses
-        '''
-        if pause_duration is not None:
-            sleep(int(pause_duration))
-            paused = False
-            report.pause_queue(machine_type, paused, paused_by)
-    elif not paused:
-        report.pause_queue(machine_type, paused, paused_by)

@@ -283,7 +283,6 @@ class ResultsReporter(object):
                 sleep=1, increment=inc, action=f'write job for {run_name}') as proceed:
             while proceed():
                 response = self.session.post(run_uri, data=job_json, headers=headers)
-
                 if response.status_code == 200:
                     resp_json = response.json()
                     job_id = resp_json['job_id']
@@ -323,20 +322,19 @@ class ResultsReporter(object):
         if job_info is not None and not isinstance(job_info, dict):
             raise TypeError("job_info must be a dict")
         run_uri = "{base}/runs/{name}/jobs/".format(
-            base=self.base_uri, name=run_name,)
+            base=self.base_uri, name=run_name)
         if job_info is None:
             job_info = self.serializer.job_info(run_name, job_id)
         if dead and get_status(job_info) is None:
             set_status(job_info, 'dead')
         job_json = json.dumps(job_info)
         headers = {'content-type': 'application/json'}
-        job_uri = os.path.join(run_uri, job_id, '')
 
         inc = random.uniform(0, 1)
         with safe_while(
                 sleep=1, increment=inc, action=f'report job {job_id}') as proceed:
             while proceed():
-                response = self.session.put(job_uri, data=job_json, headers=headers)
+                response = self.session.post(run_uri, data=job_json, headers=headers)
 
                 if response.status_code == 200:
                     return
@@ -353,9 +351,16 @@ class ResultsReporter(object):
                 else:
                     msg = response.text
 
-                if msg:
+                if msg and msg.endswith('already exists'):
+                    job_uri = os.path.join(run_uri, job_id, '')
+                    response = self.session.put(job_uri, data=job_json,
+                                                headers=headers)
+                    if response.status_code == 200:
+                        return
+
+                elif msg:
                     self.log.error(
-                        "PUT to {uri} failed with status {status}: {msg}".format(
+                        "POST to {uri} failed with status {status}: {msg}".format(
                             uri=run_uri,
                             status=response.status_code,
                             msg=msg,
@@ -388,7 +393,7 @@ class ResultsReporter(object):
     
     def get_top_job(self, queue):
 
-        uri = "{base}/queue/pop_queue?queue_name={queue}".format(base=self.base_uri,
+        uri = "{base}/queue/pop_queue?queue={queue}".format(base=self.base_uri,
                                                                           queue=queue)
         inc = random.uniform(0, 1)
         with safe_while(
@@ -522,7 +527,6 @@ class ResultsReporter(object):
                 sleep=1, increment=inc, action=f'creating queue {queue}') as proceed:
             while proceed():
                 response = self.session.post(uri, data=queue_json, headers=headers)
-
                 if response.status_code == 200:
                     self.log.info("Successfully created queue {queue}".format(
                         queue=queue,
@@ -545,13 +549,14 @@ class ResultsReporter(object):
 
         response.raise_for_status()
 
-    def update_queue(self, queue, paused, paused_by, pause_duration=None):
+    def update_queue(self, queue, paused_by, pause_duration=None):
         uri = "{base}/queue/".format(
             base=self.base_uri
         )
+
         if pause_duration is not None:
             pause_duration = int(pause_duration)
-        queue_info = {'queue': queue, 'paused': paused, 'paused_by': paused_by,
+        queue_info = {'queue': queue, 'paused_by': paused_by,
                       'pause_duration': pause_duration}
         queue_json = json.dumps(queue_info)
         headers = {'content-type': 'application/json'}
@@ -580,34 +585,28 @@ class ResultsReporter(object):
     
 
     def queue_stats(self, queue):
-        uri = "{base}/queue/stats/".format(
-            base=self.base_uri
+        uri = "{base}/queue/stats/?queue={queue}".format(
+            base=self.base_uri,
+            queue=queue
         )
-        queue_info = {'queue': queue}
-        queue_json = json.dumps(queue_info)
-
-        headers = {'content-type': 'application/json'}
         inc = random.uniform(0, 1)
         with safe_while(
                 sleep=1, increment=inc, action=f'stats for queue {queue}') as proceed:
             while proceed():
-                response = self.session.post(uri, data=queue_json, headers=headers)
-
+                response = self.session.get(uri)
                 if response.status_code == 200:
-                    self.log.info("Successfully retrieved stats for queue {queue}".format(
-                        queue=queue,
-                    ))
                     return response.json()
                 else:
                     msg = response.text
                     self.log.error(
-                        "POST to {uri} failed with status {status}: {msg}".format(
+                        "GET to {uri} failed with status {status}: {msg}".format(
                             uri=uri,
                             status=response.status_code,
                             msg=msg,
                         ))
         response.raise_for_status()
-    
+
+
     def queued_jobs(self, queue, user, run_name):
         uri = "{base}/queue/queued_jobs/".format(
             base=self.base_uri
@@ -668,12 +667,18 @@ def get_user_jobs_queue(queue, user, run_name=None):
         return
     return reporter.queued_jobs(queue, user, run_name)
 
-
-def pause_queue(queue, paused, paused_by, pause_duration=None):
+def get_jobs_by_run(queue, run_name):
     reporter = ResultsReporter()
     if not reporter.base_uri:
         return
-    reporter.update_queue(queue, paused, paused_by, pause_duration)
+    return reporter.queued_jobs(queue, None, run_name)
+
+
+def pause_queue(queue, paused_by, pause_duration=None):
+    reporter = ResultsReporter()
+    if not reporter.base_uri:
+        return
+    reporter.update_queue(queue, paused_by, pause_duration)
 
 
 def is_queue_paused(queue):
@@ -713,7 +718,7 @@ def push_job_info(run_name, job_id, job_info, base_uri=None):
         teuthology.exporter.JobResults.record(job_info["machine_type"], status)
 
 
-def get_queued_job(machine_type):
+def get_queued_job(queue):
     """
     Retrieve a job that is queued depending on priority
 
@@ -722,10 +727,6 @@ def get_queued_job(machine_type):
     reporter = ResultsReporter()
     if not reporter.base_uri:
         return
-    if ',' in machine_type:
-        queue = 'multi'
-    else:
-        queue = machine_type
     if is_queue_paused(queue) == True:
         log.info("Teuthology queue %s is currently paused",
                   queue)
