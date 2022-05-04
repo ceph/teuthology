@@ -95,6 +95,8 @@ def main(args):
     if backend == 'beanstalk':
         connection = beanstalk.connect()
         beanstalk.watch_tube(connection, machine_type)
+    elif backend == 'paddles':
+        report.create_machine_type_queue(machine_type)
 
     result_proc = None
 
@@ -131,6 +133,9 @@ def main(args):
         else:
             job = report.get_queued_job(machine_type)
             if job is None:
+                if exit_on_empty_queue and not job_procs:
+                    log.info("Queue is empty and no supervisor processes running; exiting!")
+                    break
                 continue
             job = clean_config(job)
             report.try_push_job_info(job, dict(status='running'))

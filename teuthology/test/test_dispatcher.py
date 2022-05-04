@@ -66,7 +66,8 @@ class TestDispatcher(unittest.TestCase):
             '--machine-type': 'test_queue',
             '--supervisor': False,
             '--verbose': False,
-            '--queue-backend': 'paddles'
+            '--queue-backend': 'paddles',
+            '--exit-on-empty-queue': False
         }
 
         m = mock.MagicMock()
