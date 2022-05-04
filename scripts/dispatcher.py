@@ -26,7 +26,6 @@ standard arguments:
   --queue-backend BACKEND        choose between paddles and beanstalk
 """
 
-import docopt
 import sys
 
 import teuthology.dispatcher.supervisor

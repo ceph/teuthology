@@ -388,7 +388,7 @@ class ResultsReporter(object):
     
     def get_top_job(self, queue):
 
-        uri = "{base}/queue/pop_queue?queue_name={queue}".format(base=self.base_uri,
+        uri = "{base}/queue/pop_queue?queue={queue}".format(base=self.base_uri,
                                                                           queue=queue)
         inc = random.uniform(0, 1)
         with safe_while(
@@ -545,13 +545,14 @@ class ResultsReporter(object):
 
         response.raise_for_status()
 
-    def update_queue(self, queue, paused, paused_by, pause_duration=None):
+    def update_queue(self, queue, paused_by, pause_duration=None):
         uri = "{base}/queue/".format(
             base=self.base_uri
         )
+
         if pause_duration is not None:
             pause_duration = int(pause_duration)
-        queue_info = {'queue': queue, 'paused': paused, 'paused_by': paused_by,
+        queue_info = {'queue': queue, 'paused_by': paused_by,
                       'pause_duration': pause_duration}
         queue_json = json.dumps(queue_info)
         headers = {'content-type': 'application/json'}
@@ -594,9 +595,6 @@ class ResultsReporter(object):
                 response = self.session.post(uri, data=queue_json, headers=headers)
 
                 if response.status_code == 200:
-                    self.log.info("Successfully retrieved stats for queue {queue}".format(
-                        queue=queue,
-                    ))
                     return response.json()
                 else:
                     msg = response.text
@@ -668,12 +666,18 @@ def get_user_jobs_queue(queue, user, run_name=None):
         return
     return reporter.queued_jobs(queue, user, run_name)
 
-
-def pause_queue(queue, paused, paused_by, pause_duration=None):
+def get_jobs_by_run(queue, run_name):
     reporter = ResultsReporter()
     if not reporter.base_uri:
         return
-    reporter.update_queue(queue, paused, paused_by, pause_duration)
+    return reporter.queued_jobs(queue, None, run_name)
+
+
+def pause_queue(queue, paused_by, pause_duration=None):
+    reporter = ResultsReporter()
+    if not reporter.base_uri:
+        return
+    reporter.update_queue(queue, paused_by, pause_duration)
 
 
 def is_queue_paused(queue):

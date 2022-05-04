@@ -14,9 +14,7 @@ import teuthology.exporter
 from teuthology.queue import beanstalk
 from teuthology import report
 from teuthology.lock import ops as lock_ops
-from teuthology import beanstalk
 from teuthology.config import config
-from teuthology import misc
 
 log = logging.getLogger(__name__)
 
