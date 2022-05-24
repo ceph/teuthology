@@ -37,6 +37,7 @@ def git_repository(request):
     git config user.name 'Your Name'
     git add A
     git commit -m 'A' A
+    git rev-parse --abbrev-ref main || git checkout -b main
     """.format(d=d))
 
     def fin():
