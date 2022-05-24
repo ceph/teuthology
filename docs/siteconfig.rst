@@ -94,7 +94,7 @@ Here is a sample configuration with many of the options set and documented::
     # {uri} is ref/tag if 'tag' is set in the job yaml file
     #       or ref/branch if 'branch' is set in the job yaml file
     #       or sha1/sha1 if 'sha1' is set in the job yaml file
-    #       or ref/master
+    #       or ref/main
     # {pkg_type} is either 'deb' or 'rpm' depending on the host on which the
     #            packages are to be installed
     # {dist} If lsb_release -si is Fedora the value is:

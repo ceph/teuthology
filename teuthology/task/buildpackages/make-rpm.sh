@@ -17,7 +17,7 @@
 
 # 
 # Create and upload a RPM repository with the same naming conventions
-# as https://github.com/ceph/autobuild-ceph/blob/master/build-ceph-rpm.sh
+# as https://github.com/ceph/autobuild-ceph/blob/main/build-ceph-rpm.sh
 #
 
 set -xe

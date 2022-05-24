@@ -89,7 +89,7 @@ def task(ctx, config):
     mpiexec = config['exec'].replace('$TESTDIR', testdir)
     hosts = []
     remotes = []
-    master_remote = None
+    main_remote = None
     if 'nodes' in config:
         if isinstance(config['nodes'], str) and config['nodes'] == 'all':
             for role in  teuthology.all_roles(ctx.cluster):
@@ -97,17 +97,17 @@ def task(ctx, config):
                 ip,port = remote.ssh.get_transport().getpeername()
                 hosts.append(ip)
                 remotes.append(remote)
-            (master_remote,) = ctx.cluster.only(config['nodes'][0]).remotes.keys()
+            (main_remote,) = ctx.cluster.only(config['nodes'][0]).remotes.keys()
         elif isinstance(config['nodes'], list):
             for role in config['nodes']:
                 (remote,) = ctx.cluster.only(role).remotes.keys()
                 ip,port = remote.ssh.get_transport().getpeername()
                 hosts.append(ip)
                 remotes.append(remote)
-            (master_remote,) = ctx.cluster.only(config['nodes'][0]).remotes.keys()
+            (main_remote,) = ctx.cluster.only(config['nodes'][0]).remotes.keys()
     else:
         roles = ['client.{id}'.format(id=id_) for id_ in teuthology.all_roles_of_type(ctx.cluster, 'client')]
-        (master_remote,) = ctx.cluster.only(roles[0]).remotes.keys()
+        (main_remote,) = ctx.cluster.only(roles[0]).remotes.keys()
         for role in roles:
             (remote,) = ctx.cluster.only(role).remotes.keys()
             ip,port = remote.ssh.get_transport().getpeername()
@@ -121,17 +121,17 @@ def task(ctx, config):
     if 'workdir' in config:
         workdir = ['-wdir', config['workdir'].replace('$TESTDIR', testdir) ]
 
-    log.info('mpi rank 0 is: {name}'.format(name=master_remote.name))
+    log.info('mpi rank 0 is: {name}'.format(name=main_remote.name))
 
     # write out the mpi hosts file
     log.info('mpi nodes: [%s]' % (', '.join(hosts)))
-    teuthology.write_file(remote=master_remote,
+    teuthology.write_file(remote=main_remote,
                           path='{tdir}/mpi-hosts'.format(tdir=testdir),
                           data='\n'.join(hosts))
-    log.info('mpiexec on {name}: {cmd}'.format(name=master_remote.name, cmd=mpiexec))
+    log.info('mpiexec on {name}: {cmd}'.format(name=main_remote.name, cmd=mpiexec))
     args=['mpiexec', '-f', '{tdir}/mpi-hosts'.format(tdir=testdir)]
     args.extend(workdir)
     args.extend(mpiexec.split(' '))
-    master_remote.run(args=args, )
+    main_remote.run(args=args, )
     log.info('mpi task completed')
-    master_remote.run(args=['rm', '{tdir}/mpi-hosts'.format(tdir=testdir)])
+    main_remote.run(args=['rm', '{tdir}/mpi-hosts'.format(tdir=testdir)])

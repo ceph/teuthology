@@ -49,8 +49,8 @@ class TestRun(object):
         # neuter choose_X_branch
         m_git_validate_sha1.return_value = self.args_dict['ceph_sha1']
         m_choose_ceph_version.return_value = self.args_dict['ceph_sha1']
-        self.args_dict['teuthology_branch'] = 'master'
-        self.args_dict['suite_branch'] = 'master'
+        self.args_dict['teuthology_branch'] = 'main'
+        self.args_dict['suite_branch'] = 'main'
         m_git_ls_remote.return_value = 'suite_sha1'
 
         runobj = self.klass(self.args)
@@ -162,7 +162,7 @@ class TestRun(object):
         m_qa_teuthology_branch_exists.return_value = False
         self.args_dict = {
             'base_yaml_paths': [],
-            'ceph_branch': 'master',
+            'ceph_branch': 'main',
             'machine_type': 'smithi',
             'flavor': 'default',
             'kernel_branch': 'testing',
@@ -192,10 +192,10 @@ class TestScheduleSuite(object):
             suite='suite',
             suite_relpath='',
             suite_dir='suite_dir',
-            suite_branch='master',
+            suite_branch='main',
             ceph_branch='ceph_branch',
             ceph_sha1='ceph_sha1',
-            teuthology_branch='master',
+            teuthology_branch='main',
             kernel_branch=None,
             flavor='flavor',
             distro='ubuntu',

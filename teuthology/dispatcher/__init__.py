@@ -85,8 +85,8 @@ def main(args):
     result_proc = None
 
     if teuth_config.teuthology_path is None:
-        fetch_teuthology('master')
-    fetch_qa_suite('master')
+        fetch_teuthology('main')
+    fetch_qa_suite('main')
 
     keep_running = True
     job_procs = set()

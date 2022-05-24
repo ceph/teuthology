@@ -49,7 +49,7 @@ def get_suite_parser():
     parser.add_argument(
         '-c', '--ceph',
         help='The ceph branch to run against',
-        default=os.getenv('TEUTH_CEPH_BRANCH', 'master'),
+        default=os.getenv('TEUTH_CEPH_BRANCH', 'main'),
     )
     parser.add_argument(
         '-k', '--kernel',
@@ -69,7 +69,7 @@ def get_suite_parser():
     parser.add_argument(
         '--suite-branch',
         help='Use this suite branch instead of the ceph branch',
-        default=os.getenv('TEUTH_SUITE_BRANCH', 'master'),
+        default=os.getenv('TEUTH_SUITE_BRANCH', 'main'),
     )
     parser.add_argument(
         '-e', '--email',
@@ -251,8 +251,8 @@ def get_openstack_parser():
     )
     parser.add_argument(
         '--teuthology-branch',
-        help="use this teuthology branch instead of master",
-        default=os.getenv('TEUTH_BRANCH', 'master'),
+        help="use this teuthology branch instead of main",
+        default=os.getenv('TEUTH_BRANCH', 'main'),
     )
     parser.add_argument(
         '--ceph-workbench-git-url',
@@ -260,8 +260,8 @@ def get_openstack_parser():
     )
     parser.add_argument(
         '--ceph-workbench-branch',
-        help="use this ceph-workbench branch instead of master",
-        default='master',
+        help="use this ceph-workbench branch instead of main",
+        default='main',
     )
     parser.add_argument(
         '--upload',

@@ -3,7 +3,7 @@ name: dependencies
 on:
   pull_request:
     branches:
-      - master
+      - main
   workflow_dispatch:
 
 jobs:
@@ -22,7 +22,7 @@ jobs:
       - name: Checkout default branch
         uses: actions/checkout@v3
         with:
-          ref: master
+          ref: main
           path: teuthology
       - name: virtualenv
         run: |

@@ -181,13 +181,13 @@ def test_get_http_log_path():
     # Inktank configuration
     archive_server = "http://qa-proxy.ceph.com/teuthology/"
     config.archive_server = archive_server
-    archive_dir = "/var/lib/teuthworker/archive/teuthology-2013-09-12_11:49:50-ceph-deploy-master-testing-basic-vps"
+    archive_dir = "/var/lib/teuthworker/archive/teuthology-2013-09-12_11:49:50-ceph-deploy-main-testing-basic-vps"
     job_id = 31087
     path = misc.get_http_log_path(archive_dir, job_id)
-    assert path == "http://qa-proxy.ceph.com/teuthology/teuthology-2013-09-12_11:49:50-ceph-deploy-master-testing-basic-vps/31087/"
+    assert path == "http://qa-proxy.ceph.com/teuthology/teuthology-2013-09-12_11:49:50-ceph-deploy-main-testing-basic-vps/31087/"
 
     path = misc.get_http_log_path(archive_dir)
-    assert path == "http://qa-proxy.ceph.com/teuthology/teuthology-2013-09-12_11:49:50-ceph-deploy-master-testing-basic-vps/"
+    assert path == "http://qa-proxy.ceph.com/teuthology/teuthology-2013-09-12_11:49:50-ceph-deploy-main-testing-basic-vps/"
 
 
 def test_is_type():
@@ -202,7 +202,7 @@ def test_is_type():
         is_client('client')
     assert not is_client('foo.bar.baz')
     assert not is_client('ceph.client')
-    assert not is_client('hadoop.master.0')
+    assert not is_client('hadoop.main.0')
 
 
 def test_is_type_in_cluster():

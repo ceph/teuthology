@@ -1630,7 +1630,7 @@ openstack keypair delete {key_name} || true
         teuthology_argv = [
             '--suite', 'upgrade/hammer',
             '--dry-run',
-            '--ceph', 'master',
+            '--ceph', 'main',
             '--kernel', 'distro',
             '--flavor', 'gcov',
             '--distro', 'ubuntu',

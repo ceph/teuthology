@@ -3,7 +3,7 @@ bootcmd:
  - echo nameserver {nameserver} | tee /etc/resolv.conf
  - echo search {lab_domain} | tee -a /etc/resolv.conf
  - ( echo ; echo "MaxSessions 1000" ) >> /etc/ssh/sshd_config
-# See https://github.com/ceph/ceph-cm-ansible/blob/master/roles/cobbler/templates/snippets/cephlab_user
+# See https://github.com/ceph/ceph-cm-ansible/blob/main/roles/cobbler/templates/snippets/cephlab_user
  - ( echo 'Defaults !requiretty' ; echo 'Defaults visiblepw' ) | tee /etc/sudoers.d/cephlab_sudo ; chmod 0440 /etc/sudoers.d/cephlab_sudo
 preserve_hostname: true
 users:

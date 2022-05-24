@@ -49,7 +49,7 @@ class Ansible(Task):
         repo:       A path or URL to a repo (defaults to '.'). Given a repo
                     value of 'foo', ANSIBLE_ROLES_PATH is set to 'foo/roles'
         branch:     If pointing to a remote git repo, use this branch. Defaults
-                    to 'master'.
+                    to 'main'.
         hosts:      A list of teuthology roles or partial hostnames (or a
                     combination of the two). ansible-playbook will only be run
                     against hosts that match.
@@ -143,7 +143,7 @@ class Ansible(Task):
         if repo.startswith(('http://', 'https://', 'git@', 'git://')):
             repo_path = fetch_repo(
                 repo,
-                self.config.get('branch', 'master'),
+                self.config.get('branch', 'main'),
             )
         else:
             repo_path = os.path.abspath(os.path.expanduser(repo))
@@ -391,7 +391,7 @@ class CephLab(Ansible):
 
     - ansible.cephlab:
         repo: {git_base}ceph-cm-ansible.git
-        branch: master
+        branch: main
         playbook: cephlab.yml
 
     If a dynamic inventory is used, all hosts will be assigned to the

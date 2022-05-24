@@ -1,6 +1,6 @@
 nuke-on-error: true
 kernel:
-  branch: master
+  branch: main
 overrides:
   ceph:
     branch: BRANCH_NAME

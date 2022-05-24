@@ -147,7 +147,7 @@ class TestWorker(object):
             "job_id": "1",
             "worker_log": "worker_log",
             "archive_path": "archive/path",
-            "teuthology_branch": "master"
+            "teuthology_branch": "main"
         }
         process = Mock()
         process.poll.return_value = "not None"
@@ -206,10 +206,10 @@ class TestWorker(object):
             config['name'],
             config['job_id'],
         )
-        assert got_config['teuthology_branch'] == 'master'
-        assert m_fetch_teuthology.called_once_with_args(branch='master')
+        assert got_config['teuthology_branch'] == 'main'
+        assert m_fetch_teuthology.called_once_with_args(branch='main')
         assert teuth_bin_path == '/teuth/path/virtualenv/bin'
-        assert m_fetch_qa_suite.called_once_with_args(branch='master')
+        assert m_fetch_qa_suite.called_once_with_args(branch='main')
         assert got_config['suite_path'] == '/suite/path'
 
     def build_fake_jobs(self, m_connection, m_job, job_bodies):

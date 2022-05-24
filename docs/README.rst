@@ -110,7 +110,7 @@ will be used.  It will run on mira machines and send an email to
 bob.smith@foo.com when it's completed. For more details on
 ``teuthology-suite``, please consult the output of ``teuthology-suite --help``.
 Read more about running integration tests using teuthology at `docs.ceph.com
-<http://docs.ceph.com/docs/master/dev/developer_guide/running-tests-using-teuth/>`__.
+<http://docs.ceph.com/docs/main/dev/developer_guide/running-tests-using-teuth/>`__.
 
 In order for a queued task to be run, a teuthworker thread on
 ``teuthology.front.sepia.ceph.com`` needs to remove the task from the queue.

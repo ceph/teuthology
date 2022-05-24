@@ -220,7 +220,7 @@ class Run(object):
         of the teuthology config files ``$HOME/teuthology.yaml``
         or ``/etc/teuthology.yaml`` correspondingly.
 
-        Use ``master``.
+        Use ``main``.
 
         Generate exception if the branch is not present in the repo.
 
@@ -244,7 +244,7 @@ class Run(object):
                         log.warning(
                             'The teuthology branch config is empty, skipping')
         if not teuthology_branch:
-            teuthology_branch = config.get('teuthology_branch', 'master')
+            teuthology_branch = config.get('teuthology_branch', 'main')
 
         teuthology_sha1 = util.git_ls_remote(
             'teuthology',
@@ -279,7 +279,7 @@ class Run(object):
         suite_repo_project_or_url = self.args.suite_repo or 'ceph-qa-suite'
         suite_branch = self.args.suite_branch
         ceph_branch = self.args.ceph_branch
-        if suite_branch and suite_branch != 'master':
+        if suite_branch and suite_branch != 'main':
             if not util.git_branch_exists(
                 suite_repo_project_or_url,
                 suite_branch
@@ -292,12 +292,12 @@ class Run(object):
                 suite_branch = ceph_branch
             else:
                 log.info(
-                    "branch {0} not in {1}; will use master for"
+                    "branch {0} not in {1}; will use main for"
                     " ceph-qa-suite".format(
                         ceph_branch,
                         suite_repo_name
                     ))
-                suite_branch = 'master'
+                suite_branch = 'main'
         return suite_branch
 
     def choose_suite_hash(self, suite_branch):
@@ -516,7 +516,7 @@ class Run(object):
 Use the following testing priority
 10 to 49: Tests which are urgent and blocking other important development.
 50 to 74: Testing a particular feature/fix with less than 25 jobs and can also be used for urgent release testing.
-75 to 99: Tech Leads usually schedule integration tests with this priority to verify pull requests against master.
+75 to 99: Tech Leads usually schedule integration tests with this priority to verify pull requests against main.
 100 to 149: QE validation of point releases.
 150 to 199: Testing a particular feature/fix with less than 100 jobs and results will be available in a day or so.
 200 to 1000: Large test runs that can be done over the course of a week.

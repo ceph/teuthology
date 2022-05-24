@@ -17,7 +17,7 @@
 
 # 
 # Create and upload a deb repository with the same naming conventions
-# as https://github.com/ceph/autobuild-ceph/blob/master/build-ceph-deb.sh
+# as https://github.com/ceph/autobuild-ceph/blob/main/build-ceph-deb.sh
 #
 set -xe
 

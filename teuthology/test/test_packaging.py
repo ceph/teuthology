@@ -562,7 +562,7 @@ class TestShamanProject(TestBuilderProject):
                 .test_init_from_remote_base_url(
                     "https://shaman.ceph.com/api/search?status=ready"
                     "&project=ceph&flavor=default"
-                    "&distros=ubuntu%2F20.04%2Fx86_64&ref=master"
+                    "&distros=ubuntu%2F20.04%2Fx86_64&ref=main"
                 )
 
     def test_init_from_remote_base_url_debian(self):
@@ -580,7 +580,7 @@ class TestShamanProject(TestBuilderProject):
                 .test_init_from_remote_base_url_debian(
                     "https://shaman.ceph.com/api/search?status=ready"
                     "&project=ceph&flavor=default"
-                    "&distros=debian%2F7.1%2Fx86_64&ref=master"
+                    "&distros=debian%2F7.1%2Fx86_64&ref=main"
                 )
 
     def test_init_from_config_base_url(self):
@@ -662,13 +662,13 @@ class TestShamanProject(TestBuilderProject):
                 "job_name": "ceph-dev-build/ARCH=x86_64,AVAILABLE_ARCH=x86_64,AVAILABLE_DIST=centos8,DIST=centos8,MACHINE_SIZE=gigantic",
                 "package_manager_version": "17.0.0-8856.g534fc6d9"
             },
-            "url": "https://3.chacra.ceph.com/r/ceph/master/534fc6d936bd506119f9e0921ff8cf8d47caa323/centos/8/flavors/default/",
+            "url": "https://3.chacra.ceph.com/r/ceph/main/534fc6d936bd506119f9e0921ff8cf8d47caa323/centos/8/flavors/default/",
             "modified": "2021-11-06 21:40:40.669823",
             "distro_version": "8",
             "project": "ceph",
             "flavor": "default",
-            "ref": "master",
-            "chacra_url": "https://3.chacra.ceph.com/repos/ceph/master/534fc6d936bd506119f9e0921ff8cf8d47caa323/centos/8/flavors/default/",
+            "ref": "main",
+            "chacra_url": "https://3.chacra.ceph.com/repos/ceph/main/534fc6d936bd506119f9e0921ff8cf8d47caa323/centos/8/flavors/default/",
             "archs": [
                 "x86_64",
                 "arm64",
@@ -699,7 +699,7 @@ class TestShamanProject(TestBuilderProject):
             "url": "https://jenkins.ceph.com/job/ceph-dev-build/ARCH=arm64,AVAILABLE_ARCH=arm64,AVAILABLE_DIST=centos8,DIST=centos8,MACHINE_SIZE=gigantic/48556/",
             "log_url": "https://jenkins.ceph.com/job/ceph-dev-build/ARCH=arm64,AVAILABLE_ARCH=arm64,AVAILABLE_DIST=centos8,DIST=centos8,MACHINE_SIZE=gigantic/48556//consoleFull",
             "flavor": "default",
-            "ref": "master",
+            "ref": "main",
             "distro": "centos"
         },
         {
@@ -721,7 +721,7 @@ class TestShamanProject(TestBuilderProject):
             "url": "https://jenkins.ceph.com/job/ceph-dev-build/ARCH=x86_64,AVAILABLE_ARCH=x86_64,AVAILABLE_DIST=centos8,DIST=centos8,MACHINE_SIZE=gigantic/48556/",
             "log_url": "https://jenkins.ceph.com/job/ceph-dev-build/ARCH=x86_64,AVAILABLE_ARCH=x86_64,AVAILABLE_DIST=centos8,DIST=centos8,MACHINE_SIZE=gigantic/48556//consoleFull",
             "flavor": "default",
-            "ref": "master",
+            "ref": "main",
             "distro": "centos"
         }
     ]
@@ -730,7 +730,7 @@ class TestShamanProject(TestBuilderProject):
         config = dict(
             os_type="centos",
             os_version="8",
-            branch='master',
+            branch='main',
             arch='x86_64',
             flavor='default',
         )

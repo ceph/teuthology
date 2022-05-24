@@ -1,7 +1,7 @@
 interactive-on-error: true
 overrides:
   ceph:
-    branch: master
+    branch: main
     fs: xfs
 roles:
 - - mon.a

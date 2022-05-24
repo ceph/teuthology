@@ -260,7 +260,7 @@ def install_hadoop(ctx, config):
                 dist = "precise",
                 arch = "x86_64",
                 flavor = "default",
-                branch = "master")
+                branch = "main")
 
         run.wait(
             hadoops.run(

@@ -16,7 +16,7 @@
 #
 function install_deps() {
     if [ ! -f install-deps.sh ]; then
-        git archive --remote=git://git.ceph.com/ceph.git master install-deps.sh | tar -xvf -
+        git archive --remote=git://git.ceph.com/ceph.git main install-deps.sh | tar -xvf -
     fi
     #
     # drop the following hack when trusty is not supported anymore
@@ -127,7 +127,7 @@ function test_link_same() {
     touch $d/sha1/$sha1_branch3
     link_same $d/ref $d/secondary $sha1_branch3
     test $(readlink --canonicalize $d/ref/branch3) = $d/sha1/$sha1_branch3 || return 1
-    test $(readlink --canonicalize $d/ref/master) = $d/sha1/$sha1_branch3 || return 1
+    test $(readlink --canonicalize $d/ref/main) = $d/sha1/$sha1_branch3 || return 1
 
     touch $d/sha1/$tag2
     link_same $d/ref $d/secondary $tag2

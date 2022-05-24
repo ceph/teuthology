@@ -13,35 +13,35 @@ class TestSuiteOnline(object):
 
     def test_ceph_hash_simple(self):
         resp = requests.get(
-            'https://api.github.com/repos/ceph/ceph/git/refs/heads/master')
+            'https://api.github.com/repos/ceph/ceph/git/refs/heads/main')
         ref_hash = resp.json()['object']['sha']
         assert suite.get_hash('ceph') == ref_hash
 
     def test_kernel_hash_saya(self):
         # We don't currently have these packages.
-        assert suite.get_hash('kernel', 'master', 'default', 'saya') is None
+        assert suite.get_hash('kernel', 'main', 'default', 'saya') is None
 
-    def test_all_master_branches(self):
+    def test_all_main_branches(self):
         # Don't attempt to send email
         config.results_email = None
-        job_config = suite.create_initial_config('suite', 'master',
-                                                 'master', 'master', 'testing',
+        job_config = suite.create_initial_config('suite', 'main',
+                                                 'main', 'main', 'testing',
                                                  'default', 'centos', 'plana')
         assert ((job_config.branch, job_config.teuthology_branch,
-                 job_config.suite_branch) == ('master', 'master', 'master'))
+                 job_config.suite_branch) == ('main', 'main', 'main'))
 
     def test_config_bogus_kernel_branch(self):
         # Don't attempt to send email
         config.results_email = None
         with raises(suite.ScheduleFailError):
-            suite.create_initial_config('s', None, 'master', 't',
+            suite.create_initial_config('s', None, 'main', 't',
                                         'bogus_kernel_branch', 'f', 'd', 'm')
 
     def test_config_bogus_flavor(self):
         # Don't attempt to send email
         config.results_email = None
         with raises(suite.ScheduleFailError):
-            suite.create_initial_config('s', None, 'master', 't', 'k',
+            suite.create_initial_config('s', None, 'main', 't', 'k',
                                         'bogus_flavor', 'd', 'm')
 
     def test_config_bogus_ceph_branch(self):
@@ -55,30 +55,30 @@ class TestSuiteOnline(object):
         # Don't attempt to send email
         config.results_email = None
         with raises(suite.ScheduleFailError):
-            suite.create_initial_config('s', 'bogus_suite_branch', 'master',
+            suite.create_initial_config('s', 'bogus_suite_branch', 'main',
                                         't', 'k', 'f', 'd', 'm')
 
     def test_config_bogus_teuthology_branch(self):
         # Don't attempt to send email
         config.results_email = None
         with raises(suite.ScheduleFailError):
-            suite.create_initial_config('s', None, 'master',
+            suite.create_initial_config('s', None, 'main',
                                         'bogus_teuth_branch', 'k', 'f', 'd',
                                         'm')
 
     def test_config_substitution(self):
         # Don't attempt to send email
         config.results_email = None
-        job_config = suite.create_initial_config('MY_SUITE', 'master',
-                                                 'master', 'master', 'testing',
+        job_config = suite.create_initial_config('MY_SUITE', 'main',
+                                                 'main', 'main', 'testing',
                                                  'default', 'centos', 'plana')
         assert job_config['suite'] == 'MY_SUITE'
 
     def test_config_kernel_section(self):
         # Don't attempt to send email
         config.results_email = None
-        job_config = suite.create_initial_config('MY_SUITE', 'master',
-                                                 'master', 'master', 'testing',
+        job_config = suite.create_initial_config('MY_SUITE', 'main',
+                                                 'main', 'main', 'testing',
                                                  'default', 'centos', 'plana')
         assert job_config['kernel']['kdb'] is True
 

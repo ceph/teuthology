@@ -395,12 +395,12 @@ def _get_config_value_for_remote(ctx, remote, config, key):
 
         config = {
             'all':
-                {'branch': 'master'},
+                {'branch': 'main'},
             'branch': 'next'
         }
         _get_config_value_for_remote(ctx, remote, config, 'branch')
 
-    would return 'master'.
+    would return 'main'.
 
     :param ctx: the argparse.Namespace object
     :param remote: the teuthology.orchestra.remote.Remote object
@@ -652,9 +652,9 @@ class GitbuilderProject(object):
         remote, the sha1 from the config will be used.
 
         If a tag, branch or sha1 can't be found it will default to use the
-        build from the master branch.
+        build from the main branch.
 
-        :returns: A string URI. Ex: ref/master
+        :returns: A string URI. Ex: ref/main
         """
         ref_name, ref_val = next(iter(self._choose_reference().items()))
         if ref_name == 'sha1':
@@ -669,7 +669,7 @@ class GitbuilderProject(object):
         Decide which to use.
 
         :returns: a single-key dict containing the name and value of the
-                  reference to use, e.g. {'branch': 'master'}
+                  reference to use, e.g. {'branch': 'main'}
         """
         tag = branch = sha1 = None
         if self.remote:
@@ -712,8 +712,8 @@ class GitbuilderProject(object):
             warn('sha1')
             return dict(sha1=sha1)
         else:
-            log.warning("defaulting to master branch")
-            return dict(branch='master')
+            log.warning("defaulting to main branch")
+            return dict(branch='main')
 
     def _get_base_url(self):
         """
