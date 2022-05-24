@@ -4,8 +4,8 @@ Ceph Lab Components
 
 The distinct hardware/software components that a lab is composed of and the way
 they interact between them is described here. In general, a lab is composed of
-a scheduler (a.k.a. master node), worker(s), package builder
-(`gitbuilder <http://ceph.com/gitbuilder.cgi>`__), job database (`paddles
+a scheduler, worker(s), package builder (`gitbuilder
+<http://ceph.com/gitbuilder.cgi>`__), job database (`paddles
 <https://github.com/ceph/paddles>`__), job archive, a web UI (`pulpito
 <https://github.com/ceph/pulpito>`__) and test nodes.
 
@@ -31,8 +31,7 @@ failed, etc.). All this information can be visualized in ``pulpito``, the web
 UI. For an example, see Ceph community's Lab `here <http://pulpito.ceph.com>`__.
 
 Test nodes can be grouped in classes (referred to as ``machine-type``),
-allowing teuthology schedule jobs across multiple hardware setups,
-provided they're visible to the master node.
+allowing teuthology schedule jobs across multiple hardware setups.
 
 Life of a Teuthology Job
 ========================
@@ -44,8 +43,8 @@ prepared and queued (``teuthology-schedule`` is implicitly invoked). When a job
 is created (or whenever the status of a job is changed, e.g. from queued to
 started), information about the job is recorded in ``paddles``'s internal
 database. Depending on the priority of the job, the scheduler eventually
-determines when a job can get executed. At this point, the master communicates
-with ``teuthology-dispatcher``, checks the lock status of the requested
+determines when a job can get executed. At this point,
+``teuthology-dispatcher`` checks the lock status of the requested
 machines by querying ``paddles``, acquires locks of the
 nodes if they are available, and invokes ``teuthology-dispatcher`` in
 ``supervisor`` mode. ``supervisor`` reimages the target machines and invokes

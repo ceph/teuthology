@@ -4,8 +4,6 @@ kernel:
 overrides:
   ceph:
     branch: BRANCH_NAME
-    log-whitelist:
-    - 'clocks not synchronized'
     log-ignorelist:
     - 'clocks not synchronized'
 tasks:

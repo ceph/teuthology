@@ -649,7 +649,7 @@ class TestBuildMatrix(object):
                 'debug': {'mds_client.yaml': None},
                 'fs': {'btrfs.yaml': None},
                 'msgr-failures': {'none.yaml': None},
-                'overrides': {'whitelist_wrongly_marked_down.yaml': None},
+                'overrides': {'allowlist_wrongly_marked_down.yaml': None},
                 'tasks': {'cfuse_workunit_suites_fsstress.yaml': None},
             },
         }
