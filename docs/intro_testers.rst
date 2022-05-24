@@ -18,7 +18,7 @@ Terminology
 
 In the abstract, each set of tests is defined by a `suite`. All of our suites
 live in the `ceph` git repository in the `qa/suites/ directory
-<https://github.com/ceph/ceph/tree/master/qa/suites/>`__ .
+<https://github.com/ceph/ceph/tree/main/qa/suites/>`__ .
 Each subdirectory in `suites` is a suite; they may also have "sub-suites" which
 may aid in scheduling, for example, tests for a specific feature.
 
@@ -32,10 +32,10 @@ Each `job` definition contains a list of `tasks` to execute, along with
 with what functions each node will perform.
 
 To go into more depth regarding suite design, see the `README
-<https://github.com/ceph/ceph/blob/master/qa/README>`__.
+<https://github.com/ceph/ceph/blob/main/qa/README>`__.
 
 One example of this is the `smoke
-<https://github.com/ceph/ceph/tree/master/qa/suites/smoke>`__ suite.
+<https://github.com/ceph/ceph/tree/main/qa/suites/smoke>`__ suite.
 
 
 Scheduling
@@ -45,19 +45,19 @@ Most testing happens by scheduling `runs`. The way we do that is using the
 
 To get a preview of what `teuthology-suite` might do, try::
 
-    teuthology-suite -v -m mira --ceph-repo http://github.com/ceph/ceph.git -c master --suite-repo http://github.com/ceph/ceph.git -s smoke --dry-run
+    teuthology-suite -v -m mira --ceph-repo http://github.com/ceph/ceph.git -c main --suite-repo http://github.com/ceph/ceph.git -s smoke --dry-run
 
 The `-m mira` specifies `mira` as the machine type. Machine types are dependent
 on the specific lab in use. The `--ceph-repo http://github.com/ceph/ceph.git`
-specifies from which git repository to pull `-c master`. Similarly,
+specifies from which git repository to pull `-c main`. Similarly,
 `--suite-repo` is specifying where to find the QA branch. The default for
 `--ceph-repo` and `--suite-repo` is `http://github.com/ceph/ceph-ci.git` which
-is usually what you will want. For `master`, you must always use
+is usually what you will want. For `main`, you must always use
 `http://github.com/ceph/ceph.git` as it does not exist on the ceph-ci
 repository.
 
 Assuming a build is available, that should pretend to schedule several jobs. If
-it complains about missing packages, try swapping `master` with `jewel` or one
+it complains about missing packages, try swapping `main` with `jewel` or one
 of the other Ceph stable branches.
 
 To see even more detail, swap `-v` with `-vv`. It will print out each job

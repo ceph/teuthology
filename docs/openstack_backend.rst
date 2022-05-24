@@ -68,17 +68,17 @@ Usage
   and uploads a cloud image to the OpenStack provider. ::
 
     $ teuthology-openstack --key-filename myself.pem --key-name myself --suite dummy
-    Job scheduled with name ubuntu-2015-07-24_09:03:29-dummy-master---basic-openstack and ID 1
+    Job scheduled with name ubuntu-2015-07-24_09:03:29-dummy-main---basic-openstack and ID 1
     2015-07-24 09:03:30,520.520 INFO:teuthology.suite:ceph sha1: dedda6245ce8db8828fdf2d1a2bfe6163f1216a1
     2015-07-24 09:03:31,620.620 INFO:teuthology.suite:ceph version: v9.0.2-829.gdedda62
-    2015-07-24 09:03:31,620.620 INFO:teuthology.suite:teuthology branch: master
-    2015-07-24 09:03:32,196.196 INFO:teuthology.suite:ceph-qa-suite branch: master
-    2015-07-24 09:03:32,197.197 INFO:teuthology.repo_utils:Fetching from upstream into /home/ubuntu/src/ceph-qa-suite_master
-    2015-07-24 09:03:33,096.096 INFO:teuthology.repo_utils:Resetting repo at /home/ubuntu/src/ceph-qa-suite_master to branch master
-    2015-07-24 09:03:33,157.157 INFO:teuthology.suite:Suite dummy in /home/ubuntu/src/ceph-qa-suite_master/suites/dummy generated 1 jobs (not yet filtered)
+    2015-07-24 09:03:31,620.620 INFO:teuthology.suite:teuthology branch: main
+    2015-07-24 09:03:32,196.196 INFO:teuthology.suite:ceph-qa-suite branch: main
+    2015-07-24 09:03:32,197.197 INFO:teuthology.repo_utils:Fetching from upstream into /home/ubuntu/src/ceph-qa-suite_main
+    2015-07-24 09:03:33,096.096 INFO:teuthology.repo_utils:Resetting repo at /home/ubuntu/src/ceph-qa-suite_main to branch main
+    2015-07-24 09:03:33,157.157 INFO:teuthology.suite:Suite dummy in /home/ubuntu/src/ceph-qa-suite_main/suites/dummy generated 1 jobs (not yet filtered)
     2015-07-24 09:03:33,158.158 INFO:teuthology.suite:Scheduling dummy/{all/nop.yaml}
-    2015-07-24 09:03:34,045.045 INFO:teuthology.suite:Suite dummy in /home/ubuntu/src/ceph-qa-suite_master/suites/dummy scheduled 1 jobs.
-    2015-07-24 09:03:34,046.046 INFO:teuthology.suite:Suite dummy in /home/ubuntu/src/ceph-qa-suite_master/suites/dummy -- 0 jobs were filtered out.
+    2015-07-24 09:03:34,045.045 INFO:teuthology.suite:Suite dummy in /home/ubuntu/src/ceph-qa-suite_main/suites/dummy scheduled 1 jobs.
+    2015-07-24 09:03:34,046.046 INFO:teuthology.suite:Suite dummy in /home/ubuntu/src/ceph-qa-suite_main/suites/dummy -- 0 jobs were filtered out.
 
     2015-07-24 11:03:34,104.104 INFO:teuthology.openstack:
     web interface: http://167.114.242.13:8081/
@@ -142,7 +142,7 @@ Each target (i.e. a virtual machine or instance in the OpenStack
 parlance) created by the OpenStack backend are exactly the same. By
 default they have at least 8GB RAM, 20GB disk, 1 cpus and no disk
 attached. It is equivalent to having the following in the
-`~/.teuthology.yaml <https://github.com/ceph/teuthology/blob/master/docs/siteconfig.rst>`_ file::
+`~/.teuthology.yaml <https://github.com/ceph/teuthology/blob/main/docs/siteconfig.rst>`_ file::
 
     openstack:
       ...

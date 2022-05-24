@@ -80,7 +80,7 @@ def fetch_tasks_if_needed(job_config):
     except ImportError:
         log.info("Tasks not found; will attempt to fetch")
 
-    ceph_branch = job_config.get('branch', 'master')
+    ceph_branch = job_config.get('branch', 'main')
     suite_repo = job_config.get('suite_repo')
     if suite_repo:
         teuth_config.ceph_qa_suite_git_url = suite_repo

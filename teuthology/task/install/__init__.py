@@ -542,8 +542,8 @@ def task(ctx, config):
           sha1: 1234
 
     where sha1 matches the --ceph argument. For instance if
-    teuthology-suite is called with --ceph master, the sha1 will be
-    the tip of master. If called with --ceph v0.94.1, the sha1 will be
+    teuthology-suite is called with --ceph main, the sha1 will be
+    the tip of main. If called with --ceph v0.94.1, the sha1 will be
     the v0.94.1 (as returned by git rev-parse v0.94.1 which is not to
     be confused with git rev-parse v0.94.1^{commit})
 

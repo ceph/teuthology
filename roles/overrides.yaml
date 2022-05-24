@@ -1,11 +1,9 @@
 nuke-on-error: true
 kernel:
-  branch: master
+  branch: main
 overrides:
   ceph:
     branch: BRANCH_NAME
-    log-whitelist:
-    - 'clocks not synchronized'
     log-ignorelist:
     - 'clocks not synchronized'
 tasks:

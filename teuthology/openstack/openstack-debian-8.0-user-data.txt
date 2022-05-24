@@ -18,7 +18,7 @@ packages:
  - git
  - ntp
 runcmd:
-# See https://github.com/ceph/ceph-cm-ansible/blob/master/roles/cobbler/templates/snippets/cephlab_user
+# See https://github.com/ceph/ceph-cm-ansible/blob/main/roles/cobbler/templates/snippets/cephlab_user
  - ( echo 'Defaults !requiretty' ; echo 'Defaults visiblepw' ) | tee /etc/sudoers.d/cephlab_sudo ; chmod 0440 /etc/sudoers.d/cephlab_sudo
  - echo '{username} ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 final_message: "{up}, after $UPTIME seconds"

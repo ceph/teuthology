@@ -22,7 +22,7 @@ class CephAnsible(Task):
 
     - ceph-ansible:
         repo: {git_base}ceph-ansible.git
-        branch: mybranch # defaults to master
+        branch: mybranch # defaults to main
         ansible-version: 2.4 # defaults to 2.5
         vars:
           ceph_dev: True ( default)
@@ -73,7 +73,7 @@ class CephAnsible(Task):
         if 'ceph_dev_key' not in vars:
             vars['ceph_dev_key'] = 'https://download.ceph.com/keys/autobuild.asc'
         if 'ceph_dev_branch' not in vars:
-            vars['ceph_dev_branch'] = ctx.config.get('branch', 'master')
+            vars['ceph_dev_branch'] = ctx.config.get('branch', 'main')
         self.cluster_name = vars.get('cluster', 'ceph')
 
     def setup(self):
@@ -378,7 +378,7 @@ class CephAnsible(Task):
                 'python-dev'
             ])
         ansible_repo = self.config['repo']
-        branch = 'master'
+        branch = 'main'
         if self.config.get('branch'):
             branch = self.config.get('branch')
         ansible_ver = 'ansible==2.5'

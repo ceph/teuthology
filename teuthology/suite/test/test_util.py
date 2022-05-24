@@ -23,7 +23,7 @@ def test_git_branch_exists(m_check_output, project_or_url):
     assert False == util.git_branch_exists(
         project_or_url, 'nobranchnowaycanthappen')
     m_check_output.return_value = b'HHH branch'
-    assert True == util.git_branch_exists(project_or_url, 'master')
+    assert True == util.git_branch_exists(project_or_url, 'main')
 
 
 @pytest.fixture
@@ -37,6 +37,7 @@ def git_repository(request):
     git config user.name 'Your Name'
     git add A
     git commit -m 'A' A
+    git rev-parse --abbrev-ref main || git checkout -b main
     """.format(d=d))
 
     def fin():
@@ -81,9 +82,9 @@ class TestUtil(object):
         mock_resp.ok = True
         mock_resp.json.return_value = "some json"
         m_get.return_value = mock_resp
-        result = util.get_branch_info("teuthology", "master")
+        result = util.get_branch_info("teuthology", "main")
         m_get.assert_called_with(
-            "https://api.github.com/repos/ceph/teuthology/git/refs/heads/master"
+            "https://api.github.com/repos/ceph/teuthology/git/refs/heads/main"
         )
         assert result == "some json"
 
@@ -133,7 +134,7 @@ class TestUtil(object):
     def test_git_ls_remote(self, m_get_ceph_git_url, git_repository):
         m_get_ceph_git_url.return_value = git_repository
         assert util.git_ls_remote('ceph', 'nobranch') is None
-        assert util.git_ls_remote('ceph', 'master') is not None
+        assert util.git_ls_remote('ceph', 'main') is not None
 
     @patch('teuthology.suite.util.requests.get')
     def test_find_git_parent(self, m_requests_get):

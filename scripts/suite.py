@@ -60,7 +60,7 @@ Standard arguments:
                               the suite repo and contains non-empty string.
                               There is `teuthology_branch` present in one of
                               the user or system `teuthology.yaml` configuration
-                              files respectively, otherwise use `master`.
+                              files respectively, otherwise use `main`.
   -m <type>, --machine-type <type>
                               Machine type [default: {default_machine_type}]
   -d <distro>, --distro <distro>
@@ -191,7 +191,7 @@ Scheduler arguments:
 |                 | used for urgent release testing.                                |
 +-----------------+-----------------------------------------------------------------+
 | 75 <= N < 100   | Tech Leads regularly schedule integration tests with this       |
-|                 | priority to verify pull requests against master.                |
+|                 | priority to verify pull requests against main.                  |
 +-----------------+-----------------------------------------------------------------+
 | 100 <= N < 150  | This priority is used for QE validation of point releases.      |
 +-----------------+-----------------------------------------------------------------+
@@ -209,7 +209,7 @@ Scheduler arguments:
                             config.get_ceph_git_url()),
     default_suite_repo=defaults('--suite-repo',
                             config.get_ceph_qa_suite_git_url()),
-    default_ceph_branch=defaults('--ceph-branch', 'master'),
+    default_ceph_branch=defaults('--ceph-branch', 'main'),
     default_job_threshold=config.job_threshold,
 )
 

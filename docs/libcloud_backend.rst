@@ -7,8 +7,8 @@ This is an *experimental* provisioning backend that eventually intends to suppor
 Prerequisites
 -------------
 * An account with an OpenStack provider that supports Nova and Cinder
-* A DNS server supporting `RFC 2136 <https://tools.ietf.org/html/rfc2136>`_. We use `bind <https://www.isc.org/downloads/bind/>`_ and `this ansible role <https://github.com/ceph/ceph-cm-ansible/blob/master/roles/nameserver/README.rst>`_ to help configure ours.
-* An `nsupdate-web <https://github.com/zmc/nsupdate-web>`_ instance configured to update DNS records. We use `an ansible role <https://github.com/ceph/ceph-cm-ansible/blob/master/roles/nsupdate_web/README.rst>`_ for this as well. 
+* A DNS server supporting `RFC 2136 <https://tools.ietf.org/html/rfc2136>`_. We use `bind <https://www.isc.org/downloads/bind/>`_ and `this ansible role <https://github.com/ceph/ceph-cm-ansible/blob/main/roles/nameserver/README.rst>`_ to help configure ours.
+* An `nsupdate-web <https://github.com/zmc/nsupdate-web>`_ instance configured to update DNS records. We use `an ansible role <https://github.com/ceph/ceph-cm-ansible/blob/main/roles/nsupdate_web/README.rst>`_ for this as well. 
 * Configuration in `teuthology.yaml` for this backend itself (see :ref:`libcloud_config`) and `nsupdate-web`
 * You will also need to choose a maximum number of nodes to be running at once, and create records in your paddles database for each one - making sure to set `is_vm` to `True` for each.
 

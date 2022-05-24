@@ -174,7 +174,7 @@ class TestSuiteMain(object):
                 exists=fake_false,
             ):
                 main([
-                    '--ceph', 'master',
+                    '--ceph', 'main',
                     '--suite', suite_name,
                     '--throttle', throttle,
                     '--machine-type', machine_type,
@@ -198,7 +198,7 @@ class TestSuiteMain(object):
             m['package_version_for_hash'].return_value = 'fake-9.5'
             config.suite_verify_ceph_hash = False
             main([
-                '--ceph', 'master',
+                '--ceph', 'main',
                 '--suite', suite_name,
                 '--suite-dir', suite_dir,
                 '--suite-relpath', '',
@@ -226,7 +226,7 @@ class TestSuiteMain(object):
             m['package_version_for_hash'].return_value = 'fake-9.5'
             config.suite_verify_ceph_hash = True
             main([
-                '--ceph', 'master',
+                '--ceph', 'main',
                 '--suite', suite_name,
                 '--suite-dir', suite_dir,
                 '--suite-relpath', '',

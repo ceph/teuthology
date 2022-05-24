@@ -24,7 +24,7 @@ class SELinux(Task):
     fail for other denials one can add the overrides with appropriate escapes
     overrides:
        selinux:
-         whitelist:
+         allowlist:
          - 'name="cephtest"'
          - 'dmidecode'
          - 'comm="logrotate"'
@@ -138,9 +138,9 @@ class SELinux(Task):
             'comm="sss_cache"',
             'context=system_u:system_r:NetworkManager_dispatcher_t:s0',
         ]
-        se_whitelist = self.config.get('whitelist', [])
-        if se_whitelist:
-            known_denials.extend(se_whitelist)
+        se_allowlist = self.config.get('allowlist', [])
+        if se_allowlist:
+            known_denials.extend(se_allowlist)
         ignore_known_denials = '\'\(' + str.join('\|', known_denials) + '\)\''
         for remote in self.cluster.remotes.keys():
             proc = remote.run(

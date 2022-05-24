@@ -141,7 +141,7 @@ class TestAnsibleTask(TestTask):
         task = self.klass(self.ctx, self.task_config)
         task.find_repo()
         m_fetch_repo.assert_called_once_with(self.task_config['repo'],
-                                             'master')
+                                             'main')
 
     @patch('teuthology.task.ansible.fetch_repo')
     def test_find_repo_git(self, m_fetch_repo):
@@ -151,7 +151,7 @@ class TestAnsibleTask(TestTask):
         task = self.klass(self.ctx, self.task_config)
         task.find_repo()
         m_fetch_repo.assert_called_once_with(self.task_config['repo'],
-                                             'master')
+                                             'main')
 
     def test_playbook_none(self):
         del self.task_config['playbook']
@@ -533,7 +533,7 @@ class TestCephLabTask(TestAnsibleTask):
                             'ceph-cm-ansible.git')
         task = self.klass(self.ctx, dict())
         task.find_repo()
-        m_fetch_repo.assert_called_once_with(repo, 'master')
+        m_fetch_repo.assert_called_once_with(repo, 'main')
 
     def test_playbook_file(self):
         fake_playbook = [dict(fake_playbook=True)]

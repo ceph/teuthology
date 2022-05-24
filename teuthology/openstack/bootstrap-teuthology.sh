@@ -1,7 +1,7 @@
 #!/bin/bash -ex
 TEUTH_PATH=${1:-"teuthology"}
 TEUTH_GIT=${2:-"https://github.com/ceph/teuthology"}
-TEUTH_BRANCH=${3:-"master"}
+TEUTH_BRANCH=${3:-"main"}
 
 mkdir -p $TEUTH_PATH
 git init $TEUTH_PATH

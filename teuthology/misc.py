@@ -227,13 +227,13 @@ def get_ceph_binary_url(package=None,
         assert tag is None, "cannot set both sha1 and tag"
     else:
         # gitbuilder uses remote-style ref names for branches, mangled to
-        # have underscores instead of slashes; e.g. origin_master
+        # have underscores instead of slashes; e.g. origin_main
         if tag is not None:
             ref = tag
             assert branch is None, "cannot set both branch and tag"
         else:
             if branch is None:
-                branch = 'master'
+                branch = 'main'
             ref = branch
 
         sha1_url = urljoin(BASE, 'ref/{ref}/sha1'.format(ref=ref))

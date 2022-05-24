@@ -32,7 +32,7 @@ from teuthology.task.install.deb import install_dep_packages
 
 log = logging.getLogger(__name__)
 
-CONFIG_DEFAULT = {'branch': 'master'}
+CONFIG_DEFAULT = {'branch': 'main'}
 TIMEOUT_DEFAULT = 300
 
 VERSION_KEYS = ['branch', 'tag', 'sha1', 'deb', 'rpm', 'koji', 'koji_task']
@@ -1136,7 +1136,7 @@ def task(ctx, config):
     This can be a branch, tag, or sha1 of ceph-client.git or a local
     kernel package.
 
-    To install ceph-client.git branch (default: master)::
+    To install ceph-client.git branch (default: main)::
 
         kernel:
           branch: testing
@@ -1205,7 +1205,7 @@ def task(ctx, config):
           client.1:
             branch: more_specific
           osd.3:
-            branch: master
+            branch: main
 
     To wait 3 minutes for hosts to reboot (default: 300)::
 

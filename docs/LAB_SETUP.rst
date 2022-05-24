@@ -27,12 +27,12 @@ Create a separate user for paddles and puplito. We used 'paddles' and 'pulpito'.
 
 paddles
 -------
-Follow instructions at https://github.com/ceph/paddles/blob/master/README.rst
+Follow instructions at https://github.com/ceph/paddles/blob/main/README.rst
 
 
 pulpito
 -------
-Follow instructions at https://github.com/ceph/pulpito/blob/master/README.rst
+Follow instructions at https://github.com/ceph/pulpito/blob/main/README.rst
 
 
 Starting up
@@ -92,8 +92,8 @@ Scheduler
 As 'teuthology', do the following::
 
     mkdir ~/src
-    git clone https://github.com/ceph/teuthology.git src/teuthology_master
-    pushd src/teuthology_master/
+    git clone https://github.com/ceph/teuthology.git src/teuthology_main
+    pushd src/teuthology_main/
     ./bootstrap
     popd
 
@@ -103,13 +103,13 @@ Worker
 As 'teuthworker', do the following::
 
     mkdir ~/src
-    git clone https://github.com/ceph/teuthology.git src/teuthology_master
-    pushd src/teuthology_master/
+    git clone https://github.com/ceph/teuthology.git src/teuthology_main
+    pushd src/teuthology_main/
     ./bootstrap
     popd
     mkdir ~/bin
-    wget -O ~/bin/worker_start https://raw.githubusercontent.com/ceph/teuthology/master/docs/_static/worker_start.sh
-    echo 'PATH="$HOME/src/teuthology_master/virtualenv/bin:$PATH"' >> ~/.profile
+    wget -O ~/bin/worker_start https://raw.githubusercontent.com/ceph/teuthology/main/docs/_static/worker_start.sh
+    echo 'PATH="$HOME/src/teuthology_main/virtualenv/bin:$PATH"' >> ~/.profile
     source ~/.profile
     mkdir -p ~/archive/worker_logs
     worker_start magna 1
@@ -120,7 +120,7 @@ Submitting Nodes
 
 First::
 
-    wget https://raw.githubusercontent.com/ceph/teuthology/master/docs/_static/create_nodes.py
+    wget https://raw.githubusercontent.com/ceph/teuthology/main/docs/_static/create_nodes.py
 
 Edit ``create_nodes.py`` to generate the hostnames of the machines you want to submit to paddles.
 
