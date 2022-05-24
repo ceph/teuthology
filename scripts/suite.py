@@ -175,6 +175,7 @@ Scheduler arguments:
  --job-threshold <threshold>  Do not allow to schedule the run if the number
                               of jobs exceeds <threshold>. Use 0 to allow
                               any number [default: {default_job_threshold}].
+ --no-nested-subset           Do not perform nested suite subsets.
 
 +=================+=================================================================+
 | Priority        | Explanation                                                     |

@@ -46,6 +46,9 @@ optional arguments:
                                        Only applies to the last job in a suite.
   --subset <subset>                    The subset option passed to teuthology-suite.
                                        Only applies to the last job in a suite.
+  --no-nested-subset                   The no-nested-subset option passed to
+                                       teuthology-suite.
+                                       Only applies to the last job in a suite.
   --dry-run                            Instead of scheduling, just output the
                                        job config.
 

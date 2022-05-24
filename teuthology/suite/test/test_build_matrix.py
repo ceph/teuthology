@@ -24,7 +24,7 @@ class TestBuildMatrix(object):
         'os.listdir',
         'os.path.isfile',
         'os.path.isdir',
-        'teuthology.suite.open',
+        'builtins.open',
     ]
 
     def setup(self):
@@ -36,18 +36,18 @@ class TestBuildMatrix(object):
 
     def start_patchers(self, fake_fs):
         fake_fns = make_fake_fstools(fake_fs)
-        # relies on fake_fns being in same order as patchpoints
+        # N.B.: relies on fake_fns being in same order as patchpoints
         for ppoint, fn in zip(self.__class__.patchpoints, fake_fns):
             self.mocks[ppoint].side_effect = fn
-        for patcher in self.patchers.values():
-            patcher.start()
+            self.patchers[ppoint].start()
 
     def stop_patchers(self):
         for patcher in self.patchers.values():
             patcher.stop()
 
     def teardown(self):
-        self.stop_patchers()
+        self.patchers.clear()
+        self.mocks.clear()
 
     def fragment_occurences(self, jobs, fragment):
         # What fraction of jobs contain fragment?
@@ -77,7 +77,10 @@ class TestBuildMatrix(object):
             },
         }
         self.start_patchers(fake_fs)
-        result = build_matrix.build_matrix('d0_0')
+        try:
+            result = build_matrix.build_matrix('d0_0')
+        finally:
+            self.stop_patchers()
         assert len(result) == 1
 
     def test_convolve_2x2(self):
@@ -95,7 +98,10 @@ class TestBuildMatrix(object):
             },
         }
         self.start_patchers(fake_fs)
-        result = build_matrix.build_matrix('d0_0')
+        try:
+            result = build_matrix.build_matrix('d0_0')
+        finally:
+            self.stop_patchers()
         assert len(result) == 4
         assert self.fragment_occurences(result, 'd1_1_1.yaml') == 0.5
 
@@ -118,7 +124,10 @@ class TestBuildMatrix(object):
             },
         }
         self.start_patchers(fake_fs)
-        result = build_matrix.build_matrix('d0_0')
+        try:
+            result = build_matrix.build_matrix('d0_0')
+        finally:
+            self.stop_patchers()
         assert len(result) == 8
         assert self.fragment_occurences(result, 'd1_2_0.yaml') == 0.5
 
@@ -142,7 +151,10 @@ class TestBuildMatrix(object):
             },
         }
         self.start_patchers(fake_fs)
-        result = build_matrix.build_matrix('d0_0')
+        try:
+            result = build_matrix.build_matrix('d0_0')
+        finally:
+            self.stop_patchers()
         assert len(result) == 8
         assert self.fragment_occurences(result, 'd1_2_2.yaml') == 0.25
 
@@ -167,13 +179,57 @@ class TestBuildMatrix(object):
             },
         }
         self.start_patchers(fake_fs)
-        result = build_matrix.build_matrix('d0_0')
+        try:
+            result = build_matrix.build_matrix('d0_0')
+        finally:
+            self.stop_patchers()
         assert len(result) == 2
         for i in result:
             assert 'd0_0/d1_2/d1_2_0.yaml' in i[1]
             assert 'd0_0/d1_2/d1_2_1.yaml' in i[1]
             assert 'd0_0/d1_2/d1_2_2.yaml' in i[1]
             assert 'd0_0/d1_2/d1_2_3.yaml' in i[1]
+
+    def test_convolve_nested(self):
+        fake_fs = {
+            'd0_0': {
+                '%': None,
+                'd1_0': {
+                    'd1_0_0.yaml': None,
+                    '%': '2',
+                    'd1_0_1': {
+                        'd1_0_1_0.yaml': None,
+                        'd1_0_1_1.yaml': None,
+                    },
+                    'd1_0_2': {
+                        'd1_0_2_0.yaml': None,
+                        'd1_0_2_1.yaml': None,
+                    },
+                },
+                'd1_2': {
+                    'd1_2_0.yaml': None,
+                    'd1_2_1.yaml': None,
+                    'd1_2_2.yaml': None,
+                    'd1_2_3.yaml': None,
+                },
+            },
+        }
+        self.start_patchers(fake_fs)
+        try:
+            result = build_matrix.build_matrix('d0_0')
+        finally:
+            self.stop_patchers()
+        assert len(result) == 8
+        assert self.fragment_occurences(result, 'd1_0_0.yaml') == 1
+        assert self.fragment_occurences(result, 'd1_0_1_0.yaml') == 0.5
+        assert self.fragment_occurences(result, 'd1_0_1_1.yaml') == 0.5
+        assert self.fragment_occurences(result, 'd1_0_2_0.yaml') == 0.5
+        assert self.fragment_occurences(result, 'd1_0_2_1.yaml') == 0.5
+        assert self.fragment_occurences(result, 'd1_2_0.yaml') == 0.25
+        assert self.fragment_occurences(result, 'd1_2_1.yaml') == 0.25
+        assert self.fragment_occurences(result, 'd1_2_2.yaml') == 0.25
+        assert self.fragment_occurences(result, 'd1_2_3.yaml') == 0.25
+
 
     def test_random_dollar_sign_2x2x3(self):
         fake_fs = {
@@ -212,11 +268,16 @@ class TestBuildMatrix(object):
             },
         }
         self.start_patchers(fake_fs)
-        result = build_matrix.build_matrix('d0_0')
+        try:
+            result = build_matrix.build_matrix('d0_0')
+        finally:
+            self.stop_patchers()
         assert len(result) == 1
-        self.stop_patchers()
         self.start_patchers(fake_fs1)
-        result = build_matrix.build_matrix('d0_0$')
+        try:
+            result = build_matrix.build_matrix('d0_0$')
+        finally:
+            self.stop_patchers()
         assert len(result) == 1
 
     def test_random_dollar_sign_with_concat(self):
@@ -259,7 +320,10 @@ class TestBuildMatrix(object):
         }
         for fs, root in [(fake_fs,'d0_0'), (fake_fs1,'d0_0$')]:
             self.start_patchers(fs)
-            result = build_matrix.build_matrix(root)
+            try:
+                result = build_matrix.build_matrix(root)
+            finally:
+                self.stop_patchers()
             assert len(result) == 1
             if result[0][0][1:].startswith('d1_2'):
                 for i in result:
@@ -267,8 +331,6 @@ class TestBuildMatrix(object):
                     assert os.path.join(root, 'd1_2/d1_2_1.yaml') in i[1]
                     assert os.path.join(root, 'd1_2/d1_2_2.yaml') in i[1]
                     assert os.path.join(root, 'd1_2/d1_2_3.yaml') in i[1]
-            if root == 'd0_0':
-                self.stop_patchers()
 
     def test_random_dollar_sign_with_convolve(self):
         fake_fs = {
@@ -291,7 +353,10 @@ class TestBuildMatrix(object):
             },
         }
         self.start_patchers(fake_fs)
-        result = build_matrix.build_matrix('d0_0')
+        try:
+            result = build_matrix.build_matrix('d0_0')
+        finally:
+            self.stop_patchers()
         assert len(result) == 4
         fake_fs1 = {
             'd0_0': {
@@ -311,9 +376,11 @@ class TestBuildMatrix(object):
                 },
             },
         }
-        self.stop_patchers()
         self.start_patchers(fake_fs1)
-        result = build_matrix.build_matrix('d0_0')
+        try:
+            result = build_matrix.build_matrix('d0_0')
+        finally:
+            self.stop_patchers()
         assert len(result) == 4
 
     def test_emulate_teuthology_noceph(self):
@@ -344,7 +411,10 @@ class TestBuildMatrix(object):
             },
         }
         self.start_patchers(fake_fs)
-        result = build_matrix.build_matrix('teuthology/no-ceph')
+        try:
+            result = build_matrix.build_matrix('teuthology/no-ceph')
+        finally:
+            self.stop_patchers()
         assert len(result) == 11
         assert self.fragment_occurences(result, 'vps.yaml') == 1 / 11.0
 
@@ -376,8 +446,10 @@ class TestBuildMatrix(object):
             },
         }
         self.start_patchers(fake_fs)
-        result = build_matrix.build_matrix('teuthology/no-ceph')
-        self.stop_patchers()
+        try:
+            result = build_matrix.build_matrix('teuthology/no-ceph')
+        finally:
+            self.stop_patchers()
 
         fake_fs2 = {
             'teuthology': {
@@ -408,7 +480,10 @@ class TestBuildMatrix(object):
             },
         }
         self.start_patchers(fake_fs2)
-        result2 = build_matrix.build_matrix('teuthology/no-ceph')
+        try:
+            result2 = build_matrix.build_matrix('teuthology/no-ceph')
+        finally:
+            self.stop_patchers()
         assert len(result) == 11
         assert len(result2) == len(result)
 
@@ -448,8 +523,10 @@ class TestBuildMatrix(object):
             },
         }
         self.start_patchers(fake_fs)
-        result = build_matrix.build_matrix('teuthology/no-ceph')
-        self.stop_patchers()
+        try:
+            result = build_matrix.build_matrix('teuthology/no-ceph')
+        finally:
+            self.stop_patchers()
 
         fake_fs2 = {
             'teuthology': {
@@ -478,7 +555,10 @@ class TestBuildMatrix(object):
             },
         }
         self.start_patchers(fake_fs2)
-        result2 = build_matrix.build_matrix('teuthology/no-ceph')
+        try:
+            result2 = build_matrix.build_matrix('teuthology/no-ceph')
+        finally:
+            self.stop_patchers()
         assert len(result) == 11
         assert len(result2) == len(result)
 
@@ -510,8 +590,10 @@ class TestBuildMatrix(object):
             },
         }
         self.start_patchers(fake_fs)
-        result = build_matrix.build_matrix('teuthology/no-ceph')
-        self.stop_patchers()
+        try:
+            result = build_matrix.build_matrix('teuthology/no-ceph')
+        finally:
+            self.stop_patchers()
 
         fake_fs2 = {
             'teuthology': {
@@ -548,7 +630,10 @@ class TestBuildMatrix(object):
             },
         }
         self.start_patchers(fake_fs2)
-        result2 = build_matrix.build_matrix('teuthology/no-ceph')
+        try:
+            result2 = build_matrix.build_matrix('teuthology/no-ceph')
+        finally:
+            self.stop_patchers()
         assert len(result) == 11
         assert len(result2) == len(result)
 
@@ -569,7 +654,10 @@ class TestBuildMatrix(object):
             },
         }
         self.start_patchers(fake_fs)
-        result = build_matrix.build_matrix('thrash')
+        try:
+            result = build_matrix.build_matrix('thrash')
+        finally:
+            self.stop_patchers()
         assert len(result) == 1
         assert self.fragment_occurences(result, 'base.yaml') == 1
         fragments = result[0][1]
@@ -582,7 +670,7 @@ class TestSubset(object):
         'os.listdir',
         'os.path.isfile',
         'os.path.isdir',
-        'teuthology.suite.open',
+        'builtins.open',
     ]
 
     def setup(self):
@@ -594,17 +682,18 @@ class TestSubset(object):
 
     def start_patchers(self, fake_fs):
         fake_fns = make_fake_fstools(fake_fs)
-        # relies on fake_fns being in same order as patchpoints
+        # N.B.: relies on fake_fns being in same order as patchpoints
         for ppoint, fn in zip(self.__class__.patchpoints, fake_fns):
             self.mocks[ppoint].side_effect = fn
-        for patcher in self.patchers.values():
-            patcher.start()
+            self.patchers[ppoint].start()
 
     def stop_patchers(self):
         for patcher in self.patchers.values():
             patcher.stop()
 
-    # test_random() manages start/stop patchers on its own; no teardown
+    def teardown(self):
+        self.patchers.clear()
+        self.mocks.clear()
 
     MAX_FACETS = 10
     MAX_FANOUT = 3
@@ -651,8 +740,8 @@ class TestSubset(object):
 
     @staticmethod
     def generate_subset(maxsub):
-        den = random.choice(range(maxsub-1))+1
-        return (random.choice(range(den)), den)
+        divisions = random.choice(range(maxsub-1))+1
+        return (random.choice(range(divisions)), divisions)
 
     @staticmethod
     def generate_description_list(tree, subset):
@@ -719,6 +808,8 @@ class TestSubset(object):
                 self.MAX_DEPTH)
             subset = self.generate_subset(self.MAX_SUBSET)
             self.start_patchers(tree)
-            dlist, mat, first, matlimit = self.generate_description_list(tree, subset)
+            try:
+                dlist, mat, first, matlimit = self.generate_description_list(tree, subset)
+            finally:
+                self.stop_patchers()
             self.verify_facets(tree, dlist, subset, mat, first, matlimit)
-            self.stop_patchers()

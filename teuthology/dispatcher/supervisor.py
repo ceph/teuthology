@@ -79,6 +79,8 @@ def run_job(job_config, teuth_bin_path, archive_dir, verbose):
                 args.extend(['--seed', job_config['seed']])
             if job_config.get('subset'):
                 args.extend(['--subset', job_config['subset']])
+            if job_config.get('no_nested_subset'):
+                args.extend(['--no-nested-subset'])
         else:
             log.info('Generating results for %s', job_config['name'])
             timeout = job_config.get('results_timeout',

@@ -134,7 +134,7 @@ def main(args):
             return
         conf.filter_in.extend(rerun_filters['descriptions'])
         conf.suite = normalize_suite_name(rerun_filters['suite'])
-        conf.subset, conf.seed = get_rerun_conf(conf)
+        conf.subset, conf.no_nested_subset, conf.seed = get_rerun_conf(conf)
     if conf.seed < 0:
         conf.seed = random.randint(0, 9999)
         log.info('Using random seed=%s', conf.seed)
@@ -163,11 +163,11 @@ def get_rerun_filters(name, statuses):
 def get_rerun_conf(conf):
     reporter = ResultsReporter()
     try:
-        subset, seed = reporter.get_rerun_conf(conf.rerun)
+        subset, no_nested_subset, seed = reporter.get_rerun_conf(conf.rerun)
     except IOError:
-        return conf.subset, conf.seed
+        return conf.subset, conf.no_nested_subset, conf.seed
     if seed is None:
-        return conf.subset, conf.seed
+        return conf.subset, conf.no_nested_subset, conf.seed
     if conf.seed < 0:
         log.info('Using stored seed=%s', seed)
     elif conf.seed != seed:
@@ -182,7 +182,9 @@ def get_rerun_conf(conf):
                   'stored subset: {stored_subset}',
                   conf_subset=conf.subset,
                   stored_subset=subset)
-    return subset, seed
+    if conf.no_nested_subset is True:
+        log.info('Nested subsets disabled')
+    return subset, no_nested_subset, seed
 
 
 class WaitException(Exception):
