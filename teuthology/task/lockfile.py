@@ -94,7 +94,7 @@ def task(ctx, config):
                     'wget',
                     '-nv',
                     '--no-check-certificate',
-                    'https://raw.github.com/gregsfortytwo/FileLocker/master/sclockandhold.cpp',
+                    'https://raw.github.com/gregsfortytwo/FileLocker/main/sclockandhold.cpp',
                     '-O', '{tdir}/lockfile/sclockandhold.cpp'.format(tdir=testdir),
                     run.Raw('&&'),
                     'g++', '{tdir}/lockfile/sclockandhold.cpp'.format(tdir=testdir),
