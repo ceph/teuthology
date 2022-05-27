@@ -174,7 +174,8 @@ class Run(object):
             log.info("ceph sha1 explicitly supplied")
 
         elif self.args.ceph_branch:
-            ceph_hash = util.git_ls_remote(repo_name, self.args.ceph_branch)
+            ceph_hash = util.git_ls_remote(
+                self.args.ceph_repo, self.args.ceph_branch)
             if not ceph_hash:
                 exc = BranchNotFoundError(
                     self.args.ceph_branch,

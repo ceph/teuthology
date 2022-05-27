@@ -187,7 +187,7 @@ def git_ls_remote(project_or_url, branch, project_owner='ceph'):
                            name is passed; not when a URL is passed
     :returns: The sha1 if found; else None
     """
-    if '://' in project_or_url:
+    if '://' in project_or_url or project_or_url.startswith('git@'):
         url = project_or_url
     else:
         url = build_git_url(project_or_url, project_owner)
