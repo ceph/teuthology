@@ -151,6 +151,10 @@ class Run(object):
             kernel_dict = dict(kernel=dict(kdb=True, sha1=kernel_hash))
             if kernel_hash != 'distro':
                 kernel_dict['kernel']['flavor'] = 'default'
+            if self.args.kernel_override:
+                kernel_dict['kernel']['override'] = True
+            else:
+                kernel_dict['kernel']['override'] = False
         else:
             kernel_dict = dict()
         return kernel_dict

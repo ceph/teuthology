@@ -48,6 +48,9 @@ Standard arguments:
                               The kernel branch to run against,
                               use 'none' to bypass kernel task.
                               [default: distro]
+  --kernel-override           The kernel branch to override any kernel specified
+                              via -k or suite yamls.
+                              [default: False]
   -f <flavor>, --flavor <flavor>
                               The ceph packages shaman flavor to run with:
                               ('default', 'crimson', 'notcmalloc', 'jaeger')

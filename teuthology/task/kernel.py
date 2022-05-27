@@ -119,25 +119,34 @@ def normalize_and_apply_overrides(ctx, config, overrides):
     timeout = TIMEOUT_DEFAULT
     if 'timeout' in config:
         timeout = config.pop('timeout')
+    config_override = config.pop('override', False)
     config = normalize_config(ctx, config)
+
+    if overrides is None:
+        overrides = {}
 
     if 'timeout' in overrides:
         timeout = overrides.pop('timeout')
-    if overrides:
-        overrides = normalize_config(ctx, overrides)
-        log.debug('normalized overrides %s' % overrides)
+    overrides.pop('override', None) # config['override'] overrides overrides (hah), not the other way around!
 
-        # Handle a case when a version specified with one type of version key
-        # is overridden by a version specified with another type of version key
-        # (e.g. 'branch: foo' is overridden with 'tag: bar').  To be able to
-        # use deep_merge(), drop all version keys from the original config if
-        # the corresponding override has a version key.
-        for role, role_config in config.items():
-            if (role in overrides and
-                    any(k in overrides[role] for k in VERSION_KEYS)):
+    overrides = normalize_config(ctx, overrides)
+    log.debug('normalized overrides %s' % overrides)
+
+    # Handle a case when a version specified with one type of version key
+    # is overridden by a version specified with another type of version key
+    # (e.g. 'branch: foo' is overridden with 'tag: bar').  To be able to
+    # use deep_merge(), drop all version keys from the original config if
+    # the corresponding override has a version key.
+    for role, role_config in config.items():
+        role_ov = overrides.get(role)
+        if role_ov  and any(k in role_ov for k in VERSION_KEYS):
+            if config_override:
+                for k in VERSION_KEYS:
+                    role_ov.pop(k, None)
+            else:
                 for k in VERSION_KEYS:
                     role_config.pop(k, None)
-        teuthology.deep_merge(config, overrides)
+    teuthology.deep_merge(config, overrides)
 
     return (config, timeout)
 

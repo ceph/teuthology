@@ -43,6 +43,7 @@ def process_args(args):
         'ceph': 'ceph_branch',
         'sha1': 'ceph_sha1',
         'kernel': 'kernel_branch',
+        'kernel_override': 'kernel_override',
         '<config_yaml>': 'base_yaml_paths',
         'filter': 'filter_in',
     }
