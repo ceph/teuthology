@@ -12,6 +12,18 @@ class BranchNotFoundError(ValueError):
             branch=self.branch, repo_str=repo_str)
 
 
+class BranchMismatchError(ValueError):
+    def __init__(self, branch, repo, reason=None):
+        self.branch = branch
+        self.repo = repo
+        self.reason = reason
+
+    def __str__(self):
+        msg = f"Cannot use branch {self.branch} with repo {self.repo}"
+        if self.reason:
+            msg = f"{msg} because {self.reason}"
+        return msg
+
 class CommitNotFoundError(ValueError):
     def __init__(self, commit, repo=None):
         self.commit = commit

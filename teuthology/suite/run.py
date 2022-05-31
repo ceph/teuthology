@@ -10,10 +10,12 @@ from humanfriendly import format_timespan
 
 from datetime import datetime
 from tempfile import NamedTemporaryFile
+from teuthology import repo_utils
 
 from teuthology.config import config, JobConfig
 from teuthology.exceptions import (
-    BranchNotFoundError, CommitNotFoundError, VersionNotFoundError
+    BranchMismatchError, BranchNotFoundError, CommitNotFoundError,
+    VersionNotFoundError
 )
 from teuthology.misc import deep_merge, get_results_url
 from teuthology.orchestra.opsys import OS
@@ -247,10 +249,23 @@ class Run(object):
         if not teuthology_branch:
             teuthology_branch = config.get('teuthology_branch', 'main')
 
-        teuthology_sha1 = util.git_ls_remote(
-            'teuthology',
-            teuthology_branch
-        )
+        if config.teuthology_path is None:
+            teuthology_sha1 = util.git_ls_remote(
+                'teuthology',
+                teuthology_branch
+            )
+        else:
+            actual_branch = repo_utils.current_branch(config.teuthology_path)
+            if actual_branch != teuthology_branch:
+                raise BranchMismatchError(
+                    teuthology_branch,
+                    config.teuthology_path,
+                    "config.teuthology_path is set",
+                )
+            teuthology_sha1 = util.git_ls_remote(
+                f"file://{config.teuthology_path}",
+                teuthology_branch
+            )
         if not teuthology_sha1:
             exc = BranchNotFoundError(teuthology_branch, build_git_url('teuthology'))
             util.schedule_fail(message=str(exc), name=self.name)

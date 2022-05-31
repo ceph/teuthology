@@ -236,3 +236,7 @@ class TestRepoUtils(object):
     @mark.parametrize("input_, expected", URLS_AND_DIRNAMES)
     def test_url_to_dirname(self, input_, expected):
         assert repo_utils.url_to_dirname(input_) == expected
+
+    def test_current_branch(self):
+        repo_utils.clone_repo(self.repo_url, self.dest_path, 'main', self.commit)
+        assert repo_utils.current_branch(self.dest_path) == "main"

@@ -70,6 +70,27 @@ def ls_remote(url, ref):
     return sha1
 
 
+def current_branch(path: str) -> str:
+    """
+    Return the current branch for a given on-disk repository.
+
+    :returns: the current branch, or an empty string if none is found.
+    """
+    # git branch --show-current was added in 2.22.0, and we can't assume
+    # our version is new enough.
+    cmd = "git rev-parse --abbrev-ref HEAD"
+    result = subprocess.Popen(
+        cmd,
+        shell=True,
+        cwd=path,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        ).communicate()[0].strip().decode()
+    if result == "HEAD":
+        return ""
+    return result
+
+
 def enforce_repo_state(repo_url, dest_path, branch, commit=None, remove_on_error=True):
     """
     Use git to either clone or update a given repo, forcing it to switch to the

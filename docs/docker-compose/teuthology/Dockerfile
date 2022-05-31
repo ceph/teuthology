@@ -9,7 +9,7 @@ RUN apt-get update && \
     libssl-dev \
     ipmitool \
     python3-pip \
-    python3-virtualenv \
+    python3-venv \
     vim \
     libev-dev \
     libvirt-dev \
@@ -18,23 +18,26 @@ RUN apt-get update && \
     lsb-release && \
     apt-get clean all
 WORKDIR /teuthology
-COPY . /teuthology
+COPY requirements.txt bootstrap /teuthology/
 RUN \
     cd /teuthology && \
     mkdir ../archive_dir && \
     mkdir log && \
     chmod +x /teuthology/bootstrap && \
+    PIP_INSTALL_FLAGS="-r requirements.txt" ./bootstrap
+COPY . /teuthology
+RUN \
     ./bootstrap
 COPY docs/docker-compose/teuthology/containerized_node.yaml /teuthology
 COPY docs/docker-compose/teuthology/.teuthology.yaml /root
+COPY docs/docker-compose/teuthology/teuthology.sh /
+RUN mkdir -p /etc/ansible
+COPY docs/docker-compose/teuthology/ansible_inventory/hosts /etc/ansible/
+COPY docs/docker-compose/teuthology/ansible_inventory/secrets /etc/ansible/
 RUN \
     mkdir $HOME/.ssh && \
     touch $HOME/.ssh/${SSH_PRIVKEY_FILE} && \
     chmod 600 $HOME/.ssh/${SSH_PRIVKEY_FILE} && \
     echo "StrictHostKeyChecking=no" > $HOME/.ssh/config && \
     echo "UserKnownHostsFile=/dev/null" >> $HOME/.ssh/config
-COPY docs/docker-compose/teuthology/teuthology.sh /
-RUN mkdir -p /etc/ansible
-COPY docs/docker-compose/teuthology/ansible_inventory/hosts /etc/ansible/
-COPY docs/docker-compose/teuthology/ansible_inventory/secrets /etc/ansible/
 ENTRYPOINT /teuthology.sh
