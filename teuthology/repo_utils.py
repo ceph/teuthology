@@ -163,8 +163,9 @@ def clone_repo(repo_url, dest_path, branch, shallow=True):
     result = proc.wait()
     # Newer git versions will bail if the branch is not found, but older ones
     # will not. Fortunately they both output similar text.
-    if not_found_str in out:
+    if result != 0:
         log.error(out)
+    if not_found_str in out:
         if result == 0:
             # Old git left a repo with the wrong branch. Remove it.
             shutil.rmtree(dest_path, ignore_errors=True)
