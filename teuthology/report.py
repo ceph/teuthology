@@ -413,10 +413,8 @@ class ResultsReporter(object):
                     subset = self._parse_log_line(line, 'subset:')
                 if no_nested_subset is None:
                     no_nested_subset = self._parse_log_line(line, 'no_nested_subset:')
-                elif seed is None:
+                if seed is None:
                     seed = self._parse_log_line(line, 'seed:')
-                else:
-                    break
         if subset is not None:
             subset = tuple(int(i) for i in subset.split('/'))
         if no_nested_subset is not None:
