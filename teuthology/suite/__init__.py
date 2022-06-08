@@ -231,5 +231,5 @@ def wait(name, max_job_time, upload_url):
             url = os.path.join(upload_url, name, job['job_id'])
         else:
             url = job['log_href']
-        log.info(job['status'] + " " + url + " " + job['description'])
+        log.info(f"{job['status']} {url} {job['description']}")
     return exit_code
