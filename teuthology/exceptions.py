@@ -205,3 +205,27 @@ class NoRemoteError(Exception):
 
     def __str__(self):
         return self.message
+
+
+class UnitTestError(Exception):
+    """
+    Exception thrown on unit test failure
+    """
+    def __init__(self, command, exitstatus, node=None, label=None, message=""):
+        self.command = command
+        self.exitstatus = exitstatus
+        self.node = node
+        self.label = label
+        self.message = message
+
+    def __str__(self):
+        prefix = "Unit test failed"
+        if self.label:
+            prefix += " ({label})".format(label=self.label)
+        if self.node:
+            prefix += " on {node}".format(node=self.node)
+        return "{prefix} with status {status}: {message}".format(
+            prefix=prefix,
+            status=self.exitstatus,
+            message=self.message,
+        )

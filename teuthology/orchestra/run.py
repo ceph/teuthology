@@ -2,7 +2,7 @@
 Paramiko run support
 """
 
-import io
+import io, re
 
 from paramiko import ChannelFile
 
@@ -15,7 +15,7 @@ import shutil
 
 from teuthology.contextutil import safe_while
 from teuthology.exceptions import (CommandCrashedError, CommandFailedError,
-                                   ConnectionLostError)
+                                   ConnectionLostError, UnitTestError)
 
 log = logging.getLogger(__name__)
 
@@ -34,30 +34,33 @@ class RemoteProcess(object):
         # for orchestra.remote.Remote to place a backreference
         'remote',
         'label',
+        'scan_tests_errors',
         ]
 
     deadlock_warning = "Using PIPE for %s without wait=False would deadlock"
 
     def __init__(self, client, args, check_status=True, hostname=None,
-                 label=None, timeout=None, wait=True, logger=None, cwd=None):
+                 label=None, timeout=None, wait=True, logger=None, cwd=None, scan_tests_errors=[]):
         """
         Create the object. Does not initiate command execution.
 
-        :param client:       paramiko.SSHConnection to run the command with
-        :param args:         Command to run.
-        :type args:          String or list of strings
-        :param check_status: Whether to raise CommandFailedError on non-zero
-                             exit status, and . Defaults to True. All signals
-                             and connection loss are made to look like SIGHUP.
-        :param hostname:     Name of remote host (optional)
-        :param label:        Can be used to label or describe what the
-                             command is doing.
-        :param timeout:      timeout value for arg that is passed to
-                             exec_command of paramiko
-        :param wait:         Whether self.wait() will be called automatically
-        :param logger:       Alternative logger to use (optional)
-        :param cwd:          Directory in which the command will be executed
-                             (optional)
+        :param client:            paramiko.SSHConnection to run the command with
+        :param args:              Command to run.
+        :type args:               String or list of strings
+        :param check_status:      Whether to raise CommandFailedError on non-zero
+                                  exit status, and . Defaults to True. All signals
+                                  and connection loss are made to look like SIGHUP.
+        :param hostname:          Name of remote host (optional)
+        :param label:             Can be used to label or describe what the
+                                  command is doing.
+        :param timeout:           timeout value for arg that is passed to
+                                  exec_command of paramiko
+        :param wait:              Whether self.wait() will be called automatically
+        :param logger:            Alternative logger to use (optional)
+        :param cwd:               Directory in which the command will be executed
+                                  (optional)
+        :param scan_tests_errors: name of unit tests for which logs need to 
+                                  be scanned to look for errors (optional)
         """
         self.client = client
         self.args = args
@@ -84,6 +87,7 @@ class RemoteProcess(object):
         self.returncode = self.exitstatus = None
         self._wait = wait
         self.logger = logger or log
+        self.scan_tests_errors = scan_tests_errors
 
     def execute(self):
         """
@@ -178,6 +182,14 @@ class RemoteProcess(object):
                 # signal; sadly SSH does not tell us which signal
                 raise CommandCrashedError(command=self.command)
             if self.returncode != 0:
+                if self.scan_tests_errors:
+                    error = ErrorScanner(self.scan_tests_errors).scan()
+                    if error:
+                        raise UnitTestError(
+                            command=self.command, exitstatus=self.returncode,
+                            node=self.hostname, label=self.label,
+                            message=error,
+                        )            
                 raise CommandFailedError(
                     command=self.command, exitstatus=self.returncode,
                     node=self.hostname, label=self.label
@@ -220,6 +232,46 @@ class RemoteProcess(object):
             check=self.check_status,
             name=self.hostname,
             )
+
+class ErrorScanner(object):
+    """
+    Scan for unit tests errors in teuthology.log 
+    """
+    __flag__ = 0
+    def __init__(self, test_names=[]):
+        self.test_names = test_names
+
+    def scan(self):
+        logfile = self.__logfile__
+        if not logfile or not self.test_names:
+            return None
+        
+        ERROR_PATTERN = {
+            "nose": r"ERROR:\s",
+            "gtest":  r"\[\s\sFAILED\s\s\]",
+        }
+        logs = []
+        with open(logfile, 'r') as f:
+            logs = f.readlines()
+
+        for line_number in range(len(logs) - 1, ErrorScanner.__flag__, -1):
+            line = logs[line_number]
+            for test in self.test_names:
+                pattern = ERROR_PATTERN[test]
+                error = re.search(pattern, line)
+                if error:
+                    ErrorScanner.__flag__ = line_number
+                    return line[error.start():].strip()
+        ErrorScanner.__flag__ = len(logs) - 1
+        return None 
+
+    @property
+    def __logfile__(self):
+        loggers = logging.getLogger()
+        for h in loggers.handlers:
+            if isinstance(h, logging.FileHandler):
+                return h.stream.name
+        return None
 
 
 class Raw(object):
@@ -394,6 +446,7 @@ def run(
     quiet=False,
     timeout=None,
     cwd=None,
+    scan_tests_errors=[],
     # omit_sudo is used by vstart_runner.py
     omit_sudo=False
 ):
@@ -429,6 +482,8 @@ def run(
     :param timeout: timeout value for args to complete on remote channel of
                     paramiko
     :param cwd: Directory in which the command should be executed.
+    :param scan_tests_errors: List of unit-tests names for which teuthology logs would 
+                              be scanned to look for errors.
     """
     try:
         transport = client.get_transport()
@@ -446,7 +501,7 @@ def run(
         log.info("Running command with timeout %d", timeout)
     r = RemoteProcess(client, args, check_status=check_status, hostname=name,
                       label=label, timeout=timeout, wait=wait, logger=logger,
-                      cwd=cwd)
+                      cwd=cwd, scan_tests_errors=scan_tests_errors)
     r.execute()
     r.setup_stdin(stdin)
     r.setup_output_stream(stderr, 'stderr', quiet)
