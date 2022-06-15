@@ -241,16 +241,18 @@ def test_nuke_internal():
         os_version='8.3',
         name='test_name',
     )
-    locks = [{'name': target, 'description': job_config['name']} for target
-             in job_config['targets'].keys()]
+    statuses = {
+        target: {'name': target, 'description': job_config['name']}
+        for target in job_config['targets'].keys()
+    }
     ctx = create_fake_context(job_config)
 
     # minimal call using defaults
     with patch.multiple(
             nuke,
             nuke_helper=DEFAULT,
-            list_locks=lambda: locks,
             unlock_one=DEFAULT,
+            get_status=lambda i: statuses[i],
             ) as m:
         nuke.nuke(ctx, True)
         m['nuke_helper'].assert_called_with(ANY, True, False, True)
@@ -260,8 +262,8 @@ def test_nuke_internal():
     with patch.multiple(
             nuke,
             nuke_helper=DEFAULT,
-            list_locks=lambda: locks,
             unlock_one=DEFAULT,
+            get_status=lambda i: statuses[i],
             ) as m:
         nuke.nuke(ctx, False)
         m['nuke_helper'].assert_called_with(ANY, False, False, True)
@@ -271,8 +273,8 @@ def test_nuke_internal():
     with patch.multiple(
             nuke,
             nuke_helper=DEFAULT,
-            list_locks=lambda: locks,
             unlock_one=DEFAULT,
+            get_status=lambda i: statuses[i],
             ) as m:
         nuke.nuke(ctx, False, True, False, True, False)
         m['nuke_helper'].assert_called_with(ANY, False, True, False)
@@ -284,6 +286,7 @@ def test_nuke_internal():
             nuke,
             nuke_helper=DEFAULT,
             unlock_one=DEFAULT,
+            get_status=lambda i: statuses[i],
             ) as m:
         nuke.nuke(ctx, True)
         m['nuke_helper'].assert_not_called()

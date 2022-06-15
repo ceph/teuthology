@@ -239,26 +239,21 @@ def nuke(ctx, should_unlock, sync_clocks=True, noipmi=False, keep_logs=False, sh
     if 'targets' not in ctx.config:
         return
     total_unnuked = {}
-    targets = dict(ctx.config['targets'])
-    if ctx.name:
-        log.info('Checking targets against current locks')
-        locks = list_locks()
-        # Remove targets who's description doesn't match archive name.
-        for lock in locks:
-            for target in targets:
-                if target == lock['name']:
-                    if ctx.name not in lock['description']:
-                        del ctx.config['targets'][lock['name']]
-                        log.info(
-                            "Not nuking %s because description doesn't match",
-                            lock['name'])
-                    elif lock.get('up') is False:
-                        del ctx.config['targets'][lock['name']]
-                        log.info(
-                            "Not nuking %s because it is down",
-                            lock['name'])
+    log.info('Checking targets against current locks')
     with parallel() as p:
         for target, hostkey in ctx.config['targets'].items():
+            status = get_status(target)
+            if ctx.name and ctx.name not in status['description']:
+                total_unnuked[target] = hostkey
+                log.info(
+                    f"Not nuking {target} because description doesn't match: "
+                    f"{ctx.name} != {status['description']}"
+                )
+                continue
+            elif status.get('up') is False:
+                total_unnuked[target] = hostkey
+                log.info(f"Not nuking {target} because it is down")
+                continue
             p.spawn(
                 nuke_one,
                 ctx,
