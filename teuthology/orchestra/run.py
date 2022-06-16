@@ -183,13 +183,13 @@ class RemoteProcess(object):
                 raise CommandCrashedError(command=self.command)
             if self.returncode != 0:
                 if self.scan_tests_errors:
-                    error = ErrorScanner(self.scan_tests_errors).scan()
+                    test, error = ErrorScanner().scan(test_names=self.scan_tests_errors)
                     if error:
                         raise UnitTestError(
                             command=self.command, exitstatus=self.returncode,
                             node=self.hostname, label=self.label,
-                            message=error,
-                        )            
+                            test=test, message=error,
+                        )
                 raise CommandFailedError(
                     command=self.command, exitstatus=self.returncode,
                     node=self.hostname, label=self.label
@@ -238,32 +238,35 @@ class ErrorScanner(object):
     Scan for unit tests errors in teuthology.log 
     """
     __flag__ = 0
-    def __init__(self, test_names=[]):
+    def scan(self, test_names=[]):
         self.test_names = test_names
-
-    def scan(self):
         logfile = self.__logfile__
         if not logfile or not self.test_names:
-            return None
-        
+            return None, None
+
         ERROR_PATTERN = {
             "nose": r"ERROR:\s",
             "gtest":  r"\[\s\sFAILED\s\s\]",
         }
-        logs = []
-        with open(logfile, 'r') as f:
-            logs = f.readlines()
+        error_test = None
+        error_msg = None
 
-        for line_number in range(len(logs) - 1, ErrorScanner.__flag__, -1):
-            line = logs[line_number]
+        f = open(logfile, 'r')
+        f.seek(ErrorScanner.__flag__ + 1)
+        while f:
+            line = f.readline()
             for test in self.test_names:
                 pattern = ERROR_PATTERN[test]
                 error = re.search(pattern, line)
                 if error:
-                    ErrorScanner.__flag__ = line_number
-                    return line[error.start():].strip()
-        ErrorScanner.__flag__ = len(logs) - 1
-        return None 
+                    error_test = test
+                    error_msg = line[error.start():].strip()
+                    break
+            if error_msg:
+                break
+        ErrorScanner.__flag__ = f.tell()
+        f.close()
+        return error_test, error_msg 
 
     @property
     def __logfile__(self):
