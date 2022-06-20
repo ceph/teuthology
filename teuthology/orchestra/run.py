@@ -40,7 +40,7 @@ class RemoteProcess(object):
     deadlock_warning = "Using PIPE for %s without wait=False would deadlock"
 
     def __init__(self, client, args, check_status=True, hostname=None,
-                 label=None, timeout=None, wait=True, logger=None, cwd=None, scan_tests_errors=[]):
+                 label=None, timeout=None, wait=True, logger=None, cwd=None, scan_tests_errors=None):
         """
         Create the object. Does not initiate command execution.
 
@@ -265,7 +265,7 @@ class ErrorScanner(object):
                 return True
         return False
 
-    def scan(self, test_names=[]):
+    def scan(self, test_names=None):
         logfile = self.__logfile__
         if not logfile or not test_names:
             return None, None
@@ -473,7 +473,7 @@ def run(
     quiet=False,
     timeout=None,
     cwd=None,
-    scan_tests_errors=[],
+    scan_tests_errors=None,
     # omit_sudo is used by vstart_runner.py
     omit_sudo=False
 ):
