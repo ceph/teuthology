@@ -238,17 +238,38 @@ class ErrorScanner(object):
     Scan for unit tests errors in teuthology.log 
     """
     __flag__ = 0
+    def __init__(self):
+        self.ERROR_PATTERNS = {
+            "prev_detected": [re.compile(r"UnitTestError")],
+            "nose": [
+                re.compile(r"ERROR:\s"),
+                re.compile(r"FAIL:\s"),
+            ],
+            "gtest":  [re.compile(r"\[\s\sFAILED\s\s\]")],
+        }
+    
+    def search_error(self, line, test):
+        test_patterns = self.ERROR_PATTERNS[test]
+
+        for pattern in test_patterns:
+            error = pattern.search(line)
+            if error:
+                is_old_error = self.is_prev_detected_error(line)
+                if not is_old_error:
+                    return line[error.start():].strip()
+        return None
+
+    def is_prev_detected_error(self, line) -> bool:
+        for detected_pattern in self.ERROR_PATTERNS['prev_detected']:
+            if detected_pattern.search(line):
+                return True
+        return False
+
     def scan(self, test_names=[]):
-        self.test_names = test_names
         logfile = self.__logfile__
-        if not logfile or not self.test_names:
+        if not logfile or not test_names:
             return None, None
 
-        ERROR_PATTERN = {
-            "prev_error": r"UnitTestError",
-            "nose": r"ERROR: \s",
-            "gtest":  r"\[\s\sFAILED\s\s\]",
-        }
         error_test = None
         error_msg = None
 
@@ -257,19 +278,16 @@ class ErrorScanner(object):
         f.seek(ErrorScanner.__flag__)
 
         for line in f:
-            for test in self.test_names:
-                pattern = ERROR_PATTERN[test]
-                error = re.search(pattern, line)
+            for test in test_names:
+                error = self.search_error(line, test)
                 if error:
-                    is_old_error = re.search(ERROR_PATTERN['prev_error'], line)
-                    if not is_old_error:
-                        error_test = test
-                        error_msg = line[error.start():].strip()
-                        break
+                    error_test = test
+                    error_msg = error
+                    break
             if error_msg:
                 break
 
-        f.seek(0, 2) # seek to EOF
+        f.seek(0, 2) # seek to end of current state of log file
         ErrorScanner.__flag__ = f.tell()
         f.close()
         return error_test, error_msg 
