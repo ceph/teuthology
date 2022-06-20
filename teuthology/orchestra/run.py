@@ -245,25 +245,31 @@ class ErrorScanner(object):
             return None, None
 
         ERROR_PATTERN = {
-            "nose": r"ERROR:\s",
+            "prev_error": r"UnitTestError",
+            "nose": r"ERROR: \s",
             "gtest":  r"\[\s\sFAILED\s\s\]",
         }
         error_test = None
         error_msg = None
 
+        log.debug("__flag__ pointer at: {}".format(ErrorScanner.__flag__))
         f = open(logfile, 'r')
-        f.seek(ErrorScanner.__flag__ + 1)
-        while f:
-            line = f.readline()
+        f.seek(ErrorScanner.__flag__)
+
+        for line in f:
             for test in self.test_names:
                 pattern = ERROR_PATTERN[test]
                 error = re.search(pattern, line)
                 if error:
-                    error_test = test
-                    error_msg = line[error.start():].strip()
-                    break
+                    is_old_error = re.search(ERROR_PATTERN['prev_error'], line)
+                    if not is_old_error:
+                        error_test = test
+                        error_msg = line[error.start():].strip()
+                        break
             if error_msg:
                 break
+
+        f.seek(0, 2) # seek to EOF
         ErrorScanner.__flag__ = f.tell()
         f.close()
         return error_test, error_msg 
