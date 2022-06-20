@@ -15,7 +15,7 @@
     bash docs/_static/worker_start.sh {{ machine_type }} {{ workers }}
   args:
     executable: /bin/bash
-    chdir: /home/{{ teuthology_execution_user }}/src/teuthology_master
+    chdir: /home/{{ teuthology_execution_user }}/src/teuthology_main
   become_user: "{{ teuthology_execution_user }}"
   when: workers > 0
 
@@ -51,6 +51,6 @@
 
   args:
     executable: /bin/bash
-    chdir: /home/{{ teuthology_execution_user }}/src/teuthology_master
+    chdir: /home/{{ teuthology_execution_user }}/src/teuthology_main
   become_user: "{{ teuthology_execution_user }}"
   when: dispatcher > 0
