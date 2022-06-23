@@ -1,10 +1,12 @@
 from io import BytesIO
+import os
 
 import paramiko
 import socket
 
 from mock import MagicMock, patch
 from pytest import raises
+from _pytest.monkeypatch import MonkeyPatch
 
 from teuthology.orchestra import run
 from teuthology.exceptions import (CommandCrashedError, CommandFailedError,
@@ -284,3 +286,69 @@ class TestRaw(object):
         str_ = "I am a raw something or other"
         raw = run.Raw(str_)
         assert raw == run.Raw(str_)
+
+
+class TestErrorScanner(object):
+    def setup(self):
+        self.nose_failure = {
+            'error_line': "2022-06-20T13:47:26.709 INFO:teuthology.orchestra.run.smithi119.\
+                stderr:ERROR: s3tests_boto3.functional.test_s3.test_bucket_policy_put_obj_s3_noenc",
+            'prev_detected_line': "teuthology.exceptions.UnitTestError: nose test failed \
+                (s3 tests against rgw) on smithi119 with status 1: 'ERROR: s3tests_boto3.\
+                functional.test_s3.test_bucket_policy_put_obj_s3_noenc'",
+            'error_msg': 'ERROR: s3tests_boto3.functional.test_s3.test_bucket_policy_put_obj_s3_noenc',
+        }
+        self.no_error_line = "2022-06-20T13:37:30.690 INFO:teuthology.orchestra.run.smithi100.\
+                stdout:Transaction check succeeded."
+        self.gtest_failure = {
+            'error_line': "2022-06-22T16:49:01.900 INFO:tasks.workunit.client.0.smithi102. \
+                stdout:[  FAILED  ] TestClsRbd.get_all_features (0 ms)",
+            'prev_detected_line': "teuthology.exceptions.UnitTestError: gtest test failed \
+                (workunit test cls/test_cls_rbd.sh) on smithi102 with status 1: \
+                '[  FAILED  ] TestClsRbd.get_all_features (0 ms)'",
+            'error_msg': '[  FAILED  ] TestClsRbd.get_all_features (0 ms)',
+        }
+        self.monkeypatch = MonkeyPatch()
+
+    def test_search_error_nose(self):
+        error_line = self.nose_failure['error_line']
+        no_error_line = self.no_error_line
+        prev_detected_line = self.nose_failure['prev_detected_line']
+        assert run.ErrorScanner()._search_error(line=error_line, test="nose") == self.nose_failure['error_msg']
+        assert run.ErrorScanner()._search_error(line=no_error_line, test="nose") == None
+        assert run.ErrorScanner()._search_error(line=prev_detected_line, test="nose") == None
+
+    def test_search_error_gtest(self):
+        error_line = self.gtest_failure['error_line']
+        no_error_line = self.no_error_line
+        prev_detected_line = self.gtest_failure['prev_detected_line']
+        assert run.ErrorScanner()._search_error(line=error_line, test="gtest") == self.gtest_failure['error_msg']
+        assert run.ErrorScanner()._search_error(line=no_error_line, test="gtest") == None
+        assert run.ErrorScanner()._search_error(line=prev_detected_line, test="gtest") == None
+
+    def test_is_prev_detected_error(self):
+        prev_error = self.nose_failure['prev_detected_line']
+        not_prev_error = self.nose_failure['error_line']
+        assert run.ErrorScanner()._is_prev_detected_error(line=prev_error) == True
+        assert run.ErrorScanner()._is_prev_detected_error(line=not_prev_error) == False
+
+    def test_scan_nose_failure(self):
+        logfile = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "log_files/test_scan_nose.log"
+        )
+        self.monkeypatch.setattr(run.ErrorScanner, '_logfile', logfile)
+        scanner = run.ErrorScanner()
+        scan_result = scanner.scan(test_names=["nose"])
+        assert scan_result == ('nose', self.nose_failure['error_msg'])
+
+    def test_scan_gtest_failure(self):
+        logfile = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "log_files/test_scan_gtest.log"
+        )
+        self.monkeypatch.setattr(run.ErrorScanner, '_logfile', logfile)
+        self.monkeypatch.setattr(run.ErrorScanner, '__flag__', 0)
+        scanner = run.ErrorScanner()
+        scan_result = scanner.scan(test_names=["gtest"])
+        assert scan_result == ('gtest', self.gtest_failure['error_msg'])

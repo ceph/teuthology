@@ -248,25 +248,25 @@ class ErrorScanner(object):
             "gtest":  [re.compile(r"\[\s\sFAILED\s\s\]")],
         }
     
-    def search_error(self, line, test):
+    def _search_error(self, line, test):
         test_patterns = self.ERROR_PATTERNS[test]
 
         for pattern in test_patterns:
             error = pattern.search(line)
             if error:
-                is_old_error = self.is_prev_detected_error(line)
+                is_old_error = self._is_prev_detected_error(line)
                 if not is_old_error:
                     return line[error.start():].strip()
         return None
 
-    def is_prev_detected_error(self, line) -> bool:
+    def _is_prev_detected_error(self, line) -> bool:
         for detected_pattern in self.ERROR_PATTERNS['prev_detected']:
             if detected_pattern.search(line):
                 return True
         return False
 
     def scan(self, test_names=None):
-        logfile = self.__logfile__
+        logfile = self._logfile
         if not logfile or not test_names:
             return None, None
 
@@ -279,7 +279,7 @@ class ErrorScanner(object):
 
         for line in f:
             for test in test_names:
-                error = self.search_error(line, test)
+                error = self._search_error(line, test)
                 if error:
                     error_test = test
                     error_msg = error
@@ -293,7 +293,7 @@ class ErrorScanner(object):
         return error_test, error_msg 
 
     @property
-    def __logfile__(self):
+    def _logfile(self):
         loggers = logging.getLogger()
         for h in loggers.handlers:
             if isinstance(h, logging.FileHandler):
