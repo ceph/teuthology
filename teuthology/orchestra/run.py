@@ -183,12 +183,16 @@ class RemoteProcess(object):
                 raise CommandCrashedError(command=self.command)
             if self.returncode != 0:
                 if self.scan_tests_errors:
-                    test, error = ErrorScanner().scan(test_names=self.scan_tests_errors)
-                    if error:
+                    error_msg = None
+                    try:
+                        test, error_msg = ErrorScanner().scan(test_names=self.scan_tests_errors)
+                    except Exception as exc:
+                        self.logger.error('Unable to scan logs, exception occurred: {exc}'.format(exc=repr(exc)))
+                    if error_msg:
                         raise UnitTestError(
                             command=self.command, exitstatus=self.returncode,
                             node=self.hostname, label=self.label,
-                            test=test, message=error,
+                            test=test, message=error_msg,
                         )
                 raise CommandFailedError(
                     command=self.command, exitstatus=self.returncode,
@@ -237,19 +241,18 @@ class ErrorScanner(object):
     """
     Scan for unit tests errors in teuthology.log 
     """
-    __flag__ = 0
-    def __init__(self):
-        self.ERROR_PATTERNS = {
-            "prev_detected": [re.compile(r"UnitTestError")],
-            "nose": [
-                re.compile(r"ERROR:\s"),
-                re.compile(r"FAIL:\s"),
-            ],
-            "gtest":  [re.compile(r"\[\s\sFAILED\s\s\]")],
-        }
+    _flag = 0
+    ERROR_PATTERNS = {
+        "prev_detected": [re.compile(r"UnitTestError")],
+        "nose": [
+            re.compile(r"ERROR:\s"),
+            re.compile(r"FAIL:\s"),
+        ],
+        "gtest":  [re.compile(r"\[\s\sFAILED\s\s\]")],
+    }
     
     def _search_error(self, line, test):
-        test_patterns = self.ERROR_PATTERNS[test]
+        test_patterns = ErrorScanner.ERROR_PATTERNS[test]
 
         for pattern in test_patterns:
             error = pattern.search(line)
@@ -260,7 +263,7 @@ class ErrorScanner(object):
         return None
 
     def _is_prev_detected_error(self, line) -> bool:
-        for detected_pattern in self.ERROR_PATTERNS['prev_detected']:
+        for detected_pattern in ErrorScanner.ERROR_PATTERNS['prev_detected']:
             if detected_pattern.search(line):
                 return True
         return False
@@ -273,23 +276,21 @@ class ErrorScanner(object):
         error_test = None
         error_msg = None
 
-        log.debug("__flag__ pointer at: {}".format(ErrorScanner.__flag__))
-        f = open(logfile, 'r')
-        f.seek(ErrorScanner.__flag__)
-
-        for line in f:
-            for test in test_names:
-                error = self._search_error(line, test)
-                if error:
-                    error_test = test
-                    error_msg = error
+        with open(logfile, 'r') as f: 
+            f.seek(ErrorScanner._flag)
+            for line in f:
+                for test in test_names:
+                    error = self._search_error(line, test)
+                    if error:
+                        error_test = test
+                        error_msg = error
+                        break
+                if error_msg:
                     break
-            if error_msg:
-                break
 
-        f.seek(0, 2) # seek to end of current state of log file
-        ErrorScanner.__flag__ = f.tell()
-        f.close()
+            f.seek(0, 2) # seek to end of current state of log file
+            ErrorScanner._flag = f.tell()
+            f.close()
         return error_test, error_msg 
 
     @property

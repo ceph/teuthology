@@ -338,6 +338,7 @@ class TestErrorScanner(object):
             "log_files/test_scan_nose.log"
         )
         self.monkeypatch.setattr(run.ErrorScanner, '_logfile', logfile)
+        self.monkeypatch.setattr(run.ErrorScanner, '_flag', 0)
         scanner = run.ErrorScanner()
         scan_result = scanner.scan(test_names=["nose"])
         assert scan_result == ('nose', self.nose_failure['error_msg'])
@@ -348,7 +349,7 @@ class TestErrorScanner(object):
             "log_files/test_scan_gtest.log"
         )
         self.monkeypatch.setattr(run.ErrorScanner, '_logfile', logfile)
-        self.monkeypatch.setattr(run.ErrorScanner, '__flag__', 0)
+        self.monkeypatch.setattr(run.ErrorScanner, '_flag', 0)
         scanner = run.ErrorScanner()
         scan_result = scanner.scan(test_names=["gtest"])
         assert scan_result == ('gtest', self.gtest_failure['error_msg'])
