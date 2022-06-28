@@ -1003,23 +1003,21 @@ def deep_merge(a, b):
     :param a: object items will be merged into
     :param b: object items will be merged from
     """
-    if a is None:
-        return b
     if b is None:
         return a
-    if isinstance(a, list):
+    elif isinstance(a, list):
         assert isinstance(b, list)
         a.extend(b)
         return a
-    if isinstance(a, dict):
+    elif isinstance(a, dict):
         assert isinstance(b, dict)
         for (k, v) in b.items():
-            if k in a:
-                a[k] = deep_merge(a[k], v)
-            else:
-                a[k] = v
+            a[k] = deep_merge(a.get(k), v)
         return a
-    return b
+    elif isinstance(b, dict) or isinstance(b, list):
+        return deep_merge(b.__class__(), b)
+    else:
+        return b
 
 
 def get_valgrind_args(testdir, name, preamble, v, exit_on_first_error=True):
