@@ -15,6 +15,7 @@ import time
 import yaml
 import json
 import re
+from sys import stdin
 import pprint
 import datetime
 from types import MappingProxyType
@@ -127,11 +128,14 @@ def merge_configs(config_paths):
     """
     conf_dict = dict()
     for conf_path in config_paths:
-        if not os.path.exists(conf_path):
+        if conf_path == "-":
+            partial_dict = yaml.safe_load(stdin)
+        elif not os.path.exists(conf_path):
             log.debug("The config path {0} does not exist, skipping.".format(conf_path))
             continue
-        with open(conf_path) as partial_file:
-            partial_dict = yaml.safe_load(partial_file)
+        else:
+            with open(conf_path) as partial_file:
+                partial_dict = yaml.safe_load(partial_file)
         try:
             conf_dict = deep_merge(conf_dict, partial_dict)
         except Exception:

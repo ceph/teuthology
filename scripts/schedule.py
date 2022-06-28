@@ -12,6 +12,7 @@ Schedule ceph integration tests
 
 positional arguments:
   <conf_file>                          Config file to read
+                                       "-" indicates read stdin.
 
 optional arguments:
   -h, --help                           Show this help message and exit
