@@ -12,6 +12,8 @@
     {% if libcloud_ssl_cert_file %}
     export SSL_CERT_FILE={{ libcloud_ssl_cert_file }}
     {% endif %}
+    echo "I'm {{ teuthology_execution_user }}"
+    whoami
     bash docs/_static/worker_start.sh {{ machine_type }} {{ workers }}
   args:
     executable: /bin/bash
