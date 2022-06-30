@@ -549,6 +549,7 @@ class OpenStackDeployment(Deployment):
         ansible_playbook_command = (
             f'ANSIBLE_CONFIG={ansible_config_path} ansible-playbook -vvv --key-file {self.identity_file}'
             f' --user {self.username}'
+            f' -b'
             f' -i {ansible_inventory_path}'
             f' -e @{self.teuthology_server_yaml_path}'
             f' -e @{teuthology_defaults_path}'
