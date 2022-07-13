@@ -682,6 +682,9 @@ Note: If you still want to go ahead, use --job-threshold 0'''
 
         count = len(jobs_to_schedule)
         missing_count = len(jobs_missing_packages)
+        total_count = count
+        if self.args.num:
+            total_count *= self.args.num
         log.info(
             'Suite %s in %s scheduled %d jobs.' %
             (suite_name, suite_path, count)
@@ -692,4 +695,5 @@ Note: If you still want to go ahead, use --job-threshold 0'''
         if missing_count:
             log.warning('Scheduled %d/%d jobs that are missing packages!',
                      missing_count, count)
+        log.info('Scheduled %d jobs in total.', total_count)
         return count
