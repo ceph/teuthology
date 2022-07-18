@@ -17,6 +17,7 @@ import json
 import re
 import pprint
 import datetime
+from types import MappingProxyType
 
 from tarfile import ReadError
 
@@ -1010,12 +1011,14 @@ def deep_merge(a, b):
         a.extend(b)
         return a
     elif isinstance(a, dict):
-        assert isinstance(b, dict)
+        assert isinstance(b, dict) or isinstance(b, MappingProxyType)
         for (k, v) in b.items():
             a[k] = deep_merge(a.get(k), v)
         return a
     elif isinstance(b, dict) or isinstance(b, list):
         return deep_merge(b.__class__(), b)
+    elif isinstance(b, MappingProxyType):
+        return deep_merge(dict(), b)
     else:
         return b
 
