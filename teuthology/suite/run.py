@@ -646,7 +646,7 @@ Note: If you still want to go ahead, use --job-threshold 0'''
                 new_sha1 = \
                     util.find_git_parent('ceph', self.base_config.sha1)
                 if new_sha1 is None:
-                    util.schedule_fail('Backtrack for --newest failed', name)
+                    util.schedule_fail('Backtrack for --newest failed', name, dry_run=self.args.dry_run)
                  # rebuild the base config to resubstitute sha1
                 self.config_input['ceph_hash'] = new_sha1
                 self.base_config = self.build_base_config()

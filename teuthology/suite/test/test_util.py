@@ -8,6 +8,7 @@ from mock import Mock, patch
 from teuthology.config import config
 from teuthology.orchestra.opsys import OS
 from teuthology.suite import util
+from teuthology.exceptions import ScheduleFailError
 
 
 REPO_PROJECTS_AND_URLS = [
@@ -49,6 +50,40 @@ def git_repository(request):
 class TestUtil(object):
     def setup(self):
         config.use_shaman = False
+
+    @patch('teuthology.suite.util.smtplib.SMTP')
+    def test_schedule_fail(self, m_smtp):
+        config.results_email = "example@example.com"
+        with pytest.raises(ScheduleFailError) as exc:
+            util.schedule_fail(message="error msg", dry_run=False)
+        assert str(exc.value) == "Scheduling failed: error msg"
+        m_smtp.assert_called()
+
+    @patch('teuthology.suite.util.smtplib.SMTP')
+    def test_schedule_fail_dryrun(self, m_smtp):
+        config.results_email = "example@example.com"
+        with pytest.raises(ScheduleFailError) as exc:
+            util.schedule_fail(message="error msg", dry_run=True)
+        assert str(exc.value) == "Scheduling failed: error msg"
+        m_smtp.assert_not_called()
+
+    @patch('teuthology.suite.util.smtplib.SMTP')
+    def test_fetch_repo_no_branch(self, m_smtp):
+        config.results_email = "example@example.com"
+        with pytest.raises(ScheduleFailError) as exc:
+            util.fetch_repos("no-branch", "test1", dry_run=False)
+        assert str(exc.value) == "Scheduling test1 failed: \
+Branch 'no-branch' not found in repo: https://github.com/ceph/ceph-ci.git!"
+        m_smtp.assert_called()
+
+    @patch('teuthology.suite.util.smtplib.SMTP')
+    def test_fetch_repo_no_branch_dryrun(self, m_smtp):
+        config.results_email = "example@example.com"
+        with pytest.raises(ScheduleFailError) as exc:
+            util.fetch_repos("no-branch", "test1", dry_run=True)
+        assert str(exc.value) == "Scheduling test1 failed: \
+Branch 'no-branch' not found in repo: https://github.com/ceph/ceph-ci.git!"
+        m_smtp.assert_not_called()
 
     @patch('requests.get')
     def test_get_hash_success(self, m_get):

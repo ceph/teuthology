@@ -109,7 +109,7 @@ def main(args):
     if conf.verbose:
         teuthology.log.setLevel(logging.DEBUG)
 
-    dry_run = conf.dry_run or None
+    dry_run = conf.dry_run
     if not conf.machine_type or conf.machine_type == 'None':
         if not config.default_machine_type or config.default_machine_type == 'None':
             schedule_fail("Must specify a machine_type", dry_run=dry_run)
