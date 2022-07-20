@@ -741,7 +741,7 @@ def pull_directory(remote, remotedir, localdir, write_to=copy_fileobj):
     if not os.path.exists(localdir):
         os.mkdir(localdir)
     r = remote.get_tar_stream(remotedir, sudo=True)
-    tar = tarfile.open(mode='r|gz', fileobj=r.stdout)
+    tar = tarfile.open(mode='r', fileobj=r.stdout)
     while True:
         ti = tar.next()
         if ti is None:

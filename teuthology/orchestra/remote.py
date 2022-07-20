@@ -640,7 +640,7 @@ class Remote(RemoteShell):
             args.append('sudo')
         args.extend([
             'tar',
-            'cz',
+            'c',
             '-f', '-',
             '-C', path,
             '--',
