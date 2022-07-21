@@ -13,7 +13,7 @@ from distutils.util import strtobool
 from teuthology.exceptions import ParseError
 from teuthology.suite.build_matrix import \
         build_matrix, generate_combinations, _get_matrix
-from teuthology.suite import util
+from teuthology.suite import util, merge
 
 def main(args):
     try:
@@ -130,14 +130,15 @@ def output_summary(path, limit=0,
     mat, first, matlimit = _get_matrix(path, subset=subset, no_nested_subset=no_nested_subset)
     configs = generate_combinations(path, mat, first, matlimit)
     count = 0
+    total = len(configs)
     suite = os.path.basename(path)
-    config_list = util.filter_configs(configs,
-                                      suite_name=suite,
-                                      filter_in=filter_in,
-                                      filter_out=filter_out,
-                                      filter_all=filter_all,
-                                      filter_fragments=filter_fragments)
-    for c in config_list:
+    configs = merge.config_merge(configs,
+                                 suite_name=suite,
+                                 filter_in=filter_in,
+                                 filter_out=filter_out,
+                                 filter_all=filter_all,
+                                 filter_fragments=filter_fragments)
+    for c in configs:
         if limit and count >= limit:
             break
         count += 1
@@ -148,7 +149,7 @@ def output_summary(path, limit=0,
                     print("    {}".format(util.strip_fragment_path(path)))
     if show_matrix:
        print(mat.tostr(1))
-    print("# {}/{} {}".format(count, len(configs), path))
+    print("# {}/{} {}".format(count, total, path))
 
 def get_combinations(suite_dir,
                      limit=0,
@@ -179,13 +180,13 @@ def get_combinations(suite_dir,
     dirs = {}
     max_dir_depth = 0
 
-    configs = util.filter_configs(configs,
-                                  suite_name=suite,
-                                  filter_in=filter_in,
-                                  filter_out=filter_out,
-                                  filter_all=filter_all,
-                                  filter_fragments=filter_fragments)
-    for _, fragment_paths in configs:
+    configs = merge.config_merge(configs,
+                                 suite_name=suite,
+                                 filter_in=filter_in,
+                                 filter_out=filter_out,
+                                 filter_all=filter_all,
+                                 filter_fragments=filter_fragments)
+    for _, fragment_paths, __ in configs:
         if limit > 0 and num_listed >= limit:
             break
 

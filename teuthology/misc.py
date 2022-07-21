@@ -15,8 +15,10 @@ import time
 import yaml
 import json
 import re
+from sys import stdin
 import pprint
 import datetime
+from types import MappingProxyType
 
 from tarfile import ReadError
 
@@ -126,11 +128,14 @@ def merge_configs(config_paths):
     """
     conf_dict = dict()
     for conf_path in config_paths:
-        if not os.path.exists(conf_path):
+        if conf_path == "-":
+            partial_dict = yaml.safe_load(stdin)
+        elif not os.path.exists(conf_path):
             log.debug("The config path {0} does not exist, skipping.".format(conf_path))
             continue
-        with open(conf_path) as partial_file:
-            partial_dict = yaml.safe_load(partial_file)
+        else:
+            with open(conf_path) as partial_file:
+                partial_dict = yaml.safe_load(partial_file)
         try:
             conf_dict = deep_merge(conf_dict, partial_dict)
         except Exception:
@@ -1003,23 +1008,23 @@ def deep_merge(a, b):
     :param a: object items will be merged into
     :param b: object items will be merged from
     """
-    if a is None:
-        return b
     if b is None:
         return a
-    if isinstance(a, list):
+    elif isinstance(a, list):
         assert isinstance(b, list)
         a.extend(b)
         return a
-    if isinstance(a, dict):
-        assert isinstance(b, dict)
+    elif isinstance(a, dict):
+        assert isinstance(b, dict) or isinstance(b, MappingProxyType)
         for (k, v) in b.items():
-            if k in a:
-                a[k] = deep_merge(a[k], v)
-            else:
-                a[k] = v
+            a[k] = deep_merge(a.get(k), v)
         return a
-    return b
+    elif isinstance(b, dict) or isinstance(b, list):
+        return deep_merge(b.__class__(), b)
+    elif isinstance(b, MappingProxyType):
+        return deep_merge(dict(), b)
+    else:
+        return b
 
 
 def get_valgrind_args(testdir, name, preamble, v, exit_on_first_error=True):

@@ -1,8 +1,8 @@
 import os
 import pytest
 import requests
-import yaml
 import contextlib
+import yaml
 
 from datetime import datetime
 from mock import patch, call, ANY, DEFAULT
@@ -210,7 +210,7 @@ class TestScheduleSuite(object):
     @patch('teuthology.suite.util.has_packages_for_distro')
     @patch('teuthology.suite.util.get_package_versions')
     @patch('teuthology.suite.util.get_install_task_flavor')
-    @patch('teuthology.suite.run.open')
+    @patch('teuthology.suite.merge.open')
     @patch('teuthology.suite.run.build_matrix')
     @patch('teuthology.suite.util.git_ls_remote')
     @patch('teuthology.suite.util.package_version_for_hash')
@@ -262,9 +262,17 @@ class TestScheduleSuite(object):
         m_has_packages_for_distro.assert_has_calls(
             [call('ceph_sha1', 'ubuntu', '14.04', 'default', {})],
         )
-        frags = (frag1_read_output, frag2_read_output)
+        y = {
+          'teuthology': {
+            'fragments_dropped': [],
+            'meta': {},
+            'postmerge': []
+          },
+          'field1': 'val1',
+          'field2': 'val2'
+        }
         expected_job = dict(
-            yaml=yaml.safe_load('\n'.join(frags)),
+            yaml=y,
             sha1='ceph_sha1',
             args=[
                 '--num',
@@ -272,10 +280,10 @@ class TestScheduleSuite(object):
                 '--description',
                 os.path.join(self.args.suite, build_matrix_desc),
                 '--',
-                ANY,
-                build_matrix_frags[0],
-                build_matrix_frags[1],
+                ANY, # base config
+                '-'
             ],
+            stdin=yaml.dump(y),
             desc=os.path.join(self.args.suite, build_matrix_desc),
         )
 
@@ -289,7 +297,7 @@ class TestScheduleSuite(object):
     @patch('teuthology.suite.util.has_packages_for_distro')
     @patch('teuthology.suite.util.get_package_versions')
     @patch('teuthology.suite.util.get_install_task_flavor')
-    @patch('teuthology.suite.run.open', create=True)
+    @patch('teuthology.suite.run.config_merge')
     @patch('teuthology.suite.run.build_matrix')
     @patch('teuthology.suite.util.git_ls_remote')
     @patch('teuthology.suite.util.package_version_for_hash')
@@ -302,7 +310,7 @@ class TestScheduleSuite(object):
         m_package_version_for_hash,
         m_git_ls_remote,
         m_build_matrix,
-        m_open,
+        m_config_merge,
         m_get_install_task_flavor,
         m_get_package_versions,
         m_has_packages_for_distro,
@@ -319,7 +327,7 @@ class TestScheduleSuite(object):
             (build_matrix_desc, build_matrix_frags),
         ]
         m_build_matrix.return_value = build_matrix_output
-        m_open.side_effect = [StringIO('field: val\n') for i in range(11)]
+        m_config_merge.return_value = [(a, b, {}) for a, b in build_matrix_output]
         m_get_install_task_flavor.return_value = 'default'
         m_get_package_versions.return_value = dict()
         m_has_packages_for_distro.side_effect = [
@@ -344,7 +352,7 @@ class TestScheduleSuite(object):
     @patch('teuthology.suite.util.has_packages_for_distro')
     @patch('teuthology.suite.util.get_package_versions')
     @patch('teuthology.suite.util.get_install_task_flavor')
-    @patch('teuthology.suite.run.open', create=True)
+    @patch('teuthology.suite.run.config_merge')
     @patch('teuthology.suite.run.build_matrix')
     @patch('teuthology.suite.util.git_ls_remote')
     @patch('teuthology.suite.util.package_version_for_hash')
@@ -357,7 +365,7 @@ class TestScheduleSuite(object):
         m_package_version_for_hash,
         m_git_ls_remote,
         m_build_matrix,
-        m_open,
+        m_config_merge,
         m_get_install_task_flavor,
         m_get_package_versions,
         m_has_packages_for_distro,
@@ -378,11 +386,7 @@ class TestScheduleSuite(object):
             (build_matrix_desc, build_matrix_frags),
         ]
         m_build_matrix.return_value = build_matrix_output
-        m_open.side_effect = [
-            StringIO('field: val\n') for i in range(NUM_FAILS+1)
-        ] + [
-            contextlib.closing(BytesIO())
-        ] 
+        m_config_merge.return_value = [(a, b, {}) for a, b in build_matrix_output]
         m_get_install_task_flavor.return_value = 'default'
         m_get_package_versions.return_value = dict()
         # NUM_FAILS, then success

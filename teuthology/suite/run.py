@@ -2,9 +2,9 @@ import copy
 import logging
 import os
 import pwd
+import yaml
 import re
 import time
-import yaml
 
 from humanfriendly import format_timespan
 
@@ -22,6 +22,7 @@ from teuthology.orchestra.opsys import OS
 from teuthology.repo_utils import build_git_url
 
 from teuthology.suite import util
+from teuthology.suite.merge import config_merge
 from teuthology.suite.build_matrix import build_matrix
 from teuthology.suite.placeholder import substitute_placeholders, dict_templ
 
@@ -421,16 +422,13 @@ class Run(object):
     def collect_jobs(self, arch, configs, newest=False, limit=0):
         jobs_to_schedule = []
         jobs_missing_packages = []
-        for description, fragment_paths in configs:
+        for description, fragment_paths, parsed_yaml in configs:
             if limit > 0 and len(jobs_to_schedule) >= limit:
                 log.info(
                     'Stopped after {limit} jobs due to --limit={limit}'.format(
                         limit=limit))
                 break
 
-            raw_yaml = '\n'.join([open(a, 'r').read() for a in fragment_paths])
-
-            parsed_yaml = yaml.safe_load(raw_yaml)
             os_type = parsed_yaml.get('os_type') or self.base_config.os_type
             os_version = parsed_yaml.get('os_version') or self.base_config.os_version
             exclude_arch = parsed_yaml.get('exclude_arch')
@@ -452,13 +450,16 @@ class Run(object):
                 '--',
             ])
             arg.extend(self.base_yaml_paths)
-            arg.extend(fragment_paths)
+
+            parsed_yaml_txt = yaml.dump(parsed_yaml)
+            arg.append('-')
 
             job = dict(
                 yaml=parsed_yaml,
                 desc=description,
                 sha1=self.base_config.sha1,
-                args=arg
+                args=arg,
+                stdin=parsed_yaml_txt,
             )
 
             sha1 = self.base_config.sha1
@@ -519,6 +520,7 @@ class Run(object):
                 dry_run=self.args.dry_run,
                 verbose=self.args.verbose,
                 log_prefix=log_prefix,
+                stdin=job['stdin'],
             )
             throttle = self.args.throttle
             if not self.args.dry_run and throttle:
@@ -579,8 +581,14 @@ Note: If you still want to go ahead, use --job-threshold 0'''
                                subset=self.args.subset,
                                no_nested_subset=self.args.no_nested_subset,
                                seed=self.args.seed)
-        log.info('Suite %s in %s generated %d jobs (not yet filtered)' % (
-            suite_name, suite_path, len(configs)))
+        generated = len(configs)
+        log.info(f'Suite {suite_name} in {suite_path} generated {generated} jobs (not yet filtered or merged)')
+        configs = config_merge(configs,
+            filter_in=self.args.filter_in,
+            filter_out=self.args.filter_out,
+            filter_all=self.args.filter_all,
+            filter_fragments=self.args.filter_fragments,
+            suite_name=suite_name)
 
         if self.args.dry_run:
             log.debug("Base job config:\n%s" % self.base_config)
@@ -617,7 +625,7 @@ Note: If you still want to go ahead, use --job-threshold 0'''
                     'this run for {that_long}? (y/N):'
                     .format(
                         that_long=format_timespan(sleep_before_teardown),
-                        total=len(configs),
+                        total=generated,
                         maximum=job_limit))
                 while True:
                     insane=(input(are_you_insane) or 'n').lower()
@@ -632,14 +640,7 @@ Note: If you still want to go ahead, use --job-threshold 0'''
         limit = self.args.newest
         while backtrack <= limit:
             jobs_missing_packages, jobs_to_schedule = \
-                self.collect_jobs(arch,
-                    util.filter_configs(configs,
-                        filter_in=self.args.filter_in,
-                        filter_out=self.args.filter_out,
-                        filter_all=self.args.filter_all,
-                        filter_fragments=self.args.filter_fragments,
-                        suite_name=suite_name),
-                                  self.args.newest, job_limit)
+                self.collect_jobs(arch, configs, self.args.newest, job_limit)
             if jobs_missing_packages and self.args.newest:
                 new_sha1 = \
                     util.find_git_parent('ceph', self.base_config.sha1)
@@ -690,8 +691,8 @@ Note: If you still want to go ahead, use --job-threshold 0'''
             (suite_name, suite_path, count)
         )
         log.info('%d/%d jobs were filtered out.',
-                 (len(configs) - count),
-                 len(configs))
+                 (generated - count),
+                 generated)
         if missing_count:
             log.warning('Scheduled %d/%d jobs that are missing packages!',
                      missing_count, count)

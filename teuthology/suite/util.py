@@ -4,7 +4,7 @@ import os
 import requests
 import smtplib
 import socket
-import subprocess
+from subprocess import Popen, PIPE, DEVNULL
 import sys
 
 from email.mime.text import MIMEText
@@ -20,7 +20,6 @@ from teuthology.repo_utils import fetch_qa_suite, fetch_teuthology
 from teuthology.orchestra.opsys import OS
 from teuthology.packaging import get_builder_project
 from teuthology.repo_utils import build_git_url
-from teuthology.suite.build_matrix import combine_path
 from teuthology.task.install import get_flavor
 
 log = logging.getLogger(__name__)
@@ -428,7 +427,7 @@ def has_packages_for_distro(sha1, os_type, os_version, flavor,
     return bool(flavors.get(flavor, None))
 
 
-def teuthology_schedule(args, verbose, dry_run, log_prefix=''):
+def teuthology_schedule(args, verbose, dry_run, log_prefix='', stdin=None):
     """
     Run teuthology-schedule to schedule individual jobs.
 
@@ -456,8 +455,12 @@ def teuthology_schedule(args, verbose, dry_run, log_prefix=''):
             ' '.join(printable_args),
         ))
     if not dry_run or (dry_run and verbose > 1):
-        subprocess.check_call(args=args)
-
+        astdin = DEVNULL if stdin is None else PIPE
+        p = Popen(args, stdin=astdin)
+        if stdin is not None:
+            p.communicate(input=stdin.encode('utf-8'))
+        else:
+            p.communicate()
 
 def find_git_parent(project, sha1):
 
@@ -493,42 +496,3 @@ def find_git_parent(project, sha1):
         return sha1s[1]
     else:
         return None
-
-
-def filter_configs(configs, suite_name=None,
-                            filter_in=None,
-                            filter_out=None,
-                            filter_all=None,
-                            filter_fragments=True):
-    """
-    Returns a generator for pairs of description and fragment paths.
-
-    Usage:
-
-        configs = build_matrix(path, subset, seed)
-        for description, fragments in filter_configs(configs):
-            pass
-    """
-    for item in configs:
-        fragment_paths = item[1]
-        description = combine_path(suite_name, item[0]) \
-                                        if suite_name else item[0]
-        base_frag_paths = [strip_fragment_path(x)
-                                        for x in fragment_paths]
-        def matches(f):
-            if f in description:
-                return True
-            if filter_fragments and \
-                    any(f in path for path in base_frag_paths):
-                return True
-            return False
-        if filter_all:
-            if not all(matches(f) for f in filter_all):
-                continue
-        if filter_in:
-            if not any(matches(f) for f in filter_in):
-                continue
-        if filter_out:
-            if any(matches(f) for f in filter_out):
-                continue
-        yield([description, fragment_paths])
