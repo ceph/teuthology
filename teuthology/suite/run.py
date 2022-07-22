@@ -248,23 +248,27 @@ class Run(object):
                         log.warning(
                             'The teuthology branch config is empty, skipping')
         if not teuthology_branch:
-            teuthology_branch = config.get('teuthology_branch', 'main')
+            teuthology_branch = config.get('teuthology_branch')
 
-        if config.teuthology_path is None:
-            teuthology_sha1 = util.git_ls_remote(
-                'teuthology',
-                teuthology_branch
-            )
-        else:
+        if config.teuthology_path:
             actual_branch = repo_utils.current_branch(config.teuthology_path)
-            if actual_branch != teuthology_branch:
+            if teuthology_branch and actual_branch != teuthology_branch:
                 raise BranchMismatchError(
                     teuthology_branch,
                     config.teuthology_path,
                     "config.teuthology_path is set",
                 )
+            if not teuthology_branch:
+                teuthology_branch = actual_branch
             teuthology_sha1 = util.git_ls_remote(
                 f"file://{config.teuthology_path}",
+                teuthology_branch
+            )
+        else:
+            if not teuthology_branch:
+                teuthology_branch = 'main'
+            teuthology_sha1 = util.git_ls_remote(
+                'teuthology',
                 teuthology_branch
             )
         if not teuthology_sha1:
