@@ -15,8 +15,10 @@ RUN apt-get update && \
     libvirt-dev \
     libffi-dev \
     libyaml-dev \
-    lsb-release && \
-    apt-get clean all
+    lsb-release \
+    locales && \
+    apt-get clean all && \
+    locale-gen en_US.UTF-8
 WORKDIR /teuthology
 COPY requirements.txt bootstrap /teuthology/
 RUN \
