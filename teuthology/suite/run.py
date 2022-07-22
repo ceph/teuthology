@@ -583,12 +583,12 @@ Note: If you still want to go ahead, use --job-threshold 0'''
                                seed=self.args.seed)
         generated = len(configs)
         log.info(f'Suite {suite_name} in {suite_path} generated {generated} jobs (not yet filtered or merged)')
-        configs = config_merge(configs,
+        configs = list(config_merge(configs,
             filter_in=self.args.filter_in,
             filter_out=self.args.filter_out,
             filter_all=self.args.filter_all,
             filter_fragments=self.args.filter_fragments,
-            suite_name=suite_name)
+            suite_name=suite_name))
 
         if self.args.dry_run:
             log.debug("Base job config:\n%s" % self.base_config)
