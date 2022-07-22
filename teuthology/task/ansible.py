@@ -141,7 +141,7 @@ class Ansible(Task):
         if repo.startswith(('http://', 'https://', 'git@', 'git://')):
             repo_path = fetch_repo(
                 repo,
-                self.config.get('branch', 'master'),
+                self.config.get('branch', 'main'),
             )
         else:
             repo_path = os.path.abspath(os.path.expanduser(repo))
@@ -389,7 +389,7 @@ class CephLab(Ansible):
 
     - ansible.cephlab:
         repo: {git_base}ceph-cm-ansible.git
-        branch: master
+        branch: main
         playbook: cephlab.yml
 
     If a dynamic inventory is used, all hosts will be assigned to the
