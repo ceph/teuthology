@@ -16,8 +16,11 @@ else
 fi
 export MACHINE_TYPE=${MACHINE_TYPE:-testnode}
 if [ -z "$TEUTHOLOGY_WAIT" ]; then
+    if [ -n "$TEUTH_BRANCH" ]; then
+      TEUTH_BRANCH_FLAG="--teuthology-branch $TEUTH_BRANCH"
+    fi
     teuthology-suite -v \
-        --teuthology-branch $TEUTH_BRANCH \
+        $TEUTH_BRANCH_FLAG \
         --ceph-repo https://github.com/ceph/ceph.git \
         --suite-repo https://github.com/ceph/ceph.git \
         -c main \
