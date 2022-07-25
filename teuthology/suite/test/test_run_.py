@@ -141,6 +141,22 @@ class TestRun(object):
         with pytest.raises(ScheduleFailError):
             self.klass(self.args)
 
+    @patch('teuthology.suite.util.smtplib.SMTP')
+    @patch('teuthology.suite.util.git_ls_remote')
+    def test_teuthology_branch_nonexistent(
+        self,
+        m_git_ls_remote,
+        m_smtp,
+    ):
+        m_git_ls_remote.return_value = None
+        config.teuthology_path = None
+        config.results_email = "example@example.com"
+        self.args.dry_run = True
+        self.args.teuthology_branch = 'no_branch'
+        with pytest.raises(ScheduleFailError):
+            self.klass(self.args)
+        m_smtp.assert_not_called()
+
     @patch('teuthology.suite.run.util.fetch_repos')
     @patch('teuthology.suite.run.util.git_branch_exists')
     @patch('teuthology.suite.run.util.package_version_for_hash')

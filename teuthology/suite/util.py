@@ -28,7 +28,7 @@ CONTAINER_DISTRO = 'centos/8'       # the one to check for build_complete
 CONTAINER_FLAVOR = 'default'
 
 
-def fetch_repos(branch, test_name):
+def fetch_repos(branch, test_name, dry_run):
     """
     Fetch the suite repo (and also the teuthology repo) so that we can use it
     to build jobs. Repos are stored in ~/src/.
@@ -50,17 +50,18 @@ def fetch_repos(branch, test_name):
                 fetch_teuthology('main')
         suite_repo_path = fetch_qa_suite(branch)
     except BranchNotFoundError as exc:
-        schedule_fail(message=str(exc), name=test_name)
+        schedule_fail(message=str(exc), name=test_name, dry_run=dry_run)
     return suite_repo_path
 
 
-def schedule_fail(message, name=''):
+def schedule_fail(message, name='', dry_run=None):
     """
     If an email address has been specified anywhere, send an alert there. Then
     raise a ScheduleFailError.
+    Don't send the mail if --dry-run has been passed.
     """
     email = config.results_email
-    if email:
+    if email and not dry_run:
         subject = "Failed to schedule {name}".format(name=name)
         msg = MIMEText(message)
         msg['Subject'] = subject

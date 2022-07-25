@@ -11,6 +11,7 @@ from teuthology.config import config
 import pytest
 import time
 
+from teuthology.exceptions import ScheduleFailError
 
 def get_fake_time_and_sleep():
     # Below we set m_time.side_effect, but we also set m_time.return_value.
@@ -179,6 +180,35 @@ class TestSuiteMain(object):
                     '--throttle', throttle,
                     '--machine-type', machine_type,
                 ])
+
+    @patch('teuthology.suite.util.smtplib.SMTP')
+    def test_machine_type_multi_error(self, m_smtp):
+        config.results_email = "example@example.com"
+        with pytest.raises(ScheduleFailError) as exc:
+            main([
+                    '--ceph', 'main',
+                    '--suite', 'suite_name',
+                    '--throttle', '3',
+                    '--machine-type', 'multi',
+                    '--dry-run',
+            ])
+        assert str(exc.value) == "Scheduling failed: 'multi' is not a valid machine_type. \
+Maybe you want 'gibba,smithi,mira' or similar"
+        m_smtp.assert_not_called()
+
+    @patch('teuthology.suite.util.smtplib.SMTP')
+    def test_machine_type_none_error(self, m_smtp):
+        config.result_email = 'example@example.com'
+        with pytest.raises(ScheduleFailError) as exc:
+            main([
+                    '--ceph', 'main',
+                    '--suite', 'suite_name',
+                    '--throttle', '3',
+                    '--machine-type', 'None',
+                    '--dry-run',
+            ])
+        assert str(exc.value) == "Scheduling failed: Must specify a machine_type"
+        m_smtp.assert_not_called()
 
     def test_schedule_suite_noverify(self):
         suite_name = 'noop'

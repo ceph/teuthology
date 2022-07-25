@@ -101,7 +101,7 @@ class Run(object):
             self.suite_repo_path = self.args.suite_dir
         else:
             self.suite_repo_path = util.fetch_repos(
-                suite_branch, test_name=self.name)
+                suite_branch, test_name=self.name, dry_run=self.args.dry_run)
         teuthology_branch, teuthology_sha1 = self.choose_teuthology_branch()
 
 
@@ -145,7 +145,8 @@ class Run(object):
             if not kernel_hash:
                 util.schedule_fail(
                     "Kernel branch '{branch}' not found".format(
-                     branch=self.args.kernel_branch)
+                     branch=self.args.kernel_branch),
+                     dry_run=self.args.dry_run,
                 )
         if kernel_hash:
             log.info("kernel sha1: {hash}".format(hash=kernel_hash))
@@ -173,7 +174,7 @@ class Run(object):
                     self.args.ceph_sha1,
                     '%s.git' % repo_name
                 )
-                util.schedule_fail(message=str(exc), name=self.name)
+                util.schedule_fail(message=str(exc), name=self.name, dry_run=self.args.dry_run)
             log.info("ceph sha1 explicitly supplied")
 
         elif self.args.ceph_branch:
@@ -184,7 +185,7 @@ class Run(object):
                     self.args.ceph_branch,
                     '%s.git' % repo_name
                 )
-                util.schedule_fail(message=str(exc), name=self.name)
+                util.schedule_fail(message=str(exc), name=self.name, dry_run=self.args.dry_run)
 
         log.info("ceph sha1: {hash}".format(hash=ceph_hash))
         return ceph_hash
@@ -199,7 +200,7 @@ class Run(object):
                     self.args.distro_version, self.args.machine_type,
                 )
             except Exception as exc:
-                util.schedule_fail(str(exc), self.name)
+                util.schedule_fail(str(exc), self.name, dry_run=self.args.dry_run)
             log.info("ceph version: {ver}".format(ver=ceph_version))
             return ceph_version
         else:
@@ -269,7 +270,7 @@ class Run(object):
             )
         if not teuthology_sha1:
             exc = BranchNotFoundError(teuthology_branch, build_git_url('teuthology'))
-            util.schedule_fail(message=str(exc), name=self.name)
+            util.schedule_fail(message=str(exc), name=self.name, dry_run=self.args.dry_run)
         log.info("teuthology branch: %s %s", teuthology_branch, teuthology_sha1)
         return teuthology_branch, teuthology_sha1
 
@@ -302,7 +303,7 @@ class Run(object):
                 suite_branch
             ):
                 exc = BranchNotFoundError(suite_branch, suite_repo_name)
-                util.schedule_fail(message=str(exc), name=self.name)
+                util.schedule_fail(message=str(exc), name=self.name, dry_run=self.args.dry_run)
         elif not suite_branch:
             # Decide what branch of the suite repo to use
             if util.git_branch_exists(suite_repo_project_or_url, ceph_branch):
@@ -326,7 +327,7 @@ class Run(object):
         )
         if not suite_hash:
             exc = BranchNotFoundError(suite_branch, suite_repo_name)
-            util.schedule_fail(message=str(exc), name=self.name)
+            util.schedule_fail(message=str(exc), name=self.name, dry_run=self.args.dry_run)
         log.info("%s branch: %s %s", suite_repo_name, suite_branch, suite_hash)
         return suite_hash
 
@@ -514,6 +515,7 @@ class Run(object):
                         "At least one job needs packages that don't exist for "
                         "hash {sha1}.".format(sha1=self.base_config.sha1),
                         name,
+                        dry_run=self.args.dry_run,
                     )
             util.teuthology_schedule(
                 args=job['args'],
@@ -540,11 +542,11 @@ Use the following testing priority
 200 to 1000: Large test runs that can be done over the course of a week.
 Note: To force run, use --force-priority'''
         if priority < 50:
-            util.schedule_fail(msg)
+            util.schedule_fail(msg, dry_run=self.args.dry_run)
         elif priority < 75 and jobs_to_schedule > 25:
-            util.schedule_fail(msg)
+            util.schedule_fail(msg, dry_run=self.args.dry_run)
         elif priority < 150 and jobs_to_schedule > 100:
-            util.schedule_fail(msg)
+            util.schedule_fail(msg, dry_run=self.args.dry_run)
 
     def check_num_jobs(self, jobs_to_schedule):
         """
@@ -555,7 +557,7 @@ Note: To force run, use --force-priority'''
 
 Note: If you still want to go ahead, use --job-threshold 0'''
         if threshold and jobs_to_schedule > threshold:
-            util.schedule_fail(msg)
+            util.schedule_fail(msg, dry_run=self.args.dry_run)
 
     def schedule_suite(self):
         """
@@ -645,7 +647,7 @@ Note: If you still want to go ahead, use --job-threshold 0'''
                 new_sha1 = \
                     util.find_git_parent('ceph', self.base_config.sha1)
                 if new_sha1 is None:
-                    util.schedule_fail('Backtrack for --newest failed', name)
+                    util.schedule_fail('Backtrack for --newest failed', name, dry_run=self.args.dry_run)
                  # rebuild the base config to resubstitute sha1
                 self.config_input['ceph_hash'] = new_sha1
                 self.base_config = self.build_base_config()
@@ -660,6 +662,7 @@ Note: If you still want to go ahead, use --job-threshold 0'''
                 util.schedule_fail(
                     'Exceeded %d backtracks; raise --newest value' % limit,
                     name,
+                    dry_run=self.args.dry_run,
                 )
 
         if self.args.dry_run:
