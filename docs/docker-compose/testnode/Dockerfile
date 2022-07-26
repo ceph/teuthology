@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM ubuntu:focal
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update && \
     apt -y install \

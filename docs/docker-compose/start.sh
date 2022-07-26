@@ -41,7 +41,6 @@ if [ -z "$TEUTHOLOGY_WAIT" ]; then
 fi
 export TEUTHOLOGY_WAIT
 
-set +e
 trap "docker-compose down" SIGINT
 docker-compose up \
     --build \

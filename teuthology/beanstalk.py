@@ -1,4 +1,5 @@
 import beanstalkc
+import json
 import yaml
 import logging
 import pprint
@@ -196,7 +197,7 @@ def main(args):
             # it is not needed for pausing tubes
             watch_tube(connection, machine_type)
         if status:
-            print(stats_tube(connection, machine_type))
+            print(json.dumps(stats_tube(connection, machine_type)))
         elif pause_duration:
             pause_tube(connection, machine_type, pause_duration)
         elif delete:
