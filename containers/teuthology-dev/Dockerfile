@@ -1,5 +1,4 @@
 FROM ubuntu:latest
-ARG SSH_PRIVKEY_FILE=id_ed25519
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get install -y \
@@ -36,8 +35,8 @@ COPY containers/teuthology-dev/ansible_inventory/hosts /etc/ansible/
 COPY containers/teuthology-dev/ansible_inventory/secrets /etc/ansible/
 RUN \
     mkdir $HOME/.ssh && \
-    touch $HOME/.ssh/${SSH_PRIVKEY_FILE} && \
-    chmod 600 $HOME/.ssh/${SSH_PRIVKEY_FILE} && \
+    touch $HOME/.ssh/id_rsa && \
+    chmod 600 $HOME/.ssh/id_rsa && \
     echo "StrictHostKeyChecking=no" > $HOME/.ssh/config && \
     echo "UserKnownHostsFile=/dev/null" >> $HOME/.ssh/config
 ENTRYPOINT /teuthology.sh
