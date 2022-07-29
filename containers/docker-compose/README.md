@@ -40,11 +40,13 @@ Depending on your local operating system, it may be necessary to connect to the 
 
 #### Using your SSH private key
 
-In your local shell, simply:
+In your local shell, first:
 ```bash
-export SSH_PRIVKEY_PATH=$HOME/.ssh/id_rsa
+cp ~/.ssh/id_rsa{,.pub} .
+docker secret create id_rsa ~/.ssh/id_rsa
+docker secret create id_rsa.pub ~/.ssh/id_rsa.pub
 ```
-The teuthology container will write it to a file at runtime.
+Then, remove the entire top-level `secrets:` section from docker-compose.yml.
 
 #### Reserving Machines in the Lab
 

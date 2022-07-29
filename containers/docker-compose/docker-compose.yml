@@ -1,5 +1,12 @@
 version: '3.8'
 
+
+secrets:
+  id_rsa:
+    file: id_rsa
+  id_rsa.pub:
+    file: id_rsa.pub
+
 services:
   postgres:
     image: postgres:14
@@ -59,8 +66,6 @@ services:
     build:
       context: ../../
       dockerfile: ./containers/teuthology-dev/Dockerfile
-      args:
-        SSH_PRIVKEY_FILE: $SSH_PRIVKEY_FILE
     depends_on:
         paddles:
             condition: service_healthy
@@ -68,12 +73,12 @@ services:
         - paddles
         - beanstalk
     environment:
-      SSH_PRIVKEY:
-      SSH_PRIVKEY_FILE:
       MACHINE_TYPE:
       TESTNODES:
       TEUTHOLOGY_WAIT:
       TEUTH_BRANCH:
+    secrets:
+      - id_rsa
   testnode:
     build:
       context: ../testnode-docker-compose
@@ -87,6 +92,6 @@ services:
       - paddles
     ports:
       - "22"
-    environment:
-      SSH_PUBKEY:
+    secrets:
+      - id_rsa.pub
     platform: linux/amd64
