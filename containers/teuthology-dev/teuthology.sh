@@ -1,11 +1,8 @@
 #!/usr/bin/bash
 set -e
-# We don't want -x yet, in case the private key is sensitive
-if [ -n "$SSH_PRIVKEY_FILE" ]; then
-    echo "$SSH_PRIVKEY" > $HOME/.ssh/$SSH_PRIVKEY_FILE
-fi
 source /teuthology/virtualenv/bin/activate
 set -x
+cat /run/secrets/id_rsa > $HOME/.ssh/id_rsa
 if [ -n "$TESTNODES" ]; then
     for node in $(echo $TESTNODES | tr , ' '); do
         teuthology-update-inventory -m $MACHINE_TYPE $node
