@@ -6,3 +6,5 @@ overrides:
       ansible_user: root
       cm_user: root
       start_rpcbind: false
+  cephadm:
+    image: quay.ceph.io/ceph-ci/ceph:main
