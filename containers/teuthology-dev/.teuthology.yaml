@@ -7,3 +7,4 @@ teuthology_path: /teuthology
 archive_base: /archive_dir
 reserve_machines: 0
 lab_domain: ''
+watchdog_interval: 5
