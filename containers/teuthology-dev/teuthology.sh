@@ -19,16 +19,15 @@ if [ -z "$TEUTHOLOGY_WAIT" ]; then
     teuthology-suite -v \
         $TEUTH_BRANCH_FLAG \
         --ceph-repo https://github.com/ceph/ceph.git \
-        --suite-repo https://github.com/ceph/ceph.git \
         -c main \
         -m $MACHINE_TYPE \
         --limit 1 \
         -n 100 \
-        --suite teuthology:no-ceph \
-        --filter-out "libcephfs,kclient,stream,centos,rhel" \
-        -d ubuntu -D 20.04 \
-        --suite-branch main \
-        --subset 9000/100000 \
+        --suite ${TEUTHOLOGY_SUITE:-teuthology:no-ceph} \
+        --filter-out "libcephfs,kclient" \
+        --filter-all "centos_8" \
+        -d centos -D 8.stream \
+        --suite-branch osd-containers \
         -p 75 \
         --seed 349 \
         --force-priority \
