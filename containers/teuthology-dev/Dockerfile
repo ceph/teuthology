@@ -30,9 +30,6 @@ RUN \
 COPY containers/teuthology-dev/containerized_node.yaml /teuthology
 COPY containers/teuthology-dev/.teuthology.yaml /root
 COPY containers/teuthology-dev/teuthology.sh /
-RUN mkdir -p /etc/ansible
-COPY containers/teuthology-dev/ansible_inventory/hosts /etc/ansible/
-COPY containers/teuthology-dev/ansible_inventory/secrets /etc/ansible/
 RUN \
     mkdir $HOME/.ssh && \
     touch $HOME/.ssh/id_rsa && \
