@@ -9,4 +9,4 @@ jobs:
       - uses: actions/checkout@v2
       - name: Test using docker-compose
         run: ./start.sh
-        working-directory: ./docs/docker-compose
+        working-directory: ./containers/docker-compose

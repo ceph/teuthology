@@ -15,7 +15,7 @@ services:
       - APP_DB_PASS=password
       - APP_DB_NAME=paddles
     volumes:
-      - ./db:/docker-entrypoint-initdb.d/
+      - ../postgres/db:/docker-entrypoint-initdb.d/:Z
     ports:
       - 5432:5432
   paddles:
@@ -52,13 +52,13 @@ services:
     ports:
         - 8081:8081
   beanstalk:
-        build: ../../beanstalk/alpine
+        build: ../beanstalk/alpine
         ports:
             - "11300:11300"
   teuthology:
     build:
       context: ../../
-      dockerfile: ./docs/docker-compose/teuthology/Dockerfile
+      dockerfile: ./containers/teuthology-dev/Dockerfile
       args:
         SSH_PRIVKEY_FILE: $SSH_PRIVKEY_FILE
     depends_on:
@@ -76,7 +76,7 @@ services:
       TEUTH_BRANCH:
   testnode:
     build:
-      context: ./testnode
+      context: ../testnode-docker-compose
       dockerfile: ./Dockerfile
     deploy:
       replicas: 3
