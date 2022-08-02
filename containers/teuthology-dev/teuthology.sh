@@ -12,23 +12,19 @@ else
     CUSTOM_CONF=/teuthology/containerized_node.yaml
 fi
 export MACHINE_TYPE=${MACHINE_TYPE:-testnode}
-if [ -z "$TEUTHOLOGY_WAIT" ]; then
+if [ "$TEUTHOLOGY_SUITE" != "none" ]; then
     if [ -n "$TEUTH_BRANCH" ]; then
       TEUTH_BRANCH_FLAG="--teuthology-branch $TEUTH_BRANCH"
     fi
     teuthology-suite -v \
         $TEUTH_BRANCH_FLAG \
         --ceph-repo https://github.com/ceph/ceph.git \
-        --suite-repo https://github.com/ceph/ceph.git \
         -c main \
         -m $MACHINE_TYPE \
         --limit 1 \
         -n 100 \
-        --suite teuthology:no-ceph \
-        --filter-out "libcephfs,kclient,stream,centos,rhel" \
-        -d ubuntu -D 20.04 \
-        --suite-branch main \
-        --subset 9000/100000 \
+        --suite ${TEUTHOLOGY_SUITE:-teuthology:no-ceph} \
+        --filter-out "libcephfs,kclient" \
         -p 75 \
         --seed 349 \
         --force-priority \
