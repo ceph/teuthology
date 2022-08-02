@@ -1,15 +1,12 @@
-FROM ubuntu:focal
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt update && \
-    apt -y install \
-        sudo \
-        openssh-server \
-        hostname \
-        curl \
-        python3-pip \
-        apache2 \
-        nfs-kernel-server && \
-    apt clean all
+FROM quay.io/centos/centos:stream9
+RUN dnf -y install \
+    sudo \
+    openssh-server \
+    hostname \
+    python3-pip \
+    httpd \
+    podman && \
+    dnf clean all
 COPY testnode_start.sh /
 COPY testnode_stop.sh /
 COPY testnode_sudoers /etc/sudoers.d/teuthology
@@ -18,6 +15,7 @@ RUN \
     sed -i 's/#PermitRootLogin yes/PermitRootLogin yes/' /etc/ssh/sshd_config && \
     mkdir -p /root/.ssh && \
     chmod 700 /root/.ssh && \
+    groupadd sudo && \
     useradd -g sudo ubuntu && \
     mkdir -p /home/ubuntu/.ssh && \
     chmod 700 /home/ubuntu/.ssh && \
