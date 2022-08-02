@@ -28,12 +28,12 @@ RUN \
 COPY . /teuthology
 RUN \
     ./bootstrap
-COPY docs/docker-compose/teuthology/containerized_node.yaml /teuthology
-COPY docs/docker-compose/teuthology/.teuthology.yaml /root
-COPY docs/docker-compose/teuthology/teuthology.sh /
+COPY containers/teuthology-dev/containerized_node.yaml /teuthology
+COPY containers/teuthology-dev/.teuthology.yaml /root
+COPY containers/teuthology-dev/teuthology.sh /
 RUN mkdir -p /etc/ansible
-COPY docs/docker-compose/teuthology/ansible_inventory/hosts /etc/ansible/
-COPY docs/docker-compose/teuthology/ansible_inventory/secrets /etc/ansible/
+COPY containers/teuthology-dev/ansible_inventory/hosts /etc/ansible/
+COPY containers/teuthology-dev/ansible_inventory/secrets /etc/ansible/
 RUN \
     mkdir $HOME/.ssh && \
     touch $HOME/.ssh/${SSH_PRIVKEY_FILE} && \
