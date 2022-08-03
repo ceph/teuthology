@@ -30,7 +30,9 @@ RUN dnf -y install \
     openssh-server \
     hostname \
     python3-pip \
-    httpd
+    httpd \
+    systemd && \
+    systemctl enable sshd
 RUN dnf clean all && \
     rm -rf /var/cache /var/log/dnf* /var/log/yum*
 COPY testnode_start.sh /
