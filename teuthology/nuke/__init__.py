@@ -243,7 +243,7 @@ def nuke(ctx, should_unlock, sync_clocks=True, noipmi=False, keep_logs=False, sh
     with parallel() as p:
         for target, hostkey in ctx.config['targets'].items():
             status = get_status(target)
-            if ctx.name and ctx.name not in status['description']:
+            if ctx.name and ctx.name not in status.get('description', ""):
                 total_unnuked[target] = hostkey
                 log.info(
                     f"Not nuking {target} because description doesn't match: "
