@@ -26,12 +26,21 @@ RUN mkdir -p /var/lib/shared/overlay-images /var/lib/shared/overlay-layers /var/
 ENV _CONTAINERS_USERNS_CONFIGURED=""
 
 RUN dnf -y install \
+    which \
     sudo \
+    openssh-clients \
     openssh-server \
     hostname \
     python3-pip \
     httpd \
-    systemd && \
+    chrony \
+    hostname \
+    iproute \
+    procps \
+    udev \
+    systemd \
+    lvm2 && \
+    echo 'OPTIONS="-x"' > /etc/sysconfig/chronyd && \
     systemctl enable sshd
 RUN dnf clean all && \
     rm -rf /var/cache /var/log/dnf* /var/log/yum*
