@@ -4,7 +4,7 @@
 Fragment Merging
 ================
 
-Once the matrix of YAML fragments is contructed by teuthology, the fragments
+Once the matrix of YAML fragments is constructed by teuthology, the fragments
 must be merged together and processed. Up until 2022, this merging process was
 static: all of the YAML fragments were joined together in lexicographical order
 with duplicate fragment members *deep merged* together (e.g. the "tasks"
