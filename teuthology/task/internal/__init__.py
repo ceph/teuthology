@@ -13,7 +13,7 @@ import time
 import yaml
 import subprocess
 import tempfile
-
+import re
 import humanfriendly
 
 import teuthology.lock.ops
@@ -335,7 +335,7 @@ def fetch_binaries_for_coredumps(path, remote):
                     log.error(e)
                     continue
             try:
-                dump_program = dump_out.split("from '")[1].split(' ')[0]
+                dump_program = re.findall("from '([^']+)'", dump_out)[0]
                 log.info(f' dump_program: {dump_program}')
             except Exception as e:
                 log.info("core doesn't have the desired format, moving on ...")
