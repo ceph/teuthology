@@ -36,12 +36,16 @@ RUN dnf -y install \
     openssh-server \
     hostname \
     python3-pip \
-    httpd
+    httpd \
+    systemd && \
+    systemctl enable sshd
 RUN dnf clean all && \
     rm -rf /var/cache /var/log/dnf* /var/log/yum*
 COPY testnode_start.sh /
 COPY testnode_stop.sh /
 COPY testnode_sudoers /etc/sudoers.d/teuthology
+COPY run-fs.service /etc/systemd/system/
+RUN systemctl enable run-fs
 RUN \
     ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N '' && \
     sed -i 's/#PermitRootLogin yes/PermitRootLogin yes/' /etc/ssh/sshd_config && \
