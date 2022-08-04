@@ -811,7 +811,11 @@ def get_scratch_devices(remote):
         dev_checks = [
             [['stat', dev], "does not exist"],
             [['sudo', 'dd', 'if=%s' % dev, 'of=/dev/null', 'count=1'], "is not readable"],
-            [[run.Raw('!'), 'mount', run.Raw('|'), 'grep', '-q', dev], "is in use"],
+            [
+                [run.Raw('!'), 'mount', run.Raw('|'), 'grep', '-v', 'devtmpfs', run.Raw('|'),
+                'grep', '-q', dev],
+                "is in use"
+            ],
         ]
         for args, msg in dev_checks:
             try:
