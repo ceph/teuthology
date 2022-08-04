@@ -38,8 +38,8 @@ RUN dnf clean all && \
 COPY testnode_start.sh /
 COPY testnode_stop.sh /
 COPY testnode_sudoers /etc/sudoers.d/teuthology
-COPY run-fs.service /etc/systemd/system/
-RUN systemctl enable run-fs
+COPY run-fs.service scratch-devs.service /etc/systemd/system/
+RUN systemctl enable run-fs scratch-devs
 RUN \
     ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N '' && \
     sed -i 's/#PermitRootLogin yes/PermitRootLogin yes/' /etc/ssh/sshd_config && \
