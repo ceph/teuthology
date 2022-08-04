@@ -8,3 +8,4 @@ overrides:
       start_rpcbind: false
   cephadm:
     image: quay.ceph.io/ceph-ci/ceph:main
+    osd_method: raw
