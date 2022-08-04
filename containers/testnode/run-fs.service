@@ -1,0 +1,13 @@
+[Unit]
+Description=Ensure required items in /run/ are present
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStartPre=mkdir -p run/udev
+ExecStartPre=mkdir -p run/sshd
+ExecStartPre=touch /run/.containerenv /.dockerenv
+ExecStart=true
+
+[Install]
+WantedBy=multi-user.target
