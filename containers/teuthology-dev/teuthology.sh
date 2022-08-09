@@ -25,7 +25,6 @@ if [ -z "$TEUTHOLOGY_WAIT" ]; then
         -n 100 \
         --suite ${TEUTHOLOGY_SUITE:-teuthology:no-ceph} \
         --filter-out "libcephfs,kclient" \
-        --filter-all "centos_8" \
         -d centos -D 8.stream \
         --suite-branch osd-containers \
         -p 75 \
