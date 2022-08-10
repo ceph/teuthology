@@ -1127,7 +1127,7 @@ def _ssh_keyscan(hostname):
     :param hostname: The hostname
     :returns: The host key
     """
-    args = ['ssh-keyscan', '-T', '1', '-t', 'rsa', hostname]
+    args = ['ssh-keyscan', '-T', '1', hostname]
     p = subprocess.Popen(
         args=args,
         stdout=subprocess.PIPE,
