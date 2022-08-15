@@ -1,7 +1,7 @@
 FROM quay.io/centos/centos:stream9
 RUN dnf -y update && \
     dnf -y reinstall shadow-utils && \
-    dnf -y install podman fuse-overlayfs --exclude container-selinux
+    dnf -y install podman catatonit --exclude container-selinux
 RUN useradd podman; \
     echo podman:0:5000 > /etc/subuid; \
     echo podman:0:5000 > /etc/subgid; \
