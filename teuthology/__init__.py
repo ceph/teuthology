@@ -28,6 +28,7 @@ monkey.patch_all(
     dns=False,
     # Don't patch subprocess to avoid http://tracker.ceph.com/issues/14990
     subprocess=False,
+    thread=False,
 )
 import sys
 from gevent.hub import Hub
