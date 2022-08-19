@@ -300,6 +300,21 @@ class RemoteShell(object):
         """
         self.write_file(path, data, sudo=True, **kwargs)
 
+    def is_mounted(self, path):
+        """
+        Check if the given path is mounted on the remote machine.
+
+        This method checks the contents of "/proc/self/mounts" instead of
+        using "mount" or "findmnt" command since these commands hang when a
+        CephFS client is blocked and its mount point on the remote machine
+        is left unhandled/unmounted.
+
+        :param path: path on remote host
+        """
+        # XXX: matching newline too is crucial so that "/mnt" does not match
+        # "/mnt/cephfs" if it's present in the output.
+        return f'{path}\n' in self.sh("cat /proc/self/mounts | awk '{print $2}'")
+
     @property
     def os(self):
         if not hasattr(self, '_os'):
