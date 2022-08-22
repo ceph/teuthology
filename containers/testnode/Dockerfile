@@ -1,4 +1,4 @@
-FROM quay.io/centos/centos:stream9
+FROM quay.io/centos/centos:stream8
 RUN dnf -y update && \
     dnf -y reinstall shadow-utils && \
     dnf -y install podman catatonit --exclude container-selinux
