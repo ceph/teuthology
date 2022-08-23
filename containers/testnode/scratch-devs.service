@@ -1,0 +1,10 @@
+[Unit]
+Description=Write /scratch_devs
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/bin/bash -c "ls -1 /dev/loop[0-9]* > /scratch_devs"
+
+[Install]
+WantedBy=multi-user.target

@@ -1,5 +1,4 @@
-FROM ubuntu:latest
-ARG SSH_PRIVKEY_FILE=id_ed25519
+FROM ubuntu:focal
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get install -y \
@@ -28,16 +27,13 @@ RUN \
 COPY . /teuthology
 RUN \
     ./bootstrap
-COPY docs/docker-compose/teuthology/containerized_node.yaml /teuthology
-COPY docs/docker-compose/teuthology/.teuthology.yaml /root
-COPY docs/docker-compose/teuthology/teuthology.sh /
-RUN mkdir -p /etc/ansible
-COPY docs/docker-compose/teuthology/ansible_inventory/hosts /etc/ansible/
-COPY docs/docker-compose/teuthology/ansible_inventory/secrets /etc/ansible/
+COPY containers/teuthology-dev/containerized_node.yaml /teuthology
+COPY containers/teuthology-dev/.teuthology.yaml /root
+COPY containers/teuthology-dev/teuthology.sh /
 RUN \
     mkdir $HOME/.ssh && \
-    touch $HOME/.ssh/${SSH_PRIVKEY_FILE} && \
-    chmod 600 $HOME/.ssh/${SSH_PRIVKEY_FILE} && \
+    touch $HOME/.ssh/id_rsa && \
+    chmod 600 $HOME/.ssh/id_rsa && \
     echo "StrictHostKeyChecking=no" > $HOME/.ssh/config && \
     echo "UserKnownHostsFile=/dev/null" >> $HOME/.ssh/config
 ENTRYPOINT /teuthology.sh

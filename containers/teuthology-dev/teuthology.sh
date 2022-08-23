@@ -1,11 +1,8 @@
 #!/usr/bin/bash
 set -e
-# We don't want -x yet, in case the private key is sensitive
-if [ -n "$SSH_PRIVKEY_FILE" ]; then
-    echo "$SSH_PRIVKEY" > $HOME/.ssh/$SSH_PRIVKEY_FILE
-fi
 source /teuthology/virtualenv/bin/activate
 set -x
+cat /run/secrets/id_rsa > $HOME/.ssh/id_rsa
 if [ -n "$TESTNODES" ]; then
     for node in $(echo $TESTNODES | tr , ' '); do
         teuthology-update-inventory -m $MACHINE_TYPE $node
@@ -22,16 +19,14 @@ if [ -z "$TEUTHOLOGY_WAIT" ]; then
     teuthology-suite -v \
         $TEUTH_BRANCH_FLAG \
         --ceph-repo https://github.com/ceph/ceph.git \
-        --suite-repo https://github.com/ceph/ceph.git \
         -c main \
         -m $MACHINE_TYPE \
         --limit 1 \
         -n 100 \
-        --suite teuthology:no-ceph \
-        --filter-out "libcephfs,kclient,stream,centos,rhel" \
-        -d ubuntu -D 20.04 \
-        --suite-branch main \
-        --subset 9000/100000 \
+        --suite ${TEUTHOLOGY_SUITE:-teuthology:no-ceph} \
+        --filter-out "libcephfs,kclient" \
+        -d centos -D 8.stream \
+        --suite-branch osd-containers \
         -p 75 \
         --seed 349 \
         --force-priority \
