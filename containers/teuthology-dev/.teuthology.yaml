@@ -1,5 +1,4 @@
-queue_host: beanstalk
-queue_port: 11300
+backend: paddles
 lock_server: http://paddles:8080
 results_server: http://paddles:8080
 results_ui_server: http://pulpito:8081/
