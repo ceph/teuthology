@@ -8,8 +8,7 @@ import tempfile
 import logging
 import getpass
 
-
-from teuthology import beanstalk
+from teuthology.queue import beanstalk
 from teuthology import report
 from teuthology.config import config
 from teuthology import misc
@@ -109,7 +108,8 @@ def find_run_info(serializer, run_name):
         if not os.path.isdir(job_dir):
             continue
         job_num += 1
-        beanstalk.print_progress(job_num, job_total, 'Reading Job: ')
+        if config.backend == 'beanstalk':
+            beanstalk.print_progress(job_num, job_total, 'Reading Job: ')
         job_info = serializer.job_info(run_name, job_id, simple=True)
         for key in job_info.keys():
             if key in run_info_fields and key not in run_info:
@@ -149,7 +149,7 @@ def remove_beanstalk_jobs(run_name, tube_name):
                 continue
             job_config = yaml.safe_load(job.body)
             if run_name == job_config['name']:
-                job_id = job.stats()['id']
+                job_id = job_config['job_id']
                 msg = "Deleting job from queue. ID: " + \
                     "{id} Name: {name} Desc: {desc}".format(
                         id=str(job_id),

@@ -44,7 +44,8 @@ class TestWorker(object):
     @patch("os.symlink")
     def test_symlink_success(self, m_symlink):
         worker.symlink_worker_log("path/to/worker.log", "path/to/archive")
-        m_symlink.assert_called_with("path/to/worker.log", "path/to/archive/worker.log")
+        m_symlink.assert_called_with(
+            "path/to/worker.log", "path/to/archive/worker.log")
 
     @patch("teuthology.worker.log")
     @patch("os.symlink")
@@ -136,7 +137,8 @@ class TestWorker(object):
         m_popen.return_value = m_p
         m_t_config.results_server = False
         worker.run_job(config, "teuth/bin/path", "archive/dir", verbose=False)
-        m_symlink_log.assert_called_with(config["worker_log"], config["archive_path"])
+        m_symlink_log.assert_called_with(
+            config["worker_log"], config["archive_path"])
 
     @patch("teuthology.worker.report.try_push_job_info")
     @patch("teuthology.worker.symlink_worker_log")
@@ -152,7 +154,8 @@ class TestWorker(object):
         process = Mock()
         process.poll.return_value = "not None"
         worker.run_with_watchdog(process, config)
-        m_symlink_log.assert_called_with(config["worker_log"], config["archive_path"])
+        m_symlink_log.assert_called_with(
+            config["worker_log"], config["archive_path"])
         m_try_push.assert_called_with(
             dict(name=config["name"], job_id=config["job_id"]),
             dict(status='dead')
@@ -176,7 +179,8 @@ class TestWorker(object):
         m_proc.poll.return_value = "not None"
         m_popen.return_value = m_proc
         worker.run_with_watchdog(process, config)
-        m_symlink_log.assert_called_with(config["worker_log"], config["archive_path"])
+        m_symlink_log.assert_called_with(
+            config["worker_log"], config["archive_path"])
 
     @patch("os.path.isdir")
     @patch("teuthology.worker.fetch_teuthology")
@@ -227,6 +231,7 @@ class TestWorker(object):
             job_id += 1
             job = m_job(conn=m_connection, jid=job_id, body=job_body)
             job.jid = job_id
+            job_body += '\njob_id: ' + str(job_id)
             job.body = job_body
             jobs.append(job)
         return jobs
@@ -243,7 +248,7 @@ class TestWorker(object):
     def test_main_loop(
         self, m_setup_log_file, m_isdir, m_connect, m_watch_tube,
         m_fetch_teuthology, m_fetch_qa_suite, m_job, m_prep_job, m_run_job,
-                       ):
+    ):
         m_connection = Mock()
         jobs = self.build_fake_jobs(
             m_connection,
@@ -282,7 +287,7 @@ class TestWorker(object):
         self, m_setup_log_file, m_isdir, m_connect, m_watch_tube,
         m_fetch_teuthology, m_fetch_qa_suite, m_job, m_run_job,
         m_try_push_job_info,
-                       ):
+    ):
         m_connection = Mock()
         jobs = self.build_fake_jobs(
             m_connection,

@@ -9,7 +9,7 @@ import yaml
 from datetime import datetime
 
 from teuthology import setup_log_file, install_except_hook
-from teuthology import beanstalk
+from teuthology.queue import beanstalk
 from teuthology import report
 from teuthology import safepath
 from teuthology.config import config as teuth_config
@@ -64,8 +64,8 @@ def main(ctx):
         loglevel = logging.DEBUG
     log.setLevel(loglevel)
 
-    log_file_path = os.path.join(ctx.log_dir, 'worker.{tube}.{pid}'.format(
-        pid=os.getpid(), tube=ctx.tube,))
+    log_file_path = os.path.join(ctx.log_dir, 'worker.{machine_type}.{pid}'.format(
+        pid=os.getpid(), machine_type=ctx.machine_type,))
     setup_log_file(log_file_path)
 
     install_except_hook()
@@ -104,11 +104,10 @@ def main(ctx):
 
         # bury the job so it won't be re-run if it fails
         job.bury()
-        job_id = job.jid
-        log.info('Reserved job %d', job_id)
-        log.info('Config is: %s', job.body)
         job_config = yaml.safe_load(job.body)
-        job_config['job_id'] = str(job_id)
+        job_id = job_config.get('job_id')
+        log.info('Reserved job %s', job_id)
+        log.info('Config is: %s', job.body)
 
         if job_config.get('stop_worker'):
             keep_running = False

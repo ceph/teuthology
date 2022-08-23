@@ -67,6 +67,11 @@ def main(args):
 def run_job(job_config, teuth_bin_path, archive_dir, verbose):
     safe_archive = safepath.munge(job_config['name'])
     if job_config.get('first_in_suite') or job_config.get('last_in_suite'):
+        if teuth_config.results_server:
+            try:
+                report.try_delete_jobs(job_config['name'], job_config['job_id'])
+            except Exception:
+                log.exception("Unable to delete job %s", job_config['job_id'])
         job_archive = os.path.join(archive_dir, safe_archive)
         args = [
             os.path.join(teuth_bin_path, 'teuthology-results'),
@@ -124,7 +129,7 @@ def run_job(job_config, teuth_bin_path, archive_dir, verbose):
         '--archive', job_config['archive_path'],
         '--name', job_config['name'],
     ])
-    if job_config['description'] is not None:
+    if job_config.get('description') is not None:
         arg.extend(['--description', job_config['description']])
     job_archive = os.path.join(job_config['archive_path'], 'orig.config.yaml')
     arg.extend(['--', job_archive])
