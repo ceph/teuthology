@@ -12,7 +12,8 @@ import shutil
 import time
 import yaml
 import subprocess
-
+import tempfile
+import re
 import humanfriendly
 
 import teuthology.lock.ops
@@ -318,7 +319,28 @@ def fetch_binaries_for_coredumps(path, remote):
             # 1422917770.7450.core: ELF 64-bit LSB core file x86-64, version 1 (SYSV), SVR4-style, \
             # from 'radosgw --rgw-socket-path /home/ubuntu/cephtest/apache/tmp.client.0/fastcgi_soc'
             log.info(f' core looks like: {dump_out}')
-            dump_program = dump_out.split("from '")[1].split(' ')[0]
+
+            if 'gzip' in dump_out:
+                try:
+                    log.info("core is compressed, try accessing gzip file ...")
+                    with gzip.open(dump_path, 'rb') as f_in, \
+                         tempfile.NamedTemporaryFile(mode='w+b') as f_out:
+                         shutil.copyfileobj(f_in, f_out)
+                         dump_info = subprocess.Popen(['file', f_out.name],
+                                                        stdout=subprocess.PIPE)
+                         dump_out = dump_info.communicate()[0].decode()
+                         log.info(f' core looks like: {dump_out}')
+                except Exception as e:
+                    log.info('Something went wrong while opening the compressed file')
+                    log.error(e)
+                    continue
+            try:
+                dump_program = re.findall("from '([^']+)'", dump_out)[0]
+                log.info(f' dump_program: {dump_program}')
+            except Exception as e:
+                log.info("core doesn't have the desired format, moving on ...")
+                log.error(e)
+                continue
 
             # Find path on remote server:
             remote_path = remote.sh(['which', dump_program]).rstrip()
