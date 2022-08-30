@@ -712,7 +712,7 @@ class Remote(RemoteShell):
 
 
 def getRemoteConsole(name, ipmiuser=None, ipmipass=None, ipmidomain=None,
-                     logfile=None, timeout=60):
+                     logfile=None, timeout=300):
     """
     Return either VirtualConsole or PhysicalConsole depending on name.
     """
