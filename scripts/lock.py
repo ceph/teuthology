@@ -27,8 +27,8 @@ def parse_args(argv):
             teuthology-lock --lock-many 1 --machine-type vps
             teuthology-lock --lock -t target.yaml
             teuthology-lock --list-targets plana01
-            teuthology-lock --list --brief --owner user@host
             teuthology-lock --brief
+            teuthology-lock --brief --owner user@host
             teuthology-lock --update --status down --desc testing plana01
         '''),
         formatter_class=argparse.RawTextHelpFormatter)
