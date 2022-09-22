@@ -174,6 +174,22 @@ class TestFOG(object):
         assert req.body == '{"name": "type1_windows_xp"}'
         assert result == img_objs[0]
 
+    def test_suggest_image_names(self):
+        data = {'images': [
+            {'name': 'mira_rhel_9.1'},
+            {'name': 'mira_rhel_9.2'},
+        ]}
+        self.mocks['m_requests_Session_send']\
+            .return_value.json.return_value = data
+        self.mocks['m_Remote_machine_type'].return_value = 'mira'
+        # Not sure what this klass() is for here:
+        obj = self.klass('name.fqdn', 'mira', '1.0')
+        result = obj.suggest_image_names()
+        assert len(self.mocks['m_requests_Session_send'].call_args_list) == 1
+        req = self.mocks['m_requests_Session_send'].call_args_list[0][0][0]
+        assert req.url == test_config['fog']['endpoint'] + '/image/search/mira'
+        assert result == ['mira_rhel_9.1', 'mira_rhel_9.2']
+
     def test_set_image(self):
         self.mocks['m_Remote_hostname'].return_value = 'name.fqdn'
         self.mocks['m_Remote_machine_type'].return_value = 'type1'

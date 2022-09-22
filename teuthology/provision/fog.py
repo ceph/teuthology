@@ -156,9 +156,20 @@ class FOG(object):
         obj = resp.json()
         if not obj['count']:
             raise RuntimeError(
-                "Could not find an image for %s %s" %
-                (self.os_type, self.os_version))
+                "Fog has no %s image. Available %s images: %s" %
+                (name, self.remote.machine_type, self.suggest_image_names()))
         return obj['images'][0]
+
+    def suggest_image_names(self):
+        """
+        Suggest available image names for this machine type.
+
+        :returns: A list of image names.
+        """
+        resp = self.do_request('/image/search/%s' % self.remote.machine_type)
+        obj = resp.json()
+        images = obj['images']
+        return [image['name'] for image in images]
 
     def set_image(self, host_id):
         """
