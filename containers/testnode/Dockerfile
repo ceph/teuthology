@@ -26,6 +26,7 @@ RUN mkdir -p /var/lib/shared/overlay-images /var/lib/shared/overlay-layers /var/
 ENV _CONTAINERS_USERNS_CONFIGURED=""
 
 RUN dnf -y install \
+    /usr/bin/lsb_release \
     which \
     sudo \
     openssh-clients \
