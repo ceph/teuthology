@@ -2,7 +2,7 @@
 Paramiko run support
 """
 
-import io, re
+import io, re, os
 
 from paramiko import ChannelFile
 
@@ -12,6 +12,7 @@ import socket
 import pipes
 import logging
 import shutil
+from lxml import etree
 
 from teuthology.contextutil import safe_while
 from teuthology.exceptions import (CommandCrashedError, CommandFailedError,
@@ -34,13 +35,13 @@ class RemoteProcess(object):
         # for orchestra.remote.Remote to place a backreference
         'remote',
         'label',
-        'scan_tests_errors',
+        'scan_tests_errors', 'xmlfile',
         ]
 
     deadlock_warning = "Using PIPE for %s without wait=False would deadlock"
 
     def __init__(self, client, args, check_status=True, hostname=None,
-                 label=None, timeout=None, wait=True, logger=None, cwd=None, scan_tests_errors=None):
+                 label=None, timeout=None, wait=True, logger=None, cwd=None, scan_tests_errors=None, xmlfile=None):
         """
         Create the object. Does not initiate command execution.
 
@@ -88,6 +89,7 @@ class RemoteProcess(object):
         self._wait = wait
         self.logger = logger or log
         self.scan_tests_errors = scan_tests_errors
+        self.xmlfile = xmlfile or ""
 
     def execute(self):
         """
@@ -185,7 +187,8 @@ class RemoteProcess(object):
                 if self.scan_tests_errors:
                     error_msg = None
                     try:
-                        test, error_msg = ErrorScanner().scan(test_names=self.scan_tests_errors)
+                        test = self.scan_tests_errors[0] or "unittest"
+                        error_msg = find_unittest_error(self.xmlfile)
                     except Exception as exc:
                         self.logger.error('Unable to scan logs, exception occurred: {exc}'.format(exc=repr(exc)))
                     if error_msg:
@@ -237,6 +240,45 @@ class RemoteProcess(object):
             name=self.hostname,
             )
 
+def find_unittest_error(xmlfile_path):
+    """ 
+    Load the unit test ouput XML file 
+    and parse for failures and errors 
+    """
+
+    if not xmlfile_path:
+        return "No XML file was passed to process!"
+    try:
+        if os.path.isfile(xmlfile_path):
+            tree = etree.parse(xmlfile_path)
+            failed_testcases = tree.xpath('.//failure/.. | .//error/..')
+            if len(failed_testcases) == 0:
+                log.debug("No failures or errors found in unit test's output xml file.")
+                return None
+
+            error_message = f'Total {len(failed_testcases)} testcase/s did not pass. '
+
+            # show details of first error/failure for quick inspection
+            testcase1 = failed_testcases[0]
+            testcase1_casename = testcase1.get("name", "test-name")
+            testcase1_suitename = testcase1.get("classname", "suite-name")
+            testcase1_msg = f'Test `{testcase1_casename}` of `{testcase1_suitename}` did not pass.'
+ 
+            for child in testcase1:
+                if child.tag in ['failure', 'error']:
+                    fault_kind = child.tag.upper()
+                    reason = child.get('message', 'NO MESSAGE FOUND IN XML FILE; CHECK LOGS.')
+                    reason = reason[:reason.find('begin captured')] # remove captured logs/stdout
+                    testcase1_msg = f'{fault_kind}: Test `{testcase1_casename}` of `{testcase1_suitename}` because {reason}'
+                    break
+
+            return error_message + testcase1_msg
+        return "XML file does not exist!"
+    except Exception as exc:
+        raise Exception("Somthing went wrong while searching for error in XML file: " + repr(exc))
+
+
+
 class ErrorScanner(object):
     """
     Scan for unit tests errors in teuthology.log 
@@ -268,7 +310,7 @@ class ErrorScanner(object):
                 return True
         return False
 
-    def scan(self, test_names=None):
+    def scan(self, test_names=None, xmlfile=None):
         logfile = self._logfile
         if not logfile or not test_names:
             return None, None
@@ -475,6 +517,7 @@ def run(
     timeout=None,
     cwd=None,
     scan_tests_errors=None,
+    unnittest_xml=None,
     # omit_sudo is used by vstart_runner.py
     omit_sudo=False
 ):
@@ -529,7 +572,7 @@ def run(
         log.info("Running command with timeout %d", timeout)
     r = RemoteProcess(client, args, check_status=check_status, hostname=name,
                       label=label, timeout=timeout, wait=wait, logger=logger,
-                      cwd=cwd, scan_tests_errors=scan_tests_errors)
+                      cwd=cwd, scan_tests_errors=scan_tests_errors, xmlfile=unnittest_xml)
     r.execute()
     r.setup_stdin(stdin)
     r.setup_output_stream(stderr, 'stderr', quiet)
