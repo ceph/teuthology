@@ -808,27 +808,25 @@ def get_scratch_devices(remote):
 
     retval = []
     for dev in devs:
-        try:
-            # FIXME: Split this into multiple calls.
-            remote.run(
-                args=[
-                    # node exists
-                    'stat',
-                    dev,
-                    run.Raw('&&'),
-                    # readable
-                    'sudo', 'dd', 'if=%s' % dev, 'of=/dev/null', 'count=1',
-                    run.Raw('&&'),
-                    # not mounted
-                    run.Raw('!'),
-                    'mount',
-                    run.Raw('|'),
-                    'grep', '-q', dev,
-                ]
-            )
+        dev_checks = [
+            [['stat', dev], "does not exist"],
+            [['sudo', 'dd', 'if=%s' % dev, 'of=/dev/null', 'count=1'], "is not readable"],
+            [
+                [run.Raw('!'), 'mount', run.Raw('|'), 'grep', '-v', 'devtmpfs', run.Raw('|'),
+                'grep', '-q', dev],
+                "is in use"
+            ],
+        ]
+        for args, msg in dev_checks:
+            try:
+                remote.run(args=args)
+            except CommandFailedError:
+                log.debug(f"get_scratch_devices: {dev} {msg}")
+                break
+        else:
             retval.append(dev)
-        except CommandFailedError:
-            log.debug("get_scratch_devices: %s is in use" % dev)
+            continue
+        break
     return retval
 
 
