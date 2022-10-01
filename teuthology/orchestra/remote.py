@@ -11,7 +11,8 @@ from teuthology.orchestra import console
 from teuthology.orchestra.opsys import OS
 import teuthology.provision
 from teuthology import misc
-from teuthology.exceptions import CommandFailedError
+from teuthology.exceptions import CommandFailedError, UnitTestError
+from teuthology.util.scanner import UnitTestScanner
 from teuthology.misc import host_shortname
 import errno
 import re
@@ -523,6 +524,20 @@ class Remote(RemoteShell):
         r.remote = self
         return r
 
+    def run_unit_test(self, xml_path_regex, output_yaml, **kwargs):
+        try:
+            r = self.run(**kwargs)
+        except CommandFailedError as exc:
+            if xml_path_regex:
+                error_msg = UnitTestScanner(remote=self).scan_and_write(xml_path_regex, output_yaml)
+                if error_msg:
+                    raise UnitTestError(
+                        exitstatus=exc.exitstatus, node=exc.node, 
+                        label=exc.label, message=error_msg
+                    )
+            raise exc
+        return r
+
     def _sftp_put_file(self, local_path, remote_path):
         """
         Use the paramiko.SFTPClient to put a file. Returns the remote filename.
@@ -543,12 +558,14 @@ class Remote(RemoteShell):
         sftp.get(remote_path, local_path)
         return local_path
 
-    def _sftp_open_file(self, remote_path):
+    def _sftp_open_file(self, remote_path, mode=None):
         """
         Use the paramiko.SFTPClient to open a file. Returns a
         paramiko.SFTPFile object.
         """
         sftp = self.ssh.open_sftp()
+        if mode:
+            return sftp.open(remote_path, mode)
         return sftp.open(remote_path)
 
     def _sftp_get_size(self, remote_path):
