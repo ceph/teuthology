@@ -263,6 +263,10 @@ class TestRun(object):
         run.copy_and_close('', MagicMock())
         run.copy_and_close(b'', MagicMock())
 
+    def test_find_unittest_error(self):
+        unittest_xml = "xml_files/test_scan_nose.xml"
+        error_msg = run.find_unittest_error(unittest_xml)
+        assert error_msg == "Total 1 testcase/s did not pass. FAILURE: Test `test_set_bucket_tagging` of `s3tests_boto3.functional.test_s3` because 'NoSuchTagSetError' != 'NoSuchTagSet' -------------------- >> "
 
 class TestQuote(object):
     def test_quote_simple(self):

@@ -3,6 +3,7 @@ Paramiko run support
 """
 
 import io
+from pathlib import Path
 
 from paramiko import ChannelFile
 
@@ -12,10 +13,11 @@ import socket
 import pipes
 import logging
 import shutil
+from lxml import etree
 
 from teuthology.contextutil import safe_while
 from teuthology.exceptions import (CommandCrashedError, CommandFailedError,
-                                   ConnectionLostError)
+                                   ConnectionLostError, UnitTestError)
 
 log = logging.getLogger(__name__)
 
@@ -34,12 +36,13 @@ class RemoteProcess(object):
         # for orchestra.remote.Remote to place a backreference
         'remote',
         'label',
+        'unittest_xml',
         ]
 
     deadlock_warning = "Using PIPE for %s without wait=False would deadlock"
 
     def __init__(self, client, args, check_status=True, hostname=None,
-                 label=None, timeout=None, wait=True, logger=None, cwd=None):
+                 label=None, timeout=None, wait=True, logger=None, cwd=None, unittest_xml=None):
         """
         Create the object. Does not initiate command execution.
 
@@ -57,6 +60,8 @@ class RemoteProcess(object):
         :param wait:         Whether self.wait() will be called automatically
         :param logger:       Alternative logger to use (optional)
         :param cwd:          Directory in which the command will be executed
+                             (optional)
+        :param unittest_xml: Absolute path to unit-tests output XML file  
                              (optional)
         """
         self.client = client
@@ -84,6 +89,7 @@ class RemoteProcess(object):
         self.returncode = self.exitstatus = None
         self._wait = wait
         self.logger = logger or log
+        self.unittest_xml = unittest_xml or ""
 
     def execute(self):
         """
@@ -178,6 +184,17 @@ class RemoteProcess(object):
                 # signal; sadly SSH does not tell us which signal
                 raise CommandCrashedError(command=self.command)
             if self.returncode != 0:
+                if self.unittest_xml:
+                    error_msg = None
+                    try:
+                        error_msg = find_unittest_error(self.unittest_xml)
+                    except Exception as exc:
+                        self.logger.error('Unable to scan logs, exception occurred: {exc}'.format(exc=repr(exc)))
+                    if error_msg:
+                        raise UnitTestError(
+                            exitstatus=self.returncode, node=self.hostname, 
+                            label=self.label, message=error_msg
+                        )
                 raise CommandFailedError(
                     command=self.command, exitstatus=self.returncode,
                     node=self.hostname, label=self.label
@@ -221,6 +238,43 @@ class RemoteProcess(object):
             name=self.hostname,
             )
 
+def find_unittest_error(xmlfile_path):
+    """ 
+    Load the unit test output XML file 
+    and parse for failures and errors.
+    """
+
+    if not xmlfile_path:
+        return "No XML file was passed to process!"
+    try:
+        xml_path = Path(xmlfile_path)
+        if xml_path.is_file():
+            tree = etree.parse(xmlfile_path)
+            failed_testcases = tree.xpath('.//failure/.. | .//error/..')
+            if len(failed_testcases) == 0:
+                log.debug("No failures or errors found in unit test's output xml file.")
+                return None
+
+            error_message = f'Total {len(failed_testcases)} testcase/s did not pass. '
+
+            # show details of first error/failure for quick inspection
+            testcase1 = failed_testcases[0]
+            testcase1_casename = testcase1.get("name", "test-name")
+            testcase1_suitename = testcase1.get("classname", "suite-name")
+            testcase1_msg = f'Test `{testcase1_casename}` of `{testcase1_suitename}` did not pass.'
+ 
+            for child in testcase1:
+                if child.tag in ['failure', 'error']:
+                    fault_kind = child.tag.upper()
+                    reason = child.get('message', 'NO MESSAGE FOUND IN XML FILE; CHECK LOGS.')
+                    reason = reason[:reason.find('begin captured')] # remove captured logs/stdout
+                    testcase1_msg = f'{fault_kind}: Test `{testcase1_casename}` of `{testcase1_suitename}` because {reason}'
+                    break
+
+            return (error_message + testcase1_msg).replace("\n", " ")
+        return f'XML output not found at `{xmlfile_path}`!'
+    except Exception as exc:
+        raise Exception("Somthing went wrong while searching for error in XML file: " + repr(exc))
 
 class Raw(object):
 
@@ -394,6 +448,7 @@ def run(
     quiet=False,
     timeout=None,
     cwd=None,
+    unittest_xml=None,
     # omit_sudo is used by vstart_runner.py
     omit_sudo=False
 ):
@@ -429,6 +484,7 @@ def run(
     :param timeout: timeout value for args to complete on remote channel of
                     paramiko
     :param cwd: Directory in which the command should be executed.
+    :param unittest_xml: Absolute path to unit-tests output XML file.  
     """
     try:
         transport = client.get_transport()
@@ -446,7 +502,7 @@ def run(
         log.info("Running command with timeout %d", timeout)
     r = RemoteProcess(client, args, check_status=check_status, hostname=name,
                       label=label, timeout=timeout, wait=wait, logger=logger,
-                      cwd=cwd)
+                      cwd=cwd, unittest_xml=unittest_xml)
     r.execute()
     r.setup_stdin(stdin)
     r.setup_output_stream(stderr, 'stderr', quiet)
