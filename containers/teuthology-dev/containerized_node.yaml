@@ -8,3 +8,4 @@ overrides:
       start_rpcbind: false
   cephadm:
     osd_method: raw
+    no_cgroups_split: true
