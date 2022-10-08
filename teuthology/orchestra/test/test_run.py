@@ -1,4 +1,5 @@
 from io import BytesIO
+import os
 
 import paramiko
 import socket
@@ -264,9 +265,16 @@ class TestRun(object):
         run.copy_and_close(b'', MagicMock())
 
     def test_find_unittest_error(self):
-        unittest_xml = "xml_files/test_scan_nose.xml"
-        error_msg = run.find_unittest_error(unittest_xml)
-        assert error_msg == "Total 1 testcase/s did not pass. FAILURE: Test `test_set_bucket_tagging` of `s3tests_boto3.functional.test_s3` because 'NoSuchTagSetError' != 'NoSuchTagSet' -------------------- >> "
+        unittest_xml = os.path.dirname(__file__) + "/xml_files/test_scan_nose.xml"
+        m_ssh = MagicMock()
+        with open(unittest_xml) as xmlfile:
+            m_ssh.exec_command.return_value = (
+                self.m_stdin_buf,
+                xmlfile,
+                self.m_stderr_buf,
+            )
+            error_msg = run.find_unittest_error(unittest_xml, m_ssh)
+            assert error_msg == "Total 1 testcase/s did not pass. FAILURE: Test `test_set_bucket_tagging` of `s3tests_boto3.functional.test_s3` because 'NoSuchTagSetError' != 'NoSuchTagSet' -------------------- >> "
 
 class TestQuote(object):
     def test_quote_simple(self):

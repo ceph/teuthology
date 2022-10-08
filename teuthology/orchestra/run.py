@@ -3,7 +3,6 @@ Paramiko run support
 """
 
 import io
-from pathlib import Path
 
 from paramiko import ChannelFile
 
@@ -187,7 +186,7 @@ class RemoteProcess(object):
                 if self.unittest_xml:
                     error_msg = None
                     try:
-                        error_msg = find_unittest_error(self.unittest_xml)
+                        error_msg = find_unittest_error(self.unittest_xml, self.client)
                     except Exception as exc:
                         self.logger.error('Unable to scan logs, exception occurred: {exc}'.format(exc=repr(exc)))
                     if error_msg:
@@ -238,7 +237,7 @@ class RemoteProcess(object):
             name=self.hostname,
             )
 
-def find_unittest_error(xmlfile_path):
+def find_unittest_error(xmlfile_path, client):
     """ 
     Load the unit test output XML file 
     and parse for failures and errors.
@@ -247,9 +246,9 @@ def find_unittest_error(xmlfile_path):
     if not xmlfile_path:
         return "No XML file was passed to process!"
     try:
-        xml_path = Path(xmlfile_path)
-        if xml_path.is_file():
-            tree = etree.parse(xmlfile_path)
+        (_, stdout, _) = client.exec_command(f'cat {xmlfile_path}', timeout=200)
+        if stdout:
+            tree = etree.parse(stdout)
             failed_testcases = tree.xpath('.//failure/.. | .//error/..')
             if len(failed_testcases) == 0:
                 log.debug("No failures or errors found in unit test's output xml file.")
@@ -262,7 +261,7 @@ def find_unittest_error(xmlfile_path):
             testcase1_casename = testcase1.get("name", "test-name")
             testcase1_suitename = testcase1.get("classname", "suite-name")
             testcase1_msg = f'Test `{testcase1_casename}` of `{testcase1_suitename}` did not pass.'
- 
+
             for child in testcase1:
                 if child.tag in ['failure', 'error']:
                     fault_kind = child.tag.upper()
@@ -272,7 +271,8 @@ def find_unittest_error(xmlfile_path):
                     break
 
             return (error_message + testcase1_msg).replace("\n", " ")
-        return f'XML output not found at `{xmlfile_path}`!'
+        else:
+            return f'XML output not found at `{str(xmlfile_path)}`!'
     except Exception as exc:
         raise Exception("Somthing went wrong while searching for error in XML file: " + repr(exc))
 
