@@ -12,7 +12,7 @@ else
     CUSTOM_CONF=/teuthology/containerized_node.yaml
 fi
 export MACHINE_TYPE=${MACHINE_TYPE:-testnode}
-if [ -z "$TEUTHOLOGY_WAIT" ]; then
+if [ "$TEUTHOLOGY_SUITE" != "none" ]; then
     if [ -n "$TEUTH_BRANCH" ]; then
       TEUTH_BRANCH_FLAG="--teuthology-branch $TEUTH_BRANCH"
     fi
