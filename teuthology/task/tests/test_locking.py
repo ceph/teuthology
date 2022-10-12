@@ -2,7 +2,6 @@ import pytest
 
 
 class TestLocking(object):
-
     def test_correct_os_type(self, ctx, config):
         os_type = ctx.config.get("os_type")
         if os_type is None:
@@ -17,6 +16,9 @@ class TestLocking(object):
         if ctx.config.get("os_type") == "debian":
             pytest.skip('known issue with debian versions; see: issue #10878')
         for remote in ctx.cluster.remotes.keys():
+            if ctx.config.get("os_type").lower() == "centos":
+                # CentOS Stream omits ".stream" in /etc/os-release
+                os_version = os_version.lower().replace(".stream", "", 1)
             assert remote.inventory_info['os_version'] == os_version
 
     def test_correct_machine_type(self, ctx, config):
