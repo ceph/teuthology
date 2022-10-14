@@ -4,6 +4,8 @@ Paramiko run support
 
 import io
 import os
+import yaml
+import collections
 
 from paramiko import ChannelFile
 
@@ -187,7 +189,7 @@ class RemoteProcess(object):
                 if self.unittest_xml:
                     error_msg = None
                     try:
-                        error_msg = find_unittest_error(self.unittest_xml, self.client)
+                        error_msg = UnitTestFailure().get_error_msg(self.unittest_xml, self.client)
                     except Exception as exc:
                         self.logger.error('Unable to scan logs, exception occurred: {exc}'.format(exc=repr(exc)))
                     if error_msg:
@@ -238,63 +240,98 @@ class RemoteProcess(object):
             name=self.hostname,
             )
 
-def find_unittest_error(xmlfile_path: str, client):
-    """
-    Parse the xml file.
-    If xmlfile_path is dir, parse all xml files.
-    """
-    if not xmlfile_path:
-        return "No XML file path was passed to process!"
-    if xmlfile_path[-1] == "/": # directory
-        (_, stdout, _) = client.exec_command(f'ls -d {xmlfile_path}*.xml', timeout=200)
-        xml_files = stdout.read()
-        xml_files = xml_files.split('\n')
-        for file in xml_files:
-            error = parse_xml(file, client)
-            if error:
-                return error
-    elif os.path.splitext(xmlfile_path)[1] == ".xml": # xml file
-        error = parse_xml(xmlfile_path, client)
-        return error
+class UnitTestFailure():
+    def __init__(self) -> None:
+        self.yaml_data = {}
+        self.logger = logging.getLogger("unittest_failure")
+        self.client = None
 
-def parse_xml(xmlfile: str, client):
-    """ 
-    Load the unit test output XML file 
-    and parse for failures and errors.
-    """
+    def get_error_msg(self, xmlfile_path: str, client=None):
+        """
+        Find error message in xml file.
+        If xmlfile_path is a directory, parse all xml files.
+        """
+        if not xmlfile_path:
+            return "No XML file path was passed to process!"
+        self.client = client
+        if xmlfile_path[-1] == "/": # directory
+            (_, stdout, _) = client.exec_command(f'ls -d {xmlfile_path}*.xml', timeout=200)
+            xml_files = stdout.read()
+            log.info("XML_DEBUG: xml_files are " + xml_files)
+            xml_files = xml_files.split('\n')
+            error_message = ""
+            for file in xml_files:
+                error = self._parse_xml(file)
+                if error:
+                    error_message += error
+            log.info("XML_DEBUG: Parsed all .xml files.")
+            self.write_logs()
+            return error_message +  'Information store in /unittest_failures.yaml'
+        elif os.path.splitext(xmlfile_path)[1] == ".xml": # xml file
+            error = self._parse_xml(xmlfile_path)
+            return error
+        log.info("XML_DEBUG: Neither conditions satisfied?")
 
-    if not xmlfile:
-        return None
-    try:
-        (_, stdout, _) = client.exec_command(f'cat {xmlfile}', timeout=200)
-        if stdout:
-            tree = etree.parse(stdout)
-            failed_testcases = tree.xpath('.//failure/.. | .//error/..')
-            if len(failed_testcases) == 0:
-                log.debug("No failures or errors found in unit test's output xml file.")
-                return None
+    def _parse_xml(self, xml_path: str):
+        """ 
+        Load the XML file 
+        and parse for failures and errors.
+        """
 
-            error_message = f'Some testcases did not pass. '
+        if not xml_path:
+            return None
+        try:
+            log.info("XML_DEBUG: open file " + xml_path)
+            (_, stdout, _) = self.client.exec_command(f'cat {xml_path}', timeout=200)
+            if stdout:
+                tree = etree.parse(stdout)
+                log.info("XML_DEBUG: parsed.")
+                failed_testcases = tree.xpath('.//failure/.. | .//error/..')
+                if len(failed_testcases) == 0:
+                    log.debug("No failures or errors found in unit test's output xml file.")
+                    return None
 
-            # show details of first error/failure for quick inspection
-            testcase1 = failed_testcases[0]
-            testcase1_casename = testcase1.get("name", "test-name")
-            testcase1_suitename = testcase1.get("classname", "suite-name")
-            testcase1_msg = f'Test `{testcase1_casename}` of `{testcase1_suitename}` did not pass.'
+                error_data = collections.defaultdict(dict)
 
-            for child in testcase1:
-                if child.tag in ['failure', 'error']:
-                    fault_kind = child.tag.upper()
-                    reason = child.get('message', 'NO MESSAGE FOUND IN XML FILE; CHECK LOGS.')
-                    reason = reason[:reason.find('begin captured')] # remove captured logs/stdout
-                    testcase1_msg = f'{fault_kind}: Test `{testcase1_casename}` of `{testcase1_suitename}` because {reason}'
-                    break
+                for testcase in failed_testcases:
+                    testcase_name = testcase.get("name", "test-name")
+                    testcase_suitename = testcase.get("classname", "suite-name")
+                    for child in testcase:
+                        if child.tag in ['failure', 'error']:
+                            fault_kind = child.tag
+                            reason = child.get('message', 'NO MESSAGE FOUND IN XML FILE; CHECK LOGS.')
+                            reason = reason[:reason.find('begin captured')] # remove captured logs/stdout
+                            error_data[testcase_suitename][testcase_name] = {
+                                    "kind": fault_kind, 
+                                    "message": reason,
+                                }
 
-            return (error_message + testcase1_msg).replace("\n", " ")
-        else:
-            return f'XML output not found at `{str(xmlfile)}`!'
-    except Exception as exc:
-        raise Exception("Somthing went wrong while searching for error in XML file: " + repr(exc))
+                xml_filename = os.path.basename(xml_path)
+                self.yaml_data[xml_filename] = {
+                    "xml_file": xml_path, 
+                    "num_of_failures": len(failed_testcases), 
+                    "failures": dict(error_data) 
+                }
+
+                error_message = f'Total {len(failed_testcases)} testcases did not pass in {xml_filename}. '
+                return error_message
+            else:
+                return f'XML output not found at `{str(xml_path)}`!'
+        except Exception as exc:
+            raise Exception("Somthing went wrong while searching for error in XML file: " + repr(exc))
+    
+    def write_logs(self):
+        yamlfile = "/home/ubuntu/cephtest/archive/unittest_failures.yaml"
+        if self.yaml_data:
+            log.info(self.yaml_data)
+            try:
+                sftp = self.client.open_sftp()
+                remote_yaml_file = sftp.open(yamlfile, "w")
+                yaml.safe_dump(self.yaml_data, remote_yaml_file, default_flow_style=False)
+                remote_yaml_file.close()
+            except Exception as exc: 
+                log.info("XML_DEBUG: write logs error: " + repr(exc))
+        log.info("XML_DEBUG: yaml_data is empty!")
 
 class Raw(object):
 
