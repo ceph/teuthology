@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:latest
+    image: postgres:14
     healthcheck:
       test: [ "CMD", "pg_isready", "-q", "-d", "paddles", "-U", "admin" ]
       timeout: 5s
