@@ -186,6 +186,7 @@ class RemoteProcess(object):
                 # signal; sadly SSH does not tell us which signal
                 raise CommandCrashedError(command=self.command)
             if self.returncode != 0:
+                log.info("XML_DEBUG: self.unittest_xml " + self.unittest_xml)
                 if self.unittest_xml:
                     error_msg = None
                     try:
@@ -243,7 +244,6 @@ class RemoteProcess(object):
 class UnitTestFailure():
     def __init__(self) -> None:
         self.yaml_data = {}
-        self.logger = logging.getLogger("unittest_failure")
         self.client = None
 
     def get_error_msg(self, xmlfile_path: str, client=None):
@@ -254,34 +254,38 @@ class UnitTestFailure():
         if not xmlfile_path:
             return "No XML file path was passed to process!"
         self.client = client
+        error_message = None
+
         if xmlfile_path[-1] == "/": # directory
             (_, stdout, _) = client.exec_command(f'ls -d {xmlfile_path}*.xml', timeout=200)
-            xml_files = stdout.read()
+            xml_files = stdout.read().split('\n')
             log.info("XML_DEBUG: xml_files are " + xml_files)
-            xml_files = xml_files.split('\n')
-            error_message = ""
+            
             for file in xml_files:
                 error = self._parse_xml(file)
-                if error:
-                    error_message += error
+                if not error_message:
+                    error_message = error
             log.info("XML_DEBUG: Parsed all .xml files.")
-            self.write_logs()
-            return error_message +  'Information store in /unittest_failures.yaml'
         elif os.path.splitext(xmlfile_path)[1] == ".xml": # xml file
-            error = self._parse_xml(xmlfile_path)
-            return error
-        log.info("XML_DEBUG: Neither conditions satisfied?")
+            error_message = self._parse_xml(xmlfile_path)
+
+        if error_message:
+            self.write_logs()
+            return error_message +  ' Information store in remote/unittest_failures.yaml'
+        log.info("XML_DEBUG: no error_message")
 
     def _parse_xml(self, xml_path: str):
         """ 
         Load the XML file 
         and parse for failures and errors.
+        Returns information about first failure/error occurance.
         """
 
         if not xml_path:
             return None
         try:
             log.info("XML_DEBUG: open file " + xml_path)
+            # TODO: change to paramiko function
             (_, stdout, _) = self.client.exec_command(f'cat {xml_path}', timeout=200)
             if stdout:
                 tree = etree.parse(stdout)
@@ -292,6 +296,7 @@ class UnitTestFailure():
                     return None
 
                 error_data = collections.defaultdict(dict)
+                error_message = ""
 
                 for testcase in failed_testcases:
                     testcase_name = testcase.get("name", "test-name")
@@ -305,6 +310,8 @@ class UnitTestFailure():
                                     "kind": fault_kind, 
                                     "message": reason,
                                 }
+                            if not error_message:
+                                error_message = f'{fault_kind}: Test `{testcase_name}` of `{testcase_suitename}` because {reason}'
 
                 xml_filename = os.path.basename(xml_path)
                 self.yaml_data[xml_filename] = {
@@ -313,7 +320,6 @@ class UnitTestFailure():
                     "failures": dict(error_data) 
                 }
 
-                error_message = f'Total {len(failed_testcases)} testcases did not pass in {xml_filename}. '
                 return error_message
             else:
                 return f'XML output not found at `{str(xml_path)}`!'
