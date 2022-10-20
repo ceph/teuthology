@@ -10,4 +10,4 @@ for i in $(seq 1 5); do
     sleep 1
 done
 mkdir -p /run/sshd
-exec /sbin/init
+exec /usr/lib/systemd/systemd --system
