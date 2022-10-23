@@ -192,7 +192,8 @@ class RemoteProcess(object):
                     try:
                         error_msg = UnitTestFailure().get_error_msg(self.unittest_xml, self.client)
                     except Exception as exc:
-                        self.logger.error('Unable to scan logs, exception occurred: {exc}'.format(exc=repr(exc)))
+                        self.logger.exception(exc)
+                        # self.logger.error('Unable to scan logs, exception occurred: {exc}'.format(exc=repr(exc)))
                     if error_msg:
                         raise UnitTestError(
                             exitstatus=self.returncode, node=self.hostname, 
@@ -255,11 +256,12 @@ class UnitTestFailure():
             return "No XML file path was passed to process!"
         self.client = client
         error_message = None
+        log.info("XML_DEBUG: getting message...")
 
         if xmlfile_path[-1] == "/": # directory
             (_, stdout, _) = client.exec_command(f'ls -d {xmlfile_path}*.xml', timeout=200)
-            xml_files = stdout.read().split('\n')
-            log.info("XML_DEBUG: xml_files are " + xml_files)
+            xml_files = stdout.read().decode().split('\n')
+            log.info("XML_DEBUG: xml_files are " + " ".join(xml_files))
             
             for file in xml_files:
                 error = self._parse_xml(file)
@@ -324,6 +326,7 @@ class UnitTestFailure():
             else:
                 return f'XML output not found at `{str(xml_path)}`!'
         except Exception as exc:
+            log.exception(exc)
             raise Exception("Somthing went wrong while searching for error in XML file: " + repr(exc))
     
     def write_logs(self):
@@ -336,6 +339,7 @@ class UnitTestFailure():
                 yaml.safe_dump(self.yaml_data, remote_yaml_file, default_flow_style=False)
                 remote_yaml_file.close()
             except Exception as exc: 
+                log.exception(exc)
                 log.info("XML_DEBUG: write logs error: " + repr(exc))
         log.info("XML_DEBUG: yaml_data is empty!")
 
