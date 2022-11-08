@@ -152,7 +152,7 @@ class TeuthologyConfig(YamlConfig):
         'conserver_master': 'conserver.front.sepia.ceph.com',
         'conserver_port': 3109,
         'gitbuilder_host': 'gitbuilder.ceph.com',
-        'githelper_base_url': 'http://git.ceph.com:8080',
+        'githelper_base_url': 'http://githelper.ceph.com',
         'check_package_signatures': True,
         'job_threshold': 500,
         'lab_domain': 'front.sepia.ceph.com',
