@@ -12,6 +12,8 @@ An example::
 
 """
 import logging
+import pathlib
+import pexpect
 import pytest
 
 from teuthology.job_status import set_status
@@ -45,40 +47,58 @@ class TeuthologyContextPlugin(object):
 
     # log the outcome of each test
     @pytest.hookimpl(hookwrapper=True)
-    def pytest_runtest_makereport(self, item, call):
+    def pytest_runtest_makereport(self, item: pytest.Item, call: pytest.CallInfo):
         outcome = yield
         report = outcome.get_result()
-
-        # after the test has been called, get its report and log it
-        if call.when == 'call':
-            # item.location[0] is a slash delimeted path to the test file
-            # being ran. We only want the portion after teuthology.task.tests
-            test_path = item.location[0].replace("/", ".").split(".")
-            test_path = ".".join(test_path[4:-1])
-            # removes the string '[ctx0, config0]' after the test name
-            test_name = item.location[2].split("[")[0]
-            name = "{path}:{name}".format(path=test_path, name=test_name)
-            if report.passed:
-                log.info("{name} Passed".format(name=name))
-            elif report.skipped:
-                log.info("{name} {info}".format(
-                    name=name,
-                    info=call.excinfo.exconly()
-                ))
+        test_path = item.location[0]
+        line_no = item.location[1]
+        test_name = item.location[2]
+        name = f"{test_path}:{line_no}:{test_name}"
+        log_msg = f"{report.outcome.upper()} {name}"
+        if report.outcome.lower() in ['passed', 'skipped']:
+            if call.when == 'call':
+                log.info(log_msg)
             else:
-                # TODO: figure out a way to log the traceback
-                log.error("{name} Failed:\n {info}".format(
-                    name=name,
-                    info=call.excinfo.exconly()
-                ))
-                failure = "{name}: {err}".format(
-                    name=name,
-                    err=call.excinfo.exconly().replace("\n", "")
-                )
-                self.failures.append(failure)
-                self.ctx.summary['failure_reason'] = self.failures
+                log.info(f"{log_msg} {call.when=}")
+        else:
+            log_msg = f"{log_msg}:{call.when}"
+            if call.excinfo:
+                self.failures.append(f"{log_msg}: {call.excinfo.exconly}")
+                log_msg = f"{log_msg}: {call.excinfo.getrepr()}"
+            else:
+                self.failures.append(log_msg)
+            log.error(log_msg)
 
-        return report
+        return
+
+
+# https://docs.pytest.org/en/stable/reference/exit-codes.html
+exit_codes = {
+    0: "All tests were collected and passed successfully",
+    1: "Tests were collected and run but some of the tests failed",
+    2: "Test execution was interrupted by the user",
+    3: "Internal error happened while executing tests",
+    4: "pytest command line usage error",
+    5: "No tests were collected",
+}
+
+
+def run_cli(pytest_args):
+    _, status = pexpect.run(
+        " ".join(['py.test'] + pytest_args),
+        cwd=str(pathlib.Path(__file__).parents[4]),
+        withexitstatus=True,
+        timeout=None,
+    )
+    return status, []
+
+def run_py(pytest_args):
+    context_plugin = TeuthologyContextPlugin(ctx, config)
+    status = pytest.main(
+        args=pytest_args,
+        plugins=[context_plugin]
+    )
+    return status, context_plugin.failures
 
 
 def task(ctx, config):
@@ -86,15 +106,19 @@ def task(ctx, config):
     Use pytest to recurse through this directory, finding any tests
     and then executing them with the teuthology ctx and config args.
     Your tests must follow standard pytest conventions to be discovered.
+
+    If config["mode"] == "cli", the py.test will be invoked as a subprocess.
+    Otherwise, it will be run in the job's process.
     """
+    mode = (config or dict()).get("mode", "py")
+    pytest_args = ['-rA', '-v', './teuthology', './scripts']
+    if len(ctx.cluster.remotes):
+        pytest_args.append(__name__)
     try:
-        status = pytest.main(
-            args=[
-                '-q',
-                '--pyargs', __name__, 'teuthology.test'
-            ],
-            plugins=[TeuthologyContextPlugin(ctx, config)]
-        )
+        if mode == "cli":
+            status, failures = run_cli(pytest_args)
+        else:
+            status, failures = run_py(pytest_args)
     except Exception:
         log.exception("Saw non-test failure!")
         set_status(ctx.summary, "dead")
@@ -103,5 +127,10 @@ def task(ctx, config):
             log.info("OK. All tests passed!")
             set_status(ctx.summary, "pass")
         else:
-            log.error("FAIL. Saw test failures...")
+            status_msg = str(status)
+            if status in exit_codes:
+                status_msg = f"{status_msg}: {exit_codes[status]}"
+            log.error(f"FAIL (exit code {status_msg})")
+            if failures:
+                log.error(f"Failures: {failures}")
             set_status(ctx.summary, "fail")
