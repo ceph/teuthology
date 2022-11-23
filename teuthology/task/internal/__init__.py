@@ -451,7 +451,7 @@ def coredump(ctx, config):
                 'install', '-d', '-m0755', '--',
                 '{adir}/coredump'.format(adir=archive_dir),
                 run.Raw('&&'),
-                'sudo', 'sysctl', '-w', 'kernel.core_pattern={adir}/coredump/%t.%p.core'.format(adir=archive_dir),
+                'sudo', '/usr/sbin/sysctl', '-w', 'kernel.core_pattern={adir}/coredump/%t.%p.core'.format(adir=archive_dir),
 		run.Raw('&&'),
 		'echo',
 		'kernel.core_pattern={adir}/coredump/%t.%p.core'.format(adir=archive_dir),
@@ -468,7 +468,7 @@ def coredump(ctx, config):
         run.wait(
             ctx.cluster.run(
                 args=[
-                    'sudo', 'sysctl', '-w', 'kernel.core_pattern=core',
+                    'sudo', '/usr/sbin/sysctl', '-w', 'kernel.core_pattern=core',
                     run.Raw('&&'),
                     'sudo', 'bash', '-c',
                     (f'for f in `find {archive_dir}/coredump -type f`; do '
