@@ -17,13 +17,18 @@ if [[ "$PYTHON" =~ "python2" ]]; then
 fi
 
 PYTHON=${PYTHON:-"python3"}
+PYTHON_BIN=$(command -v $PYTHON)
+if [ -z $PYTHON_BIN -o ! -e $PYTHON_BIN -o ! -x $PYTHON_BIN ]; then
+  echo "Cannot find $PYTHON!"
+  exit 1
+fi
 VENV=${VENV:-"virtualenv"}
 
 case "$(uname -s)" in
 Linux)
     case "$(lsb_release --id --short)" in
     Ubuntu|Debian|LinuxMint)
-        deps=(qemu-utils python3-dev libssl-dev python3-pip python3-venv libev-dev libvirt-dev libffi-dev libyaml-dev)
+        deps=(qemu-utils python3-dev libssl-dev python3-pip $PYTHON-venv libev-dev libvirt-dev libffi-dev libyaml-dev)
         for package in ${deps[@]}; do
             if [ "$(dpkg --status -- $package|sed -n 's/^Status: //p')" != "install ok installed" ]; then
                 # add a space after old values
@@ -167,7 +172,7 @@ if [ -z "$NO_CLOBBER" ] && [ ! -e "./$VENV/bin/pip" ]; then
 fi
 
 if [ -z "$NO_CLOBBER" ] || [ ! -e ./$VENV ]; then
-    python3 -m venv $VENV
+    $PYTHON_BIN -m venv $VENV
 fi
 
 ./$VENV/bin/pip install packaging
