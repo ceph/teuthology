@@ -17,6 +17,7 @@ if [[ "$PYTHON" =~ "python2" ]]; then
 fi
 
 PYTHON=${PYTHON:-"python3"}
+PYTHON_VER_OUT=$($PYTHON --version)
 PYTHON_BIN=$(command -v $PYTHON)
 if [ -z $PYTHON_BIN -o ! -e $PYTHON_BIN -o ! -x $PYTHON_BIN ]; then
   echo "Cannot find $PYTHON!"
@@ -167,7 +168,10 @@ fi
 
 export LC_ALL=en_US.UTF-8
 
-if [ -z "$NO_CLOBBER" ] && [ ! -e "./$VENV/bin/pip" ]; then
+if [ -z "$NO_CLOBBER" ] && \
+  [ ! -e "./$VENV/bin/pip" -o ! -e "./$VENV/bin/$PYTHON" ] || \
+  [ "${PYTHON_VER_OUT}" != "$(./$VENV/bin/$PYTHON --version)" ] \
+  ; then
     rm -rf virtualenv
 fi
 
