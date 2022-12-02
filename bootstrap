@@ -28,7 +28,7 @@ case "$(uname -s)" in
 Linux)
     case "$(lsb_release --id --short)" in
     Ubuntu|Debian|LinuxMint)
-        deps=(qemu-utils python3-dev libssl-dev python3-pip $PYTHON-venv libev-dev libvirt-dev libffi-dev libyaml-dev)
+        deps=(qemu-utils python3-dev libssl-dev python3-pip python3-wheel $PYTHON-venv libev-dev libvirt-dev libffi-dev libyaml-dev)
         for package in ${deps[@]}; do
             if [ "$(dpkg --status -- $package|sed -n 's/^Status: //p')" != "install ok installed" ]; then
                 # add a space after old values
@@ -189,6 +189,9 @@ fi
 
 # First, upgrade pip
 ./$VENV/bin/pip install --upgrade pip
+
+# See https://github.com/pypa/pip/issues/8559
+./$VENV/bin/pip install -r requirements.txt --use-pep517
 
 # By default, install teuthology in editable mode
 ./$VENV/bin/pip install ${PIP_INSTALL_FLAGS:---editable '.[test]'}
