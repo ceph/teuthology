@@ -12,4 +12,5 @@ jobs:
         working-directory: ./docs/docker-compose
       - name: Debug containers
         if: ${{ failure() }}
-        run: docker container ls --all --format='{{json .}}'
+        run: ./debug.sh
+        working-directory: ./docs/docker-compose
