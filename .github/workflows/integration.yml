@@ -10,3 +10,6 @@ jobs:
       - name: Test using docker-compose
         run: ./start.sh
         working-directory: ./docs/docker-compose
+      - name: Debug containers
+        if: ${{ failure() }}
+        run: docker container ls --all --format='{{json .}}'
