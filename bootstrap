@@ -16,7 +16,16 @@ if [[ "$PYTHON" =~ "python2" ]]; then
     exit 1
 fi
 
-PYTHON=${PYTHON:-"python3"}
+# This dance is to keep us from using 3.6, even on systems where it is the OS's
+# preferred version. Can be dropped when no teuthology lab in production requires
+# an older version.
+if [ -z "$PYTHON" ]; then
+  for i in 10 9 8 7; do
+    command -v "python3.$i" && PYTHON="python3.$i" && break
+  done
+  # This would be bizarre, but I suppose possible
+  PYTHON=${PYTHON:-"python3"}
+fi
 PYTHON_VER_OUT=$($PYTHON --version)
 PYTHON_BIN=$(command -v $PYTHON)
 if [ -z $PYTHON_BIN -o ! -e $PYTHON_BIN -o ! -x $PYTHON_BIN ]; then
