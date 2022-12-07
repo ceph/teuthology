@@ -42,7 +42,8 @@ fi
 export TEUTHOLOGY_WAIT
 
 trap "docker-compose down" SIGINT
+docker-compose build
+docker-compose create
 docker-compose up \
-    --build \
     $DC_EXIT_FLAG
 $DC_AUTO_DOWN_CMD
