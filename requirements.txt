@@ -4,7 +4,7 @@
 #
 #    pip-compile --extra=test pyproject.toml
 #
-ansible==2.10.7
+ansible==4.2.0
     # via teuthology (pyproject.toml)
 ansible-base==2.10.17
     # via ansible
