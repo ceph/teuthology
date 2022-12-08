@@ -278,7 +278,12 @@ class FOG(object):
                     NoValidConnectionsError,
                     MaxWhileTries,
                     EOFError,
-                ):
+                ) as e:
+                    # log this, because otherwise lots of failures just
+                    # keep retrying without any notification (like, say,
+                    # a mismatched host key in ~/.ssh/known_hosts, or
+                    # something)
+                    log.warning(e)
                     pass
         sentinel_file = config.fog.get('sentinel_file', None)
         if sentinel_file:
