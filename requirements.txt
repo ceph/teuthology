@@ -180,7 +180,7 @@ oslo-utils==4.12.2
     #   python-keystoneclient
     #   python-novaclient
     #   python-openstackclient
-packaging==21.0
+packaging==22.0
     # via
     #   ansible-base
     #   build
@@ -252,7 +252,6 @@ pyparsing==2.4.7
     #   cliff
     #   httplib2
     #   oslo-utils
-    #   packaging
 pyperclip==1.8.2
     # via cmd2
 pytest==7.0.1
