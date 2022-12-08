@@ -16,14 +16,29 @@ if [[ "$PYTHON" =~ "python2" ]]; then
     exit 1
 fi
 
-PYTHON=${PYTHON:-"python3"}
+# This dance is to keep us from using 3.6, even on systems where it is the OS's
+# preferred version. Can be dropped when no teuthology lab in production requires
+# an older version.
+if [ -z "$PYTHON" ]; then
+  for i in 10 9 8 7; do
+    command -v "python3.$i" && PYTHON="python3.$i" && break
+  done
+  # This would be bizarre, but I suppose possible
+  PYTHON=${PYTHON:-"python3"}
+fi
+PYTHON_VER_OUT=$($PYTHON --version)
+PYTHON_BIN=$(command -v $PYTHON)
+if [ -z $PYTHON_BIN -o ! -e $PYTHON_BIN -o ! -x $PYTHON_BIN ]; then
+  echo "Cannot find $PYTHON!"
+  exit 1
+fi
 VENV=${VENV:-"virtualenv"}
 
 case "$(uname -s)" in
 Linux)
     case "$(lsb_release --id --short)" in
     Ubuntu|Debian|LinuxMint)
-        deps=(qemu-utils python3-dev libssl-dev python3-pip python3-venv libev-dev libvirt-dev libffi-dev libyaml-dev)
+        deps=(qemu-utils python3-dev libssl-dev python3-pip python3-wheel $PYTHON-venv libev-dev libvirt-dev libffi-dev libyaml-dev)
         for package in ${deps[@]}; do
             if [ "$(dpkg --status -- $package|sed -n 's/^Status: //p')" != "install ok installed" ]; then
                 # add a space after old values
@@ -162,12 +177,15 @@ fi
 
 export LC_ALL=en_US.UTF-8
 
-if [ -z "$NO_CLOBBER" ] && [ ! -e "./$VENV/bin/pip" ]; then
+if [ -z "$NO_CLOBBER" ] && \
+  [ ! -e "./$VENV/bin/pip" -o ! -e "./$VENV/bin/$PYTHON" ] || \
+  [ "${PYTHON_VER_OUT}" != "$(./$VENV/bin/$PYTHON --version)" ] \
+  ; then
     rm -rf virtualenv
 fi
 
 if [ -z "$NO_CLOBBER" ] || [ ! -e ./$VENV ]; then
-    python3 -m venv $VENV
+    $PYTHON_BIN -m venv $VENV
 fi
 
 ./$VENV/bin/pip install packaging
@@ -184,6 +202,9 @@ fi
 
 # First, upgrade pip
 ./$VENV/bin/pip install --upgrade pip
+
+# See https://github.com/pypa/pip/issues/8559
+./$VENV/bin/pip install -r requirements.txt --use-pep517
 
 # By default, install teuthology in editable mode
 ./$VENV/bin/pip install ${PIP_INSTALL_FLAGS:---editable '.[test]'}
