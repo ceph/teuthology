@@ -1,5 +1,7 @@
+import getpass
 import logging
 import os
+import psutil
 import subprocess
 import sys
 import yaml
@@ -68,6 +70,14 @@ def main(args):
 
     if archive_dir is None:
         archive_dir = teuth_config.archive_base
+
+    # Refuse to start more than one dispatcher per machine type
+    procs = find_dispatcher_processes(tube)
+    if procs:
+        raise RuntimeError(
+            "There is already a teuthology-dispatcher process running:"
+            f" {procs}"
+        )
 
     # setup logging for disoatcher in {log_dir}
     loglevel = logging.INFO
@@ -182,6 +192,29 @@ def main(args):
         if proc.returncode is not None:
             returncodes.add(proc.returncode)
     return max(returncodes)
+
+
+def find_dispatcher_processes(machine_type):
+    user = getpass.getuser()
+    def match(proc):
+        if proc.username() != user:
+            return False
+        cmdline = proc.cmdline()
+        if len(cmdline) < 3:
+            return False
+        if not cmdline[1].endswith("/teuthology-dispatcher"):
+            return False
+        if cmdline[2] == "--supervisor":
+            return False
+        if machine_type not in cmdline:
+            return False
+        if proc.pid == os.getpid():
+            return False
+        return True
+
+    attrs = ["pid", "username", "cmdline"]
+    procs = list(filter(match, psutil.process_iter(attrs=attrs)))
+    return procs
 
 
 def lock_machines(job_config):
