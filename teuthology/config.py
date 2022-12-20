@@ -166,6 +166,8 @@ class TeuthologyConfig(YamlConfig):
         'src_base_path': os.path.expanduser('~/src'),
         'verify_host_keys': True,
         'watchdog_interval': 120,
+        'fog_reimage_timeout': 1800,
+        'fog_wait_for_ssh_timeout': 600,
         'kojihub_url': 'http://koji.fedoraproject.org/kojihub',
         'kojiroot_url': 'http://kojipkgs.fedoraproject.org/packages',
         'koji_task_url': 'https://kojipkgs.fedoraproject.org/work/',
