@@ -61,7 +61,7 @@ Linux)
     RedHatEnterpriseWorkstation|RedHatEnterpriseServer|RedHatEnterprise|CentOS)
         deps=(python3-pip python3-devel mariadb-devel libev-devel libvirt-devel libffi-devel)
         for package in ${deps[@]}; do
-          if [ "$(rpm -q $package)" == "package $package is not installed" ]; then
+          if ! rpm -q --whatprovides $package ; then
               missing="${missing:+$missing }$package"
           fi
         done
@@ -81,7 +81,7 @@ Linux)
     CentOSStream)
         deps=(python3-pip python39-devel mariadb-devel libev-devel libvirt-devel libffi-devel)
         for package in ${deps[@]}; do
-          if [ "$(rpm -q $package)" == "package $package is not installed" ]; then
+          if ! rpm -q --whatprovides $package ; then
               missing="${missing:+$missing }$package"
           fi
         done
@@ -101,7 +101,7 @@ Linux)
     Fedora)
         deps=(python3-pip python3-devel libev-devel libvirt-devel libffi-devel)
         for package in ${deps[@]}; do
-          if [ "$(rpm -q $package)" == "package $package is not installed" ]; then
+          if ! rpm -q --whatprovides $package; then
               missing="${missing:+$missing }$package"
           fi
         done
@@ -126,7 +126,7 @@ Linux)
     "openSUSE project"|"SUSE LINUX"|"openSUSE")
 	deps=(python3-pip python3-devel python3 libev-devel libvirt-devel libffi-devel)
 	for package in ${deps[@]}; do
-            if [ "$(rpm -q $package)" == "package $package is not installed" ]; then
+            if ! rpm -q --whatprovides $package; then
                 if [ "$(rpm -q --whatprovides $package)" == "no package provides $package" ]; then
                     missing="${missing:+$missing }$package"
                 fi
