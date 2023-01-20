@@ -8,7 +8,7 @@ from mock import Mock, patch
 from teuthology.config import config
 from teuthology.orchestra.opsys import OS
 from teuthology.suite import util
-from teuthology.exceptions import ScheduleFailError
+from teuthology.exceptions import BranchNotFoundError, ScheduleFailError
 
 
 REPO_PROJECTS_AND_URLS = [
@@ -67,8 +67,11 @@ class TestUtil(object):
         assert str(exc.value) == "Scheduling failed: error msg"
         m_smtp.assert_not_called()
 
+    @patch('teuthology.suite.util.fetch_qa_suite')
     @patch('teuthology.suite.util.smtplib.SMTP')
-    def test_fetch_repo_no_branch(self, m_smtp):
+    def test_fetch_repo_no_branch(self, m_smtp, m_fetch_qa_suite):
+        m_fetch_qa_suite.side_effect = BranchNotFoundError(
+            "no-branch", "https://github.com/ceph/ceph-ci.git")
         config.results_email = "example@example.com"
         with pytest.raises(ScheduleFailError) as exc:
             util.fetch_repos("no-branch", "test1", dry_run=False)
@@ -76,8 +79,11 @@ class TestUtil(object):
 Branch 'no-branch' not found in repo: https://github.com/ceph/ceph-ci.git!"
         m_smtp.assert_called()
 
+    @patch('teuthology.suite.util.fetch_qa_suite')
     @patch('teuthology.suite.util.smtplib.SMTP')
-    def test_fetch_repo_no_branch_dryrun(self, m_smtp):
+    def test_fetch_repo_no_branch_dryrun(self, m_smtp, m_fetch_qa_suite):
+        m_fetch_qa_suite.side_effect = BranchNotFoundError(
+            "no-branch", "https://github.com/ceph/ceph-ci.git")
         config.results_email = "example@example.com"
         with pytest.raises(ScheduleFailError) as exc:
             util.fetch_repos("no-branch", "test1", dry_run=True)

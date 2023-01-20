@@ -178,13 +178,13 @@ class TestWorker(object):
         worker.run_with_watchdog(process, config)
         m_symlink_log.assert_called_with(config["worker_log"], config["archive_path"])
 
+    @patch("teuthology.worker.ls_remote")
     @patch("os.path.isdir")
     @patch("teuthology.worker.fetch_teuthology")
     @patch("teuthology.worker.teuth_config")
     @patch("teuthology.worker.fetch_qa_suite")
-    def test_prep_job(self, m_fetch_qa_suite,
-                      m_teuth_config,
-                      m_fetch_teuthology, m_isdir):
+    def test_prep_job(self, m_fetch_qa_suite, m_teuth_config,
+            m_fetch_teuthology, m_isdir, m_ls_remote):
         config = dict(
             name="the_name",
             job_id="1",
@@ -269,6 +269,7 @@ class TestWorker(object):
             job.bury.assert_called_once_with()
             job.delete.assert_called_once_with()
 
+    @patch("teuthology.worker.ls_remote")
     @patch("teuthology.worker.report.try_push_job_info")
     @patch("teuthology.worker.run_job")
     @patch("beanstalkc.Job", autospec=True)
@@ -281,7 +282,7 @@ class TestWorker(object):
     def test_main_loop_13925(
         self, m_setup_log_file, m_isdir, m_connect, m_watch_tube,
         m_fetch_teuthology, m_fetch_qa_suite, m_job, m_run_job,
-        m_try_push_job_info,
+        m_try_push_job_info, m_ls_remote,
                        ):
         m_connection = Mock()
         jobs = self.build_fake_jobs(
