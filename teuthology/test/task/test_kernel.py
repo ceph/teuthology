@@ -9,7 +9,7 @@ from teuthology.task.kernel import (
 
 class TestKernelNormalizeAndApplyOverrides(object):
 
-    def setup(self):
+    def setup_method(self):
         self.ctx = FakeNamespace()
         self.ctx.cluster = Cluster()
         self.ctx.cluster.add(Remote('remote1'), ['mon.a', 'client.0'])

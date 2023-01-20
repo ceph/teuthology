@@ -3,7 +3,7 @@ from teuthology.task import internal
 
 
 class TestInternal(object):
-    def setup(self):
+    def setup_method(self):
         self.ctx = FakeNamespace()
         self.ctx.config = dict()
 

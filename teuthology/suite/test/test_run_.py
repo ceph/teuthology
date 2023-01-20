@@ -23,7 +23,7 @@ from teuthology import packaging
 class TestRun(object):
     klass = run.Run
 
-    def setup(self):
+    def setup_method(self):
         self.args_dict = dict(
             suite='suite',
             suite_branch='suite_branch',
@@ -203,7 +203,7 @@ class TestRun(object):
 class TestScheduleSuite(object):
     klass = run.Run
 
-    def setup(self):
+    def setup_method(self):
         self.args_dict = dict(
             suite='suite',
             suite_relpath='',

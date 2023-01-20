@@ -15,7 +15,7 @@ class TestConsoleLog(TestTask):
     klass = ConsoleLog
     task_name = 'console_log'
 
-    def setup(self):
+    def setup_method(self):
         teuth_config.ipmi_domain = 'ipmi.domain'
         teuth_config.ipmi_user = 'ipmi_user'
         teuth_config.ipmi_password = 'ipmi_pass'
@@ -45,7 +45,7 @@ class TestConsoleLog(TestTask):
             self.mocks[name] = patcher.start()
         self.mocks['is_vm'].return_value = False
 
-    def teardown(self):
+    def teardown_method(self):
         for patcher in self.patchers.values():
             patcher.stop()
 

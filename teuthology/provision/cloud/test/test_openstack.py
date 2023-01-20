@@ -76,7 +76,7 @@ def get_fake_obj(mock_args=None, attributes=None):
 
 
 class TestOpenStackBase(object):
-    def setup(self):
+    def setup_method(self):
         config.load(dict(libcloud=deepcopy(test_config)))
         self.start_patchers()
 
@@ -159,7 +159,7 @@ class TestOpenStackBase(object):
             self.mocks[name] = patcher.start()
         self.mocks['m_get_endpoint'].return_value = 'endpoint'
 
-    def teardown(self):
+    def teardown_method(self):
         for patcher in self.patchers.values():
             patcher.stop()
 

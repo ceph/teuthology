@@ -7,7 +7,7 @@ from teuthology import suite
 
 
 class TestSuiteOnline(object):
-    def setup(self):
+    def setup_method(self):
         if 'TEST_ONLINE' not in os.environ:
             skip("To run these sets, set the environment variable TEST_ONLINE")
 

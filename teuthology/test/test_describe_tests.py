@@ -129,7 +129,7 @@ expected_rbd_features = [
 
 class TestDescribeTests(object):
 
-    def setup(self):
+    def setup_method(self):
         self.mocks = dict()
         self.patchers = dict()
         exists, listdir, isfile, isdir, open = make_fake_fstools(realistic_fs)
@@ -153,7 +153,7 @@ class TestDescribeTests(object):
         for patcher in self.patchers.values():
             patcher.stop()
 
-    def teardown(self):
+    def teardown_method(self):
         self.stop_patchers()
 
     @staticmethod

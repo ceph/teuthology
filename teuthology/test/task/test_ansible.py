@@ -23,10 +23,7 @@ class TestAnsibleTask(TestTask):
     klass = Ansible
     task_name = 'ansible'
 
-    def setup(self):
-        pass
-
-    def setup_method(self, method):
+    def setup_method(self):
         self.ctx = FakeNamespace()
         self.ctx.cluster = Cluster()
         self.ctx.cluster.add(Remote('user@remote1'), ['role1'])
@@ -505,8 +502,8 @@ class TestCephLabTask(TestAnsibleTask):
     klass = CephLab
     task_name = 'ansible.cephlab'
 
-    def setup(self):
-        super(TestCephLabTask, self).setup()
+    def setup_method(self):
+        super(TestCephLabTask, self).setup_method()
         self.task_config = dict()
 
     def start_patchers(self):

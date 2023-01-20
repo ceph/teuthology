@@ -48,7 +48,7 @@ def git_repository(request):
 
 
 class TestUtil(object):
-    def setup(self):
+    def setup_method(self):
         config.use_shaman = False
 
     @patch('teuthology.suite.util.smtplib.SMTP')
@@ -240,7 +240,7 @@ class TestMissingPackages(object):
     Tests the functionality that checks to see if a
     scheduled job will have missing packages in gitbuilder.
     """
-    def setup(self):
+    def setup_method(self):
         package_versions = {
             'sha1': {
                 'ubuntu': {
@@ -340,7 +340,7 @@ class TestMissingPackages(object):
 
 
 class TestDistroDefaults(object):
-    def setup(self):
+    def setup_method(self):
         config.use_shaman = False
 
     def test_distro_defaults_saya(self):

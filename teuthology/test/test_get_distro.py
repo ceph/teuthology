@@ -7,7 +7,7 @@ class Mock:
 
 class TestGetDistro(object):
 
-    def setup(self):
+    def setup_method(self):
         self.fake_ctx = Mock()
         self.fake_ctx.config = {}
         # os_type in ctx will always default to None

@@ -21,7 +21,7 @@ class TestCephAnsibleTask(TestTask):
     klass = CephAnsible
     task_name = 'ceph_ansible'
 
-    def setup(self):
+    def setup_method(self):
         self.ctx = FakeNamespace()
         self.ctx.cluster = Cluster()
         self.ctx.cluster.add(Remote('user@remote1'), ['mon.0'])

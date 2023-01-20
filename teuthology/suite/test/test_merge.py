@@ -19,7 +19,7 @@ class TestMerge(TestCase):
         'builtins.open',
     ]
 
-    def setUp(self):
+    def setup_method(self):
         log.debug("setUp")
         self.mocks = dict()
         self.patchers = dict()
@@ -38,8 +38,7 @@ class TestMerge(TestCase):
         for patcher in self.patchers.values():
             patcher.stop()
 
-    def tearDown(self):
-        log.debug("tearDown")
+    def teardown_method(self):
         self.patchers.clear()
         self.mocks.clear()
 

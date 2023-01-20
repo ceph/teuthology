@@ -14,7 +14,7 @@ class TestPhysicalConsole(TestConsole):
     ipmi_cmd_templ = 'ipmitool -H {h}.{d} -I lanplus -U {u} -P {p} {c}'
     conserver_cmd_templ = 'console -M {m} -p {p} {mode} {h}'
 
-    def setup(self):
+    def setup_method(self):
         self.hostname = 'host'
         teuth_config.ipmi_domain = 'ipmi_domain'
         teuth_config.ipmi_user = 'ipmi_user'

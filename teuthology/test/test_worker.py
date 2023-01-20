@@ -10,7 +10,7 @@ from teuthology.contextutil import MaxWhileTries
 
 
 class TestWorker(object):
-    def setup(self):
+    def setup_method(self):
         self.ctx = Mock()
         self.ctx.verbose = True
         self.ctx.archive_dir = '/archive/dir'

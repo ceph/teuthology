@@ -26,12 +26,12 @@ dummy_drivers = dict(
 
 
 class TestInit(object):
-    def setup(self):
+    def setup_method(self):
         config.load()
         config.libcloud = dummy_config
         cloud.supported_drivers['dummy'] = dummy_drivers
 
-    def teardown(self):
+    def teardown_method(self):
         del cloud.supported_drivers['dummy']
 
     def test_get_types(self):

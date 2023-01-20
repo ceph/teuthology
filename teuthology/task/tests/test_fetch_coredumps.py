@@ -19,7 +19,7 @@ class TestFetchCoreDumps(object):
         def communicate(self, input=None):
             return [TestFetchCoreDumps.MockDecode(self.ret)]
 
-    def setup(self):
+    def setup_method(self):
         self.the_function = fetch_binaries_for_coredumps
         with gzip.open('file.gz', 'wb') as f:
             f.write(b'Hello world!')

@@ -15,10 +15,10 @@ test_config = dict(
 
 class TestPelagos(object):
 
-    def setup(self):
+    def setup_method(self):
         config.load(deepcopy(test_config))
 
-    def teardown(self):
+    def teardown_method(self):
         pass
 
     def test_get_types(self):

@@ -7,7 +7,7 @@ from teuthology.task.selinux import SELinux
 
 
 class TestSELinux(object):
-    def setup(self):
+    def setup_method(self):
         self.ctx = FakeNamespace()
         self.ctx.config = dict()
 

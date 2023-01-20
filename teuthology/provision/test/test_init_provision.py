@@ -19,7 +19,7 @@ test_config = dict(
 
 class TestInitProvision(object):
 
-    def setup(self):
+    def setup_method(self):
         config.load(deepcopy(test_config))
 
     def test_get_reimage_types(self):

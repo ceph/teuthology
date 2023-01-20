@@ -306,7 +306,7 @@ class TestPackaging(object):
 class TestBuilderProject(object):
     klass = None
 
-    def setup(self):
+    def setup_method(self):
         if self.klass is None:
             pytest.skip()
 
@@ -530,7 +530,7 @@ class TestBuilderProject(object):
 class TestShamanProject(TestBuilderProject):
     klass = packaging.ShamanProject
 
-    def setup(self):
+    def setup_method(self):
         self.p_config = patch('teuthology.packaging.config')
         self.m_config = self.p_config.start()
         self.m_config.use_shaman = True
@@ -542,7 +542,7 @@ class TestShamanProject(TestBuilderProject):
         self.p_get = patch('requests.get')
         self.m_get = self.p_get.start()
 
-    def teardown(self):
+    def teardown_method(self):
         self.p_config.stop()
         self.p_get_config_value.stop()
         self.p_get.stop()

@@ -203,7 +203,7 @@ class TestCluster(object):
 
 class TestWriteFile(object):
     """ Tests for cluster.write_file """
-    def setup(self):
+    def setup_method(self):
         self.r1 = remote.Remote('r1', ssh=Mock())
         self.c = cluster.Cluster(
             remotes=[

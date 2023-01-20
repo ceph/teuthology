@@ -251,10 +251,10 @@ def test_split_role():
         assert actual_split == expected_split
 
 class TestHostnames(object):
-    def setup(self):
+    def setup_method(self):
         config._conf = dict()
 
-    def teardown(self):
+    def teardown_method(self):
         config.load()
 
     def test_canonicalize_hostname(self):

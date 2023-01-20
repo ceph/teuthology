@@ -19,7 +19,7 @@ test_config = dict(fog=dict(
 class TestFOG(object):
     klass = fog.FOG
 
-    def setup(self):
+    def setup_method(self):
         config.load()
         config.update(deepcopy(test_config))
         self.start_patchers()
@@ -54,7 +54,7 @@ class TestFOG(object):
         for name, patcher in self.patchers.items():
             self.mocks[name] = patcher.start()
 
-    def teardown(self):
+    def teardown_method(self):
         for patcher in self.patchers.values():
             patcher.stop()
 

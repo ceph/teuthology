@@ -105,7 +105,7 @@ class Integration(object):
 
 class TestSuite(Integration):
 
-    def setup(self):
+    def setup_method(self):
         self.d = tempfile.mkdtemp()
         self.setup_worker()
         logging.info("TestSuite: done worker")
@@ -152,7 +152,7 @@ class TestSuite(Integration):
 
 class TestSchedule(Integration):
 
-    def setup(self):
+    def setup_method(self):
         self.d = tempfile.mkdtemp()
         self.setup_worker()
 
@@ -218,7 +218,7 @@ class TestSchedule(Integration):
 
 class TestLock(Integration):
 
-    def setup(self):
+    def setup_method(self):
         self.options = ['--verbose',
                         '--machine-type', 'openstack' ]
 
@@ -259,7 +259,7 @@ class TestLock(Integration):
 
 class TestNuke(Integration):
 
-    def setup(self):
+    def setup_method(self):
         self.options = ['--verbose',
                         '--machine-type', 'openstack']
 

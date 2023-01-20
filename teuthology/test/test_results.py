@@ -137,7 +137,7 @@ class TestResultsEmail(object):
     """).strip(),
     }
 
-    def setup(self):
+    def setup_method(self):
         config.results_ui_server = "http://example.com/"
         config.archive_server = "http://qa-proxy.ceph.com/teuthology/"
 

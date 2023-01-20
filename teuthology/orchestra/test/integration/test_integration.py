@@ -14,7 +14,7 @@ HOST = None
 
 
 class TestIntegration():
-    def setup(self):
+    def setup_method(self):
         try:
             host = os.environ['ORCHESTRA_TEST_HOST']
         except KeyError:
