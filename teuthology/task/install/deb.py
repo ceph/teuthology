@@ -142,7 +142,7 @@ def _remove(ctx, config, remote, debs):
             run.Raw('|'),
             # Any package that is unpacked or half-installed and also requires
             # reinstallation
-            'grep', '^.\(U\|H\)R',
+            'grep', r'^.\(U\|H\)R',
             run.Raw('|'),
             'awk', '{print $2}',
             run.Raw('|'),

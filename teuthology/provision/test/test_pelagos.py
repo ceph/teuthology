@@ -42,5 +42,5 @@ class TestPelagos(object):
                 teuthology.provision.reimage(ctx, 'f.q.d.n.org', 'ptype1')
             e_str = str(e_info)
             print("Caught exception: " +  e_str)
-            assert e_str.find("Name\sor\sservice\snot\sknown") == -1
+            assert e_str.find(r"Name\sor\sservice\snot\sknown") == -1
 

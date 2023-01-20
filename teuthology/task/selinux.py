@@ -141,7 +141,7 @@ class SELinux(Task):
         se_allowlist = self.config.get('allowlist', [])
         if se_allowlist:
             known_denials.extend(se_allowlist)
-        ignore_known_denials = '\'\(' + str.join('\|', known_denials) + '\)\''
+        ignore_known_denials = r'\'\(' + str.join(r'\|', known_denials) + r'\)\''
         for remote in self.cluster.remotes.keys():
             proc = remote.run(
                 args=['sudo', 'grep', '-a', 'avc: .*denied',

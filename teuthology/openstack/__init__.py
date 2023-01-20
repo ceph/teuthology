@@ -123,7 +123,7 @@ class OpenStackInstance(object):
         with safe_while(sleep=2, tries=30,
                         action="get ip " + self['id']) as proceed:
             while proceed():
-                found = re.match('.*\d+', self['addresses'])
+                found = re.match(r'.*\d+', self['addresses'])
                 if found:
                     return self['addresses']
                 self.set_info()
@@ -165,7 +165,7 @@ class OpenStackInstance(object):
                 self.private_ip = self.get_ip_neutron()
             except Exception as e:
                 log.debug("ignoring get_ip_neutron exception " + str(e))
-                self.private_ip = re.findall(network + '=([\d.]+)',
+                self.private_ip = re.findall(network + r'=([\d.]+)',
                                              self.get_addresses())[0]
         return self.private_ip
 

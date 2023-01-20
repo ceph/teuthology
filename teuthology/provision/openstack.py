@@ -151,7 +151,7 @@ class ProvisionOpenStack(OpenStack):
         """
         return the instance name suffixed with the IP address.
         """
-        digits = map(int, re.findall('(\d+)\.(\d+)\.(\d+)\.(\d+)', ip)[0])
+        digits = map(int, re.findall(r'(\d+)\.(\d+)\.(\d+)\.(\d+)', ip)[0])
         return prefix + "%03d%03d%03d%03d" % tuple(digits)
 
     def create(self, num, os_type, os_version, arch, resources_hint):
