@@ -66,8 +66,8 @@ class TestCluster(object):
                 (r2, ['baz']),
                 ],
             )
-        assert r1.run.called_once_with(args=['test'])
-        assert r2.run.called_once_with(args=['test'])
+        r1.run.assert_called_once_with(args=['test'])
+        r2.run.assert_called_once_with(args=['test'])
         got = c.run(args=['test'])
         assert len(got) == 2
         assert got, [ret1 == ret2]

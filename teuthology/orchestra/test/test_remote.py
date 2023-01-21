@@ -60,8 +60,8 @@ class TestRemote(object):
         rem = remote.Remote(name='jdoe@xyzzy.example.com', ssh=self.m_ssh)
         rem._runner = m_run
         result = rem.run(args=args)
-        assert m_transport.getpeername.called_once_with()
-        assert m_run.called_once_with(args=args)
+        m_transport.getpeername.assert_called_once_with()
+        m_run.assert_called_once_with(args=args)
         assert result is proc
         assert result.remote is rem
 
@@ -111,9 +111,9 @@ class TestRemote(object):
         m_run.return_value = proc
         r = remote.Remote(name='jdoe@xyzzy.example.com', ssh=self.m_ssh)
         r._runner = m_run
-        assert m_transport.getpeername.called_once_with()
-        assert proc._stdout_buf.channel.recv_exit_status.called_once_with()
-        assert m_run.called_once_with(
+        m_transport.getpeername.assert_called_once_with()
+        proc._stdout_buf.channel.recv_exit_status.assert_called_once_with()
+        m_run.assert_called_once_with(
             client=self.m_ssh,
             args=args,
             stdout=BytesIO(),

@@ -207,9 +207,9 @@ class TestWorker(object):
             config['job_id'],
         )
         assert got_config['teuthology_branch'] == 'main'
-        assert m_fetch_teuthology.called_once_with_args(branch='main')
+        m_fetch_teuthology.assert_called_once_with_args(branch='main')
         assert teuth_bin_path == '/teuth/path/virtualenv/bin'
-        assert m_fetch_qa_suite.called_once_with_args(branch='main')
+        m_fetch_qa_suite.assert_called_once_with_args(branch='main')
         assert got_config['suite_path'] == '/suite/path'
 
     def build_fake_jobs(self, m_connection, m_job, job_bodies):

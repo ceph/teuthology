@@ -447,7 +447,7 @@ class TestAnsibleTask(TestTask):
         task.inventory = 'fake'
         with patch.object(ansible.shutil, 'rmtree') as m_rmtree:
             task.teardown()
-            assert m_rmtree.called_once_with('fake')
+            m_rmtree.assert_called_once_with('fake')
 
     def test_teardown_playbook(self):
         self.task_config.update(dict(
@@ -459,7 +459,7 @@ class TestAnsibleTask(TestTask):
         task.playbook_file.name = 'fake'
         with patch.object(ansible.os, 'remove') as m_remove:
             task.teardown()
-            assert m_remove.called_once_with('fake')
+            m_remove.assert_called_once_with('fake')
 
     def test_teardown_cleanup_with_vars(self):
         self.task_config.update(dict(

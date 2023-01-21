@@ -76,13 +76,13 @@ class TestConsoleLog(TestTask):
             for remote in task.cluster.remotes.keys():
                 dest_path = os.path.join(
                     self.ctx.archive, '%s.log' % remote.shortname)
-                assert remote.console.spawn_sol_log.called_once_with(
-                    dest_path=dest_path)
+                remote.console.spawn_sol_log.assert_called_once_with(
+                        dest_path=dest_path)
 
     @patch('teuthology.orchestra.console.PhysicalConsole')
     def test_end(self, m_pconsole):
         with self.klass(self.ctx, self.task_config) as task:
             pass
         for proc in task.processes.values():
-            assert proc.terminate.called_once_with()
-            assert proc.kill.called_once_with()
+            proc.terminate.assert_called_once_with()
+            proc.kill.assert_called_once_with()
