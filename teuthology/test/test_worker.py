@@ -1,4 +1,3 @@
-import beanstalkc
 import os
 
 from unittest.mock import patch, Mock, MagicMock
@@ -188,11 +187,13 @@ class TestWorker(object):
         config = dict(
             name="the_name",
             job_id="1",
+            suite_sha1="suite_hash",
         )
         archive_dir = '/archive/dir'
         log_file_path = '/worker/log'
         m_fetch_teuthology.return_value = '/teuth/path'
         m_fetch_qa_suite.return_value = '/suite/path'
+        m_ls_remote.return_value = 'teuth_hash'
         m_isdir.return_value = True
         m_teuth_config.teuthology_path = None
         got_config, teuth_bin_path = worker.prep_job(
@@ -207,9 +208,9 @@ class TestWorker(object):
             config['job_id'],
         )
         assert got_config['teuthology_branch'] == 'main'
-        m_fetch_teuthology.assert_called_once_with_args(branch='main')
+        m_fetch_teuthology.assert_called_once_with(branch='main', commit='teuth_hash')
         assert teuth_bin_path == '/teuth/path/virtualenv/bin'
-        m_fetch_qa_suite.assert_called_once_with_args(branch='main')
+        m_fetch_qa_suite.assert_called_once_with('main', 'suite_hash')
         assert got_config['suite_path'] == '/suite/path'
 
     def build_fake_jobs(self, m_connection, m_job, job_bodies):
@@ -220,12 +221,11 @@ class TestWorker(object):
         And a list of basic job bodies, return a list of mocked Job objects
         """
         # Make sure instantiating m_job returns a new object each time
-        m_job.side_effect = lambda **kwargs: Mock(spec=beanstalkc.Job)
         jobs = []
         job_id = 0
         for job_body in job_bodies:
             job_id += 1
-            job = m_job(conn=m_connection, jid=job_id, body=job_body)
+            job = MagicMock(conn=m_connection, jid=job_id, body=job_body)
             job.jid = job_id
             job.body = job_body
             jobs.append(job)

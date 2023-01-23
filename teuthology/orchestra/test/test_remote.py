@@ -61,7 +61,8 @@ class TestRemote(object):
         rem._runner = m_run
         result = rem.run(args=args)
         m_transport.getpeername.assert_called_once_with()
-        m_run.assert_called_once_with(args=args)
+        m_run_call_kwargs = m_run.call_args_list[0][1]
+        assert m_run_call_kwargs['args'] == args
         assert result is proc
         assert result.remote is rem
 
@@ -101,7 +102,7 @@ class TestRemote(object):
         stdout.seek(0)
         proc = RemoteProcess(
             client=self.m_ssh,
-            args='fakey',
+            args=args,
             )
         proc._stdout_buf = Mock()
         proc._stdout_buf.channel = Mock()
@@ -111,15 +112,12 @@ class TestRemote(object):
         m_run.return_value = proc
         r = remote.Remote(name='jdoe@xyzzy.example.com', ssh=self.m_ssh)
         r._runner = m_run
-        m_transport.getpeername.assert_called_once_with()
-        proc._stdout_buf.channel.recv_exit_status.assert_called_once_with()
-        m_run.assert_called_once_with(
-            client=self.m_ssh,
-            args=args,
-            stdout=BytesIO(),
-            name=r.shortname,
-        )
         assert r.arch == 'test_arch'
+        assert len(m_run.call_args_list) == 1
+        m_run_call_kwargs = m_run.call_args_list[0][1]
+        assert m_run_call_kwargs['client'] == self.m_ssh
+        assert m_run_call_kwargs['name'] == r.shortname
+        assert m_run_call_kwargs['args'] == ' '.join(args)
 
     def test_host_key(self):
         m_key = MagicMock()

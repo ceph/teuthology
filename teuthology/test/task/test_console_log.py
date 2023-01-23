@@ -73,16 +73,20 @@ class TestConsoleLog(TestTask):
     def test_begin(self, m_pconsole):
         with self.klass(self.ctx, self.task_config) as task:
             assert len(task.processes) == len(self.ctx.cluster.remotes)
+            expected_log_paths = []
             for remote in task.cluster.remotes.keys():
-                dest_path = os.path.join(
-                    self.ctx.archive, '%s.log' % remote.shortname)
-                remote.console.spawn_sol_log.assert_called_once_with(
-                        dest_path=dest_path)
+                expected_log_paths.append(
+                    os.path.join(self.ctx.archive, 'console_logs', '%s.log' % remote.shortname)
+                )
+            assert len(m_pconsole().spawn_sol_log.call_args_list) == len(task.cluster.remotes)
+            got_log_paths = [c[0][0] for c in m_pconsole().spawn_sol_log.call_args_list]
+            assert got_log_paths == expected_log_paths
 
     @patch('teuthology.orchestra.console.PhysicalConsole')
     def test_end(self, m_pconsole):
-        with self.klass(self.ctx, self.task_config) as task:
+        m_proc = m_pconsole().spawn_sol_log.return_value
+        m_proc.poll.return_value = None
+        with self.klass(self.ctx, self.task_config):
             pass
-        for proc in task.processes.values():
-            proc.terminate.assert_called_once_with()
-            proc.kill.assert_called_once_with()
+        assert len(m_proc.terminate.call_args_list) == len(self.ctx.cluster.remotes)
+        assert len(m_proc.kill.call_args_list) == len(self.ctx.cluster.remotes)

@@ -66,9 +66,9 @@ class TestCluster(object):
                 (r2, ['baz']),
                 ],
             )
-        r1.run.assert_called_once_with(args=['test'])
-        r2.run.assert_called_once_with(args=['test'])
         got = c.run(args=['test'])
+        r1.run.assert_called_once_with(args=['test'], wait=True)
+        r2.run.assert_called_once_with(args=['test'], wait=True)
         assert len(got) == 2
         assert got, [ret1 == ret2]
         # check identity not equality

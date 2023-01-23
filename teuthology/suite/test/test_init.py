@@ -77,13 +77,14 @@ def test_wait_success(m_get_jobs, caplog):
 
     in_progress = deepcopy(results)
     assert 0 == suite.wait('name', 1, 'http://UPLOAD_URL')
-    assert m_get_jobs.called_with('name', fields=['job_id', 'status'])
+    m_get_jobs.assert_any_call('name', fields=['job_id', 'status'])
     assert 0 == len(in_progress)
     assert 'fail http://UPLOAD_URL/name/2' in caplog.text
 
+    m_get_jobs.reset_mock()
     in_progress = deepcopy(results)
     assert 0 == suite.wait('name', 1, None)
-    assert m_get_jobs.called_with('name', fields=['job_id', 'status'])
+    m_get_jobs.assert_any_call('name', fields=['job_id', 'status'])
     assert 0 == len(in_progress)
     assert 'fail http://URL2' in caplog.text
 
