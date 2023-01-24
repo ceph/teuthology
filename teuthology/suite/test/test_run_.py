@@ -308,7 +308,7 @@ class TestScheduleSuite(object):
         )
         m_write_rerun_memo.assert_called_once_with()
 
-    @patch('teuthology.suite.util.find_git_parent')
+    @patch('teuthology.suite.util.find_git_parents')
     @patch('teuthology.suite.run.Run.schedule_jobs')
     @patch('teuthology.suite.util.has_packages_for_distro')
     @patch('teuthology.suite.util.get_package_versions')
@@ -331,7 +331,7 @@ class TestScheduleSuite(object):
         m_get_package_versions,
         m_has_packages_for_distro,
         m_schedule_jobs,
-        m_find_git_parent,
+        m_find_git_parents,
     ):
         m_get_arch.return_value = 'x86_64'
         m_git_validate_sha1.return_value = self.args.ceph_sha1
@@ -350,7 +350,7 @@ class TestScheduleSuite(object):
             False for i in range(11)
         ]
 
-        m_find_git_parent.side_effect = lambda proj, sha1: sha1 + '^'
+        m_find_git_parents.side_effect = lambda proj, sha1, count: [f"{sha1}_{i}" for i in range(11)]
 
         self.args.newest = 10
         runobj = self.klass(self.args)
@@ -358,11 +358,11 @@ class TestScheduleSuite(object):
         with pytest.raises(ScheduleFailError) as exc:
             runobj.schedule_suite()
         assert 'Exceeded 10 backtracks' in str(exc.value)
-        m_find_git_parent.assert_has_calls(
-            [call('ceph', 'ceph_sha1' + i * '^') for i in range(10)]
+        m_find_git_parents.assert_has_calls(
+            [call('ceph', 'ceph_sha1', 10)]
         )
 
-    @patch('teuthology.suite.util.find_git_parent')
+    @patch('teuthology.suite.util.find_git_parents')
     @patch('teuthology.suite.run.Run.schedule_jobs')
     @patch('teuthology.suite.run.Run.write_rerun_memo')
     @patch('teuthology.suite.util.has_packages_for_distro')
@@ -387,7 +387,7 @@ class TestScheduleSuite(object):
         m_has_packages_for_distro,
         m_write_rerun_memo,
         m_schedule_jobs,
-        m_find_git_parent,
+        m_find_git_parents,
     ):
         m_get_arch.return_value = 'x86_64'
         # rig has_packages_for_distro to fail this many times, so
@@ -409,7 +409,7 @@ class TestScheduleSuite(object):
         m_has_packages_for_distro.side_effect = \
             [False for i in range(NUM_FAILS)] + [True]
 
-        m_find_git_parent.side_effect = lambda proj, sha1: sha1 + '^'
+        m_find_git_parents.side_effect = lambda proj, sha1, count: [f"{sha1}_{i}" for i in range(NUM_FAILS)]
 
         self.args.newest = 10
         runobj = self.klass(self.args)
@@ -417,9 +417,9 @@ class TestScheduleSuite(object):
         count = runobj.schedule_suite()
         assert count == 1
         m_has_packages_for_distro.assert_has_calls(
-            [call('ceph_sha1' + '^' * i, 'ubuntu', '14.04', 'default', {})
-             for i in range(NUM_FAILS+1)]
+            [call(f"ceph_sha1_{i}", 'ubuntu', '14.04', 'default', {})
+             for i in range(NUM_FAILS)]
         )
-        m_find_git_parent.assert_has_calls(
-            [call('ceph', 'ceph_sha1' + i * '^') for i in range(NUM_FAILS)]
+        m_find_git_parents.assert_has_calls(
+            [call('ceph', 'ceph_sha1', 10)]
         )

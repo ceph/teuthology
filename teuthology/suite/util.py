@@ -463,15 +463,15 @@ def teuthology_schedule(args, verbose, dry_run, log_prefix='', stdin=None):
         else:
             p.communicate()
 
-def find_git_parent(project, sha1):
+def find_git_parents(project: str, sha1: str, count=1):
 
     base_url = config.githelper_base_url
     if not base_url:
         log.warning('githelper_base_url not set, --newest disabled')
-        return None
+        return []
 
     def refresh(project):
-        url = '%s/%s.git/refresh' % (base_url, project)
+        url = '%s/%s.git/refresh/' % (base_url, project)
         resp = requests.get(url)
         if not resp.ok:
             log.error('git refresh failed for %s: %s',
@@ -489,11 +489,10 @@ def find_git_parent(project, sha1):
                        int(count), sha1, project, resp.json()['error'])
         return sha1s
 
-    # XXX don't do this every time?..
     refresh(project)
-    # we want the one just before sha1; list two, return the second
-    sha1s = get_sha1s(project, sha1, 2)
-    if len(sha1s) == 2:
-        return sha1s[1]
-    else:
-        return None
+    # index 0 will be the commit whose parents we want to find.
+    # So we will query for count+1, and strip index 0 from the result.
+    sha1s = get_sha1s(project, sha1, count + 1)
+    if sha1s:
+        return sha1s[1:]
+    return []

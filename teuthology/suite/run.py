@@ -644,16 +644,16 @@ Note: If you still want to go ahead, use --job-threshold 0'''
         # if not, do it once
         backtrack = 0
         limit = self.args.newest
+        sha1s = []
         while backtrack <= limit:
             jobs_missing_packages, jobs_to_schedule = \
                 self.collect_jobs(arch, configs, self.args.newest, job_limit)
             if jobs_missing_packages and self.args.newest:
-                new_sha1 = \
-                    util.find_git_parent('ceph', self.base_config.sha1)
-                if new_sha1 is None:
+                if not sha1s:
+                    sha1s = util.find_git_parents('ceph', str(self.base_config.sha1), self.args.newest)
+                if not sha1s:
                     util.schedule_fail('Backtrack for --newest failed', name, dry_run=self.args.dry_run)
-                 # rebuild the base config to resubstitute sha1
-                self.config_input['ceph_hash'] = new_sha1
+                self.config_input['ceph_hash'] = sha1s.pop(0)
                 self.base_config = self.build_base_config()
                 backtrack += 1
                 continue
