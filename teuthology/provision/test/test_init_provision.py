@@ -19,7 +19,7 @@ test_config = dict(
 
 class TestInitProvision(object):
 
-    def setup(self):
+    def setup_method(self):
         config.load(deepcopy(test_config))
 
     def test_get_reimage_types(self):
@@ -37,10 +37,10 @@ class TestInitProvision(object):
             teuthology.provision.reimage(ctx, 'f.q.d.n.org', 'not-defined-type')
         e_str = str(e_info)
         print("Caught exception: " +  e_str)
-        assert e_str.find("configured\sprovisioners") == -1
+        assert e_str.find(r"configured\sprovisioners") == -1
 
         with raises(Exception) as e_info:
             teuthology.provision.reimage(ctx, 'f.q.d.n.org', 'common_type')
         e_str = str(e_info)
         print("Caught exception: " +  e_str)
-        assert e_str.find("used\swith\sone\sprovisioner\sonly") == -1
+        assert e_str.find(r"used\swith\sone\sprovisioner\sonly") == -1

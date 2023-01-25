@@ -5,7 +5,7 @@ from logging import ERROR
 
 class TestSafeWhile(object):
 
-    def setup(self):
+    def setup_method(self):
         contextutil.log.setLevel(ERROR)
         self.fake_sleep = lambda s: True
         self.s_while = contextutil.safe_while

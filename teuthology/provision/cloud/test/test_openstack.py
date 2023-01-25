@@ -76,7 +76,7 @@ def get_fake_obj(mock_args=None, attributes=None):
 
 
 class TestOpenStackBase(object):
-    def setup(self):
+    def setup_method(self):
         config.load(dict(libcloud=deepcopy(test_config)))
         self.start_patchers()
 
@@ -159,7 +159,7 @@ class TestOpenStackBase(object):
             self.mocks[name] = patcher.start()
         self.mocks['m_get_endpoint'].return_value = 'endpoint'
 
-    def teardown(self):
+    def teardown_method(self):
         for patcher in self.patchers.values():
             patcher.stop()
 
@@ -671,7 +671,7 @@ class TestOpenStackProvisioner(TestOpenStackBase):
             obj.provider.driver.create_volume.side_effect = Exception
             with patch.object(obj, '_destroy_volumes'):
                 assert obj.create() is False
-                assert obj._destroy_volumes.called_once_with()
+                obj._destroy_volumes.assert_called_once_with()
 
     def test_update_dns(self):
         config.nsupdate_url = 'nsupdate_url'
@@ -702,7 +702,7 @@ class TestOpenStackProvisioner(TestOpenStackBase):
                 assert result is True
             else:
                 for node in nodes:
-                    assert node.destroy.called_once_with()
+                    node.destroy.assert_called_once_with()
 
     _volume_matrix = (
         'count, size, should_succeed',

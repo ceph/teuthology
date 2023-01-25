@@ -6,7 +6,7 @@ from teuthology import provision
 
 class TestVpsOsVersionParamCheck(object):
 
-    def setup(self):
+    def setup_method(self):
         self.fake_ctx = Mock()
         self.fake_ctx.machine_type = 'vps'
         self.fake_ctx.num_to_lock = 1

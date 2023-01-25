@@ -3,7 +3,7 @@ from teuthology.config import config
 
 class TestOpenStack(object):
 
-    def setup(self):
+    def setup_method(self):
         self.openstack_config = config['openstack']
 
     def test_config_clone(self):

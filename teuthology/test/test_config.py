@@ -4,7 +4,7 @@ from teuthology import config
 
 
 class TestYamlConfig(object):
-    def setup(self):
+    def setup_method(self):
         self.test_class = config.YamlConfig
 
     def test_set_multiple(self):
@@ -79,7 +79,7 @@ class TestYamlConfig(object):
 
 
 class TestTeuthologyConfig(TestYamlConfig):
-    def setup(self):
+    def setup_method(self):
         self.test_class = config.TeuthologyConfig
 
     def test_get_ceph_git_base_default(self):
@@ -112,12 +112,12 @@ class TestTeuthologyConfig(TestYamlConfig):
 
 
 class TestJobConfig(TestYamlConfig):
-    def setup(self):
+    def setup_method(self):
         self.test_class = config.JobConfig
 
 
 class TestFakeNamespace(TestYamlConfig):
-    def setup(self):
+    def setup_method(self):
         self.test_class = config.FakeNamespace
 
     def test_docopt_dict(self):

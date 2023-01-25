@@ -2,7 +2,7 @@ from teuthology.dispatcher import supervisor
 from unittest.mock import patch
 
 class TestCheckReImageFailureMarkDown(object):
-    def setup(self):
+    def setup_method(self):
         self.the_function = supervisor.check_for_reimage_failures_and_mark_down
 
     def create_n_out_of_10_reimage_failed_jobs(self, n):

@@ -7,7 +7,7 @@ class Mock:
 
 class TestGetDistroVersion(object):
 
-    def setup(self):
+    def setup_method(self):
         self.fake_ctx = Mock()
         self.fake_ctx.config = {}
         self.fake_ctx_noarg = Mock()

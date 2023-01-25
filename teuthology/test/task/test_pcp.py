@@ -21,7 +21,7 @@ pcp_host = 'http://pcp.front.sepia.ceph.com:44323/'
 class TestPCPDataSource(object):
     klass = PCPDataSource
 
-    def setup(self):
+    def setup_method(self):
         config.pcp_host = pcp_host
 
     def test_init(self):
@@ -231,7 +231,7 @@ class TestPCPTask(TestTask):
     klass = PCP
     task_name = 'pcp'
 
-    def setup(self):
+    def setup_method(self):
         self.ctx = FakeNamespace()
         self.ctx.cluster = Cluster()
         self.ctx.cluster.add(Remote('user@remote1'), ['role1'])

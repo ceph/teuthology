@@ -118,7 +118,7 @@ def remove_osd_tmpfs(ctx):
     log.info('Unmount any osd tmpfs dirs...')
     ctx.cluster.run(
         args=[
-            'egrep', 'tmpfs\s+/mnt', '/etc/mtab', run.Raw('|'),
+            'egrep', r'tmpfs\s+/mnt', '/etc/mtab', run.Raw('|'),
             'awk', '{print $2}', run.Raw('|'),
             'xargs', '-r',
             'sudo', 'umount', run.Raw(';'),
@@ -229,7 +229,7 @@ def remove_yum_timedhosts(ctx):
         if remote.os.package_type != 'rpm':
             continue
         remote.run(
-            args="sudo find /var/cache/yum -name 'timedhosts' -exec rm {} \;",
+            args=r"sudo find /var/cache/yum -name 'timedhosts' -exec rm {} \;",
             check_status=False, timeout=180
         )
 

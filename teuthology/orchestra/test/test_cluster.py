@@ -66,9 +66,9 @@ class TestCluster(object):
                 (r2, ['baz']),
                 ],
             )
-        assert r1.run.called_once_with(args=['test'])
-        assert r2.run.called_once_with(args=['test'])
         got = c.run(args=['test'])
+        r1.run.assert_called_once_with(args=['test'], wait=True)
+        r2.run.assert_called_once_with(args=['test'], wait=True)
         assert len(got) == 2
         assert got, [ret1 == ret2]
         # check identity not equality
@@ -203,7 +203,7 @@ class TestCluster(object):
 
 class TestWriteFile(object):
     """ Tests for cluster.write_file """
-    def setup(self):
+    def setup_method(self):
         self.r1 = remote.Remote('r1', ssh=Mock())
         self.c = cluster.Cluster(
             remotes=[

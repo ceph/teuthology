@@ -4,7 +4,7 @@ from teuthology import provision
 
 
 class TestDownburst(object):
-    def setup(self):
+    def setup_method(self):
         self.ctx = Mock()
         self.ctx.os_type = 'rhel'
         self.ctx.os_version = '7.0'

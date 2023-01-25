@@ -2,7 +2,6 @@ import logging
 from textwrap import dedent
 
 from mock import patch, MagicMock
-from unittest import TestCase
 
 from teuthology.suite import build_matrix
 from teuthology.suite.merge import config_merge
@@ -10,7 +9,7 @@ from teuthology.test.fake_fs import make_fake_fstools
 
 log = logging.getLogger(__name__)
 
-class TestMerge(TestCase):
+class TestMerge:
     patchpoints = [
         'os.path.exists',
         'os.listdir',
@@ -19,8 +18,7 @@ class TestMerge(TestCase):
         'builtins.open',
     ]
 
-    def setUp(self):
-        log.debug("setUp")
+    def setup_method(self):
         self.mocks = dict()
         self.patchers = dict()
         for ppoint in self.__class__.patchpoints:
@@ -38,8 +36,7 @@ class TestMerge(TestCase):
         for patcher in self.patchers.values():
             patcher.stop()
 
-    def tearDown(self):
-        log.debug("tearDown")
+    def teardown_method(self):
         self.patchers.clear()
         self.mocks.clear()
 
@@ -62,12 +59,12 @@ class TestMerge(TestCase):
         self.start_patchers(fake_fs)
         try:
             result = build_matrix.build_matrix('d0_0')
-            self.assertEqual(len(result), 1)
+            assert 1 == len(result)
             configs = list(config_merge(result))
-            self.assertEqual(len(configs), 1)
+            assert 1 == len(configs)
             desc, frags, yaml = configs[0]
-            self.assertIn("top", yaml)
-            self.assertNotIn("foo", yaml)
+            assert "top" in yaml
+            assert "foo" not in yaml
         finally:
             self.stop_patchers()
 
@@ -94,13 +91,13 @@ class TestMerge(TestCase):
         self.start_patchers(fake_fs)
         try:
             result = build_matrix.build_matrix('d0_0')
-            self.assertEqual(len(result), 2)
+            assert 2 == len(result)
             configs = list(config_merge(result))
-            self.assertEqual(len(configs), 1)
+            assert 1 == len(configs)
             desc, frags, yaml = configs[0]
-            self.assertIn("top", yaml)
-            self.assertIn("baz", yaml)
-            self.assertNotIn("foo", yaml)
+            assert "top" in yaml
+            assert "baz" in yaml
+            assert "foo" not in yaml
         finally:
             self.stop_patchers()
 
@@ -133,13 +130,13 @@ class TestMerge(TestCase):
         self.start_patchers(fake_fs)
         try:
             result = build_matrix.build_matrix('d0_0')
-            self.assertEqual(len(result), 2)
+            assert 2 == len(result)
             configs = list(config_merge(result))
-            self.assertEqual(len(configs), 1)
+            assert 1 == len(configs)
             desc, frags, yaml = configs[0]
-            self.assertIn("top", yaml)
-            self.assertIn("baz", yaml)
-            self.assertNotIn("foo", yaml)
+            assert "top" in yaml
+            assert "baz" in yaml
+            assert "foo" not in yaml
         finally:
             self.stop_patchers()
 
@@ -160,12 +157,12 @@ class TestMerge(TestCase):
         self.start_patchers(fake_fs)
         try:
             result = build_matrix.build_matrix('d0_0')
-            self.assertEqual(len(result), 1)
+            assert 1 == len(result)
             configs = list(config_merge(result))
-            self.assertEqual(len(configs), 1)
+            assert 1 == len(configs)
             desc, frags, yaml = configs[0]
-            self.assertIn("test", yaml)
-            self.assertDictEqual(yaml["test"], {})
+            assert "test" in yaml
+            assert {} == yaml["test"]
         finally:
             self.stop_patchers()
 
@@ -177,6 +174,7 @@ class TestMerge(TestCase):
                 teuthology:
                   postmerge:
                     - |
+                      log.debug(_ENV)
                       log.debug("_ENV contains:")
                       for k,v in pairs(_ENV) do
                         log.debug("_ENV['%s'] = %s", tostring(k), tostring(v))
@@ -226,8 +224,8 @@ class TestMerge(TestCase):
         self.start_patchers(fake_fs)
         try:
             result = build_matrix.build_matrix('d0_0')
-            self.assertEqual(len(result), 1)
+            assert 1 == len(result)
             configs = list(config_merge(result))
-            self.assertEqual(len(configs), 1)
+            assert 1 == len(configs)
         finally:
             self.stop_patchers()

@@ -5,13 +5,13 @@ from teuthology import report
 
 
 class TestSerializer(object):
-    def setup(self):
+    def setup_method(self):
         self.archive = fake_archive.FakeArchive()
         self.archive.setup()
         self.archive_base = self.archive.archive_base
         self.reporter = report.ResultsReporter(archive_base=self.archive_base)
 
-    def teardown(self):
+    def teardown_method(self):
         self.archive.teardown()
 
     def test_all_runs_one_run(self):

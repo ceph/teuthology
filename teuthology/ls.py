@@ -43,7 +43,7 @@ def get_jobs(archive_dir):
     dir_contents = os.listdir(archive_dir)
 
     def is_job_dir(parent, subdir):
-        if (os.path.isdir(os.path.join(parent, subdir)) and re.match('\d+$',
+        if (os.path.isdir(os.path.join(parent, subdir)) and re.match(r'\d+$',
                                                                      subdir)):
             return True
         return False

@@ -1,4 +1,3 @@
-import beanstalkc
 import os
 
 from unittest.mock import patch, Mock, MagicMock
@@ -10,7 +9,7 @@ from teuthology.contextutil import MaxWhileTries
 
 
 class TestWorker(object):
-    def setup(self):
+    def setup_method(self):
         self.ctx = Mock()
         self.ctx.verbose = True
         self.ctx.archive_dir = '/archive/dir'
@@ -178,21 +177,23 @@ class TestWorker(object):
         worker.run_with_watchdog(process, config)
         m_symlink_log.assert_called_with(config["worker_log"], config["archive_path"])
 
+    @patch("teuthology.worker.ls_remote")
     @patch("os.path.isdir")
     @patch("teuthology.worker.fetch_teuthology")
     @patch("teuthology.worker.teuth_config")
     @patch("teuthology.worker.fetch_qa_suite")
-    def test_prep_job(self, m_fetch_qa_suite,
-                      m_teuth_config,
-                      m_fetch_teuthology, m_isdir):
+    def test_prep_job(self, m_fetch_qa_suite, m_teuth_config,
+            m_fetch_teuthology, m_isdir, m_ls_remote):
         config = dict(
             name="the_name",
             job_id="1",
+            suite_sha1="suite_hash",
         )
         archive_dir = '/archive/dir'
         log_file_path = '/worker/log'
         m_fetch_teuthology.return_value = '/teuth/path'
         m_fetch_qa_suite.return_value = '/suite/path'
+        m_ls_remote.return_value = 'teuth_hash'
         m_isdir.return_value = True
         m_teuth_config.teuthology_path = None
         got_config, teuth_bin_path = worker.prep_job(
@@ -207,9 +208,9 @@ class TestWorker(object):
             config['job_id'],
         )
         assert got_config['teuthology_branch'] == 'main'
-        assert m_fetch_teuthology.called_once_with_args(branch='main')
+        m_fetch_teuthology.assert_called_once_with(branch='main', commit='teuth_hash')
         assert teuth_bin_path == '/teuth/path/virtualenv/bin'
-        assert m_fetch_qa_suite.called_once_with_args(branch='main')
+        m_fetch_qa_suite.assert_called_once_with('main', 'suite_hash')
         assert got_config['suite_path'] == '/suite/path'
 
     def build_fake_jobs(self, m_connection, m_job, job_bodies):
@@ -220,12 +221,11 @@ class TestWorker(object):
         And a list of basic job bodies, return a list of mocked Job objects
         """
         # Make sure instantiating m_job returns a new object each time
-        m_job.side_effect = lambda **kwargs: Mock(spec=beanstalkc.Job)
         jobs = []
         job_id = 0
         for job_body in job_bodies:
             job_id += 1
-            job = m_job(conn=m_connection, jid=job_id, body=job_body)
+            job = MagicMock(conn=m_connection, jid=job_id, body=job_body)
             job.jid = job_id
             job.body = job_body
             jobs.append(job)
@@ -269,6 +269,7 @@ class TestWorker(object):
             job.bury.assert_called_once_with()
             job.delete.assert_called_once_with()
 
+    @patch("teuthology.worker.ls_remote")
     @patch("teuthology.worker.report.try_push_job_info")
     @patch("teuthology.worker.run_job")
     @patch("beanstalkc.Job", autospec=True)
@@ -281,7 +282,7 @@ class TestWorker(object):
     def test_main_loop_13925(
         self, m_setup_log_file, m_isdir, m_connect, m_watch_tube,
         m_fetch_teuthology, m_fetch_qa_suite, m_job, m_run_job,
-        m_try_push_job_info,
+        m_try_push_job_info, m_ls_remote,
                        ):
         m_connection = Mock()
         jobs = self.build_fake_jobs(

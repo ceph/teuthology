@@ -73,8 +73,8 @@ dict_templ = {
                 }
             },
             'flavor': Placeholder('flavor'),
-            'log-ignorelist': ['\(MDS_ALL_DOWN\)',
-                              '\(MDS_UP_LESS_THAN_MAX\)'],
+            'log-ignorelist': [r'\(MDS_ALL_DOWN\)',
+                              r'\(MDS_UP_LESS_THAN_MAX\)'],
             'sha1': Placeholder('ceph_hash'),
         },
         'ceph-deploy': {

@@ -40,7 +40,7 @@ import scripts.openstack
 
 class TestOpenStackBase(object):
 
-    def setup(self):
+    def setup_method(self):
         OpenStack.token = None
         OpenStack.token_expires = None
         self.environ = {}
@@ -48,7 +48,7 @@ class TestOpenStackBase(object):
             if k.startswith('OS_'):
                 self.environ[k] = os.environ[k]
 
-    def teardown(self):
+    def teardown_method(self):
         OpenStack.token = None
         OpenStack.token_expires = None
         for k in os.environ.keys():
@@ -1598,8 +1598,8 @@ class TestTeuthologyOpenStack(TestOpenStackBase):
         else:
             self.can_create_floating_ips = False
 
-    def setup(self):
-        super(TestTeuthologyOpenStack, self).setup()
+    def setup_method(self):
+        super(TestTeuthologyOpenStack, self).setup_method()
         self.key_filename = tempfile.mktemp()
         self.key_name = 'teuthology-test'
         self.name = 'teuthology-test'
@@ -1614,8 +1614,8 @@ chmod 600 {key_filename}
                         '--name', self.name,
                         '--verbose']
 
-    def teardown(self):
-        super(TestTeuthologyOpenStack, self).teardown()
+    def teardown_method(self):
+        super(TestTeuthologyOpenStack, self).teardown_method()
         self.clobber()
         os.unlink(self.key_filename)
 

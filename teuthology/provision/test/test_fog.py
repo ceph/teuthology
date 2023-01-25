@@ -19,7 +19,7 @@ test_config = dict(fog=dict(
 class TestFOG(object):
     klass = fog.FOG
 
-    def setup(self):
+    def setup_method(self):
         config.load()
         config.update(deepcopy(test_config))
         self.start_patchers()
@@ -54,7 +54,7 @@ class TestFOG(object):
         for name, patcher in self.patchers.items():
             self.mocks[name] = patcher.start()
 
-    def teardown(self):
+    def teardown_method(self):
         for patcher in self.patchers.values():
             patcher.stop()
 
@@ -88,6 +88,7 @@ class TestFOG(object):
         self.mocks['m_Remote_machine_type'].return_value = 'type1'
         obj = self.klass('name.fqdn', 'type', '1.0')
         host_id = 99
+        task_id = 1234
         with patch.multiple(
             'teuthology.provision.fog.FOG',
             get_host_data=DEFAULT,
@@ -99,26 +100,24 @@ class TestFOG(object):
             _fix_hostname=DEFAULT,
         ) as local_mocks:
             local_mocks['get_host_data'].return_value = dict(id=host_id)
+            local_mocks['schedule_deploy_task'].return_value = task_id
             if not success:
                 local_mocks['wait_for_deploy_task'].side_effect = RuntimeError
                 with raises(RuntimeError):
                     obj.create()
             else:
                 obj.create()
-            assert local_mocks['get_host_data'].called_once_with()
-            assert local_mocks['set_image'].called_once_with(host_id)
-            assert local_mocks['schedule_deploy_task']\
-                .called_once_with(host_id)
-            assert local_mocks['wait_for_deploy_task'].called_once_with()
+            local_mocks['get_host_data'].assert_called_once_with()
+            local_mocks['set_image'].assert_called_once_with(host_id)
+            local_mocks['schedule_deploy_task'].assert_called_once_with(host_id)
+            local_mocks['wait_for_deploy_task'].assert_called_once_with(task_id)
             if success:
-                assert local_mocks['_wait_for_ready'].called_once_with()
-                assert local_mocks['_fix_hostname'].called_once_with()
+                local_mocks['_wait_for_ready'].assert_called_once_with()
+                local_mocks['_fix_hostname'].assert_called_once_with()
             else:
                 assert len(local_mocks['cancel_deploy_task'].call_args_list) == 1
-        assert self.mocks['m_Remote_console']\
-            .return_value.power_off.called_once_with()
-        assert self.mocks['m_Remote_console']\
-            .return_value.power_on.called_once_with()
+        self.mocks['m_Remote_console'].return_value.power_off.assert_called_once_with()
+        self.mocks['m_Remote_console'].return_value.power_on.assert_called_once_with()
 
     def test_do_request(self):
         obj = self.klass('name.fqdn', 'type', '1.0')
@@ -202,8 +201,8 @@ class TestFOG(object):
         ) as local_mocks:
             local_mocks['get_image_data'].return_value = dict(id='13')
             obj.set_image(host_id)
-            assert local_mocks['do_request'].called_once_with(
-                '/host/999', 'put', '{"imageID": "13"}',
+            local_mocks['do_request'].assert_called_once_with(
+                '/host/999', method='PUT', data='{"imageID": 13}',
             )
 
     def test_schedule_deploy_task(self):
@@ -228,7 +227,7 @@ class TestFOG(object):
             local_mocks['get_deploy_tasks'].return_value = host_tasks
             obj = self.klass('name.fqdn', 'type', '1.0')
             result = obj.schedule_deploy_task(host_id)
-            assert local_mocks['get_deploy_tasks'].called_once_with()
+            assert len(local_mocks['get_deploy_tasks'].call_args_list) == 2
         assert len(self.mocks['m_requests_Session_send'].call_args_list) == 3
         assert result == task_id
 
@@ -293,7 +292,7 @@ class TestFOG(object):
             do_request=DEFAULT,
         ) as local_mocks:
             obj.cancel_deploy_task(10)
-            assert local_mocks['do_request'].called_once_with(
+            local_mocks['do_request'].assert_called_once_with(
                 '/task/cancel',
                 method='DELETE',
                 data='{"id": 10}',

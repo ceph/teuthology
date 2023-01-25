@@ -982,14 +982,14 @@ def generate_legacy_grub_entry(remote, newversion):
         if re.match('^title', line):
             titleline = line
             titlelinenum = linenum
-        if re.match('(^\s+)root', line):
+        if re.match(r'(^\s+)root', line):
             rootline = line
-        if re.match('(^\s+)kernel', line):
+        if re.match(r'(^\s+)kernel', line):
             kernelline = line
             for word in line.split(' '):
                 if 'vmlinuz' in word:
                     kernelversion = word.split('vmlinuz-')[-1]
-        if re.match('(^\s+)initrd', line):
+        if re.match(r'(^\s+)initrd', line):
             initline = line
         if (kernelline != '') and (initline != ''):
             break

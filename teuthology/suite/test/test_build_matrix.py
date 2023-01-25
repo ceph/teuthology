@@ -27,7 +27,7 @@ class TestBuildMatrix(object):
         'builtins.open',
     ]
 
-    def setup(self):
+    def setup_method(self):
         self.mocks = dict()
         self.patchers = dict()
         for ppoint in self.__class__.patchpoints:
@@ -45,7 +45,7 @@ class TestBuildMatrix(object):
         for patcher in self.patchers.values():
             patcher.stop()
 
-    def teardown(self):
+    def teardown_method(self):
         self.patchers.clear()
         self.mocks.clear()
 
@@ -673,7 +673,7 @@ class TestSubset(object):
         'builtins.open',
     ]
 
-    def setup(self):
+    def setup_method(self):
         self.mocks = dict()
         self.patchers = dict()
         for ppoint in self.__class__.patchpoints:
@@ -691,7 +691,7 @@ class TestSubset(object):
         for patcher in self.patchers.values():
             patcher.stop()
 
-    def teardown(self):
+    def teardown_method(self):
         self.patchers.clear()
         self.mocks.clear()
 

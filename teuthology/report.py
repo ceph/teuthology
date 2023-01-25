@@ -143,7 +143,7 @@ class ResultsSerializer(object):
             return {}
         jobs = {}
         for item in os.listdir(archive_dir):
-            if not re.match('\d+$', item):
+            if not re.match(r'\d+$', item):
                 continue
             job_id = item
             job_dir = os.path.join(archive_dir, job_id)

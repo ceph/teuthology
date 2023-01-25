@@ -6,7 +6,7 @@ from teuthology.run_tasks import build_email_body as email_body
 from textwrap import dedent
 
 class TestSleepBeforeTeardownEmail(object):
-    def setup(self):
+    def setup_method(self):
         config.results_ui_server = "http://example.com/"
         config.archive_server = "http://qa-proxy.ceph.com/teuthology/"
 

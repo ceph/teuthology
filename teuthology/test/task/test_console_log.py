@@ -15,7 +15,7 @@ class TestConsoleLog(TestTask):
     klass = ConsoleLog
     task_name = 'console_log'
 
-    def setup(self):
+    def setup_method(self):
         teuth_config.ipmi_domain = 'ipmi.domain'
         teuth_config.ipmi_user = 'ipmi_user'
         teuth_config.ipmi_password = 'ipmi_pass'
@@ -45,7 +45,7 @@ class TestConsoleLog(TestTask):
             self.mocks[name] = patcher.start()
         self.mocks['is_vm'].return_value = False
 
-    def teardown(self):
+    def teardown_method(self):
         for patcher in self.patchers.values():
             patcher.stop()
 
@@ -73,16 +73,20 @@ class TestConsoleLog(TestTask):
     def test_begin(self, m_pconsole):
         with self.klass(self.ctx, self.task_config) as task:
             assert len(task.processes) == len(self.ctx.cluster.remotes)
+            expected_log_paths = []
             for remote in task.cluster.remotes.keys():
-                dest_path = os.path.join(
-                    self.ctx.archive, '%s.log' % remote.shortname)
-                assert remote.console.spawn_sol_log.called_once_with(
-                    dest_path=dest_path)
+                expected_log_paths.append(
+                    os.path.join(self.ctx.archive, 'console_logs', '%s.log' % remote.shortname)
+                )
+            assert len(m_pconsole().spawn_sol_log.call_args_list) == len(task.cluster.remotes)
+            got_log_paths = [c[0][0] for c in m_pconsole().spawn_sol_log.call_args_list]
+            assert got_log_paths == expected_log_paths
 
     @patch('teuthology.orchestra.console.PhysicalConsole')
     def test_end(self, m_pconsole):
-        with self.klass(self.ctx, self.task_config) as task:
+        m_proc = m_pconsole().spawn_sol_log.return_value
+        m_proc.poll.return_value = None
+        with self.klass(self.ctx, self.task_config):
             pass
-        for proc in task.processes.values():
-            assert proc.terminate.called_once_with()
-            assert proc.kill.called_once_with()
+        assert len(m_proc.terminate.call_args_list) == len(self.ctx.cluster.remotes)
+        assert len(m_proc.kill.call_args_list) == len(self.ctx.cluster.remotes)

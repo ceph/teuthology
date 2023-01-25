@@ -52,7 +52,7 @@ def host_shortname(hostname):
 
 def canonicalize_hostname(hostname, user='ubuntu'):
     hostname_expr = hostname_expr_templ.format(
-        lab_domain=config.lab_domain.replace('.', '\.'))
+        lab_domain=config.lab_domain.replace('.', r'\.'))
     match = re.match(hostname_expr, hostname)
     if _is_ipv4(hostname) or _is_ipv6(hostname):
         return "%s@%s" % (user, hostname)
@@ -82,7 +82,7 @@ def canonicalize_hostname(hostname, user='ubuntu'):
 def decanonicalize_hostname(hostname):
     lab_domain = ''
     if config.lab_domain:
-        lab_domain='\.' + config.lab_domain.replace('.', '\.')
+        lab_domain=r'\.' + config.lab_domain.replace('.', r'\.')
     hostname_expr = hostname_expr_templ.format(lab_domain=lab_domain)
     match = re.match(hostname_expr, hostname)
     if match:

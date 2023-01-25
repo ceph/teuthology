@@ -23,7 +23,7 @@ from teuthology import packaging
 class TestRun(object):
     klass = run.Run
 
-    def setup(self):
+    def setup_method(self):
         self.args_dict = dict(
             suite='suite',
             suite_branch='suite_branch',
@@ -121,11 +121,13 @@ class TestRun(object):
         assert run.base_config.sha1 == 'ceph_sha1'
         assert run.base_config.branch == 'ceph_branch'
 
+    @patch('teuthology.suite.run.util.git_ls_remote')
     @patch('requests.head')
     @patch('teuthology.suite.util.git_branch_exists')
     @patch('teuthology.suite.util.package_version_for_hash')
     def test_sha1_nonexistent(
         self,
+        m_git_ls_remote,
         m_package_version_for_hash,
         m_git_branch_exists,
         m_requests_head,
@@ -203,7 +205,7 @@ class TestRun(object):
 class TestScheduleSuite(object):
     klass = run.Run
 
-    def setup(self):
+    def setup_method(self):
         self.args_dict = dict(
             suite='suite',
             suite_relpath='',

@@ -83,9 +83,9 @@ class GenericReason(Reason):
         else:
             if "Test failure:" in self.failure_reason:
                 return self.failure_reason == job.get_failure_reason()
-            elif re.search("workunit test (.*)\) on ", self.failure_reason):
-                workunit_name = re.search("workunit test (.*)\) on ", self.failure_reason).group(1)
-                other_match = re.search("workunit test (.*)\) on ", job.get_failure_reason())
+            elif re.search(r"workunit test (.*)\) on ", self.failure_reason):
+                workunit_name = re.search(r"workunit test (.*)\) on ", self.failure_reason).group(1)
+                other_match = re.search(r"workunit test (.*)\) on ", job.get_failure_reason())
                 return other_match is not None and workunit_name == other_match.group(1)
             else:
                 reason_ratio = difflib.SequenceMatcher(None, self.failure_reason, job.get_failure_reason()).ratio()
@@ -357,7 +357,7 @@ class Job(object):
         for line in grep(tlog_path, "command crashed with signal"):
             log.debug("Found a crash indication: {0}".format(line))
             # tasks.ceph.osd.1.plana82.stderr
-            match = re.search("tasks.ceph.([^\.]+).([^\.]+).([^\.]+).stderr", line)
+            match = re.search(r"tasks.ceph.([^\.]+).([^\.]+).([^\.]+).stderr", line)
             if not match:
                 log.warning("Not-understood crash indication {0}".format(line))
                 continue

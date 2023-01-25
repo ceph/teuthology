@@ -86,7 +86,7 @@ class SystemDState(DaemonState):
             self.status_cmd + " | grep 'Main.*code=exited'",
         )
         line = out.strip().split('\n')[-1]
-        exit_code = int(re.match('.*status=(\d+).*', line).groups()[0])
+        exit_code = int(re.match(r'.*status=(\d+).*', line).groups()[0])
         if exit_code:
             self.remote.run(
                 args=self.output_cmd

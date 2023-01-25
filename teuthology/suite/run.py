@@ -294,7 +294,7 @@ class Run(object):
 
     @staticmethod
     def _repo_name(url):
-        return re.sub('\.git$', '', url.split('/')[-1])
+        return re.sub(r'\.git$', '', url.split('/')[-1])
 
     def choose_suite_branch(self):
         suite_repo_name = self.suite_repo_name

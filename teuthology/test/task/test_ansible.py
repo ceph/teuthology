@@ -23,10 +23,7 @@ class TestAnsibleTask(TestTask):
     klass = Ansible
     task_name = 'ansible'
 
-    def setup(self):
-        pass
-
-    def setup_method(self, method):
+    def setup_method(self):
         self.ctx = FakeNamespace()
         self.ctx.cluster = Cluster()
         self.ctx.cluster.add(Remote('user@remote1'), ['role1'])
@@ -450,7 +447,7 @@ class TestAnsibleTask(TestTask):
         task.inventory = 'fake'
         with patch.object(ansible.shutil, 'rmtree') as m_rmtree:
             task.teardown()
-            assert m_rmtree.called_once_with('fake')
+            m_rmtree.assert_called_once_with('fake')
 
     def test_teardown_playbook(self):
         self.task_config.update(dict(
@@ -462,7 +459,7 @@ class TestAnsibleTask(TestTask):
         task.playbook_file.name = 'fake'
         with patch.object(ansible.os, 'remove') as m_remove:
             task.teardown()
-            assert m_remove.called_once_with('fake')
+            m_remove.assert_called_once_with('fake')
 
     def test_teardown_cleanup_with_vars(self):
         self.task_config.update(dict(
@@ -505,8 +502,8 @@ class TestCephLabTask(TestAnsibleTask):
     klass = CephLab
     task_name = 'ansible.cephlab'
 
-    def setup(self):
-        super(TestCephLabTask, self).setup()
+    def setup_method(self):
+        super(TestCephLabTask, self).setup_method()
         self.task_config = dict()
 
     def start_patchers(self):

@@ -8,12 +8,12 @@ from test_cloud_init import dummy_config, dummy_drivers
 
 
 class TestBase(object):
-    def setup(self):
+    def setup_method(self):
         config.load()
         config.libcloud = dummy_config
         cloud.supported_drivers['dummy'] = dummy_drivers
 
-    def teardown(self):
+    def teardown_method(self):
         del cloud.supported_drivers['dummy']
 
 

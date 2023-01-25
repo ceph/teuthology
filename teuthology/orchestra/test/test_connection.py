@@ -6,10 +6,10 @@ from teuthology.orchestra.test.util import assert_raises
 
 
 class TestConnection(object):
-    def setup(self):
+    def setup_method(self):
         self.start_patchers()
 
-    def teardown(self):
+    def teardown_method(self):
         self.stop_patchers()
 
     def start_patchers(self):

@@ -82,7 +82,7 @@ def get_datetime_string(offset_hours=0):
 class TestAuthToken(object):
     klass = util.AuthToken
 
-    def setup(self):
+    def setup_method(self):
         default_expires = get_datetime_string(0)
         self.test_data = dict(
             value='token_value',
@@ -103,7 +103,7 @@ class TestAuthToken(object):
         for name, patcher in self.patchers.items():
             self.mocks[name] = patcher.start()
 
-    def teardown(self):
+    def teardown_method(self):
         for patcher in self.patchers.values():
             patcher.stop()
 

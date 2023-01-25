@@ -11,7 +11,7 @@ class TestTask(object):
     klass = Task
     task_name = 'task'
 
-    def setup(self):
+    def setup_method(self):
         self.ctx = FakeNamespace()
         self.ctx.config = dict()
         self.task_config = dict()
