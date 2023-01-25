@@ -48,6 +48,8 @@ DISTRO_CODENAME_MAP = {
         "15.0": "leap",
         "15.1": "leap",
         "15.2": "leap",
+        "15.3": "leap",
+        "15.4": "leap",
         "42.2": "leap",
         "42.3": "leap",
     },
@@ -58,6 +60,8 @@ DISTRO_CODENAME_MAP = {
         "15.0": "sle",
         "15.1": "sle",
         "15.2": "sle",
+        "15.3": "sle",
+        "15.4": "sle",
     },
 }
 
@@ -65,8 +69,8 @@ DEFAULT_OS_VERSION = dict(
     ubuntu="22.04",
     fedora="25",
     centos="8.stream",
-    opensuse="15.0",
-    sle="15.0",
+    opensuse="15.4",
+    sle="15.2",
     rhel="8.6",
     debian='8.0'
 )
