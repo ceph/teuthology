@@ -1,7 +1,9 @@
 FROM quay.io/centos/centos:stream8
 RUN dnf -y update && \
-    dnf -y reinstall shadow-utils && \
-    dnf -y install podman crun --exclude container-selinux
+    rpm --setcaps shadow-utils 2>/dev/null && \
+    dnf -y install podman crun --exclude container-selinux && \
+    dnf clean all && \
+    rm -rf /var/cache /var/log/dnf* /var/log/yum*
 RUN useradd podman; \
     echo podman:0:5000 > /etc/subuid; \
     echo podman:0:5000 > /etc/subgid; \
