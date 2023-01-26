@@ -19,7 +19,11 @@ ADD https://raw.githubusercontent.com/containers/podman/main/contrib/podmanimage
 RUN chown podman:podman -R /home/podman; \
     echo 'podman:podman' | chpasswd
 RUN chmod 644 /etc/containers/containers.conf; \
-    sed -i -e 's|^#mount_program|mount_program|g' -e '/additionalimage.*/a "/var/lib/shared",' -e 's|^mountopt[[:space:]]*=.*$|mountopt = "nodev,fsync=0"|g' /etc/containers/storage.conf
+    sed -i \
+      -e 's|^#mount_program|mount_program|g' \
+      -e '/additionalimage.*/a "/var/lib/shared",' \
+      -e 's|^mountopt[[:space:]]*=.*$|mountopt = "nodev,fsync=0"|g' \
+      /etc/containers/storage.conf
 RUN mkdir -p /var/lib/shared/overlay-images /var/lib/shared/overlay-layers /var/lib/shared/vfs-images /var/lib/shared/vfs-layers; \
     touch /var/lib/shared/overlay-images/images.lock; \
     touch /var/lib/shared/overlay-layers/layers.lock; \
