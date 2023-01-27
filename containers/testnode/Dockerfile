@@ -1,4 +1,4 @@
-FROM quay.io/centos/centos:stream9
+FROM quay.io/centos/centos:stream8
 RUN dnf -y update && \
     rpm --setcaps shadow-utils 2>/dev/null && \
     dnf -y install podman crun --exclude container-selinux && \
@@ -32,6 +32,7 @@ RUN mkdir -p /var/lib/shared/overlay-images /var/lib/shared/overlay-layers /var/
 ENV _CONTAINERS_USERNS_CONFIGURED=""
 
 RUN dnf -y install \
+    /usr/bin/lsb_release \
     which \
     sudo \
     openssh-clients \
