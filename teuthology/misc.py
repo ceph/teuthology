@@ -1180,29 +1180,19 @@ def stop_daemons_of_type(ctx, type_, cluster='ceph'):
 def get_system_type(remote, distro=False, version=False):
     """
     If distro, return distro.
-    If version, return version (lsb_release -rs)
+    If version, return version
     If both, return both.
     If neither, return 'deb' or 'rpm' if distro is known to be one of those
-    Finally, if unknown, return the unfiltered distro (from lsb_release -is)
     """
-    system_value = remote.sh('sudo lsb_release -is').strip()
-    log.debug("System to be installed: %s" % system_value)
     if version:
-        version = remote.sh('sudo lsb_release -rs').strip()
+        version = remote.os.version
     if distro and version:
-        return system_value.lower(), version
+        return remote.os.name, version
     if distro:
-        return system_value.lower()
+        return remote.os.name
     if version:
         return version
-    if system_value in ['Ubuntu', 'Debian']:
-        return "deb"
-    if system_value in ['CentOS', 'Fedora', 'RedHatEnterpriseServer',
-                        'RedHatEnterprise',
-                        'CentOSStream',
-                        'openSUSE', 'openSUSE project', 'SUSE', 'SUSE LINUX']:
-        return "rpm"
-    return system_value
+    return remote.os.package_type
 
 def get_pkg_type(os_type):
     if os_type in ('centos', 'fedora', 'opensuse', 'rhel', 'sle'):
