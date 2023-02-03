@@ -13,6 +13,7 @@ from teuthology import beanstalk
 from teuthology import report
 from teuthology.config import config as teuth_config
 from teuthology.exceptions import SkipJob
+from teuthology.exit import exiter
 from teuthology.repo_utils import fetch_qa_suite, fetch_teuthology
 from teuthology.lock.ops import block_and_lock_machines
 from teuthology.dispatcher import supervisor
@@ -101,6 +102,13 @@ def main(args):
         fetch_teuthology('main')
     fetch_qa_suite('main')
 
+    got_signal = None
+    def stop_soon(signal, _):
+        nonlocal got_signal
+        got_signal = signal
+
+    exiter.add_handler(15, stop_soon)
+
     keep_running = True
     job_procs = set()
     while keep_running:
@@ -111,10 +119,12 @@ def main(args):
                       result_proc.returncode)
             result_proc = None
 
-        if sentinel(restart_file_path):
-            restart()
+        if got_signal is not None:
+            stop(f"Got signal {got_signal}")
         elif sentinel(stop_file_path):
             stop(f"{stop_file_path} was touched")
+        elif sentinel(restart_file_path):
+            restart()
 
         load_config()
         job_procs = set(filter(lambda p: p.poll() is None, job_procs))
