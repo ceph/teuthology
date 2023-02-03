@@ -40,8 +40,11 @@ def restart():
     os.execv(sys.executable, args)
 
 
-def stop():
-    log.info('Stopping...')
+def stop(reason=""):
+    msg = "Stopping..."
+    if reason:
+        msg = f"{reason}. {msg}"
+    log.info(msg)
     sys.exit(0)
 
 
@@ -111,7 +114,7 @@ def main(args):
         if sentinel(restart_file_path):
             restart()
         elif sentinel(stop_file_path):
-            stop()
+            stop(f"{stop_file_path} was touched")
 
         load_config()
         job_procs = set(filter(lambda p: p.poll() is None, job_procs))
