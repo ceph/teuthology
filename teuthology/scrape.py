@@ -198,12 +198,13 @@ class DeadReason(Reason):
             else:
                 # I have BT but he doesn't, so we're different
                 return False
-
-        if self.last_tlog_line or job.get_last_tlog_line():
+        last_tlog_line = job.get_last_tlog_line()
+        if self.last_tlog_line is not None and last_tlog_line is not None:
             ratio = difflib.SequenceMatcher(None, self.last_tlog_line,
-                                            job.get_last_tlog_line()).ratio()
+                                            last_tlog_line).ratio()
             return ratio > 0.5
-        return True
+        else:
+            return self.last_tlog_line == last_tlog_line
 
 
 class TimeoutReason(Reason):
