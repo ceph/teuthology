@@ -50,6 +50,7 @@ DISTRO_CODENAME_MAP = {
         "15.2": "leap",
         "15.3": "leap",
         "15.4": "leap",
+        "15.5": "leap",
         "42.2": "leap",
         "42.3": "leap",
     },
@@ -62,6 +63,7 @@ DISTRO_CODENAME_MAP = {
         "15.2": "sle",
         "15.3": "sle",
         "15.4": "sle",
+        "15.5": "sle",
     },
 }
 
