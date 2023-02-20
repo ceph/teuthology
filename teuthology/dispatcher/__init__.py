@@ -181,7 +181,11 @@ def main(args):
         run_args.extend(["--job-config", job_config_path])
 
         try:
-            job_proc = subprocess.Popen(run_args)
+            job_proc = subprocess.Popen(
+                run_args,
+                stdout=subprocess.DEVNULL,
+                stdin=subprocess.STDOUT,
+            )
             job_procs.add(job_proc)
             log.info('Job supervisor PID: %s', job_proc.pid)
         except Exception:
