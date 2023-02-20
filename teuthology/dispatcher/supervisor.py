@@ -33,6 +33,7 @@ def main(args):
     archive_dir = args["--archive-dir"]
     teuth_bin_path = args["--bin-path"]
     config_file_path = args["--job-config"]
+    log_file_path = args["--supervisor-log"]
 
     with open(config_file_path, 'r') as config_file:
         job_config = yaml.safe_load(config_file)
@@ -42,8 +43,6 @@ def main(args):
         loglevel = logging.DEBUG
     log.setLevel(loglevel)
 
-    log_file_path = os.path.join(job_config['archive_path'],
-                                 f"supervisor.{job_config['job_id']}.log")
     setup_log_file(log_file_path)
     install_except_hook()
 

@@ -19,6 +19,7 @@ standard arguments:
   -l, --log-dir LOG_DIR          path in which to store logs
   -a DIR, --archive-dir DIR      path to archive results in
   --supervisor                   run dispatcher in job supervisor mode
+  --supervisor-log PATH          in supervisor mode, log to this file
   --bin-path BIN_PATH            teuthology bin path
   --job-config CONFIG            file descriptor of job's config file
   --exit-on-empty-queue          if the queue is empty, exit

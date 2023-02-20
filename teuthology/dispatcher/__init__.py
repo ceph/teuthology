@@ -142,6 +142,10 @@ def main(args):
         log.info('Config is: %s', job.body)
         job_config = yaml.safe_load(job.body)
         job_config['job_id'] = str(job_id)
+        supervisor_log = os.path.join(
+            job_config['archive_path'],
+            f"supervisor.{job_id}.log",
+        )
 
         if job_config.get('stop_worker'):
             keep_running = False
@@ -154,6 +158,7 @@ def main(args):
             )
         except SkipJob:
             continue
+        log.info(f"Archive: {archive_dir}")
 
         # lock machines but do not reimage them
         if 'roles' in job_config:
@@ -165,6 +170,7 @@ def main(args):
             '-v',
             '--bin-path', teuth_bin_path,
             '--archive-dir', archive_dir,
+            '--supervisor-log', supervisor_log,
         ]
 
         # Create run archive directory if not already created and
@@ -187,7 +193,7 @@ def main(args):
                 stdin=subprocess.STDOUT,
             )
             job_procs.add(job_proc)
-            log.info('Job supervisor PID: %s', job_proc.pid)
+            log.info(f"Job supervisor PID: {job_proc.pid}, log: {supervisor_log}")
         except Exception:
             error_message = "Saw error while trying to spawn supervisor."
             log.exception(error_message)
