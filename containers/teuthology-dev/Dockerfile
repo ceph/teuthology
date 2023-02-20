@@ -9,6 +9,7 @@ RUN apt-get update && \
     ipmitool \
     python3-pip \
     python3-venv \
+    systemd \
     vim \
     libev-dev \
     libvirt-dev \
@@ -30,7 +31,9 @@ RUN \
 COPY containers/teuthology-dev/containerized_node.yaml /teuthology
 COPY containers/teuthology-dev/.teuthology.yaml /root
 COPY containers/teuthology-dev/teuthology.sh /
+COPY containers/teuthology-dev/teuthology-dispatcher@.service /etc/systemd/system/
 RUN \
+    systemctl enable teuthology-dispatcher@machinetype && \
     mkdir $HOME/.ssh && \
     touch $HOME/.ssh/id_rsa && \
     chmod 600 $HOME/.ssh/id_rsa && \

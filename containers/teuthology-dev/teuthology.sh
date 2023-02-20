@@ -35,7 +35,4 @@ if [ "$TEUTHOLOGY_SUITE" != "none" ]; then
     teuthology-queue -m $MACHINE_TYPE -s | \
       python3 -c "import sys, json; assert json.loads(sys.stdin.read())['count'] > 0, 'queue is empty!'"
 fi
-teuthology-dispatcher -v \
-    --log-dir /teuthology/log \
-    --tube $MACHINE_TYPE \
-    $DISPATCHER_EXIT_FLAG
+exec /usr/lib/systemd/systemd --system
