@@ -1,4 +1,3 @@
-import getpass
 import logging
 import os
 import psutil
@@ -7,6 +6,7 @@ import sys
 import yaml
 
 from datetime import datetime
+from typing import Dict, List
 
 from teuthology import setup_log_file, install_except_hook
 from teuthology import beanstalk
@@ -72,7 +72,7 @@ def main(args):
         archive_dir = teuth_config.archive_base
 
     # Refuse to start more than one dispatcher per machine type
-    procs = find_dispatcher_processes(tube)
+    procs = find_dispatcher_processes().get(tube)
     if procs:
         raise RuntimeError(
             "There is already a teuthology-dispatcher process running:"
@@ -194,11 +194,8 @@ def main(args):
     return max(returncodes)
 
 
-def find_dispatcher_processes(machine_type):
-    user = getpass.getuser()
+def find_dispatcher_processes() -> Dict[str, List[psutil.Process]] :
     def match(proc):
-        if proc.username() != user:
-            return False
         cmdline = proc.cmdline()
         if len(cmdline) < 3:
             return False
@@ -206,14 +203,20 @@ def find_dispatcher_processes(machine_type):
             return False
         if cmdline[2] == "--supervisor":
             return False
-        if machine_type not in cmdline:
+        if "--tube" not in cmdline:
             return False
         if proc.pid == os.getpid():
             return False
         return True
 
-    attrs = ["pid", "username", "cmdline"]
-    procs = list(filter(match, psutil.process_iter(attrs=attrs)))
+    procs = {}
+    attrs = ["pid", "cmdline"]
+    for proc in psutil.process_iter(attrs=attrs):
+        if not match(proc):
+            continue
+        cmdline = proc.cmdline()
+        machine_type = cmdline[cmdline.index("--tube") + 1]
+        procs.setdefault(machine_type, []).append(proc)
     return procs
 
 
