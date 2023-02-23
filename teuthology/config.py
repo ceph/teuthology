@@ -191,6 +191,7 @@ class TeuthologyConfig(YamlConfig):
         },
         'rocketchat': None,
         'sleep_before_teardown': 0,
+        'ssh_key': None,
     }
 
     def __init__(self, yaml_path=None):

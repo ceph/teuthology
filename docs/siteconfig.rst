@@ -226,6 +226,10 @@ Here is a sample configuration with many of the options set and documented::
     conserver_master: conserver.front.sepia.ceph.com
     conserver_port: 3109
 
+    # Optionally use a specific SSH private key to connect to test nodes.
+    # Takes precedence over any entries in ~/.ssh/config.
+    ssh_key: ~/.ssh/my_key.rsa
+
     # Settings for [nsupdate-web](https://github.com/zmc/nsupdate-web)
     # Used by the [libcloud](https://libcloud.apache.org/) backend
     nsupdate_url: http://nsupdate.front.sepia.ceph.com/update

@@ -79,8 +79,9 @@ def connect(user_at_host, host_key=None, keep_alive=False, timeout=60,
         timeout=timeout
     )
 
+    key_filename = key_filename or config.ssh_key
     ssh_config_path = os.path.expanduser("~/.ssh/config")
-    if os.path.exists(ssh_config_path):
+    if not key_filename and os.path.exists(ssh_config_path):
         ssh_config = paramiko.SSHConfig()
         ssh_config.parse(open(ssh_config_path))
         opts = ssh_config.lookup(host)
