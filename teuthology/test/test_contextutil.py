@@ -66,3 +66,9 @@ class TestSafeWhile(object):
                 pass
 
         assert True
+
+    def test_tries(self):
+        attempts = 0
+        with self.s_while(tries=-1, _sleeper=self.fake_sleep) as proceed:
+            while attempts < 100 and proceed():
+                attempts += 1
