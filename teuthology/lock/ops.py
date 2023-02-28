@@ -327,7 +327,7 @@ def reimage_machines(ctx, machines, machine_type):
     return reimaged
 
 
-def block_and_lock_machines(ctx, total_requested, machine_type, reimage=True):
+def block_and_lock_machines(ctx, total_requested, machine_type, reimage=True, tries=10):
     # It's OK for os_type and os_version to be None here.  If we're trying
     # to lock a bare metal machine, we'll take whatever is available.  If
     # we want a vps, defaults will be provided by misc.get_distro and
@@ -347,8 +347,13 @@ def block_and_lock_machines(ctx, total_requested, machine_type, reimage=True):
     requested = total_requested
     while True:
         # get a candidate list of machines
-        machines = query.list_locks(machine_type=machine_type, up=True,
-                                    locked=False, count=requested + reserved)
+        machines = query.list_locks(
+            machine_type=machine_type,
+            up=True,
+            locked=False,
+            count=requested + reserved,
+            tries=tries,
+        )
         if machines is None:
             if ctx.block:
                 log.error('Error listing machines, trying again')
