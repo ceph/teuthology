@@ -12,7 +12,7 @@ import teuthology
 from teuthology import report
 from teuthology import safepath
 from teuthology.config import config as teuth_config
-from teuthology.exceptions import SkipJob
+from teuthology.exceptions import SkipJob, MaxWhileTries
 from teuthology import setup_log_file, install_except_hook
 from teuthology.lock.ops import reimage_machines
 from teuthology.misc import get_user, archive_logs, compress_logs
@@ -299,7 +299,10 @@ def run_with_watchdog(process, job_config):
                 log.exception('Failed to kill job and unlock machines')
 
         # calling this without a status just updates the jobs updated time
-        report.try_push_job_info(job_info)
+        try:
+            report.try_push_job_info(job_info)
+        except MaxWhileTries:
+            log.exception("Failed to report job status; ignoring")
         time.sleep(teuth_config.watchdog_interval)
 
     # we no longer support testing theses old branches
