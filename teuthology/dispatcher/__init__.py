@@ -220,8 +220,13 @@ def find_dispatcher_processes(machine_type):
 def lock_machines(job_config):
     report.try_push_job_info(job_config, dict(status='running'))
     fake_ctx = supervisor.create_fake_context(job_config, block=True)
-    block_and_lock_machines(fake_ctx, len(job_config['roles']),
-                            job_config['machine_type'], reimage=False)
+    block_and_lock_machines(
+        fake_ctx,
+        len(job_config['roles']),
+        job_config['machine_type'],
+        tries=-1,
+        reimage=False,
+    )
     job_config = fake_ctx.config
     return job_config
 

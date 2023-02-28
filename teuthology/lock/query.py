@@ -51,7 +51,7 @@ def is_vm(name=None, status=None):
     return status.get('is_vm', False)
 
 
-def list_locks(keyed_by_name=False, **kwargs):
+def list_locks(keyed_by_name=False, tries=10, **kwargs):
     uri = os.path.join(config.lock_server, 'nodes', '')
     for key, value in kwargs.items():
         if kwargs[key] is False:
@@ -63,7 +63,11 @@ def list_locks(keyed_by_name=False, **kwargs):
             kwargs['machine_type'] = kwargs['machine_type'].replace(',','|')
         uri += '?' + urlencode(kwargs)
     with safe_while(
-            sleep=1, increment=0.5, action='list_locks') as proceed:
+            sleep=1,
+            increment=0.5,
+            tries=-1,
+            action='list_locks'
+    ) as proceed:
         while proceed():
             try:
                 response = requests.get(uri)
