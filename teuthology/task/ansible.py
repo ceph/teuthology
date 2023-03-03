@@ -262,7 +262,10 @@ class Ansible(Task):
 
     def begin(self):
         super(Ansible, self).begin()
-        self.execute_playbook()
+        if len(self.cluster.remotes) > 0:
+            self.execute_playbook()
+        else:
+            log.info("There are no remotes; skipping playbook execution")
 
     def execute_playbook(self, _logfile=None):
         """
