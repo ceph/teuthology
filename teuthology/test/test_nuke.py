@@ -80,66 +80,48 @@ class TestNuke(object):
         #
         # A node is not of type openstack is left untouched
         #
-        with patch.multiple(
-                nuke,
-                unlock_one=DEFAULT,
-                ) as m:
-            nuke.stale_openstack_nodes(ctx, {
-            }, {
-                name: { 'locked_since': now,
-                        'machine_type': 'mira', },
-            })
-            m['unlock_one'].assert_not_called()
+        with patch("teuthology.lock.ops.unlock_one") as m_unlock_one:
+            nuke.stale_openstack_nodes(
+                ctx,
+                {},
+                {name: {'locked_since': now, 'machine_type': 'mira'}},
+            )
+            m_unlock_one.assert_not_called()
         #
         # A node that was just locked and does not have
         # an instance yet is left untouched
         #
-        with patch.multiple(
-                nuke,
-                unlock_one=DEFAULT,
-                ) as m:
-            nuke.stale_openstack_nodes(ctx, {
-            }, {
-                name: { 'locked_since': now,
-                        'machine_type': 'openstack', },
-            })
-            m['unlock_one'].assert_not_called()
+        with patch("teuthology.lock.ops.unlock_one") as m_unlock_one:
+            nuke.stale_openstack_nodes(
+                ctx,
+                {},
+                {name: {'locked_since': now, 'machine_type': 'openstack'}},
+            )
+            m_unlock_one.assert_not_called()
         #
         # A node that has been locked for some time and
         # has no instance is unlocked.
         #
         ancient = "2000-11-02 15:43:12.000000"
         me = 'loic@dachary.org'
-        with patch.multiple(
-                nuke,
-                unlock_one=DEFAULT,
-                ) as m:
-            nuke.stale_openstack_nodes(ctx, {
-            }, {
-                name: { 'locked_since': ancient,
-                        'locked_by': me,
-                        'machine_type': 'openstack', },
-            })
-            m['unlock_one'].assert_called_with(
-                ctx, name, me)
+        with patch("teuthology.lock.ops.unlock_one") as m_unlock_one:
+            nuke.stale_openstack_nodes(
+                ctx,
+                {},
+                {name: {'locked_since': ancient, 'locked_by': me, 'machine_type': 'openstack'}},
+            )
+            m_unlock_one.assert_called_with(ctx, name, me)
         #
         # A node that has been locked for some time and
         # has an instance is left untouched
         #
-        with patch.multiple(
-                nuke,
-                unlock_one=DEFAULT,
-                ) as m:
-            nuke.stale_openstack_nodes(ctx, {
-                uuid: {
-                    'ID': uuid,
-                    'Name': name,
-                },
-            }, {
-                name: { 'locked_since': ancient,
-                        'machine_type': 'openstack', },
-            })
-            m['unlock_one'].assert_not_called()
+        with patch("teuthology.lock.ops.unlock_one") as m_unlock_one:
+            nuke.stale_openstack_nodes(
+                ctx,
+                {uuid: {'ID': uuid, 'Name': name}},
+                {name: {'locked_since': ancient, 'machine_type': 'openstack'}},
+            )
+            m_unlock_one.assert_not_called()
 
     def test_stale_openstack_instances(self):
         if 'OS_AUTH_URL' not in os.environ:
@@ -231,7 +213,9 @@ class TestNuke(object):
             })
             m['destroy'].assert_not_called()
 
-def test_nuke_internal():
+
+@patch("teuthology.lock.ops.unlock_one")
+def test_nuke_internal(m_unlock_one):
     job_config = dict(
         owner='test_owner',
         targets={'user@host1': 'key1', 'user@host2': 'key2'},
@@ -251,43 +235,42 @@ def test_nuke_internal():
     with patch.multiple(
             nuke,
             nuke_helper=DEFAULT,
-            unlock_one=DEFAULT,
             get_status=lambda i: statuses[i],
             ) as m:
         nuke.nuke(ctx, True)
         m['nuke_helper'].assert_called_with(ANY, True, False, True)
-        m['unlock_one'].assert_called()
+        m_unlock_one.assert_called()
+    m_unlock_one.reset_mock()
 
     # don't unlock
     with patch.multiple(
             nuke,
             nuke_helper=DEFAULT,
-            unlock_one=DEFAULT,
             get_status=lambda i: statuses[i],
             ) as m:
         nuke.nuke(ctx, False)
         m['nuke_helper'].assert_called_with(ANY, False, False, True)
-        m['unlock_one'].assert_not_called()
+        m_unlock_one.assert_not_called()
+    m_unlock_one.reset_mock()
 
     # mimicing what teuthology-dispatcher --supervisor does
     with patch.multiple(
             nuke,
             nuke_helper=DEFAULT,
-            unlock_one=DEFAULT,
             get_status=lambda i: statuses[i],
             ) as m:
         nuke.nuke(ctx, False, True, False, True, False)
         m['nuke_helper'].assert_called_with(ANY, False, True, False)
-        m['unlock_one'].assert_not_called()
+        m_unlock_one.assert_not_called()
+    m_unlock_one.reset_mock()
 
     # no targets
     del ctx.config['targets']
     with patch.multiple(
             nuke,
             nuke_helper=DEFAULT,
-            unlock_one=DEFAULT,
             get_status=lambda i: statuses[i],
             ) as m:
         nuke.nuke(ctx, True)
         m['nuke_helper'].assert_not_called()
-        m['unlock_one'].assert_not_called()
+        m_unlock_one.assert_not_called()

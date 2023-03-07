@@ -8,17 +8,18 @@ import yaml
 from datetime import datetime
 from typing import Dict, List
 
+import teuthology.dispatcher.supervisor as supervisor
+import teuthology.lock.ops as lock_ops
+import teuthology.nuke as nuke
+import teuthology.worker as worker
+
 from teuthology import setup_log_file, install_except_hook
 from teuthology import beanstalk
 from teuthology import report
 from teuthology.config import config as teuth_config
 from teuthology.exceptions import SkipJob
 from teuthology.repo_utils import fetch_qa_suite, fetch_teuthology
-from teuthology.lock.ops import block_and_lock_machines
-from teuthology.dispatcher import supervisor
-from teuthology.worker import prep_job
 from teuthology import safepath
-from teuthology.nuke import nuke
 
 log = logging.getLogger(__name__)
 start_time = datetime.utcnow()
@@ -134,7 +135,7 @@ def main(args):
             keep_running = False
 
         try:
-            job_config, teuth_bin_path = prep_job(
+            job_config, teuth_bin_path = worker.prep_job(
                 job_config,
                 log_file_path,
                 archive_dir,
@@ -175,7 +176,7 @@ def main(args):
             error_message = "Saw error while trying to spawn supervisor."
             log.exception(error_message)
             if 'targets' in job_config:
-                nuke(supervisor.create_fake_context(job_config), True)
+                nuke.nuke(supervisor.create_fake_context(job_config), True)
             report.try_push_job_info(job_config, dict(
                 status='fail',
                 failure_reason=error_message))
@@ -194,7 +195,7 @@ def main(args):
     return max(returncodes)
 
 
-def find_dispatcher_processes() -> Dict[str, List[psutil.Process]] :
+def find_dispatcher_processes() -> Dict[str, List[psutil.Process]]:
     def match(proc):
         cmdline = proc.cmdline()
         if len(cmdline) < 3:
@@ -223,7 +224,7 @@ def find_dispatcher_processes() -> Dict[str, List[psutil.Process]] :
 def lock_machines(job_config):
     report.try_push_job_info(job_config, dict(status='running'))
     fake_ctx = supervisor.create_fake_context(job_config, block=True)
-    block_and_lock_machines(
+    lock_ops.block_and_lock_machines(
         fake_ctx,
         len(job_config['roles']),
         job_config['machine_type'],

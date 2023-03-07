@@ -8,17 +8,17 @@ import requests
 from urllib.parse import urljoin
 from datetime import datetime
 
-import teuthology
+import teuthology.lock.ops as lock_ops
+import teuthology.nuke as nuke
+
 from teuthology import report
 from teuthology import safepath
 from teuthology.config import config as teuth_config
 from teuthology.exceptions import SkipJob, MaxWhileTries
 from teuthology import setup_log_file, install_except_hook
-from teuthology.lock.ops import reimage_machines
 from teuthology.misc import get_user, archive_logs, compress_logs
 from teuthology.config import FakeNamespace
 from teuthology.job_status import get_status
-from teuthology.nuke import nuke
 from teuthology.kill import kill_job
 from teuthology.task.internal import add_remotes
 from teuthology.misc import decanonicalize_hostname as shortname
@@ -165,6 +165,7 @@ def failure_is_reimage(failure_reason):
     else:
         return False
 
+
 def check_for_reimage_failures_and_mark_down(targets, count=10):
     # Grab paddles history of jobs in the machine
     # and count the number of reimaging errors
@@ -173,9 +174,8 @@ def check_for_reimage_failures_and_mark_down(targets, count=10):
     for k, _ in targets.items():
         machine = k.split('@')[-1]
         url = urljoin(
-                base_url,
-                '/nodes/{0}/jobs/?count={1}'.format(
-                machine, count)
+            base_url,
+            '/nodes/{0}/jobs/?count={1}'.format(machine, count)
         )
         resp = requests.get(url)
         jobs = resp.json()
@@ -189,14 +189,15 @@ def check_for_reimage_failures_and_mark_down(targets, count=10):
             continue
         # Mark machine down
         machine_name = shortname(k)
-        teuthology.lock.ops.update_lock(
-	    machine_name,
-	    description='reimage failed {0} times'.format(count),
-	    status='down',
-	)
+        lock_ops.update_lock(
+            machine_name,
+            description='reimage failed {0} times'.format(count),
+            status='down',
+        )
         log.error(
             'Reimage failed {0} times ... marking machine down'.format(count)
         )
+
 
 def reimage(job_config):
     # Reimage the targets specified in job config
@@ -206,12 +207,15 @@ def reimage(job_config):
     report.try_push_job_info(ctx.config, dict(status='waiting'))
     targets = job_config['targets']
     try:
-        reimaged = reimage_machines(ctx, targets, job_config['machine_type'])
+        reimaged = lock_ops.reimage_machines(ctx, targets, job_config['machine_type'])
     except Exception as e:
         log.exception('Reimaging error. Nuking machines...')
         # Reimage failures should map to the 'dead' status instead of 'fail'
-        report.try_push_job_info(ctx.config, dict(status='dead', failure_reason='Error reimaging machines: ' + str(e)))
-        nuke(ctx, True)
+        report.try_push_job_info(
+            ctx.config,
+            dict(status='dead', failure_reason='Error reimaging machines: ' + str(e))
+        )
+        nuke.nuke(ctx, True)
         # Machine that fails to reimage after 10 times will be marked down
         check_for_reimage_failures_and_mark_down(targets)
         raise
@@ -241,18 +245,20 @@ def unlock_targets(job_config):
     if not locked:
         return
     job_status = get_status(job_info)
-    if job_status == 'pass' or \
-            (job_config.get('unlock_on_failure', False) and not job_config.get('nuke-on-error', False)):
+    if job_status == 'pass' or (job_config.get('unlock_on_failure', False)
+                                and not job_config.get('nuke-on-error', False)):
         log.info('Unlocking machines...')
         fake_ctx = create_fake_context(job_config)
         for machine in locked:
-            teuthology.lock.ops.unlock_one(fake_ctx,
-                                           machine, job_info['owner'],
-                                           job_info['archive_path'])
+            lock_ops.unlock_one(
+                fake_ctx,
+                machine, job_info['owner'],
+                job_info['archive_path']
+            )
     if job_status != 'pass' and job_config.get('nuke-on-error', False):
         log.info('Nuking machines...')
         fake_ctx = create_fake_context(job_config)
-        nuke(fake_ctx, True)
+        nuke.nuke(fake_ctx, True)
 
 
 def run_with_watchdog(process, job_config):
