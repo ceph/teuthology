@@ -1,20 +1,34 @@
 import itertools
 import logging
+import os
 import psutil
 import time
 
-from prometheus_client import (
-    start_http_server,
-    Gauge,
-)
+from pathlib import Path
 
 import teuthology.beanstalk as beanstalk
 import teuthology.dispatcher
 from teuthology.config import config
 from teuthology.lock.query import list_locks
 
-
 log = logging.getLogger(__name__)
+
+
+PROMETHEUS_MULTIPROC_DIR = Path("~/.cache/teuthology-exporter").expanduser()
+PROMETHEUS_MULTIPROC_DIR.mkdir(parents=True, exist_ok=True)
+os.environ["PROMETHEUS_MULTIPROC_DIR"] = str(PROMETHEUS_MULTIPROC_DIR)
+
+# We can't import prometheus_client until after we set PROMETHEUS_MULTIPROC_DIR
+from prometheus_client import (  # noqa: E402
+    start_http_server,
+    Gauge,
+    Counter,
+    multiprocess,
+    CollectorRegistry,
+)
+
+registry = CollectorRegistry()
+multiprocess.MultiProcessCollector(registry)
 
 MACHINE_TYPES = list(config.active_machine_types)
 
@@ -23,6 +37,8 @@ class TeuthologyExporter:
     port = 61764  # int(''.join([str((ord(c) - 100) % 10) for c in "teuth"]))
 
     def __init__(self, interval=60):
+        for file in PROMETHEUS_MULTIPROC_DIR.iterdir():
+            file.unlink()
         self.interval = interval
         self.metrics = [
             Dispatchers(),
@@ -32,7 +48,7 @@ class TeuthologyExporter:
         ]
 
     def start(self):
-        start_http_server(self.port)
+        start_http_server(self.port, registry=registry)
         self.loop()
 
     def update(self):
@@ -152,6 +168,19 @@ class Nodes(TeuthologyMetric):
                 self.metric.labels(machine_type=machine_type, up=up, locked=locked).set(
                     len([n for n in nodes if n["up"] is up and n["locked"] is locked])
                 )
+
+
+class JobResults(TeuthologyMetric):
+    def __init__(self):
+        self.metric = Counter(
+            "teuthology_job_results",
+            "Teuthology Job Results",
+            ["machine_type", "status"],
+        )
+
+    # As this is to be used within job processes, we implement record() rather than update()
+    def record(self, machine_type, status):
+        self.metric.labels(machine_type=machine_type, status=status).inc()
 
 
 def main(args):

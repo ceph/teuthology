@@ -316,7 +316,8 @@ def run_with_watchdog(process, job_config):
     extra_info = dict(status='dead')
     if hit_max_timeout:
         extra_info['failure_reason'] = 'hit max job timeout'
-    report.try_push_job_info(job_info, extra_info)
+    if not (job_config.get('first_in_suite') or job_config.get('last_in_suite')):
+        report.try_push_job_info(job_info, extra_info)
 
 
 def create_fake_context(job_config, block=False):
