@@ -10,8 +10,9 @@ import requests
 import teuthology.orchestra.remote
 import teuthology.parallel
 import teuthology.provision
+import teuthology.report as report
+
 from teuthology import misc
-from teuthology import report
 from teuthology.config import config
 from teuthology.contextutil import safe_while
 from teuthology.task import console_log

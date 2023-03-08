@@ -9,6 +9,8 @@ import logging
 import getpass
 
 
+import teuthology.exporter
+
 from teuthology import beanstalk
 from teuthology import report
 from teuthology.config import config
@@ -84,6 +86,10 @@ def kill_job(run_name, job_id, archive_base=None, owner=None, skip_nuke=False):
                 "Please pass --owner <owner>.")
         owner = job_info['owner']
     kill_processes(run_name, [job_info.get('pid')])
+    if 'machine_type' in job_info:
+        teuthology.exporter.JobResults().record(job_info["machine_type"], job_info["status"])
+    else:
+        log.warn(f"Job {job_id} has no machine_type; cannot report via Prometheus")
     # Because targets can be missing for some cases, for example, when all
     # the necessary nodes ain't locked yet, we do not use job_info to get them,
     # but use find_targets():
