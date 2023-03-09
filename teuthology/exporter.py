@@ -184,7 +184,13 @@ class JobResults(TeuthologyMetric):
 
 NodeLockingTime = Summary(
     "teuthology_node_locking_duration_seconds",
-    "Time spent waiting to lock a node",
+    "Time spent waiting to lock nodes",
+    ["machine_type", "count"],
+)
+
+NodeReimagingTime = Summary(
+    "teuthology_node_reimaging_duration_seconds",
+    "Time spent reimaging nodes",
     ["machine_type", "count"],
 )
 

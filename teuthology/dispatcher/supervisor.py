@@ -50,7 +50,17 @@ def main(args):
 
     # reimage target machines before running the job
     if 'targets' in job_config:
-        reimage(job_config)
+        node_count = len(job_config["targets"])
+        # If a job (e.g. from the nop suite) doesn't need nodes, avoid
+        # submitting a zero here.
+        if node_count:
+            with exporter.NodeReimagingTime.labels(
+                job_config["machine_type"],
+                node_count
+            ).time():
+                reimage(job_config)
+        else:
+            reimage(job_config)
         with open(config_file_path, 'w') as f:
             yaml.safe_dump(job_config, f, default_flow_style=False)
 
