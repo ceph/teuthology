@@ -9,6 +9,7 @@ from urllib.parse import urljoin
 from datetime import datetime
 
 import teuthology.exporter as exporter
+import teuthology.kill as kill
 import teuthology.lock.ops as lock_ops
 import teuthology.nuke as nuke
 
@@ -20,7 +21,6 @@ from teuthology import setup_log_file, install_except_hook
 from teuthology.misc import get_user, archive_logs, compress_logs
 from teuthology.config import FakeNamespace
 from teuthology.job_status import get_status
-from teuthology.kill import kill_job
 from teuthology.task.internal import add_remotes
 from teuthology.misc import decanonicalize_hostname as shortname
 from teuthology.lock import query
@@ -297,7 +297,7 @@ def run_with_watchdog(process, job_config):
             try:
                 # kill processes but do not nuke yet so we can save
                 # the logs, coredumps, etc.
-                kill_job(job_info['name'], job_info['job_id'],
+                kill.kill_job(job_info['name'], job_info['job_id'],
                          teuth_config.archive_base, job_config['owner'],
                          skip_nuke=True)
             except Exception:
@@ -311,7 +311,7 @@ def run_with_watchdog(process, job_config):
 
             try:
                 # this time remove everything and unlock the machines
-                kill_job(job_info['name'], job_info['job_id'],
+                kill.kill_job(job_info['name'], job_info['job_id'],
                          teuth_config.archive_base, job_config['owner'])
             except Exception:
                 log.exception('Failed to kill job and unlock machines')

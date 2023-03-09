@@ -11,7 +11,8 @@ if PY3:
     from io import StringIO
 else:
     from io import BytesIO as StringIO
-from teuthology import repo_utils
+
+import teuthology.repo_utils as repo_utils
 
 from teuthology.config import config
 from teuthology.contextutil import safe_while

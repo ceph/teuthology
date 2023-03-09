@@ -177,11 +177,11 @@ class TestWorker(object):
         worker.run_with_watchdog(process, config)
         m_symlink_log.assert_called_with(config["worker_log"], config["archive_path"])
 
-    @patch("teuthology.worker.ls_remote")
+    @patch("teuthology.repo_utils.ls_remote")
     @patch("os.path.isdir")
-    @patch("teuthology.worker.fetch_teuthology")
+    @patch("teuthology.repo_utils.fetch_teuthology")
     @patch("teuthology.worker.teuth_config")
-    @patch("teuthology.worker.fetch_qa_suite")
+    @patch("teuthology.repo_utils.fetch_qa_suite")
     def test_prep_job(self, m_fetch_qa_suite, m_teuth_config,
             m_fetch_teuthology, m_isdir, m_ls_remote):
         config = dict(
@@ -234,8 +234,8 @@ class TestWorker(object):
     @patch("teuthology.worker.run_job")
     @patch("teuthology.worker.prep_job")
     @patch("beanstalkc.Job", autospec=True)
-    @patch("teuthology.worker.fetch_qa_suite")
-    @patch("teuthology.worker.fetch_teuthology")
+    @patch("teuthology.repo_utils.fetch_qa_suite")
+    @patch("teuthology.repo_utils.fetch_teuthology")
     @patch("teuthology.worker.beanstalk.watch_tube")
     @patch("teuthology.worker.beanstalk.connect")
     @patch("os.path.isdir", return_value=True)
@@ -269,12 +269,12 @@ class TestWorker(object):
             job.bury.assert_called_once_with()
             job.delete.assert_called_once_with()
 
-    @patch("teuthology.worker.ls_remote")
+    @patch("teuthology.repo_utils.ls_remote")
     @patch("teuthology.worker.report.try_push_job_info")
     @patch("teuthology.worker.run_job")
     @patch("beanstalkc.Job", autospec=True)
-    @patch("teuthology.worker.fetch_qa_suite")
-    @patch("teuthology.worker.fetch_teuthology")
+    @patch("teuthology.repo_utils.fetch_qa_suite")
+    @patch("teuthology.repo_utils.fetch_teuthology")
     @patch("teuthology.worker.beanstalk.watch_tube")
     @patch("teuthology.worker.beanstalk.connect")
     @patch("os.path.isdir", return_value=True)

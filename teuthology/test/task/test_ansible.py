@@ -121,7 +121,7 @@ class TestAnsibleTask(TestTask):
         task.find_repo()
         assert task.repo_path == os.path.expanduser(self.task_config['repo'])
 
-    @patch('teuthology.task.ansible.fetch_repo')
+    @patch('teuthology.repo_utils.fetch_repo')
     def test_find_repo_path_remote(self, m_fetch_repo):
         self.task_config.update(dict(
             repo='git://fake_host/repo.git',
@@ -131,7 +131,7 @@ class TestAnsibleTask(TestTask):
         task.find_repo()
         assert task.repo_path == os.path.expanduser('/tmp/repo')
 
-    @patch('teuthology.task.ansible.fetch_repo')
+    @patch('teuthology.repo_utils.fetch_repo')
     def test_find_repo_http(self, m_fetch_repo):
         self.task_config.update(dict(
             repo='http://example.com/my/repo',
@@ -141,7 +141,7 @@ class TestAnsibleTask(TestTask):
         m_fetch_repo.assert_called_once_with(self.task_config['repo'],
                                              'main')
 
-    @patch('teuthology.task.ansible.fetch_repo')
+    @patch('teuthology.repo_utils.fetch_repo')
     def test_find_repo_git(self, m_fetch_repo):
         self.task_config.update(dict(
             repo='git@example.com/my/repo',
@@ -521,7 +521,7 @@ class TestCephLabTask(TestAnsibleTask):
     def start_patchers(self):
         super(TestCephLabTask, self).start_patchers()
         self.patchers['fetch_repo'] = patch(
-            'teuthology.task.ansible.fetch_repo',
+            'teuthology.repo_utils.fetch_repo',
         )
         self.patchers['fetch_repo'].return_value = 'PATH'
 
@@ -536,7 +536,7 @@ class TestCephLabTask(TestAnsibleTask):
         for name in self.patchers.keys():
             self.start_patcher(name)
 
-    @patch('teuthology.task.ansible.fetch_repo')
+    @patch('teuthology.repo_utils.fetch_repo')
     def test_find_repo_http(self, m_fetch_repo):
         repo = os.path.join(config.ceph_git_base_url,
                             'ceph-cm-ansible.git')

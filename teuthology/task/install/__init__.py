@@ -5,10 +5,12 @@ import os
 import subprocess
 import yaml
 
+import teuthology.contextutil as contextutil
+import teuthology.packaging as packaging
+import teuthology.task.ansible as ansible
+
 from teuthology import misc as teuthology
-from teuthology import contextutil, packaging
 from teuthology.parallel import parallel
-from teuthology.task import ansible
 
 from distutils.version import LooseVersion
 from teuthology.task.install.util import (

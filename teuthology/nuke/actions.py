@@ -1,10 +1,11 @@
 import logging
 import time
 
+import teuthology.task.install as install_task
+
 from teuthology.misc import get_testdir, reconnect
 from teuthology.orchestra import run
 from teuthology.orchestra.remote import Remote
-from teuthology.task import install as install_task
 
 
 log = logging.getLogger(__name__)

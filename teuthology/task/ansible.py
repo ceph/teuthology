@@ -8,10 +8,11 @@ import shutil
 
 from tempfile import mkdtemp, NamedTemporaryFile
 
+import teuthology.repo_utils as repo_utils
+
 from teuthology.config import config as teuth_config
 from teuthology.exceptions import CommandFailedError, AnsibleFailedError
 from teuthology.job_status import set_status
-from teuthology.repo_utils import fetch_repo
 
 from teuthology.task import Task
 
@@ -141,7 +142,7 @@ class Ansible(Task):
         """
         repo = self.config.get('repo', '.')
         if repo.startswith(('http://', 'https://', 'git@', 'git://')):
-            repo_path = fetch_repo(
+            repo_path = repo_utils.fetch_repo(
                 repo,
                 self.config.get('branch', 'main'),
             )
