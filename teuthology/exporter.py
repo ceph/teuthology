@@ -200,6 +200,11 @@ TaskTime = Summary(
     ["name", "phase"],
 )
 
+BootstrapTime = Summary(
+    "teuthology_bootstrap_duration_seconds",
+    "Time spent running teuthology's bootstrap script",
+)
+
 
 def main(args):
     exporter = TeuthologyExporter(interval=int(args["--interval"]))
