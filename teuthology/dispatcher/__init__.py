@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import Dict, List
 
 import teuthology.dispatcher.supervisor as supervisor
+import teuthology.exporter as exporter
 import teuthology.lock.ops as lock_ops
 import teuthology.nuke as nuke
 import teuthology.worker as worker
@@ -224,13 +225,16 @@ def find_dispatcher_processes() -> Dict[str, List[psutil.Process]]:
 def lock_machines(job_config):
     report.try_push_job_info(job_config, dict(status='running'))
     fake_ctx = supervisor.create_fake_context(job_config, block=True)
-    lock_ops.block_and_lock_machines(
-        fake_ctx,
-        len(job_config['roles']),
-        job_config['machine_type'],
-        tries=-1,
-        reimage=False,
-    )
+    machine_type = job_config["machine_type"]
+    count = len(job_config['roles'])
+    with exporter.NodeLockingTime.labels(machine_type, count).time():
+        lock_ops.block_and_lock_machines(
+            fake_ctx,
+            count,
+            machine_type,
+            tries=-1,
+            reimage=False,
+        )
     job_config = fake_ctx.config
     return job_config
 
