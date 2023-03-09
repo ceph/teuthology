@@ -11,6 +11,8 @@ from copy import deepcopy
 from humanfriendly import format_timespan
 import sentry_sdk
 
+import teuthology.exporter as exporter
+
 from teuthology.config import config as teuth_config
 from teuthology.exceptions import ConnectionLostError
 from teuthology.job_status import set_status, get_status
@@ -103,7 +105,8 @@ def run_tasks(tasks, ctx):
             manager = run_one_task(taskname, ctx=ctx, config=config)
             if hasattr(manager, '__enter__'):
                 stack.append((taskname, manager))
-                manager.__enter__()
+                with exporter.TaskTime.labels(taskname, "enter").time():
+                    manager.__enter__()
     except BaseException as e:
         if isinstance(e, ConnectionLostError):
             # Prevent connection issues being flagged as failures
@@ -185,7 +188,8 @@ def run_tasks(tasks, ctx):
                 log.debug('Unwinding manager %s', taskname)
                 timer.mark('%s exit' % taskname)
                 try:
-                    suppress = manager.__exit__(*exc_info)
+                    with exporter.TaskTime.labels(taskname, "exit").time():
+                        suppress = manager.__exit__(*exc_info)
                 except Exception as e:
                     if isinstance(e, ConnectionLostError):
                         # Prevent connection issues being flagged as failures
