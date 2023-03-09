@@ -188,6 +188,12 @@ NodeLockingTime = Summary(
     ["machine_type", "count"],
 )
 
+JobTime = Summary(
+    "teuthology_job_duration_seconds",
+    "Time spent executing a job",
+    ["suite"],
+)
+
 
 def main(args):
     exporter = TeuthologyExporter(interval=int(args["--interval"]))

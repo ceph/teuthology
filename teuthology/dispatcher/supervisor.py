@@ -8,7 +8,7 @@ import requests
 from urllib.parse import urljoin
 from datetime import datetime
 
-from teuthology import kill, nuke, report, safepath
+from teuthology import exporter, kill, nuke, report, safepath
 from teuthology.config import config as teuth_config
 from teuthology.exceptions import SkipJob, MaxWhileTries
 from teuthology import setup_log_file, install_except_hook
@@ -50,12 +50,13 @@ def main(args):
             yaml.safe_dump(job_config, f, default_flow_style=False)
 
     try:
-        return run_job(
-            job_config,
-            teuth_bin_path,
-            archive_dir,
-            verbose
-        )
+        with exporter.JobTime.labels(job_config["suite"]).time():
+            return run_job(
+                job_config,
+                teuth_bin_path,
+                archive_dir,
+                verbose
+            )
     except SkipJob:
         return 0
 
