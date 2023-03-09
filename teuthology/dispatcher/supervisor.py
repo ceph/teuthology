@@ -8,6 +8,7 @@ import requests
 from urllib.parse import urljoin
 from datetime import datetime
 
+import teuthology.exporter as exporter
 import teuthology.lock.ops as lock_ops
 import teuthology.nuke as nuke
 
@@ -54,12 +55,13 @@ def main(args):
             yaml.safe_dump(job_config, f, default_flow_style=False)
 
     try:
-        return run_job(
-            job_config,
-            teuth_bin_path,
-            archive_dir,
-            verbose
-        )
+        with exporter.JobTime.labels(job_config["suite"]).time():
+            return run_job(
+                job_config,
+                teuth_bin_path,
+                archive_dir,
+                verbose
+            )
     except SkipJob:
         return 0
 
