@@ -194,6 +194,12 @@ JobTime = Summary(
     ["suite"],
 )
 
+TaskTime = Summary(
+    "teuthology_task_duration_seconds",
+    "Time spent executing a task",
+    ["name", "phase"],
+)
+
 
 def main(args):
     exporter = TeuthologyExporter(interval=int(args["--interval"]))
