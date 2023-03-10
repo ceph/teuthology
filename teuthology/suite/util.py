@@ -209,6 +209,8 @@ def git_validate_sha1(project, sha1, project_owner='ceph'):
         # kinda specific to knowing git.ceph.com is gitweb
         url = ('http://git.ceph.com/?p=%s.git;a=blob_plain;f=.gitignore;hb=%s'
                % (project, sha1))
+    elif config.ceph_git_base_url in url:
+        url = '/'.join((url, 'commit', sha1))
     else:
         raise RuntimeError(
             'git_validate_sha1: how do I check %s for a sha1?' % url
