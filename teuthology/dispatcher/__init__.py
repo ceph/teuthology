@@ -1,4 +1,3 @@
-import getpass
 import logging
 import os
 import psutil
@@ -7,6 +6,12 @@ import sys
 import yaml
 
 from datetime import datetime
+from typing import Dict, List
+
+import teuthology.dispatcher.supervisor as supervisor
+import teuthology.lock.ops as lock_ops
+import teuthology.nuke as nuke
+import teuthology.worker as worker
 
 from teuthology import setup_log_file, install_except_hook
 from teuthology import beanstalk
@@ -14,11 +19,7 @@ from teuthology import report
 from teuthology.config import config as teuth_config
 from teuthology.exceptions import SkipJob
 from teuthology.repo_utils import fetch_qa_suite, fetch_teuthology
-from teuthology.lock.ops import block_and_lock_machines
-from teuthology.dispatcher import supervisor
-from teuthology.worker import prep_job
 from teuthology import safepath
-from teuthology.nuke import nuke
 
 log = logging.getLogger(__name__)
 start_time = datetime.utcnow()
@@ -72,7 +73,7 @@ def main(args):
         archive_dir = teuth_config.archive_base
 
     # Refuse to start more than one dispatcher per machine type
-    procs = find_dispatcher_processes(tube)
+    procs = find_dispatcher_processes().get(tube)
     if procs:
         raise RuntimeError(
             "There is already a teuthology-dispatcher process running:"
@@ -134,7 +135,7 @@ def main(args):
             keep_running = False
 
         try:
-            job_config, teuth_bin_path = prep_job(
+            job_config, teuth_bin_path = worker.prep_job(
                 job_config,
                 log_file_path,
                 archive_dir,
@@ -175,7 +176,7 @@ def main(args):
             error_message = "Saw error while trying to spawn supervisor."
             log.exception(error_message)
             if 'targets' in job_config:
-                nuke(supervisor.create_fake_context(job_config), True)
+                nuke.nuke(supervisor.create_fake_context(job_config), True)
             report.try_push_job_info(job_config, dict(
                 status='fail',
                 failure_reason=error_message))
@@ -194,11 +195,8 @@ def main(args):
     return max(returncodes)
 
 
-def find_dispatcher_processes(machine_type):
-    user = getpass.getuser()
+def find_dispatcher_processes() -> Dict[str, List[psutil.Process]]:
     def match(proc):
-        if proc.username() != user:
-            return False
         cmdline = proc.cmdline()
         if len(cmdline) < 3:
             return False
@@ -206,22 +204,33 @@ def find_dispatcher_processes(machine_type):
             return False
         if cmdline[2] == "--supervisor":
             return False
-        if machine_type not in cmdline:
+        if "--tube" not in cmdline:
             return False
         if proc.pid == os.getpid():
             return False
         return True
 
-    attrs = ["pid", "username", "cmdline"]
-    procs = list(filter(match, psutil.process_iter(attrs=attrs)))
+    procs = {}
+    attrs = ["pid", "cmdline"]
+    for proc in psutil.process_iter(attrs=attrs):
+        if not match(proc):
+            continue
+        cmdline = proc.cmdline()
+        machine_type = cmdline[cmdline.index("--tube") + 1]
+        procs.setdefault(machine_type, []).append(proc)
     return procs
 
 
 def lock_machines(job_config):
     report.try_push_job_info(job_config, dict(status='running'))
     fake_ctx = supervisor.create_fake_context(job_config, block=True)
-    block_and_lock_machines(fake_ctx, len(job_config['roles']),
-                            job_config['machine_type'], reimage=False)
+    lock_ops.block_and_lock_machines(
+        fake_ctx,
+        len(job_config['roles']),
+        job_config['machine_type'],
+        tries=-1,
+        reimage=False,
+    )
     job_config = fake_ctx.config
     return job_config
 

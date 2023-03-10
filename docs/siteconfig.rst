@@ -22,6 +22,10 @@ Here is a sample configuration with many of the options set and documented::
     # Teuthology can use the entire cluster.
     reserve_machines: 5
 
+    # The machine types currently in active use; currently only used by
+    # teuthology-exporter
+    active_machine_types: ['smithi']
+
     # The host and port to use for the beanstalkd queue. This is required 
     # for scheduled jobs.
     queue_host: localhost

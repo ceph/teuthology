@@ -8,8 +8,9 @@ import subprocess
 import yaml
 
 import teuthology
+import teuthology.lock.ops as lock_ops
+
 from teuthology import provision
-from teuthology.lock.ops import unlock_one
 from teuthology.lock.query import is_vm, list_locks, \
     find_stale_locks, get_status
 from teuthology.lock.util import locked_since_seconds
@@ -150,7 +151,7 @@ def stale_openstack_nodes(ctx, instances, locked_nodes):
                              created=locked_since_seconds(node),
                              delay=OPENSTACK_DELAY))
             if not ctx.dry_run:
-                unlock_one(ctx, name, node['locked_by'])
+                lock_ops.unlock_one(ctx, name, node['locked_by'])
             continue
         log.debug("stale-openstack: node " + name + " OK")
 
@@ -296,7 +297,7 @@ def nuke_one(ctx, target, should_unlock, synch_clocks,
         ret = target
     else:
         if should_unlock:
-            unlock_one(ctx, list(target.keys())[0], ctx.owner)
+            lock_ops.unlock_one(ctx, list(target.keys())[0], ctx.owner)
     return ret
 
 

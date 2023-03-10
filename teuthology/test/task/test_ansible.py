@@ -19,6 +19,7 @@ from teuthology.task.ansible import Ansible, CephLab
 
 from teuthology.test.task import TestTask
 
+
 class TestAnsibleTask(TestTask):
     klass = Ansible
     task_name = 'ansible'
@@ -496,6 +497,17 @@ class TestAnsibleTask(TestTask):
             task._build_args()
             assert m_execute.called
             assert 'cleanup' in task.config['vars']
+
+    def test_no_remotes(self):
+        self.task_config.update(dict(
+            playbook=[],
+        ))
+        self.ctx.cluster.remotes = dict()
+        task = self.klass(self.ctx, self.task_config)
+        with patch.object(ansible.pexpect, 'run') as m_run:
+            task.setup()
+            task.begin()
+        assert not m_run.called
 
 
 class TestCephLabTask(TestAnsibleTask):
