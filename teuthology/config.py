@@ -175,6 +175,7 @@ class TeuthologyConfig(YamlConfig):
         'teuthology_path': None,
         'suite_verify_ceph_hash': True,
         'suite_allow_missing_packages': False,
+	'project_owner': 'ceph',
         'openstack': {
             'clone': 'git clone http://github.com/ceph/teuthology',
             'user-data': 'teuthology/openstack/openstack-{os_type}-{os_version}-user-data.txt',
