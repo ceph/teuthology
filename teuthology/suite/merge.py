@@ -118,8 +118,6 @@ def config_merge(configs, suite_name=None, **kwargs):
     new_script = L.eval('new_script')
     yaml_cache = {}
     for desc, paths in configs:
-        log.debug("merging config %s", desc)
-
         if suite_name is not None:
             desc = combine_path(suite_name, desc)
 
@@ -137,7 +135,7 @@ def config_merge(configs, suite_name=None, **kwargs):
             yaml_fragment_obj = copy.deepcopy(yaml_fragment_obj)
             premerge = yaml_fragment_obj.get('teuthology', {}).pop('premerge', '')
             if premerge:
-                log.debug("premerge script running:\n%s", premerge)
+                log.debug(f"Running premerge script from {path}")
                 env, script = new_script(premerge, log, deep_merge, yaml.safe_load)
                 env['base_frag_paths'] = [strip_fragment_path(x) for x in paths]
                 env['description'] = desc
@@ -145,10 +143,10 @@ def config_merge(configs, suite_name=None, **kwargs):
                 env['suite_name'] = suite_name
                 env['yaml'] = yaml_complete_obj
                 env['yaml_fragment'] = yaml_fragment_obj
-                for k,v in kwargs.items():
+                for k, v in kwargs.items():
                     env[k] = v
                 if not script():
-                    log.debug("skipping merge of fragment %s due to premerge filter", path)
+                    log.debug(f"Skipping merge of fragment due to premerge filter: {path}")
                     yaml_complete_obj['teuthology']['fragments_dropped'].append(path)
                     continue
             deep_merge(yaml_complete_obj, yaml_fragment_obj)
@@ -156,7 +154,7 @@ def config_merge(configs, suite_name=None, **kwargs):
         postmerge = yaml_complete_obj.get('teuthology', {}).get('postmerge', [])
         if postmerge:
             postmerge = "\n".join(postmerge)
-            log.debug("postmerge script running:\n%s", postmerge)
+            log.debug(f"postmerge script running:\n{postmerge}")
             env, script = new_script(postmerge, log, deep_merge, yaml.safe_load)
             env['base_frag_paths'] = [strip_fragment_path(x) for x in paths]
             env['description'] = desc
@@ -166,6 +164,6 @@ def config_merge(configs, suite_name=None, **kwargs):
             for k, v in kwargs.items():
                 env[k] = v
             if not script():
-                log.debug("skipping config %s due to postmerge filter", desc)
+                log.debug(f"Skipping config due to postmerge filter: {desc}")
                 continue
         yield desc, paths, yaml_complete_obj
