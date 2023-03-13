@@ -154,17 +154,18 @@ def config_merge(configs, suite_name=None, **kwargs):
             deep_merge(yaml_complete_obj, yaml_fragment_obj)
 
         postmerge = yaml_complete_obj.get('teuthology', {}).get('postmerge', [])
-        postmerge = "\n".join(postmerge)
-        log.debug("postmerge script running:\n%s", postmerge)
-        env, script = new_script(postmerge, log, deep_merge, yaml.safe_load)
-        env['base_frag_paths'] = [strip_fragment_path(x) for x in paths]
-        env['description'] = desc
-        env['frag_paths'] = paths
-        env['suite_name'] = suite_name
-        env['yaml'] = yaml_complete_obj
-        for k,v in kwargs.items():
-            env[k] = v
-        if not script():
-            log.debug("skipping config %s due to postmerge filter", desc)
-            continue
+        if postmerge:
+            postmerge = "\n".join(postmerge)
+            log.debug("postmerge script running:\n%s", postmerge)
+            env, script = new_script(postmerge, log, deep_merge, yaml.safe_load)
+            env['base_frag_paths'] = [strip_fragment_path(x) for x in paths]
+            env['description'] = desc
+            env['frag_paths'] = paths
+            env['suite_name'] = suite_name
+            env['yaml'] = yaml_complete_obj
+            for k, v in kwargs.items():
+                env[k] = v
+            if not script():
+                log.debug("skipping config %s due to postmerge filter", desc)
+                continue
         yield desc, paths, yaml_complete_obj
