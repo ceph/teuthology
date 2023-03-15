@@ -8,16 +8,20 @@ import yaml
 from datetime import datetime
 from typing import Dict, List
 
-import teuthology.dispatcher.supervisor as supervisor
-import teuthology.lock.ops as lock_ops
-import teuthology.nuke as nuke
-import teuthology.worker as worker
-
-from teuthology import setup_log_file, install_except_hook
-from teuthology import beanstalk
-from teuthology import report
+from teuthology import (
+    # non-modules
+    setup_log_file,
+    install_except_hook,
+    # modules
+    beanstalk,
+    nuke,
+    report,
+    worker,
+)
 from teuthology.config import config as teuth_config
+from teuthology.dispatcher import supervisor
 from teuthology.exceptions import SkipJob
+from teuthology.lock import ops as lock_ops
 from teuthology.repo_utils import fetch_qa_suite, fetch_teuthology
 from teuthology import safepath
 
