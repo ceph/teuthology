@@ -8,14 +8,20 @@ import yaml
 
 from datetime import datetime
 
-from teuthology import setup_log_file, install_except_hook, kill
-from teuthology import beanstalk
-from teuthology import report
-from teuthology import safepath
+from teuthology import (
+    # non-modules
+    setup_log_file,
+    install_except_hook,
+    # modules
+    beanstalk,
+    kill,
+    report,
+    repo_utils,
+    safepath,
+)
 from teuthology.config import config as teuth_config
 from teuthology.config import set_config_attr
 from teuthology.exceptions import BranchNotFoundError, CommitNotFoundError, SkipJob, MaxWhileTries
-from teuthology.repo_utils import fetch_qa_suite, fetch_teuthology, ls_remote, build_git_url
 
 log = logging.getLogger(__name__)
 start_time = datetime.utcnow()
@@ -78,8 +84,8 @@ def main(ctx):
     result_proc = None
 
     if teuth_config.teuthology_path is None:
-        fetch_teuthology('main')
-    fetch_qa_suite('main')
+        repo_utils.fetch_teuthology('main')
+    repo_utils.fetch_qa_suite('main')
 
     keep_running = True
     while keep_running:
@@ -149,8 +155,8 @@ def prep_job(job_config, log_file_path, archive_dir):
     job_config['teuthology_branch'] = teuthology_branch
     teuthology_sha1 = job_config.get('teuthology_sha1')
     if not teuthology_sha1:
-        repo_url = build_git_url('teuthology', 'ceph')
-        teuthology_sha1 = ls_remote(repo_url, teuthology_branch)
+        repo_url = repo_utils.build_git_url('teuthology', 'ceph')
+        teuthology_sha1 = repo_utils.ls_remote(repo_url, teuthology_branch)
         if not teuthology_sha1:
             reason = "Teuthology branch {} not found; marking job as dead".format(teuthology_branch)
             log.error(reason)
@@ -166,7 +172,7 @@ def prep_job(job_config, log_file_path, archive_dir):
         if teuth_config.teuthology_path is not None:
             teuth_path = teuth_config.teuthology_path
         else:
-            teuth_path = fetch_teuthology(branch=teuthology_branch,
+            teuth_path = repo_utils.fetch_teuthology(branch=teuthology_branch,
                                           commit=teuthology_sha1)
         # For the teuthology tasks, we look for suite_branch, and if we
         # don't get that, we look for branch, and fall back to 'main'.
@@ -178,7 +184,7 @@ def prep_job(job_config, log_file_path, archive_dir):
         if suite_repo:
             teuth_config.ceph_qa_suite_git_url = suite_repo
         job_config['suite_path'] = os.path.normpath(os.path.join(
-            fetch_qa_suite(suite_branch, suite_sha1),
+            repo_utils.fetch_qa_suite(suite_branch, suite_sha1),
             job_config.get('suite_relpath', ''),
         ))
     except (BranchNotFoundError, CommitNotFoundError) as exc:
