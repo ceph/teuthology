@@ -8,14 +8,13 @@ import yaml
 
 from datetime import datetime
 
-from teuthology import setup_log_file, install_except_hook
+from teuthology import setup_log_file, install_except_hook, kill
 from teuthology import beanstalk
 from teuthology import report
 from teuthology import safepath
 from teuthology.config import config as teuth_config
 from teuthology.config import set_config_attr
 from teuthology.exceptions import BranchNotFoundError, CommitNotFoundError, SkipJob, MaxWhileTries
-from teuthology.kill import kill_job
 from teuthology.repo_utils import fetch_qa_suite, fetch_teuthology, ls_remote, build_git_url
 
 log = logging.getLogger(__name__)
@@ -331,7 +330,7 @@ def run_with_watchdog(process, job_config):
         if total_seconds > teuth_config.max_job_time:
             log.warning("Job ran longer than {max}s. Killing...".format(
                 max=teuth_config.max_job_time))
-            kill_job(job_info['name'], job_info['job_id'],
+            kill.kill_job(job_info['name'], job_info['job_id'],
                      teuth_config.archive_base, job_config['owner'])
 
         # calling this without a status just updates the jobs updated time

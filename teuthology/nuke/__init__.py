@@ -8,9 +8,9 @@ import subprocess
 import yaml
 
 import teuthology
-import teuthology.lock.ops as lock_ops
 
 from teuthology import provision
+from teuthology.lock import ops as lock_ops
 from teuthology.lock.query import is_vm, list_locks, \
     find_stale_locks, get_status
 from teuthology.lock.util import locked_since_seconds
