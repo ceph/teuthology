@@ -169,7 +169,7 @@ class Nodes(TeuthologyMetric):
                 )
 
 
-class JobResults(TeuthologyMetric):
+class _JobResults(TeuthologyMetric):
     def __init__(self):
         self.metric = Counter(
             "teuthology_job_results",
@@ -181,6 +181,8 @@ class JobResults(TeuthologyMetric):
     def record(self, machine_type, status):
         self.metric.labels(machine_type=machine_type, status=status).inc()
 
+
+JobResults = _JobResults()
 
 NodeLockingTime = Summary(
     "teuthology_node_locking_duration_seconds",
