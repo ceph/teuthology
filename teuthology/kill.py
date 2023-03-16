@@ -87,7 +87,10 @@ def kill_job(run_name, job_id, archive_base=None, owner=None, skip_nuke=False):
         owner = job_info['owner']
     kill_processes(run_name, [job_info.get('pid')])
     if 'machine_type' in job_info:
-        teuthology.exporter.JobResults().record(job_info["machine_type"], job_info["status"])
+        teuthology.exporter.JobResults().record(
+            job_info["machine_type"],
+            job_info.get("status", "dead")
+        )
     else:
         log.warn(f"Job {job_id} has no machine_type; cannot report via Prometheus")
     # Because targets can be missing for some cases, for example, when all
