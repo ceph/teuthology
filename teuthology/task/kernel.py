@@ -2,6 +2,7 @@
 Kernel installation task
 """
 
+import contextlib
 import logging
 import os
 import re
@@ -1130,6 +1131,7 @@ def get_sha1_from_pkg_name(path):
     return sha1
 
 
+@contextlib.contextmanager
 def task(ctx, config):
     """
     Make sure the specified kernel is installed.
@@ -1233,6 +1235,11 @@ def task(ctx, config):
     with parallel() as p:
         for role, role_config in config.items():
             p.spawn(process_role, ctx, config, timeout, role, role_config)
+
+    try:
+        yield
+    finally:
+        pass
 
 
 def process_role(ctx, config, timeout, role, role_config):
