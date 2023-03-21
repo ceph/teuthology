@@ -8,17 +8,21 @@ import yaml
 from datetime import datetime
 from typing import Dict, List
 
-import teuthology.dispatcher.supervisor as supervisor
-import teuthology.lock.ops as lock_ops
-import teuthology.nuke as nuke
-import teuthology.worker as worker
-
-from teuthology import setup_log_file, install_except_hook
-from teuthology import beanstalk
-from teuthology import report
+from teuthology import (
+    # non-modules
+    setup_log_file,
+    install_except_hook,
+    # modules
+    beanstalk,
+    nuke,
+    report,
+    repo_utils,
+    worker,
+)
 from teuthology.config import config as teuth_config
+from teuthology.dispatcher import supervisor
 from teuthology.exceptions import SkipJob
-from teuthology.repo_utils import fetch_qa_suite, fetch_teuthology
+from teuthology.lock import ops as lock_ops
 from teuthology import safepath
 
 log = logging.getLogger(__name__)
@@ -96,8 +100,8 @@ def main(args):
     result_proc = None
 
     if teuth_config.teuthology_path is None:
-        fetch_teuthology('main')
-    fetch_qa_suite('main')
+        repo_utils.fetch_teuthology('main')
+    repo_utils.fetch_qa_suite('main')
 
     keep_running = True
     job_procs = set()

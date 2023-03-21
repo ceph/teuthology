@@ -8,9 +8,9 @@ import subprocess
 import yaml
 
 import teuthology
-import teuthology.lock.ops as lock_ops
 
 from teuthology import provision
+from teuthology.lock import ops as lock_ops
 from teuthology.lock.query import is_vm, list_locks, \
     find_stale_locks, get_status
 from teuthology.lock.util import locked_since_seconds
@@ -30,7 +30,7 @@ from teuthology.misc import (
 from teuthology.openstack import OpenStack, OpenStackInstance, enforce_json_dictionary
 from teuthology.orchestra.remote import Remote
 from teuthology.parallel import parallel
-from teuthology.task.internal import check_lock, add_remotes, connect
+from teuthology.task import internal
 
 log = logging.getLogger(__name__)
 
@@ -314,7 +314,7 @@ def nuke_helper(ctx, should_unlock, keep_logs, should_reboot):
     if ctx.check_locks:
         # does not check to ensure if the node is 'up'
         # we want to be able to nuke a downed node
-        check_lock.check_lock(ctx, None, check_up=False)
+        internal.check_lock.check_lock(ctx, None, check_up=False)
     status = get_status(host)
     if status['machine_type'] in provision.fog.get_types():
         remote.console.power_off()
@@ -337,8 +337,8 @@ def nuke_helper(ctx, should_unlock, keep_logs, should_reboot):
             log.info("Will attempt to connect via SSH")
             remote = Remote(host)
             remote.connect()
-    add_remotes(ctx, None)
-    connect(ctx, None)
+    internal.add_remotes(ctx, None)
+    internal.connect(ctx, None)
     clear_firewall(ctx)
     shutdown_daemons(ctx)
     kill_valgrind(ctx)

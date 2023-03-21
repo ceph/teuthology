@@ -8,19 +8,15 @@ import requests
 from urllib.parse import urljoin
 from datetime import datetime
 
-import teuthology.lock.ops as lock_ops
-import teuthology.nuke as nuke
-
-from teuthology import report
-from teuthology import safepath
+from teuthology import kill, nuke, report, safepath
 from teuthology.config import config as teuth_config
 from teuthology.exceptions import SkipJob, MaxWhileTries
 from teuthology import setup_log_file, install_except_hook
 from teuthology.misc import get_user, archive_logs, compress_logs
 from teuthology.config import FakeNamespace
 from teuthology.job_status import get_status
-from teuthology.kill import kill_job
-from teuthology.task.internal import add_remotes
+from teuthology.lock import ops as lock_ops
+from teuthology.task import internal
 from teuthology.misc import decanonicalize_hostname as shortname
 from teuthology.lock import query
 
@@ -285,9 +281,11 @@ def run_with_watchdog(process, job_config):
             try:
                 # kill processes but do not nuke yet so we can save
                 # the logs, coredumps, etc.
-                kill_job(job_info['name'], job_info['job_id'],
-                         teuth_config.archive_base, job_config['owner'],
-                         skip_nuke=True)
+                kill.kill_job(
+                    job_info['name'], job_info['job_id'],
+                    teuth_config.archive_base, job_config['owner'],
+                    skip_nuke=True
+                )
             except Exception:
                 log.exception('Failed to kill job')
 
@@ -299,8 +297,10 @@ def run_with_watchdog(process, job_config):
 
             try:
                 # this time remove everything and unlock the machines
-                kill_job(job_info['name'], job_info['job_id'],
-                         teuth_config.archive_base, job_config['owner'])
+                kill.kill_job(
+                    job_info['name'], job_info['job_id'],
+                    teuth_config.archive_base, job_config['owner']
+                )
             except Exception:
                 log.exception('Failed to kill job and unlock machines')
 
@@ -350,7 +350,7 @@ def transfer_archives(run_name, job_id, archive_base, job_config):
 
     if 'archive' in job_info:
         ctx = create_fake_context(job_config)
-        add_remotes(ctx, job_config)
+        internal.add_remotes(ctx, job_config)
 
         for log_type, log_path in job_info['archive'].items():
             if log_type == 'init':
