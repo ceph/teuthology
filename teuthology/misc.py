@@ -1367,7 +1367,7 @@ def compress_logs(ctx, remote_dir):
     run.wait(
         ctx.cluster.run(
             args=(f"sudo find {remote_dir} -name *.log -print0 | "
-                  f"sudo xargs --max-args=1 --max-procs=0 --verbose -0 --no-run-if-empty -- gzip --"),
+                  f"sudo xargs --max-args=1 --max-procs=0 --verbose -0 --no-run-if-empty -- gzip -5 --"),
             wait=False,
         ),
     )
