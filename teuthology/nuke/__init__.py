@@ -31,6 +31,7 @@ from teuthology.openstack import OpenStack, OpenStackInstance, enforce_json_dict
 from teuthology.orchestra.remote import Remote
 from teuthology.parallel import parallel
 from teuthology.task import internal
+from teuthology.task.internal import check_lock
 
 log = logging.getLogger(__name__)
 
@@ -314,7 +315,7 @@ def nuke_helper(ctx, should_unlock, keep_logs, should_reboot):
     if ctx.check_locks:
         # does not check to ensure if the node is 'up'
         # we want to be able to nuke a downed node
-        internal.check_lock.check_lock(ctx, None, check_up=False)
+        check_lock.check_lock(ctx, None, check_up=False)
     status = get_status(host)
     if status['machine_type'] in provision.fog.get_types():
         remote.console.power_off()
