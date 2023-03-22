@@ -17,8 +17,7 @@ import re
 import humanfriendly
 
 import teuthology.lock.ops
-from teuthology import misc
-from teuthology.packaging import get_builder_project
+from teuthology import misc, packaging
 from teuthology import report
 from teuthology.config import config as teuth_config
 from teuthology.exceptions import ConfigError, VersionNotFoundError
@@ -89,7 +88,7 @@ def check_packages(ctx, config):
     # We can only do this check if there are a defined sha1 and os_type
     # in the job config.
     if os_type and sha1:
-        package = get_builder_project()("ceph", ctx.config)
+        package = packaging.get_builder_project()("ceph", ctx.config)
         template = "Checking packages for os_type '{os}', " \
             "flavor '{flav}' and ceph hash '{ver}'"
         log.info(
