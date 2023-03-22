@@ -5,6 +5,8 @@ import shutil
 import subprocess
 import time
 
+import teuthology.exporter as exporter
+
 from teuthology import misc
 from teuthology.util.flock import FileLock
 from teuthology.config import config
@@ -438,6 +440,7 @@ def fetch_teuthology(branch, commit=None, lock=True):
 
 
 def bootstrap_teuthology(dest_path):
+    with exporter.BootstrapTime.time():
         log.info("Bootstrapping %s", dest_path)
         # This magic makes the bootstrap script not attempt to clobber an
         # existing virtualenv. But the branch's bootstrap needs to actually
@@ -445,11 +448,15 @@ def bootstrap_teuthology(dest_path):
         env = os.environ.copy()
         env['NO_CLOBBER'] = '1'
         cmd = './bootstrap'
-        boot_proc = subprocess.Popen(cmd, shell=True, cwd=dest_path, env=env,
-                                     stdout=subprocess.PIPE,
-                                     stderr=subprocess.STDOUT,
-                                     universal_newlines=True)
-        out, err = boot_proc.communicate()
+        boot_proc = subprocess.Popen(
+            cmd, shell=True,
+            cwd=dest_path,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True
+        )
+        out, _ = boot_proc.communicate()
         returncode = boot_proc.wait()
         log.info("Bootstrap exited with status %s", returncode)
         if returncode != 0:

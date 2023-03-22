@@ -23,6 +23,7 @@ from prometheus_client import (  # noqa: E402
     start_http_server,
     Gauge,
     Counter,
+    Summary,
     multiprocess,
     CollectorRegistry,
 )
@@ -112,9 +113,7 @@ class BeanstalkQueue(TeuthologyMetric):
 
     def update(self):
         for machine_type in MACHINE_TYPES:
-            queue_stats = beanstalk.stats_tube(
-                beanstalk.connect(), machine_type
-            )
+            queue_stats = beanstalk.stats_tube(beanstalk.connect(), machine_type)
             self.length.labels(machine_type).set(queue_stats["count"])
             self.paused.labels(machine_type).set(1 if queue_stats["paused"] else 0)
 
@@ -170,7 +169,7 @@ class Nodes(TeuthologyMetric):
                 )
 
 
-class JobResults(TeuthologyMetric):
+class _JobResults(TeuthologyMetric):
     def __init__(self):
         self.metric = Counter(
             "teuthology_job_results",
@@ -181,6 +180,38 @@ class JobResults(TeuthologyMetric):
     # As this is to be used within job processes, we implement record() rather than update()
     def record(self, machine_type, status):
         self.metric.labels(machine_type=machine_type, status=status).inc()
+
+
+JobResults = _JobResults()
+
+NodeLockingTime = Summary(
+    "teuthology_node_locking_duration_seconds",
+    "Time spent waiting to lock nodes",
+    ["machine_type", "count"],
+)
+
+NodeReimagingTime = Summary(
+    "teuthology_node_reimaging_duration_seconds",
+    "Time spent reimaging nodes",
+    ["machine_type", "count"],
+)
+
+JobTime = Summary(
+    "teuthology_job_duration_seconds",
+    "Time spent executing a job",
+    ["suite"],
+)
+
+TaskTime = Summary(
+    "teuthology_task_duration_seconds",
+    "Time spent executing a task",
+    ["name", "phase"],
+)
+
+BootstrapTime = Summary(
+    "teuthology_bootstrap_duration_seconds",
+    "Time spent running teuthology's bootstrap script",
+)
 
 
 def main(args):

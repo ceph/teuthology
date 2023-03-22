@@ -8,7 +8,7 @@ import requests
 from urllib.parse import urljoin
 from datetime import datetime
 
-from teuthology import kill, nuke, report, safepath
+from teuthology import exporter, kill, nuke, report, safepath
 from teuthology.config import config as teuth_config
 from teuthology.exceptions import SkipJob, MaxWhileTries
 from teuthology import setup_log_file, install_except_hook
@@ -45,17 +45,28 @@ def main(args):
 
     # reimage target machines before running the job
     if 'targets' in job_config:
-        reimage(job_config)
+        node_count = len(job_config["targets"])
+        # If a job (e.g. from the nop suite) doesn't need nodes, avoid
+        # submitting a zero here.
+        if node_count:
+            with exporter.NodeReimagingTime.labels(
+                job_config["machine_type"],
+                node_count
+            ).time():
+                reimage(job_config)
+        else:
+            reimage(job_config)
         with open(config_file_path, 'w') as f:
             yaml.safe_dump(job_config, f, default_flow_style=False)
 
     try:
-        return run_job(
-            job_config,
-            teuth_bin_path,
-            archive_dir,
-            verbose
-        )
+        with exporter.JobTime.labels(job_config["suite"]).time():
+            return run_job(
+                job_config,
+                teuth_bin_path,
+                archive_dir,
+                verbose
+            )
     except SkipJob:
         return 0
 
