@@ -60,7 +60,16 @@ def main(args):
             yaml.safe_dump(job_config, f, default_flow_style=False)
 
     try:
-        with exporter.JobTime.labels(job_config["suite"]).time():
+        suite = job_config.get("suite")
+        if suite:
+            with exporter.JobTime.labels(suite).time():
+                return run_job(
+                    job_config,
+                    teuth_bin_path,
+                    archive_dir,
+                    verbose
+                )
+        else:
             return run_job(
                 job_config,
                 teuth_bin_path,
