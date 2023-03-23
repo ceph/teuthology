@@ -223,6 +223,8 @@ prettytable==2.1.0
     #   python-cinderclient
     #   python-novaclient
     #   teuthology (pyproject.toml)
+prometheus-client==0.16.0
+    # via teuthology (pyproject.toml)
 psutil==5.8.0
     # via teuthology (pyproject.toml)
 ptyprocess==0.7.0
