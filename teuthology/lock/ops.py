@@ -321,7 +321,6 @@ def reimage_machines(ctx, machines, machine_type):
                 p.spawn(teuthology.provision.reimage, ctx,
                         machine, machine_type)
                 reimaged[machine] = machines[machine]
-                log.info("Node '%s' reimaging is complete", machine)
     reimaged = do_update_keys(list(reimaged.keys()))[1]
     update_nodes(reimaged)
     return reimaged
