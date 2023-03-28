@@ -15,7 +15,7 @@ development and quality assurance teams.
 
 The teuthology database of available machines contains a vpshost field.
 For physical machines, this value is null. For virtual machines, this entry
-is the name of the physical machine that that virtual machine resides on.
+is the name of the physical machine on which that virtual machine resides.
 
 There are fixed "slots" for virtual machines that appear in the teuthology
 database.  These slots have a machine type of vps and can be locked like
