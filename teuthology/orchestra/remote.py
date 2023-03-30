@@ -622,7 +622,7 @@ class Remote(RemoteShell):
             self.remove(path)
         return local_path
 
-    def get_tar(self, path, to_path, sudo=False):
+    def get_tar(self, path, to_path, sudo=False, compress=True):
         """
         Tar a remote directory and copy it locally
         """
@@ -632,7 +632,7 @@ class Remote(RemoteShell):
             args.append('sudo')
         args.extend([
             'tar',
-            'cz',
+            'cz' if compress else 'c',
             '-f', '-',
             '-C', path,
             '--',
@@ -645,7 +645,7 @@ class Remote(RemoteShell):
         self._sftp_get_file(remote_temp_path, to_path)
         self.remove(remote_temp_path)
 
-    def get_tar_stream(self, path, sudo=False):
+    def get_tar_stream(self, path, sudo=False, compress=True):
         """
         Tar-compress a remote directory and return the RemoteProcess
         for streaming
@@ -655,7 +655,7 @@ class Remote(RemoteShell):
             args.append('sudo')
         args.extend([
             'tar',
-            'cz',
+            'cz' if compress else 'c',
             '-f', '-',
             '-C', path,
             '--',

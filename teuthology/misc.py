@@ -745,8 +745,8 @@ def pull_directory(remote, remotedir, localdir, write_to=copy_fileobj):
               remote.shortname, remotedir, localdir)
     if not os.path.exists(localdir):
         os.mkdir(localdir)
-    r = remote.get_tar_stream(remotedir, sudo=True)
-    tar = tarfile.open(mode='r|gz', fileobj=r.stdout)
+    r = remote.get_tar_stream(remotedir, sudo=True, compress=False)
+    tar = tarfile.open(mode='r|', fileobj=r.stdout)
     while True:
         ti = tar.next()
         if ti is None:
@@ -1367,7 +1367,7 @@ def compress_logs(ctx, remote_dir):
     run.wait(
         ctx.cluster.run(
             args=(f"sudo find {remote_dir} -name *.log -print0 | "
-                  f"sudo xargs -0 --no-run-if-empty -- gzip --"),
+                  f"sudo xargs --max-args=1 --max-procs=0 --verbose -0 --no-run-if-empty -- gzip -5 --verbose --"),
             wait=False,
         ),
     )
