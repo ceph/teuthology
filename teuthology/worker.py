@@ -156,7 +156,15 @@ def prep_job(job_config, log_file_path, archive_dir):
     teuthology_sha1 = job_config.get('teuthology_sha1')
     if not teuthology_sha1:
         repo_url = repo_utils.build_git_url('teuthology', 'ceph')
-        teuthology_sha1 = repo_utils.ls_remote(repo_url, teuthology_branch)
+        try:
+            teuthology_sha1 = repo_utils.ls_remote(repo_url, teuthology_branch)
+        except Exception as exc:
+            log.exception(f"Could not get teuthology sha1 for branch {teuthology_branch}")
+            report.try_push_job_info(
+                job_config,
+                dict(status='dead', failure_reason=str(exc))
+            )
+            raise SkipJob()
         if not teuthology_sha1:
             reason = "Teuthology branch {} not found; marking job as dead".format(teuthology_branch)
             log.error(reason)
