@@ -343,6 +343,9 @@ class Run(object):
         job_config.user = self.user
         job_config.timestamp = self.timestamp
         job_config.priority = self.args.priority
+        job_config.seed = self.args.seed
+        if self.args.subset:
+            job_config.subset = '/'.join(str(i) for i in self.args.subset)
         if self.args.email:
             job_config.email = self.args.email
         if self.args.owner:
