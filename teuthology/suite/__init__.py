@@ -166,8 +166,11 @@ def get_rerun_conf(conf):
     try:
         subset, no_nested_subset, seed = reporter.get_rerun_conf(conf.rerun)
     except IOError:
+        log.error('Error accessing results.log, file might be missing.')
+        log.warning('Using default/specified values for --seed, --subset and --no-nested-subset')
         return conf.subset, conf.no_nested_subset, conf.seed
     if seed is None:
+        log.warning('Missing seed in results.log, using default/specified values for --seed')
         return conf.subset, conf.no_nested_subset, conf.seed
     if conf.seed < 0:
         log.info('Using stored seed=%s', seed)
@@ -185,6 +188,7 @@ def get_rerun_conf(conf):
                   stored_subset=subset)
     if conf.no_nested_subset is True:
         log.info('Nested subsets disabled')
+        no_nested_subset = conf.no_nested_subset
     return subset, no_nested_subset, seed
 
 

@@ -121,7 +121,8 @@ Scheduler arguments:
                               contain each facet at least once) and schedule
                               piece <index>.  Scheduling 0/<outof>, 1/<outof>,
                               2/<outof> ... <outof>-1/<outof> will schedule all
-                              jobs in the suite (many more than once).
+                              jobs in the suite (many more than once). If specified,
+                              this value can be found in results.log.
   -p <priority>, --priority <priority>
                               Job priority (lower is sooner)
                               [default: 1000]
@@ -157,25 +158,28 @@ Scheduler arguments:
                               using the same logic as --filter.
                               Of all the flags that were passed when scheduling
                               the original run, the resulting one will only
-                              inherit the suite value. Any others must be
-                              passed as normal while scheduling with this
-                              feature. For random tests involving facet whose
-                              path ends with '$' operator, you might want to
-                              use --seed argument to repeat them.
+                              inherit the --suite value. Any other arguments
+                              must be passed again while scheduling. By default,
+                              'seed' and 'subset' will be taken from results.log,
+                              but can be overide if passed again.
+                              This is important for tests involving random facet
+                              (path ends with '$' operator).
  -R, --rerun-statuses <statuses>
                               A comma-separated list of statuses to be used
                               with --rerun. Supported statuses are: 'dead',
                               'fail', 'pass', 'queued', 'running', 'waiting'
                               [default: fail,dead]
  --seed SEED                  An random number mostly useful when used along
-                              with --rerun argument. This number can be found
-                              in the output of teuthology-suite command. -1
-                              for a random seed [default: -1].
+                              with --rerun argument to rerun the exact
+                              same jobs that can only be picked at random.
+                              This number can be found in the output of
+                              teuthology-suite command or in results.log.
+                              Pass -1 for a random seed [default: -1].
  --force-priority             Skip the priority check.
  --job-threshold <threshold>  Do not allow to schedule the run if the number
                               of jobs exceeds <threshold>. Use 0 to allow
                               any number [default: {default_job_threshold}].
- --no-nested-subset           Do not perform nested suite subsets.
+ --no-nested-subset           Do not perform nested suite subsets [default: false].
 
 +=================+=================================================================+
 | Priority        | Explanation                                                     |
