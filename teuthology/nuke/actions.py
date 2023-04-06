@@ -404,20 +404,13 @@ def synch_clocks(remotes):
     for remote in remotes:
         remote.run(
             args=[
-                'sudo', 'systemctl', 'stop', 'ntp.service', run.Raw('||'),
-                'sudo', 'systemctl', 'stop', 'ntpd.service', run.Raw('||'),
-                'sudo', 'systemctl', 'stop', 'chronyd.service',
+		'sudo', 'systemctl', 'restart', 'chronyd.service',
                 run.Raw('&&'),
-                'sudo', 'ntpdate-debian', run.Raw('||'),
-                'sudo', 'ntp', '-gq', run.Raw('||'),
-                'sudo', 'ntpd', '-gq', run.Raw('||'),
-                'sudo', 'chronyc', 'sources',
+		'sudo', 'chronyc', 'makestep',
                 run.Raw('&&'),
                 'sudo', 'hwclock', '--systohc', '--utc',
-                run.Raw('&&'),
-                'sudo', 'systemctl', 'start', 'ntp.service', run.Raw('||'),
-                'sudo', 'systemctl', 'start', 'ntpd.service', run.Raw('||'),
-                'sudo', 'systemctl', 'start', 'chronyd.service',
+                run.Raw(';'),
+		'sudo', 'chronyc', 'sources',
                 run.Raw('||'),
                 'true',    # ignore errors; we may be racing with ntpd startup
             ],
