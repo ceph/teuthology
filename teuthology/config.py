@@ -171,6 +171,7 @@ class TeuthologyConfig(YamlConfig):
         'koji_task_url': 'https://kojipkgs.fedoraproject.org/work/',
         'baseurl_template': 'http://{host}/{proj}-{pkg_type}-{dist}-{arch}-{flavor}/{uri}',
         'use_shaman': True,
+	'teuthology_git_url': 'https://github.com/ceph/teuthology.git',
         'shaman_host': 'shaman.ceph.com',
         'teuthology_path': None,
         'suite_verify_ceph_hash': True,
@@ -209,6 +210,9 @@ class TeuthologyConfig(YamlConfig):
     def get_ceph_git_url(self):
         return (self.ceph_git_url or
                 self.ceph_git_base_url + 'ceph-ci.git')
+    def get_teuthology_git_url(self):
+        return self.teuthology_git_url
+
 
 
 class JobConfig(YamlConfig):

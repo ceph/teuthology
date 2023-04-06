@@ -50,6 +50,8 @@ def build_git_url(project, project_owner='ceph'):
         base = config.get_ceph_cm_ansible_git_url()
     elif project == 'ceph':
         base = config.get_ceph_git_url()
+    elif project == 'teuthology':
+        base = config.get_teuthology_git_url()
     else:
         base = 'https://github.com/{project_owner}/{project}'
     url_templ = re.sub(r'\.git$', '', base)
