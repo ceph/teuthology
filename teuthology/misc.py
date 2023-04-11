@@ -817,16 +817,19 @@ def get_scratch_devices(remote):
                 "is in use"
             ],
         ]
+
+        checkRet = True
         for args, msg in dev_checks:
             try:
                 remote.run(args=args)
             except CommandFailedError:
+                checkRet = False
                 log.debug(f"get_scratch_devices: {dev} {msg}")
                 break
-        else:
+
+        if checkRet:
             retval.append(dev)
-            continue
-        break
+
     return retval
 
 
