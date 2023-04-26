@@ -295,7 +295,7 @@ rfc3986==1.5.0
     # via oslo-config
 s3transfer==0.5.2
     # via boto3
-sentry-sdk==1.6.0
+sentry-sdk==1.14.0
     # via teuthology (pyproject.toml)
 simplejson==3.17.3
     # via
