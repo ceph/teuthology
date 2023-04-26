@@ -347,7 +347,7 @@ wcwidth==0.2.5
     # via
     #   cmd2
     #   prettytable
-wheel==0.36.2
+wheel==0.38.1
     # via pip-tools
 wrapt==1.12.1
     # via debtcollector
