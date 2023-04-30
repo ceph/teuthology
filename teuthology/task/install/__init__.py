@@ -145,10 +145,12 @@ def get_package_list(ctx, config):
             yaml_path = suite_packages_path
     # If packages.yaml isn't found in the suite_path, potentially use
     # teuthology's
-    yaml_path = yaml_path or os.path.join(
-        os.path.dirname(__file__),
-        'packages.yaml',
-    )
+    if not yaml_path:
+        log.info("Falling back to Teuthology's packages.yaml")
+        yaml_path = os.path.join(
+            os.path.dirname(__file__),
+            'packages.yaml',
+        )
     default_packages = yaml.safe_load(open(yaml_path))
     default_debs = default_packages.get(project, dict()).get('deb', [])
     default_rpms = default_packages.get(project, dict()).get('rpm', [])
