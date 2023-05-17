@@ -85,7 +85,7 @@ def _ship_utilities(ctx):
     destdir = '/usr/bin'
     for filename in FILES:
         log.info('Shipping %r...', filename)
-        src = os.path.join(os.path.dirname(__file__), filename)
+        src = os.path.join(os.path.dirname(__file__), 'bin', filename)
         dst = os.path.join(destdir, filename)
         filenames.append(dst)
         with open(src, 'rb') as f:
