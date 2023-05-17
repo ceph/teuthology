@@ -173,6 +173,13 @@ def _update_package_list_and_install(ctx, remote, rpm, config):
     :param rpm: list of packages names to install
     :param config: the config dict
     """
+
+    enable_coprs = config.get('enable_coprs', [])
+    if len(enable_coprs):
+        remote.run(args=['sudo', 'dnf', '-y', 'install', 'dnf-command(copr)'])
+        for copr in enable_coprs:
+            remote.run(args=['sudo', 'dnf', '-y', 'copr', 'enable', copr])
+
     # rpm does not force installation of a particular version of the project
     # packages, so we can put extra_system_packages together with the rest
     system_pkglist = config.get('extra_system_packages')
@@ -368,6 +375,8 @@ def _remove_sources_list(ctx, config, remote):
     if remote.os.name not in ['opensuse', 'sle']:
         _yum_unset_check_obsoletes(remote)
 
+    for copr in config.get('enable_coprs', []):
+        remote.run(args=['sudo', 'dnf', '-y', 'copr', 'disable', copr])
 
 def _upgrade_packages(ctx, config, remote, pkgs):
     """

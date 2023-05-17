@@ -458,6 +458,12 @@ def task(ctx, config):
     are welcome to add support for other distros.
 
 
+    Enable Fedora copr repositories using enable_coprs:
+
+    - install:
+        enable_coprs: [ceph/el9]
+
+
     Overrides are project specific:
 
     overrides:
@@ -599,6 +605,7 @@ def task(ctx, config):
                 extra_packages=config.get('extra_packages', []),
                 extra_system_packages=config.get('extra_system_packages', []),
                 extras=config.get('extras', None),
+                enable_coprs=config.get('enable_coprs', []),
                 flavor=flavor,
                 install_ceph_packages=config.get('install_ceph_packages', True),
                 packages=config.get('packages', dict()),
