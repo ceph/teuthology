@@ -1053,9 +1053,9 @@ def get_latest_image_version_rpm(remote):
         kernel_pkg_name = "kernel-default"
     else:
         kernel_pkg_name = "kernel"
-    # get tip of package list ordered by install time
+    # get tip of package list ordered by descending version
     newest_package = remote.sh(
-        'rpm -q %s --last | head -n 1' % kernel_pkg_name).strip()
+        'rpm -q %s | sort -rV | head -n 1' % kernel_pkg_name).strip()
     for kernel in newest_package.split():
         if kernel.startswith('kernel'):
             if 'ceph' not in kernel:
