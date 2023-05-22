@@ -1,15 +1,21 @@
+import tracemalloc
+import linecache
 import itertools
 import logging
 import os
 import psutil
+import signal
 import time
 
 from pathlib import Path
 
+from teuthology import exit
 import teuthology.beanstalk as beanstalk
 import teuthology.dispatcher
 from teuthology.config import config
 from teuthology.lock.query import list_locks
+
+tracemalloc.start()
 
 log = logging.getLogger(__name__)
 
@@ -47,6 +53,13 @@ class TeuthologyExporter:
             JobProcesses(),
             Nodes(),
         ]
+        self.update_count = 0
+
+        def checkpoint(signal_, frame):
+            new_snapshot = filter_snapshot(tracemalloc.take_snapshot())
+            display_top(new_snapshot)
+            compare_snapshots(self.init_snapshot, new_snapshot)
+        exit.exiter.add_handler(signal.SIGUSR2, checkpoint)
 
     def start(self):
         start_http_server(self.port, registry=registry)
@@ -57,6 +70,10 @@ class TeuthologyExporter:
         for metric in self.metrics:
             metric.update()
         log.info("Update finished.")
+        self.update_count += 1
+        if self.update_count == 1:
+            self.init_snapshot = filter_snapshot(tracemalloc.take_snapshot())
+            display_top(self.init_snapshot)
 
     def loop(self):
         log.info("Starting teuthology-exporter...")
@@ -212,6 +229,41 @@ BootstrapTime = Summary(
     "teuthology_bootstrap_duration_seconds",
     "Time spent running teuthology's bootstrap script",
 )
+
+
+def filter_snapshot(snapshot):
+    snapshot = snapshot.filter_traces((
+        tracemalloc.Filter(False, "<frozen importlib._bootstrap>"),
+        tracemalloc.Filter(False, "<unknown>"),
+    ))
+    return snapshot
+
+
+def display_top(snapshot, key_type='lineno', limit=10):
+    top_stats = snapshot.statistics(key_type)
+
+    print("Top %s lines" % limit)
+    for index, stat in enumerate(top_stats[:limit], 1):
+        frame = stat.traceback[0]
+        print("#%s: %s:%s: %.1f KiB"
+              % (index, frame.filename, frame.lineno, stat.size / 1024))
+        line = linecache.getline(frame.filename, frame.lineno).strip()
+        if line:
+            print('    %s' % line)
+
+    other = top_stats[limit:]
+    if other:
+        size = sum(stat.size for stat in other)
+        print("%s other: %.1f KiB" % (len(other), size / 1024))
+    total = sum(stat.size for stat in top_stats)
+    print("Total allocated size: %.1f KiB" % (total / 1024))
+
+
+def compare_snapshots(snap_a, snap_b):
+    print("# Top 10 differences")
+    top_stats = snap_b.compare_to(snap_a, 'lineno')
+    for stat in top_stats[:10]:
+        print(stat)
 
 
 def main(args):
