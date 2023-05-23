@@ -1,5 +1,6 @@
 import logging
 
+import teuthology.exporter
 import teuthology.lock.query
 from teuthology.misc import decanonicalize_hostname, get_distro, get_distro_version
 
@@ -18,8 +19,10 @@ def _logfile(ctx, shortname):
         return os.path.join(ctx.config['archive_path'],
                             shortname + '.downburst.log')
 
+
 def get_reimage_types():
     return pelagos.get_types() + fog.get_types()
+
 
 def reimage(ctx, machine_name, machine_type):
     os_type = get_distro(ctx)
@@ -36,7 +39,21 @@ def reimage(ctx, machine_name, machine_type):
     else:
         raise Exception("The machine_type '%s' is not known to any "
                         "of configured provisioners" % machine_type)
-    return obj.create()
+    status = "fail"
+    try:
+        result = obj.create()
+        status = "success"
+    except Exception:
+        # We only need this clause so that we avoid triggering the finally
+        # clause below in cases where the exception raised is KeyboardInterrupt
+        # or SystemExit
+        raise
+    finally:
+        teuthology.exporter.NodeReimagingResults.record(
+            ctx.config.get("machine_type"),
+            status,
+        )
+    return result
 
 
 def create_if_vm(ctx, machine_name, _downburst=None):
