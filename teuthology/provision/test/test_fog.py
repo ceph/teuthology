@@ -267,7 +267,7 @@ class TestFOG(object):
 
     @mark.parametrize(
         'tries',
-        [3, 61],
+        [3, 121],
     )
     def test_wait_for_deploy_task(self, tries):
         wait_results = [True for i in range(tries)] + [False]
