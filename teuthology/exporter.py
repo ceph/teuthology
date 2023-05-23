@@ -9,7 +9,6 @@ import time
 
 from pathlib import Path
 
-from teuthology import exit
 import teuthology.beanstalk as beanstalk
 import teuthology.dispatcher
 from teuthology.config import config
@@ -59,7 +58,7 @@ class TeuthologyExporter:
             new_snapshot = filter_snapshot(tracemalloc.take_snapshot())
             display_top(new_snapshot)
             compare_snapshots(self.init_snapshot, new_snapshot)
-        exit.exiter.add_handler(signal.SIGUSR2, checkpoint)
+        signal.signal(signal.SIGUSR2, checkpoint)
 
     def start(self):
         start_http_server(self.port, registry=registry)
