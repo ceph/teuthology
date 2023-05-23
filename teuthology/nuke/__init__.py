@@ -11,9 +11,9 @@ import teuthology
 
 from teuthology import provision
 from teuthology.lock import ops as lock_ops
+from teuthology.lock import util
 from teuthology.lock.query import is_vm, list_locks, \
     find_stale_locks, get_status
-from teuthology.lock.util import locked_since_seconds
 from teuthology.nuke.actions import (
     check_console, clear_firewall, shutdown_daemons, remove_installed_packages,
     reboot, remove_osd_mounts, remove_osd_tmpfs, kill_hadoop,
@@ -28,7 +28,7 @@ from teuthology.misc import (
     get_user, sh
 )
 from teuthology.openstack import OpenStack, OpenStackInstance, enforce_json_dictionary
-from teuthology.orchestra.remote import Remote
+from teuthology.orchestra import remote
 from teuthology.parallel import parallel
 from teuthology.task import internal
 from teuthology.task.internal import check_lock
@@ -143,13 +143,13 @@ def stale_openstack_nodes(ctx, instances, locked_nodes):
         if node['machine_type'] != 'openstack':
             continue
         if (name not in names and
-                locked_since_seconds(node) > OPENSTACK_DELAY):
+                util.locked_since_seconds(node) > OPENSTACK_DELAY):
             log.info("stale-openstack: unlocking node {name} unlocked"
                      " because it was created {created}"
                      " seconds ago which is older than {delay}"
                      " and it has no instance"
                      .format(name=name,
-                             created=locked_since_seconds(node),
+                             created=util.locked_since_seconds(node),
                              delay=OPENSTACK_DELAY))
             if not ctx.dry_run:
                 lock_ops.unlock_one(ctx, name, node['locked_by'])
@@ -311,20 +311,20 @@ def nuke_helper(ctx, should_unlock, keep_logs, should_reboot):
         if is_vm(shortname):
             return
     log.debug('shortname: %s' % shortname)
-    remote = Remote(host)
+    remote_ = remote.Remote(host)
     if ctx.check_locks:
         # does not check to ensure if the node is 'up'
         # we want to be able to nuke a downed node
         check_lock.check_lock(ctx, None, check_up=False)
     status = get_status(host)
     if status['machine_type'] in provision.fog.get_types():
-        remote.console.power_off()
+        remote_.console.power_off()
         return
     elif status['machine_type'] in provision.pelagos.get_types():
         provision.pelagos.park_node(host)
         return
-    elif remote.is_container:
-        remote.run(
+    elif remote_.is_container:
+        remote_.run(
             args=['sudo', '/testnode_stop.sh'],
             check_status=False,
         )
@@ -336,8 +336,8 @@ def nuke_helper(ctx, should_unlock, keep_logs, should_reboot):
         except Exception:
             log.exception('')
             log.info("Will attempt to connect via SSH")
-            remote = Remote(host)
-            remote.connect()
+            remote_ = remote.Remote(host)
+            remote_.connect()
     internal.add_remotes(ctx, None)
     internal.connect(ctx, None)
     clear_firewall(ctx)

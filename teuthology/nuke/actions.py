@@ -2,8 +2,7 @@ import logging
 import time
 
 from teuthology.misc import get_testdir, reconnect
-from teuthology.orchestra import run
-from teuthology.orchestra.remote import Remote
+from teuthology.orchestra import remote as remote_mod, run
 from teuthology.task import install as install_task
 
 
@@ -432,7 +431,7 @@ def unlock_firmware_repo(ctx):
 
 
 def check_console(hostname):
-    remote = Remote(hostname)
+    remote = remote_mod.Remote(hostname)
     shortname = remote.shortname
     console = remote.console
     if not console:
