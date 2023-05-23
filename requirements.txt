@@ -281,7 +281,7 @@ pyyaml==5.4.1
     #   openstacksdk
     #   oslo-config
     #   teuthology (pyproject.toml)
-requests==2.27.1
+requests==2.31.0
     # via
     #   apache-libcloud
     #   keystoneauth1
