@@ -251,7 +251,7 @@ class FOG(object):
         completed)
         """
         self.log.info("Waiting for deploy to finish")
-        with safe_while(sleep=15, tries=60) as proceed:
+        with safe_while(sleep=15, tries=120) as proceed:
             while proceed():
                 if not self.deploy_task_active(task_id):
                     break
