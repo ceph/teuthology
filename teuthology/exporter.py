@@ -184,6 +184,22 @@ class _JobResults(TeuthologyMetric):
 
 JobResults = _JobResults()
 
+
+class _NodeReimagingResults(TeuthologyMetric):
+    def __init__(self):
+        self.metric = Counter(
+            "teuthology_reimaging_results",
+            "Teuthology Reimaging Results",
+            ["machine_type", "status"],
+        )
+
+    # As this is to be used within job processes, we implement record() rather than update()
+    def record(self, machine_type, status):
+        self.metric.labels(machine_type=machine_type, status=status).inc()
+
+
+NodeReimagingResults = _NodeReimagingResults()
+
 NodeLockingTime = Summary(
     "teuthology_node_locking_duration_seconds",
     "Time spent waiting to lock nodes",
