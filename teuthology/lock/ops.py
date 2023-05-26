@@ -212,6 +212,8 @@ def unlock_one(ctx, name, user, description=None):
                 if response.ok:
                     log.info('unlocked: %s', name)
                     return response.ok
+                if response.status_code == 403:
+                    break
             # Work around https://github.com/kennethreitz/requests/issues/2364
             except requests.ConnectionError as e:
                 log.warning("Saw %s while unlocking; retrying...", str(e))
