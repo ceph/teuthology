@@ -98,6 +98,7 @@ class TestFOG(object):
             cancel_deploy_task=DEFAULT,
             _wait_for_ready=DEFAULT,
             _fix_hostname=DEFAULT,
+            _verify_installed_os=DEFAULT,
         ) as local_mocks:
             local_mocks['get_host_data'].return_value = dict(id=host_id)
             local_mocks['schedule_deploy_task'].return_value = task_id

@@ -89,6 +89,7 @@ class FOG(object):
             raise
         self._wait_for_ready()
         self._fix_hostname()
+        self._verify_installed_os()
         self.log.info("Deploy complete!")
 
     def do_request(self, url_suffix, data=None, method='GET', verify=True):
@@ -322,6 +323,19 @@ class FOG(object):
             args="sudo hostname %s" % self.shortname,
             check_status=False,
         )
+
+    def _verify_installed_os(self):
+        # What we call "CentOS X.Stream", we will see as "CentOS X"
+        os_version = self.os_version.lower()
+        # When we drop support for python 3.8, str.removesuffix() is helpful
+        if os_version.endswith(".stream"):
+            os_version = os_version[:-len(".stream")]
+        if self.remote.os.name.lower() != self.os_type.lower() or \
+                self.remote.os.version.lower() != os_version:
+            raise RuntimeError(
+                f"Expected {self.remote.shortname}'s OS to be {self.os_type} {os_version} but "
+                f"found {self.remote.os.name} {self.remote.os.version}"
+            )
 
     def destroy(self):
         """A no-op; we just leave idle nodes as-is"""
