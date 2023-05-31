@@ -2,7 +2,6 @@ import contextlib
 import sys
 import logging
 import time
-import itertools
 
 from teuthology.config import config
 from teuthology.exceptions import MaxWhileTries
@@ -58,8 +57,8 @@ def nested(*managers):
 class safe_while(object):
     """
     A context manager to remove boiler plate code that deals with `while` loops
-    that need a given number of tries and some seconds to sleep between each
-    one of those tries.
+    that need a given number of tries or total timeout and some seconds to sleep
+    between each one of those tries.
 
     The most simple example possible will try 10 times sleeping for 6 seconds:
 
@@ -82,6 +81,8 @@ class safe_while(object):
     :param increment: The amount to add to the sleep value on each try.
                       Default 0.
     :param tries:     The amount of tries before giving up. Default 10.
+    :param timeout:   Total seconds to try for, overrides the tries parameter
+                      if specified. Default 0.
     :param action:    The name of the action being attempted. Default none.
     :param _raise:    Whether to raise an exception (or log a warning).
                       Default True.
@@ -89,28 +90,24 @@ class safe_while(object):
                       Default time.sleep
     """
 
-    def __init__(self, sleep=6, increment=0, tries=10, action=None,
+    def __init__(self, sleep=6, increment=0, tries=10, timeout=0, action=None,
                  _raise=True, _sleeper=None):
         self.sleep = sleep
         self.increment = increment
         self.tries = tries
+        self.timeout = timeout
         self.counter = 0
         self.sleep_current = sleep
         self.action = action
         self._raise = _raise
         self.sleeper = _sleeper or time.sleep
+        self.total_seconds = sleep
 
     def _make_error_msg(self):
         """
         Sum the total number of seconds we waited while providing the number
         of tries we attempted
         """
-        total_seconds_waiting = sum(
-            itertools.islice(
-                itertools.count(self.sleep, self.increment),
-                self.tries
-            )
-        )
         msg = 'reached maximum tries ({tries})' + \
             ' after waiting for {total} seconds'
         if self.action:
@@ -118,8 +115,8 @@ class safe_while(object):
 
         msg = msg.format(
             action=self.action,
-            tries=self.tries,
-            total=total_seconds_waiting,
+            tries=self.counter,
+            total=self.total_seconds,
         )
         return msg
 
@@ -129,15 +126,21 @@ class safe_while(object):
         self.counter += 1
         if self.counter == 1:
             return True
-        if self.counter > self.tries:
+        if ((self.timeout > 0 and
+             self.total_seconds >= self.timeout) or
+            (self.timeout == 0 and self.counter > self.tries)):
             error_msg = self._make_error_msg()
             if self._raise:
                 raise MaxWhileTries(error_msg)
             else:
                 log.warning(error_msg)
                 return False
-        self.sleeper(self.sleep_current)
         self.sleep_current += self.increment
+        if self.timeout > 0:
+            self.sleep_current = min(self.timeout - self.total_seconds, self.sleep_current)
+        self.total_seconds += self.sleep_current
+        print(self.total_seconds, self.sleep_current)
+        self.sleeper(self.sleep_current)
         return True
 
     def __enter__(self):
