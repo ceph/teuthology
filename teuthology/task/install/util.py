@@ -81,11 +81,11 @@ def _ship_utilities(ctx):
     except IOError as e:
         log.info('Cannot ship supression file for valgrind: %s...', e.strerror)
 
-    FILES = ['daemon-helper', 'adjust-ulimits']
+    FILES = ['daemon-helper', 'adjust-ulimits', 'stdin-killer']
     destdir = '/usr/bin'
     for filename in FILES:
         log.info('Shipping %r...', filename)
-        src = os.path.join(os.path.dirname(__file__), filename)
+        src = os.path.join(os.path.dirname(__file__), 'bin', filename)
         dst = os.path.join(destdir, filename)
         filenames.append(dst)
         with open(src, 'rb') as f:
