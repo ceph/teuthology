@@ -50,7 +50,7 @@ def reimage(ctx, machine_name, machine_type):
         raise
     finally:
         teuthology.exporter.NodeReimagingResults.record(
-            ctx.config.get("machine_type"),
+            machine_type,
             status,
         )
     return result
