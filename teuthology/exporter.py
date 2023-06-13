@@ -47,6 +47,7 @@ class TeuthologyExporter:
             JobProcesses(),
             Nodes(),
         ]
+        self._created_time = time.perf_counter()
 
     def start(self):
         start_http_server(self.port, registry=registry)
@@ -63,6 +64,8 @@ class TeuthologyExporter:
         while True:
             try:
                 before = time.perf_counter()
+                if before - self._created_time > 24 * 60 * 60:
+                    self.restart()
                 try:
                     self.update()
                 except Exception:
@@ -78,6 +81,11 @@ class TeuthologyExporter:
             except KeyboardInterrupt:
                 log.info("Stopping.")
                 raise SystemExit
+
+    def restart(self):
+        # Use the dispatcher's restart function - note that by using this here,
+        # it restarts the exporter, *not* the dispatcher.
+        return teuthology.dispatcher.restart(log=log)
 
 
 class TeuthologyMetric:
