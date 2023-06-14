@@ -103,6 +103,7 @@ class FOG(object):
                        unsuccessful (default: True)
         :returns: A requests.models.Response object
         """
+        self.log.debug(f"FOG request: {method} {url_suffix} {data}")
         req_kwargs = dict(
             headers={
                 'fog-api-token': config.fog['api_token'],
@@ -179,6 +180,8 @@ class FOG(object):
         """
         image_data = self.get_image_data()
         image_id = int(image_data['id'])
+        image_name = image_data.get("name")
+        self.log.debug(f"Requesting image {image_name} (ID {image_id})")
         self.do_request(
             '/host/%s' % host_id,
             method='PUT',
@@ -259,6 +262,7 @@ class FOG(object):
 
     def cancel_deploy_task(self,  task_id):
         """ Cancel an active deploy task """
+        self.log.debug(f"Canceling deploy task with ID {task_id}")
         resp = self.do_request(
             '/task/cancel',
             method='DELETE',
