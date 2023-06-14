@@ -36,7 +36,13 @@ VENV=${VENV:-"virtualenv"}
 
 case "$(uname -s)" in
 Linux)
-    case "$(lsb_release --id --short)" in
+    if command -v lsb_release; then
+        OS=$(lsb_release --id --short)
+    else
+        . /etc/os-release
+        OS=$(echo $NAME | tr -d ' ')
+    fi
+    case "$OS" in
     Ubuntu|Debian|LinuxMint)
         deps=(qemu-utils python3-dev libssl-dev python3-pip python3-wheel $PYTHON-venv libev-dev libvirt-dev libffi-dev libyaml-dev)
         for package in ${deps[@]}; do
@@ -81,7 +87,7 @@ Linux)
         fi
         ;;
     CentOSStream)
-        deps=(python3-pip python39-devel mariadb-devel libev-devel libvirt-devel libffi-devel)
+        deps=(python3-pip python3-devel)
         for package in ${deps[@]}; do
           if ! rpm -q --whatprovides $package ; then
               missing="${missing:+$missing }$package"
