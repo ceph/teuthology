@@ -288,8 +288,7 @@ class FOG(object):
                     # keep retrying without any notification (like, say,
                     # a mismatched host key in ~/.ssh/known_hosts, or
                     # something)
-                    log.warning(e)
-                    pass
+                    self.log.warning(e)
         sentinel_file = config.fog.get('sentinel_file', None)
         if sentinel_file:
             cmd = "while [ ! -e '%s' ]; do sleep 5; done" % sentinel_file
