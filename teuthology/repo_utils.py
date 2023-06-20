@@ -5,8 +5,6 @@ import shutil
 import subprocess
 import time
 
-import teuthology.exporter as exporter
-
 from teuthology import misc
 from teuthology.util.flock import FileLock
 from teuthology.config import config
@@ -440,6 +438,9 @@ def fetch_teuthology(branch, commit=None, lock=True):
 
 
 def bootstrap_teuthology(dest_path):
+    # avoid circular imports
+    import teuthology.exporter as exporter
+
     with exporter.BootstrapTime.time():
         log.info("Bootstrapping %s", dest_path)
         # This magic makes the bootstrap script not attempt to clobber an

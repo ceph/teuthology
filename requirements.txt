@@ -178,7 +178,7 @@ oslo-utils==4.12.2
     #   python-keystoneclient
     #   python-novaclient
     #   python-openstackclient
-packaging==22.0
+packaging==21.3
     # via
     #   ansible-base
     #   build
@@ -207,7 +207,7 @@ pep517==0.11.0
     # via build
 pexpect==4.8.0
     # via teuthology (pyproject.toml)
-pip-tools==6.11.0
+pip-tools==6.4.0
     # via teuthology (pyproject.toml)
 platformdirs==2.4.0
     # via virtualenv
@@ -329,7 +329,7 @@ toml==0.10.2
     # via
     #   teuthology (pyproject.toml)
     #   tox
-tomli==2.0.1
+tomli==1.2.3
     # via
     #   build
     #   pep517
@@ -347,7 +347,7 @@ wcwidth==0.2.5
     # via
     #   cmd2
     #   prettytable
-wheel==0.38.1
+wheel==0.37.1
     # via pip-tools
 wrapt==1.12.1
     # via debtcollector

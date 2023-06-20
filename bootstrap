@@ -67,7 +67,7 @@ Linux)
         fi
         ;;
     RedHatEnterpriseWorkstation|RedHatEnterpriseServer|RedHatEnterprise|CentOS)
-        deps=(python39-pip python39-devel mariadb-devel libev-devel libvirt-devel libffi-devel)
+        deps=(python36-pip python36-devel mariadb-devel libev-devel libvirt-devel libffi-devel)
         for package in ${deps[@]}; do
           if ! rpm -q --whatprovides $package ; then
               missing="${missing:+$missing }$package"
