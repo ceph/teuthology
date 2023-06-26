@@ -53,6 +53,9 @@ logging.getLogger('requests.packages.urllib3.connectionpool').setLevel(
 # if requests doesn't bundle it, shut it up anyway
 logging.getLogger('urllib3.connectionpool').setLevel(
     logging.WARN)
+# We also don't need the "Converted retries value" messages
+logging.getLogger('urllib3.util.retry').setLevel(
+    logging.WARN)
 
 logging.basicConfig(
     level=logging.INFO,
