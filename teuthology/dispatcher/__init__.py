@@ -39,7 +39,7 @@ def sentinel(path):
     return file_mtime > start_time
 
 
-def restart():
+def restart(log=log):
     log.info('Restarting...')
     args = sys.argv[:]
     args.insert(0, sys.executable)
