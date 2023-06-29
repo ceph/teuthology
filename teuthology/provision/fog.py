@@ -292,7 +292,14 @@ class FOG(object):
         sentinel_file = config.fog.get('sentinel_file', None)
         if sentinel_file:
             cmd = "while [ ! -e '%s' ]; do sleep 5; done" % sentinel_file
-            self.remote.run(args=cmd, timeout=600)
+            action = f"wait for sentinel on {self.shortname}"
+            with safe_while(action=action, timeout=1800, increment=3) as proceed:
+                while proceed():
+                    try:
+                        self.remote.run(args=cmd, timeout=600)
+                        break
+                    except ConnectionResetError as e:
+                        log.error(f"{e} on {self.shortname}")
         self.log.info("Node is ready")
 
     def _fix_hostname(self):
