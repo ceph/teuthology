@@ -139,7 +139,6 @@ class safe_while(object):
         if self.timeout > 0:
             self.sleep_current = min(self.timeout - self.total_seconds, self.sleep_current)
         self.total_seconds += self.sleep_current
-        print(self.total_seconds, self.sleep_current)
         self.sleeper(self.sleep_current)
         return True
 

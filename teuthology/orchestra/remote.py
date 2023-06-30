@@ -4,6 +4,7 @@ Support for paramiko remote objects.
 
 import teuthology.lock.query
 import teuthology.lock.util
+from teuthology.contextutil import safe_while
 from teuthology.orchestra import run
 from teuthology.orchestra import connection
 from teuthology.orchestra import console
@@ -13,7 +14,6 @@ from teuthology import misc
 from teuthology.exceptions import CommandFailedError
 from teuthology.misc import host_shortname
 import errno
-import time
 import re
 import logging
 from io import BytesIO
@@ -386,7 +386,7 @@ class Remote(RemoteShell):
         self.ssh = connection.connect(**args)
         return self.ssh
 
-    def reconnect(self, timeout=None, socket_timeout=None, sleep_time=30):
+    def reconnect(self, timeout=30, socket_timeout=None):
         """
         Attempts to re-establish connection. Returns True for success; False
         for failure.
@@ -395,18 +395,15 @@ class Remote(RemoteShell):
             self.ssh.close()
         if not timeout:
             return self._reconnect(timeout=socket_timeout)
-        start_time = time.time()
-        elapsed_time = lambda: time.time() - start_time
-        while elapsed_time() < timeout:
-            success = self._reconnect(timeout=socket_timeout)
-            if success:
-                log.info(f"Successfully reconnected to host '{self.name}'")
-                break
-            # Don't let time_remaining be < 0
-            time_remaining = max(0, timeout - elapsed_time())
-            sleep_val = min(time_remaining, sleep_time)
-            time.sleep(sleep_val)
-        return success
+        action = "reconnect to {self.shortname}"
+        with safe_while(action=action, timeout=timeout, increment=3, _raise=False) as proceed:
+            success = False
+            while proceed():
+                success = self._reconnect(timeout=socket_timeout)
+                if success:
+                    log.info(f"Successfully reconnected to host '{self.name}'")
+                    return success
+            return success
 
     def _reconnect(self, timeout=None):
         log.info(f"Trying to reconnect to host '{self.name}'")
