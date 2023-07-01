@@ -298,7 +298,10 @@ class FOG(object):
                     try:
                         self.remote.run(args=cmd, timeout=600)
                         break
-                    except ConnectionResetError as e:
+                    except (
+                        ConnectionResetError,
+                        EOFError,
+                    ) as e:
                         log.error(f"{e} on {self.shortname}")
         self.log.info("Node is ready")
 
