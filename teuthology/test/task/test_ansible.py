@@ -15,9 +15,30 @@ from teuthology.exceptions import CommandFailedError
 from teuthology.orchestra.cluster import Cluster
 from teuthology.orchestra.remote import Remote
 from teuthology.task import ansible
-from teuthology.task.ansible import Ansible, CephLab
+from teuthology.task.ansible import Ansible, CephLab, FailureAnalyzer
 
 from teuthology.test.task import TestTask
+
+
+class TestFailureAnalyzer:
+    klass = FailureAnalyzer
+
+    @mark.parametrize(
+        'line,result',
+        [
+            [
+                "E: Failed to fetch http://security.ubuntu.com/ubuntu/pool/main/a/apache2/apache2-bin_2.4.41-4ubuntu3.14_amd64.deb  Unable to connect to archive.ubuntu.com:http:",
+                "Unable to connect to archive.ubuntu.com:http:"
+            ],
+            [
+                "E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/main/libb/libb-hooks-op-check-perl/libb-hooks-op-check-perl_0.22-1build2_amd64.deb  Temporary failure resolving 'archive.ubuntu.com'",
+                "Temporary failure resolving 'archive.ubuntu.com'"
+            ],
+        ]
+    )
+    def test_lines(self, line, result):
+        obj = self.klass()
+        assert obj.analyze_line(line) == result
 
 
 class TestAnsibleTask(TestTask):
