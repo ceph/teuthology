@@ -2,7 +2,7 @@ import json
 import os
 import yaml
 
-from mock import patch, DEFAULT, Mock
+from unittest.mock import patch, DEFAULT, Mock, mock_open
 from pytest import raises, mark
 from teuthology.util.compat import PY3
 if PY3:
@@ -364,11 +364,7 @@ class TestAnsibleTask(TestTask):
         task = self.klass(self.ctx, self.task_config)
         task.setup()
         with patch.object(ansible.pexpect, 'run') as m_run:
-            with patch('teuthology.task.ansible.open') as m_open:
-                fake_failure_log = Mock()
-                fake_failure_log.__enter__ = Mock()
-                fake_failure_log.__exit__ = Mock()
-                m_open.return_value = fake_failure_log
+            with patch('teuthology.task.ansible.open', mock_open()):
                 m_run.return_value = ('', 1)
                 with raises(CommandFailedError):
                     task.execute_playbook()
@@ -584,11 +580,7 @@ class TestCephLabTask(TestAnsibleTask):
         task.ctx.summary = dict()
         task.setup()
         with patch.object(ansible.pexpect, 'run') as m_run:
-            with patch('teuthology.task.ansible.open') as m_open:
-                fake_failure_log = Mock()
-                fake_failure_log.__enter__ = Mock()
-                fake_failure_log.__exit__ = Mock()
-                m_open.return_value = fake_failure_log
+            with patch('teuthology.task.ansible.open', mock_open()):
                 m_run.return_value = ('', 1)
                 with raises(CommandFailedError):
                     task.execute_playbook()
@@ -599,11 +591,7 @@ class TestCephLabTask(TestAnsibleTask):
         task = self.klass(self.ctx, self.task_config)
         task.setup()
         with patch.object(ansible.pexpect, 'run') as m_run:
-            with patch('teuthology.task.ansible.open') as m_open:
-                fake_failure_log = Mock()
-                fake_failure_log.__enter__ = Mock()
-                fake_failure_log.__exit__ = Mock()
-                m_open.return_value = fake_failure_log
+            with patch('teuthology.task.ansible.open', mock_open()):
                 m_run.return_value = ('', 1)
                 with raises(CommandFailedError):
                     task.execute_playbook()
