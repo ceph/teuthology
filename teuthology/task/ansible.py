@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import requests
 import os
 import pexpect
@@ -34,6 +35,60 @@ class LoggerFile(object):
 
     def flush(self):
         pass
+
+
+class FailureAnalyzer:
+    def analyze(self, failure_log):
+        failure_obj = yaml.safe_load(failure_log)
+        lines = set()
+        if failure_obj is None:
+            return lines
+        for host_obj in failure_obj.items():
+            lines = lines.union(self.analyze_host_record(host_obj))
+        return lines
+
+    def analyze_host_record(self, record):
+        lines = set()
+        for result in record.get("results", [record]):
+            cmd = result.get("cmd", "")
+            # When a CPAN task fails, we get _lots_ of stderr_lines, and they
+            # aren't practical to reduce meaningfully. Instead of analyzing lines,
+            # just report the command that failed.
+            if "cpan" in cmd:
+                lines.add(f"CPAN command failed: {cmd}")
+                continue
+            lines_to_analyze = result.get("stderr_lines", result["msg"].split("\n"))
+            for line in lines_to_analyze:
+                line = self.analyze_line(line)
+                if line:
+                    lines.add(line)
+        return list(lines)
+
+    def analyze_line(self, line):
+        # apt output sometimes contains warnings or suggestions. Those won't be
+        # helpful, so throw them out.
+        if line.startswith("W: ") or line.endswith("?"):
+            return ""
+
+        # Next, we can normalize some common phrases.
+        phrases = [
+            "connection timed out",
+            r"(unable to|could not) connect to [^ ]+",
+            r"temporary failure resolving [^ ]+",
+        ]
+        for phrase in phrases:
+            match = re.search(rf"({phrase})", line, flags=re.IGNORECASE)
+            if match:
+                line = match.groups()[0]
+                break
+
+        # Strip out URLs for specific packages
+        package_re = re.compile(r"https?://.*\.(deb|rpm)")
+        line = package_re.sub("<package>", line)
+        # Strip out IP addresses
+        ip_re = re.compile(r"\[IP: \d+\.\d+\.\d+\.\d+( \d+)?\]")
+        line = ip_re.sub("", line)
+        return line
 
 
 class Ansible(Task):
@@ -303,17 +358,20 @@ class Ansible(Task):
     def _handle_failure(self, command, status):
         self._set_status('dead')
         failures = None
-        with open(self.failure_log.name, 'r') as fail_log:
+        with open(self.failure_log.name, 'r') as fail_log_file:
+            fail_log = fail_log_file.read()
             try:
-                failures = yaml.safe_load(fail_log)
+                analyzer = FailureAnalyzer()
+                failures = analyzer.analyze(fail_log)
             except yaml.YAMLError as e:
                 log.error(
                     "Failed to parse ansible failure log: {0} ({1})".format(
                         self.failure_log.name, e
                     )
                 )
-                fail_log.seek(0)
-                failures = fail_log.read().replace('\n', '')
+            # If we hit an exception, or if analyze() returned nothing, use the log as-is
+            if not failures:
+                failures = fail_log.replace('\n', '')
 
         if failures:
             self._archive_failures()

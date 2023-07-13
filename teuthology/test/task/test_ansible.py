@@ -2,7 +2,7 @@ import json
 import os
 import yaml
 
-from mock import patch, DEFAULT, Mock
+from unittest.mock import patch, DEFAULT, Mock, mock_open
 from pytest import raises, mark
 from teuthology.util.compat import PY3
 if PY3:
@@ -15,9 +15,30 @@ from teuthology.exceptions import CommandFailedError
 from teuthology.orchestra.cluster import Cluster
 from teuthology.orchestra.remote import Remote
 from teuthology.task import ansible
-from teuthology.task.ansible import Ansible, CephLab
+from teuthology.task.ansible import Ansible, CephLab, FailureAnalyzer
 
 from teuthology.test.task import TestTask
+
+
+class TestFailureAnalyzer:
+    klass = FailureAnalyzer
+
+    @mark.parametrize(
+        'line,result',
+        [
+            [
+                "E: Failed to fetch http://security.ubuntu.com/ubuntu/pool/main/a/apache2/apache2-bin_2.4.41-4ubuntu3.14_amd64.deb  Unable to connect to archive.ubuntu.com:http:",
+                "Unable to connect to archive.ubuntu.com:http:"
+            ],
+            [
+                "E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/main/libb/libb-hooks-op-check-perl/libb-hooks-op-check-perl_0.22-1build2_amd64.deb  Temporary failure resolving 'archive.ubuntu.com'",
+                "Temporary failure resolving 'archive.ubuntu.com'"
+            ],
+        ]
+    )
+    def test_lines(self, line, result):
+        obj = self.klass()
+        assert obj.analyze_line(line) == result
 
 
 class TestAnsibleTask(TestTask):
@@ -364,11 +385,7 @@ class TestAnsibleTask(TestTask):
         task = self.klass(self.ctx, self.task_config)
         task.setup()
         with patch.object(ansible.pexpect, 'run') as m_run:
-            with patch('teuthology.task.ansible.open') as m_open:
-                fake_failure_log = Mock()
-                fake_failure_log.__enter__ = Mock()
-                fake_failure_log.__exit__ = Mock()
-                m_open.return_value = fake_failure_log
+            with patch('teuthology.task.ansible.open', mock_open()):
                 m_run.return_value = ('', 1)
                 with raises(CommandFailedError):
                     task.execute_playbook()
@@ -584,11 +601,7 @@ class TestCephLabTask(TestAnsibleTask):
         task.ctx.summary = dict()
         task.setup()
         with patch.object(ansible.pexpect, 'run') as m_run:
-            with patch('teuthology.task.ansible.open') as m_open:
-                fake_failure_log = Mock()
-                fake_failure_log.__enter__ = Mock()
-                fake_failure_log.__exit__ = Mock()
-                m_open.return_value = fake_failure_log
+            with patch('teuthology.task.ansible.open', mock_open()):
                 m_run.return_value = ('', 1)
                 with raises(CommandFailedError):
                     task.execute_playbook()
@@ -599,11 +612,7 @@ class TestCephLabTask(TestAnsibleTask):
         task = self.klass(self.ctx, self.task_config)
         task.setup()
         with patch.object(ansible.pexpect, 'run') as m_run:
-            with patch('teuthology.task.ansible.open') as m_open:
-                fake_failure_log = Mock()
-                fake_failure_log.__enter__ = Mock()
-                fake_failure_log.__exit__ = Mock()
-                m_open.return_value = fake_failure_log
+            with patch('teuthology.task.ansible.open', mock_open()):
                 m_run.return_value = ('', 1)
                 with raises(CommandFailedError):
                     task.execute_playbook()
