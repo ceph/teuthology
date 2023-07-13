@@ -363,7 +363,7 @@ class Ansible(Task):
             try:
                 analyzer = FailureAnalyzer()
                 failures = analyzer.analyze(fail_log)
-            except yaml.YAMLError as e:
+            except Exception as e:
                 log.error(
                     "Failed to parse ansible failure log: {0} ({1})".format(
                         self.failure_log.name, e
