@@ -34,6 +34,14 @@ class TestFailureAnalyzer:
                 "E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/main/libb/libb-hooks-op-check-perl/libb-hooks-op-check-perl_0.22-1build2_amd64.deb  Temporary failure resolving 'archive.ubuntu.com'",
                 "Temporary failure resolving 'archive.ubuntu.com'"
             ],
+            [
+                "Data could not be sent to remote host \"smithi068.front.sepia.ceph.com\".",
+                "Data could not be sent to remote host \"smithi068.front.sepia.ceph.com\"."
+            ],
+            [
+                "Permissions 0644 for '/root/.ssh/id_rsa' are too open.",
+                "Permissions 0644 for '/root/.ssh/id_rsa' are too open."
+            ],
         ]
     )
     def test_lines(self, line, result):

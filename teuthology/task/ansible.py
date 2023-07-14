@@ -58,23 +58,36 @@ class FailureAnalyzer:
                 lines.add(f"CPAN command failed: {cmd}")
                 continue
             lines_to_analyze = result.get("stderr_lines", result["msg"].split("\n"))
+            lines_to_analyze.extend(result.get("err", "").split("\n"))
             for line in lines_to_analyze:
-                line = self.analyze_line(line)
+                line = self.analyze_line(line.strip())
                 if line:
                     lines.add(line)
         return list(lines)
 
     def analyze_line(self, line):
-        # apt output sometimes contains warnings or suggestions. Those won't be
-        # helpful, so throw them out.
         if line.startswith("W: ") or line.endswith("?"):
             return ""
+        drop_phrases = [
+            # apt output sometimes contains warnings or suggestions. Those won't be
+            # helpful, so throw them out.
+            r"^W: ",
+            r"\?$",
+            # some output from SSH is not useful
+            r"Warning: Permanently added .+ to the list of known hosts.",
+            r"^@+$",
+        ]
+        for phrase in drop_phrases:
+            match = re.search(rf"({phrase})", line, flags=re.IGNORECASE)
+            if match:
+                return ""
 
         # Next, we can normalize some common phrases.
         phrases = [
             "connection timed out",
             r"(unable to|could not) connect to [^ ]+",
             r"temporary failure resolving [^ ]+",
+            r"Permissions \d+ for '.+' are too open.",
         ]
         for phrase in phrases:
             match = re.search(rf"({phrase})", line, flags=re.IGNORECASE)
