@@ -43,7 +43,7 @@ class FailureAnalyzer:
         lines = set()
         if failure_obj is None:
             return lines
-        for host_obj in failure_obj.items():
+        for host_obj in failure_obj.values():
             lines = lines.union(self.analyze_host_record(host_obj))
         return lines
 
