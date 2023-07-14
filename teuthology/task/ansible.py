@@ -376,12 +376,12 @@ class Ansible(Task):
             try:
                 analyzer = FailureAnalyzer()
                 failures = analyzer.analyze(fail_log)
-            except Exception as e:
+            except yaml.YAMLError as e:
                 log.error(
-                    "Failed to parse ansible failure log: {0} ({1})".format(
-                        self.failure_log.name, e
-                    )
+                    f"Failed to parse ansible failure log: {self.failure_log.name} ({e})"
                 )
+            except Exception:
+                log.exception(f"Failed to analyze ansible failure log: {self.failure_log.name}")
             # If we hit an exception, or if analyze() returned nothing, use the log as-is
             if not failures:
                 failures = fail_log.replace('\n', '')
