@@ -1099,7 +1099,8 @@ def ssh_keyscan(hostnames, _raise=True):
     for hostname in hostnames:
         with safe_while(
             sleep=1,
-            tries=5 if _raise else 1,
+            tries=15 if _raise else 1,
+            increment=1,
             _raise=_raise,
             action="ssh_keyscan " + hostname,
         ) as proceed:
