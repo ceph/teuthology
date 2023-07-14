@@ -44,6 +44,8 @@ class FailureAnalyzer:
         if failure_obj is None:
             return lines
         for host_obj in failure_obj.values():
+            if not isinstance(host_obj, dict):
+                continue
             lines = lines.union(self.analyze_host_record(host_obj))
         return lines
 
@@ -57,7 +59,11 @@ class FailureAnalyzer:
             if "cpan" in cmd:
                 lines.add(f"CPAN command failed: {cmd}")
                 continue
-            lines_to_analyze = result.get("stderr_lines", result["msg"].split("\n"))
+            lines_to_analyze = []
+            if "stderr_lines" in result:
+                lines_to_analyze = result["stderr_lines"]
+            elif "msg" in result:
+                lines_to_analyze = result["msg"].split("\n")
             lines_to_analyze.extend(result.get("err", "").split("\n"))
             for line in lines_to_analyze:
                 line = self.analyze_line(line.strip())
