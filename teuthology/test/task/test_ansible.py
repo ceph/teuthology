@@ -27,12 +27,28 @@ class TestFailureAnalyzer:
         'line,result',
         [
             [
+                "W: --force-yes is deprecated, use one of the options starting with --allow instead.",
+                "",
+            ],
+            [
+                "E: Unable to fetch some archives, maybe run apt-get update or try with --fix-missing?",
+                "",
+            ],
+            [
                 "E: Failed to fetch http://security.ubuntu.com/ubuntu/pool/main/a/apache2/apache2-bin_2.4.41-4ubuntu3.14_amd64.deb  Unable to connect to archive.ubuntu.com:http:",
                 "Unable to connect to archive.ubuntu.com:http:"
             ],
             [
                 "E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/main/libb/libb-hooks-op-check-perl/libb-hooks-op-check-perl_0.22-1build2_amd64.deb  Temporary failure resolving 'archive.ubuntu.com'",
                 "Temporary failure resolving 'archive.ubuntu.com'"
+            ],
+            [
+                "Data could not be sent to remote host \"smithi068.front.sepia.ceph.com\".",
+                "Data could not be sent to remote host \"smithi068.front.sepia.ceph.com\"."
+            ],
+            [
+                "Permissions 0644 for '/root/.ssh/id_rsa' are too open.",
+                "Permissions 0644 for '/root/.ssh/id_rsa' are too open."
             ],
         ]
     )

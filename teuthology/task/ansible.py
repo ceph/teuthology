@@ -43,7 +43,9 @@ class FailureAnalyzer:
         lines = set()
         if failure_obj is None:
             return lines
-        for host_obj in failure_obj.items():
+        for host_obj in failure_obj.values():
+            if not isinstance(host_obj, dict):
+                continue
             lines = lines.union(self.analyze_host_record(host_obj))
         return lines
 
@@ -57,24 +59,41 @@ class FailureAnalyzer:
             if "cpan" in cmd:
                 lines.add(f"CPAN command failed: {cmd}")
                 continue
-            lines_to_analyze = result.get("stderr_lines", result["msg"].split("\n"))
+            lines_to_analyze = []
+            if "stderr_lines" in result:
+                lines_to_analyze = result["stderr_lines"]
+            elif "msg" in result:
+                lines_to_analyze = result["msg"].split("\n")
+            lines_to_analyze.extend(result.get("err", "").split("\n"))
             for line in lines_to_analyze:
-                line = self.analyze_line(line)
+                line = self.analyze_line(line.strip())
                 if line:
                     lines.add(line)
         return list(lines)
 
     def analyze_line(self, line):
-        # apt output sometimes contains warnings or suggestions. Those won't be
-        # helpful, so throw them out.
         if line.startswith("W: ") or line.endswith("?"):
             return ""
+        drop_phrases = [
+            # apt output sometimes contains warnings or suggestions. Those won't be
+            # helpful, so throw them out.
+            r"^W: ",
+            r"\?$",
+            # some output from SSH is not useful
+            r"Warning: Permanently added .+ to the list of known hosts.",
+            r"^@+$",
+        ]
+        for phrase in drop_phrases:
+            match = re.search(rf"({phrase})", line, flags=re.IGNORECASE)
+            if match:
+                return ""
 
         # Next, we can normalize some common phrases.
         phrases = [
             "connection timed out",
             r"(unable to|could not) connect to [^ ]+",
             r"temporary failure resolving [^ ]+",
+            r"Permissions \d+ for '.+' are too open.",
         ]
         for phrase in phrases:
             match = re.search(rf"({phrase})", line, flags=re.IGNORECASE)
@@ -363,12 +382,12 @@ class Ansible(Task):
             try:
                 analyzer = FailureAnalyzer()
                 failures = analyzer.analyze(fail_log)
-            except Exception as e:
+            except yaml.YAMLError as e:
                 log.error(
-                    "Failed to parse ansible failure log: {0} ({1})".format(
-                        self.failure_log.name, e
-                    )
+                    f"Failed to parse ansible failure log: {self.failure_log.name} ({e})"
                 )
+            except Exception:
+                log.exception(f"Failed to analyze ansible failure log: {self.failure_log.name}")
             # If we hit an exception, or if analyze() returned nothing, use the log as-is
             if not failures:
                 failures = fail_log.replace('\n', '')
