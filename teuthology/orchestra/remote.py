@@ -724,7 +724,7 @@ class Remote(RemoteShell):
 
 
 def getRemoteConsole(name, ipmiuser=None, ipmipass=None, ipmidomain=None,
-                     logfile=None, timeout=60):
+                     timeout=60):
     """
     Return either VirtualConsole or PhysicalConsole depending on name.
     """
@@ -734,4 +734,4 @@ def getRemoteConsole(name, ipmiuser=None, ipmipass=None, ipmidomain=None,
         except Exception:
             return None
     return console.PhysicalConsole(
-        name, ipmiuser, ipmipass, ipmidomain, logfile, timeout)
+        name, ipmiuser, ipmipass, ipmidomain, timeout)
