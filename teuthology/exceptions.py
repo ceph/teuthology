@@ -105,6 +105,13 @@ class AnsibleFailedError(Exception):
             failures=self.failures,
         )
 
+    def fingerprint(self):
+        """
+        Sentry will use this to group events by their failure reasons, rather
+        than lumping all AnsibleFailedErrors together
+        """
+        return self.failures
+
 
 class CommandCrashedError(Exception):
 
