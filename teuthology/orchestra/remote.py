@@ -490,7 +490,7 @@ class Remote(RemoteShell):
             return
         self.connect()
         if not self.is_online:
-            raise Exception('unable to connect')
+            raise ConnectionError(f'Failed to connect to {self.shortname}')
 
     @property
     def system_type(self):
@@ -518,7 +518,7 @@ class Remote(RemoteShell):
            not self.ssh.get_transport() or \
            not self.ssh.get_transport().is_active():
             if not self.reconnect():
-                raise Exception(f'Cannot connect to remote host {self.shortname}')
+                raise ConnectionError(f'Failed to reconnect to {self.shortname}')
         r = self._runner(client=self.ssh, name=self.shortname, **kwargs)
         r.remote = self
         return r

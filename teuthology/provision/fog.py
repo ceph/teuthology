@@ -299,7 +299,7 @@ class FOG(object):
                         self.remote.run(args=cmd, timeout=600)
                         break
                     except (
-                        ConnectionResetError,
+                        ConnectionError,
                         EOFError,
                     ) as e:
                         log.error(f"{e} on {self.shortname}")
