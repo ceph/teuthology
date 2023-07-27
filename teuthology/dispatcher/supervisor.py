@@ -19,6 +19,7 @@ from teuthology.lock import ops as lock_ops
 from teuthology.task import internal
 from teuthology.misc import decanonicalize_hostname as shortname
 from teuthology.lock import query
+from teuthology.util import sentry
 
 log = logging.getLogger(__name__)
 
@@ -232,6 +233,7 @@ def reimage(job_config):
             ctx.config,
             dict(status='dead', failure_reason='Error reimaging machines: ' + str(e))
         )
+        ctx.summary['sentry_event'] = sentry.report_error(job_config, e)
         nuke.nuke(ctx, True)
         # Machine that fails to reimage after 10 times will be marked down
         check_for_reimage_failures_and_mark_down(targets)
