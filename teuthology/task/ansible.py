@@ -47,7 +47,7 @@ class FailureAnalyzer:
             if not isinstance(host_obj, dict):
                 continue
             lines = lines.union(self.analyze_host_record(host_obj))
-        return lines
+        return sorted(lines)
 
     def analyze_host_record(self, record):
         lines = set()
