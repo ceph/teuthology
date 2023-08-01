@@ -57,7 +57,7 @@ configobj==5.0.6
     # via teuthology (pyproject.toml)
 configparser==5.0.2
     # via teuthology (pyproject.toml)
-cryptography==3.4.7
+cryptography==41.0.3
     # via
     #   ansible-base
     #   openstacksdk
