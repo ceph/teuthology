@@ -196,8 +196,8 @@ class PhysicalConsole(RemoteConsole):
             # check for login prompt at console
             self._wait_for_login(timeout)
             return True
-        except Exception as e:
-            self.log.info('Failed to get ipmi console status: {e}'.format(e=e))
+        except Exception:
+            self.log.exception('Failed to get ipmi console status')
             return False
 
     def power_cycle(self, timeout=300):
