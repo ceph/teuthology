@@ -76,6 +76,7 @@ class PhysicalConsole(RemoteConsole):
         p = pexpect.spawn(
             cmd,
             encoding='utf-8',
+            codec_errors="backslashreplace",
         )
         p.logfile_read = io.StringIO()
         return p
