@@ -210,8 +210,10 @@ if __name__ == "__main__":
     }
 
     if NS.setpgrp == "self":
-        os.setpgrp()
         pgrp = os.getpgrp()
+        if pgrp != os.getpid():
+            os.setpgrp()
+            pgrp = os.getpgrp()
     elif NS.setpgrp == "child":
         popen_kwargs["preexec_fn"] = os.setpgrp
         pgrp = None
