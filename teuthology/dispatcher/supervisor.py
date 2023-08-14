@@ -233,7 +233,11 @@ def reimage(job_config):
             ctx.config,
             dict(status='dead', failure_reason='Error reimaging machines: ' + str(e))
         )
-        ctx.summary = {'sentry_event': sentry.report_error(job_config, e)}
+        # There isn't an actual task called "reimage", but it doesn't seem
+        # necessary to create a whole new Sentry tag for this.
+        ctx.summary = {
+            'sentry_event': sentry.report_error(job_config, e, task_name="reimage")
+        }
         nuke.nuke(ctx, True)
         # Machine that fails to reimage after 10 times will be marked down
         check_for_reimage_failures_and_mark_down(targets)
