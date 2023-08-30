@@ -303,29 +303,34 @@ class Job(object):
         for line in file_obj:
             # Log prefix from teuthology.log
             if ".stderr:" in line:
+                # Only captures the error and disregard what ever comes before
                 line = line.split(".stderr:")[1]
 
-            if "FAILED assert" in line:
+            if "FAILED assert" in line or "__ceph_assert_fail" in line:
                 assertion = line.strip()
 
             if line.startswith(" ceph version"):
                 # The start of a backtrace!
                 bt_lines = [line]
-            elif line.startswith(" NOTE: a copy of the executable"):
-                # The backtrace terminated, if we have a buffer return it
-                if len(bt_lines):
-                    return ("".join(bt_lines)).strip(), assertion
-                else:
-                    log.warning("Saw end of BT but not start")
+            elif line.startswith(" NOTE: a copy of the executable") or \
+                line.strip().endswith("clone()") or \
+                "clone()+0x" in line:
+                    # The backtrace terminated, if we have a buffer return it
+                    if len(bt_lines):
+                        return ("".join(bt_lines)).strip(), assertion
+                    else:
+                        log.warning("Saw end of BT but not start")
             elif bt_lines:
                 # We're in a backtrace, push the line onto the list
                 if len(bt_lines) > MAX_BT_LINES:
-                    # Something wrong with our parsing, drop it
-                    log.warning("Ignoring malparsed backtrace: {0}".format(
+                    # We exceeded MAX_BT_LINES, drop it
+                    log.warning("Ignoring backtrace that exceeds MAX_BACKTRACE_LINES: {0}".format(
                         ", ".join(bt_lines[0:3])
                     ))
+                    log.warning("Either the backtrace is too long or we did a bad job of checking for end of backtrace!")
                     bt_lines = []
-                bt_lines.append(line)
+                else:
+                    bt_lines.append(line)
 
         return None, assertion
 
