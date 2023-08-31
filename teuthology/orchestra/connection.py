@@ -107,7 +107,7 @@ def connect(user_at_host, host_key=None, keep_alive=False, timeout=60,
                     break
     except paramiko.AuthenticationException as e:
         log.error(f"Error authenticating with {host}: {str(e)}")
-    except paramiko.SSHException:
+    except (paramiko.SSHException, EOFError):
         msg = f"Error authenticating with {host}"
         if not key_filename:
             log.error(msg + ": No SSH private key found!")
