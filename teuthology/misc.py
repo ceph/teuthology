@@ -1138,9 +1138,11 @@ def _ssh_keyscan(hostname):
         line = line.strip()
         if line and not line.startswith('#'):
             log.error(line)
+    keys = list()
     for line in p.stdout:
         host, key = line.strip().decode().split(' ', 1)
-        return key
+        keys.append(key)
+    return sorted(keys)[0]
 
 
 def ssh_keyscan_wait(hostname):
