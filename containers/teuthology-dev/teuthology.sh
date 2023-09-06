@@ -24,6 +24,8 @@ if [ "$TEUTHOLOGY_SUITE" != "none" ]; then
         --limit 1 \
         -n 100 \
         --suite ${TEUTHOLOGY_SUITE:-teuthology:no-ceph} \
+        --suite-branch "${TEUTHOLOGY_SUITE_BRANCH}" \
+        --suite-repo "${TEUTHOLOGY_SUITE_REPO}" \
         --filter-out "libcephfs,kclient" \
         -p 75 \
         --seed 349 \
