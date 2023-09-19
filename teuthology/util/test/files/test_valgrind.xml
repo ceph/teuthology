@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<valgrindoutput>
+<error>
+  <unique>0x870fc</unique>
+  <tid>1</tid>
+  <kind>Leak_DefinitelyLost</kind>
+  <xwhat>
+    <text>1,234 bytes in 1 blocks are definitely lost in loss record 198 of 201</text>
+    <leakedbytes>1234</leakedbytes>
+    <leakedblocks>1</leakedblocks>
+  </xwhat>
+  <stack>
+    <frame>
+      <ip>0x4C39B6F</ip>
+      <obj>/usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so</obj>
+      <fn>operator new[](unsigned long)</fn>
+      <dir>/builddir/build/BUILD/valgrind-3.19.0/coregrind/m_replacemalloc</dir>
+      <file>vg_replace_malloc.c</file>
+      <line>640</line>
+    </frame>
+    <frame>
+      <ip>0xF3F4B5</ip>
+      <obj>/usr/bin/ceph-osd</obj>
+      <fn>ceph::common::leak_some_memory()</fn>
+      <dir>/usr/src/debug/ceph-18.0.0-5567.g64a4fc94.el8.x86_64/src/common</dir>
+      <file>ceph_context.cc</file>
+      <line>510</line>
+    </frame>
+  </stack>
+</error>
+</valgrindoutput>

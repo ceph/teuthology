@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="nosetests" tests="644" errors="0" failures="1" skip="79">
+<testcase classname="s3tests_boto3.functional.test_s3" name="test_cors_origin_response" time="3.205"></testcase>
+<testcase classname="s3tests_boto3.functional.test_s3" name="test_cors_origin_wildcard" time="3.081"></testcase>
+<testcase classname="s3tests_boto3.functional.test_s3" name="test_cors_header_option" time="3.119"></testcase>
+<testcase classname="s3tests_boto3.functional.test_s3" name="test_set_bucket_tagging" time="0.059"><failure type="builtins.AssertionError" message="'NoSuchTagSetError' != 'NoSuchTagSet'"></failure></testcase>
+</testsuite>
