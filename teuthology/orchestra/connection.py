@@ -96,23 +96,23 @@ def connect(user_at_host, host_key=None, keep_alive=False, timeout=60,
 
     log.debug(connect_args)
 
-    try:
-        if not retry:
-            ssh.connect(**connect_args)
-        else:
-            # Retries are implemented using safe_while
-            with safe_while(sleep=1, action='connect to ' + host) as proceed:
-                while proceed():
+    if not retry:
+        ssh.connect(**connect_args)
+    else:
+        with safe_while(sleep=1, increment=3, action='connect to ' + host) as proceed:
+            while proceed():
+                auth_err_msg = f"Error authenticating with {host}"
+                try:
                     ssh.connect(**connect_args)
                     break
-    except paramiko.AuthenticationException as e:
-        log.error(f"Error authenticating with {host}: {str(e)}")
-    except paramiko.SSHException:
-        msg = f"Error authenticating with {host}"
-        if not key_filename:
-            log.error(msg + ": No SSH private key found!")
-            raise
-        else:
-            log.exception(msg)
+                except EOFError:
+                    log.error(f"{auth_err_msg}: EOFError")
+                except paramiko.AuthenticationException as e:
+                    log.error(f"{auth_err_msg}: {repr(e)}")
+                except paramiko.SSHException as e:
+                    auth_err_msg = f"{auth_err_msg}: {repr(e)}"
+                    if not key_filename:
+                        auth_err_msg = f"{auth_err_msg} (No SSH private key found!)"
+                    log.exception(auth_err_msg)
     ssh.get_transport().set_keepalive(keep_alive)
     return ssh
