@@ -42,7 +42,7 @@ NAME = "stdin-killer"
 log = logging.getLogger(NAME)
 PAGE_SIZE = 4096
 
-POLL_HANGUP = select.POLLHUP | select.POLLRDHUP | select.POLLERR
+POLL_HANGUP = select.POLLHUP | (select.POLLRDHUP if hasattr(select, 'POLLRDHUP') else 0) | select.POLLERR
 
 
 def handle_event(poll, buffer, fd, event, p):
@@ -149,7 +149,17 @@ def listen_for_events(sigfdr, p, timeout):
 
 if __name__ == "__main__":
     signal.signal(signal.SIGPIPE, signal.SIG_IGN)
-    (sigfdr, sigfdw) = os.pipe2(os.O_NONBLOCK | os.O_CLOEXEC)
+    try:
+        (sigfdr, sigfdw) = os.pipe2(os.O_NONBLOCK | os.O_CLOEXEC)
+    except AttributeError:
+        # pipe2 is only available on "some flavors of Unix"
+        # https://docs.python.org/3.10/library/os.html?highlight=pipe2#os.pipe2
+        pipe_ends = os.pipe()
+        for fd in pipe_ends:
+            flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+            fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK | os.O_CLOEXEC)
+        (sigfdr, sigfdw) = pipe_ends
+
     signal.set_wakeup_fd(sigfdw)
 
     def do_nothing(signum, frame):
