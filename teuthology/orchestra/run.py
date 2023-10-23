@@ -62,7 +62,7 @@ class RemoteProcess(object):
         self.client = client
         self.args = args
         if isinstance(args, list):
-            self.command = quote(args)
+            self.command = convert_args_list_to_str(args)
         else:
             self.command = args
 
@@ -240,23 +240,20 @@ class Raw(object):
         return self.value == value
 
 
-def quote(args):
+def convert_args_list_to_str(args):
     """
-    Internal quote wrapper.
+    Convert list args to str args. While doing so, quote str instances to
+    disable special interpretation of characters and substitute Raw instances
+    with their actual values.
     """
-    def _quote(args):
-        """
-        Handle quoted string, testing for raw charaters.
-        """
-        for a in args:
-            if isinstance(a, Raw):
-                yield a.value
-            else:
-                yield pipes.quote(a)
-    if isinstance(args, list):
-        return ' '.join(_quote(args))
-    else:
+    if isinstance(args, str):
         return args
+
+    assert isinstance(args, list)
+
+    args = [pipes.quote(a) if isinstance(a, str) else a.value for a in args]
+
+    return ' '.join(args)
 
 
 def copy_to_log(f, logger, loglevel=logging.INFO, capture=None, quiet=False):
@@ -435,9 +432,11 @@ def run(
         if transport:
             (host, port) = transport.getpeername()[0:2]
         else:
-            raise ConnectionLostError(command=quote(args), node=name)
+            raise ConnectionLostError(command=convert_args_list_to_str(args),
+                                      node=name)
     except socket.error:
-        raise ConnectionLostError(command=quote(args), node=name)
+        raise ConnectionLostError(command=convert_args_list_to_str(args),
+                                  node=name)
 
     if name is None:
         name = host

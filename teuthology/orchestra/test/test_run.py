@@ -266,16 +266,16 @@ class TestRun(object):
 
 class TestQuote(object):
     def test_quote_simple(self):
-        got = run.quote(['a b', ' c', 'd e '])
+        got = run.convert_args_str_to_list(['a b', ' c', 'd e '])
         assert got == "'a b' ' c' 'd e '"
 
     def test_quote_and_quote(self):
-        got = run.quote(['echo', 'this && is embedded', '&&',
+        got = run.convert_args_str_to_list(['echo', 'this && is embedded', '&&',
                          'that was standalone'])
         assert got == "echo 'this && is embedded' '&&' 'that was standalone'"
 
     def test_quote_and_raw(self):
-        got = run.quote(['true', run.Raw('&&'), 'echo', 'yay'])
+        got = run.convert_args_str_to_list(['true', run.Raw('&&'), 'echo', 'yay'])
         assert got == "true && echo yay"
 
 

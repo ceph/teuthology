@@ -4,7 +4,7 @@ import os
 from logging import debug
 from teuthology import misc
 from teuthology.orchestra import cluster
-from teuthology.orchestra.run import quote
+from teuthology.orchestra.run import convert_args_list_to_str
 from teuthology.orchestra.daemon.group import DaemonGroup
 import subprocess
 
@@ -27,7 +27,7 @@ def test_pid():
     def sh(args):
         args[0:2] = ["cat", ps_ef_output_path]
         debug(args)
-        return subprocess.getoutput(quote(args))
+        return subprocess.getoutput(convert_args_list_to_str(args))
 
     remote.sh = sh
     remote.init_system = 'systemd'
