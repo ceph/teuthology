@@ -486,7 +486,7 @@ def find_git_parents(project: str, sha1: str, count=1):
         if len(sha1s) != count:
             log.debug('got response: %s', resp.json())
             log.error('can''t find %d parents of %s in %s: %s',
-                       int(count), sha1, project, resp.json()['error'])
+                       int(count), sha1, project, resp.json()['err'])
         return sha1s
 
     refresh(project)

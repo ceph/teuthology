@@ -988,6 +988,8 @@ class ShamanProject(GitbuilderProject):
         )
         build_url = urljoin(self.query_url, path)
 
+        log.debug(f'Check build complete for results: {search_result}')
+        log.debug(f'Querying {build_url}...')
         try:
             resp = requests.get(build_url)
             resp.raise_for_status()
@@ -1005,6 +1007,7 @@ class ShamanProject(GitbuilderProject):
                 build['flavor'] == search_result['flavor'] and
                 build['distro_arch'] == self.arch
                ):
+                log.debug(f'Matched build: {build}')
                 return build['status'] == 'completed'
         return False
 
