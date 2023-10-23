@@ -7,12 +7,11 @@ import io
 from paramiko import ChannelFile
 
 import gevent
-import gevent.event
 import socket
-import pipes
 import logging
 import shutil
 
+from teuthology.orchestra.run_helper import quote, KludgeFile, PIPE
 from teuthology.contextutil import safe_while
 from teuthology.exceptions import (CommandCrashedError, CommandFailedError,
                                    ConnectionLostError)
@@ -222,43 +221,6 @@ class RemoteProcess(object):
             )
 
 
-class Raw(object):
-
-    """
-    Raw objects are passed to remote objects and are not processed locally.
-    """
-    def __init__(self, value):
-        self.value = value
-
-    def __repr__(self):
-        return '{cls}({value!r})'.format(
-            cls=self.__class__.__name__,
-            value=self.value,
-            )
-
-    def __eq__(self, value):
-        return self.value == value
-
-
-def quote(args):
-    """
-    Internal quote wrapper.
-    """
-    def _quote(args):
-        """
-        Handle quoted string, testing for raw charaters.
-        """
-        for a in args:
-            if isinstance(a, Raw):
-                yield a.value
-            else:
-                yield pipes.quote(a)
-    if isinstance(args, list):
-        return ' '.join(_quote(args))
-    else:
-        return args
-
-
 def copy_to_log(f, logger, loglevel=logging.INFO, capture=None, quiet=False):
     """
     Copy line by line from file in f to the log from logger
@@ -321,66 +283,6 @@ def copy_file_to(src, logger, stream=None, quiet=False):
                   with `stream` parameter, defaults False.
     """
     copy_to_log(src, logger, capture=stream, quiet=quiet)
-
-def spawn_asyncresult(fn, *args, **kwargs):
-    """
-    Spawn a Greenlet and pass it's results to an AsyncResult.
-
-    This function is useful to shuffle data from a Greenlet to
-    AsyncResult, which then again is useful because any Greenlets that
-    raise exceptions will cause tracebacks to be shown on stderr by
-    gevent, even when ``.link_exception`` has been called. Using an
-    AsyncResult avoids this.
-    """
-    r = gevent.event.AsyncResult()
-
-    def wrapper():
-        """
-        Internal wrapper.
-        """
-        try:
-            value = fn(*args, **kwargs)
-        except Exception as e:
-            r.set_exception(e)
-        else:
-            r.set(value)
-    gevent.spawn(wrapper)
-
-    return r
-
-
-class Sentinel(object):
-
-    """
-    Sentinel -- used to define PIPE file-like object.
-    """
-    def __init__(self, name):
-        self.name = name
-
-    def __str__(self):
-        return self.name
-
-PIPE = Sentinel('PIPE')
-
-
-class KludgeFile(object):
-
-    """
-    Wrap Paramiko's ChannelFile in a way that lets ``f.close()``
-    actually cause an EOF for the remote command.
-    """
-    def __init__(self, wrapped):
-        self._wrapped = wrapped
-
-    def __getattr__(self, name):
-        return getattr(self._wrapped, name)
-
-    def close(self):
-        """
-        Close and shutdown.
-        """
-        self._wrapped.close()
-        self._wrapped.channel.shutdown_write()
 
 
 def run(
