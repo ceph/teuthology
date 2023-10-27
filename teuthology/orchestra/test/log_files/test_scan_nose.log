@@ -1,0 +1,53 @@
+Run: https://pulpito.ceph.com/vallariag-2022-06-20_13:16:35-smoke-quincy-release-distro-default-smithi/
+2022-06-20T13:46:59.867 DEBUG:teuthology.orchestra.run.smithi085:> sudo logrotate /etc/logrotate.d/ceph-test.conf
+2022-06-20T13:46:59.932 DEBUG:teuthology.orchestra.run.smithi100:> sudo logrotate /etc/logrotate.d/ceph-test.conf
+2022-06-20T13:46:59.946 DEBUG:teuthology.orchestra.run.smithi119:> sudo logrotate /etc/logrotate.d/ceph-test.conf
+2022-06-20T13:47:26.684 INFO:teuthology.orchestra.run.smithi119.stderr:s3tests_boto3.functional.test_utils.test_generate ... ok
+2022-06-20T13:47:26.685 INFO:teuthology.orchestra.run.smithi119.stderr:
+2022-06-20T13:47:26.709 INFO:teuthology.orchestra.run.smithi119.stderr:======================================================================
+2022-06-20T13:47:26.709 INFO:teuthology.orchestra.run.smithi119.stderr:ERROR: s3tests_boto3.functional.test_s3.test_bucket_policy_put_obj_s3_noenc
+2022-06-20T13:47:26.710 INFO:teuthology.orchestra.run.smithi119.stderr:----------------------------------------------------------------------
+2022-06-20T13:47:26.716 INFO:teuthology.orchestra.run.smithi119.stderr:Traceback (most recent call last):
+2022-06-20T13:47:26.717 INFO:teuthology.orchestra.run.smithi119.stderr:  File "/home/ubuntu/cephtest/s3-tests/virtualenv/lib/python3.6/site-packages/nose/case.py", line 198, in runTest
+2022-06-20T13:47:26.717 INFO:teuthology.orchestra.run.smithi119.stderr:    self.test(*self.arg)
+2022-06-20T13:47:26.717 INFO:teuthology.orchestra.run.smithi119.stderr:  File "/home/ubuntu/cephtest/s3-tests/s3tests_boto3/functional/test_s3.py", line 12949, in test_bucket_policy_put_obj_s3_noenc
+2022-06-20T13:47:26.718 INFO:teuthology.orchestra.run.smithi119.stderr:    response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption']
+2022-06-20T13:47:26.718 INFO:teuthology.orchestra.run.smithi119.stderr:KeyError: 'x-amz-server-side-encryption'
+2022-06-20T13:47:26.719 INFO:teuthology.orchestra.run.smithi119.stderr:-------------------- >> begin captured logging << --------------------
+2022-06-20T13:47:26.719 INFO:teuthology.orchestra.run.smithi119.stderr:botocore.hooks: DEBUG: Event choose-service-name: calling handler <function handle_service_name_alias at 0x7f3b2830e2f0>
+2022-06-20T13:47:26.720 INFO:teuthology.orchestra.run.smithi119.stderr:botocore.hooks: DEBUG: Event creating-client-class.s3: calling handler <function add_generate_presigned_post at 0x7f3b285932f0>
+2022-06-20T13:47:26.720 INFO:teuthology.orchestra.run.smithi119.stderr:botocore.hooks: DEBUG: Event creating-client-class.s3: calling handler <function lazy_call.<locals>._handler at 0x7f3b27d58bf8>
+2022-06-20T13:47:26.721 INFO:teuthology.orchestra.run.smithi119.stderr:botocore.hooks: DEBUG: Event creating-client-class.s3: calling handler <function add_generate_presigned_url at 0x7f3b285930d0>
+2022-06-20T13:47:26.721 INFO:teuthology.orchestra.run.smithi119.stderr:botocore.endpoint: DEBUG: Setting s3 timeout as (60, 60)
+2022-06-20T13:47:30.260 INFO:teuthology.orchestra.run.smithi119.stderr:1B2M2Y8AsgTpgAmY7PhCfg==
+2022-06-20T13:47:30.268 INFO:teuthology.orchestra.run.smithi119.stderr:
+2022-06-20T13:47:30.280 INFO:teuthology.orchestra.run.smithi119.stderr:--------------------- >> end captured logging << ---------------------
+2022-06-20T13:47:30.280 INFO:teuthology.orchestra.run.smithi119.stderr:
+2022-06-20T13:47:30.280 INFO:teuthology.orchestra.run.smithi119.stderr:----------------------------------------------------------------------
+2022-06-20T13:47:30.281 INFO:teuthology.orchestra.run.smithi119.stderr:Ran 638 tests in 248.756s
+2022-06-20T13:47:30.281 INFO:teuthology.orchestra.run.smithi119.stderr:
+2022-06-20T13:47:30.282 INFO:teuthology.orchestra.run.smithi119.stderr:FAILED (SKIP=79, errors=19, failures=4)
+2022-06-20T13:47:30.282 INFO:teuthology.orchestra.run.smithi119.stderr:Exception ignored in: <generator object TestLoader.loadTestsFromGenerator.<locals>.generate at 0x7f3b2a177150>
+2022-06-20T13:47:30.283 INFO:teuthology.orchestra.run.smithi119.stderr:RuntimeError: generator ignored GeneratorExit
+2022-06-20T13:47:30.286 DEBUG:teuthology.orchestra.run:__flag__ pointer at: 0
+2022-06-20T13:47:30.329 ERROR:teuthology.contextutil:Saw exception from nested tasks
+Traceback (most recent call last):
+  File "/home/teuthworker/src/git.ceph.com_git_teuthology_ce9c4e16d831168c36080911cf14a1d132dc14e3/teuthology/contextutil.py", line 31, in nested
+    vars.append(enter())
+  File "/usr/lib/python3.6/contextlib.py", line 81, in __enter__
+    return next(self.gen)
+  File "/home/teuthworker/src/github.com_vallariag_ceph-c_405c8b761dd50fe1526ee3fa73713afdcc157661/qa/tasks/s3tests.py", line 458, in run_tests
+    scan_tests_errors=scan_tests_errors,
+  File "/home/teuthworker/src/git.ceph.com_git_teuthology_ce9c4e16d831168c36080911cf14a1d132dc14e3/teuthology/orchestra/remote.py", line 510, in run
+    r = self._runner(client=self.ssh, name=self.shortname, **kwargs)
+  File "/home/teuthworker/src/git.ceph.com_git_teuthology_ce9c4e16d831168c36080911cf14a1d132dc14e3/teuthology/orchestra/run.py", line 537, in run
+    r.wait()
+  File "/home/teuthworker/src/git.ceph.com_git_teuthology_ce9c4e16d831168c36080911cf14a1d132dc14e3/teuthology/orchestra/run.py", line 165, in wait
+    self._raise_for_status()
+  File "/home/teuthworker/src/git.ceph.com_git_teuthology_ce9c4e16d831168c36080911cf14a1d132dc14e3/teuthology/orchestra/run.py", line 191, in _raise_for_status
+    test=test, message=error,
+teuthology.exceptions.UnitTestError: nose test failed (s3 tests against rgw) on smithi119 with status 1: 'ERROR: s3tests_boto3.functional.test_s3.test_bucket_policy_put_obj_s3_noenc'
+2022-06-20T13:47:30.331 INFO:tasks.s3tests:Cleaning up boto...
+2022-06-20T13:47:30.332 DEBUG:teuthology.orchestra.run.smithi119:> rm /home/ubuntu/cephtest/boto.cfg
+2022-06-20T13:47:30.335 DEBUG:teuthology.orchestra.run.smithi085:> sudo logrotate /etc/logrotate.d/ceph-test.conf
+2022-06-20T13:47:30.340 DEBUG:teuthology.orchestra.run.smithi100:> sudo logrotate /etc/logrotate.d/ceph-test.conf

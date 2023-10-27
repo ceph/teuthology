@@ -1,0 +1,77 @@
+Run: https://pulpito.ceph.com/vallariag-2022-06-22_16:34:18-rbd:basic-gtest-vallariag-test-distro-default-smithi/
+2022-06-22T16:49:00.345 INFO:tasks.workunit.client.0.smithi102.stdout:Running main() from gmock_main.cc
+2022-06-22T16:49:00.346 INFO:tasks.workunit.client.0.smithi102.stdout:[==========] Running 69 tests from 1 test suite.
+2022-06-22T16:49:00.346 INFO:tasks.workunit.client.0.smithi102.stdout:[----------] Global test environment set-up.
+2022-06-22T16:49:00.347 INFO:tasks.workunit.client.0.smithi102.stdout:[----------] 69 tests from TestClsRbd
+2022-06-22T16:49:01.897 INFO:tasks.workunit.client.0.smithi102.stdout:/build/ceph-17.2.0-437-g981b3026/src/test/cls_rbd/test_cls_rbd.cc:100: Failure
+2022-06-22T16:49:01.897 INFO:tasks.workunit.client.0.smithi102.stdout:Expected equality of these values:
+2022-06-22T16:49:01.898 INFO:tasks.workunit.client.0.smithi102.stdout:  "create"
+2022-06-22T16:49:01.898 INFO:tasks.workunit.client.0.smithi102.stdout:  create_one_pool_pp(_pool_name, _rados)
+2022-06-22T16:49:01.898 INFO:tasks.workunit.client.0.smithi102.stdout:    Which is: ""
+2022-06-22T16:49:01.898 INFO:tasks.workunit.client.0.smithi102.stdout:[ RUN      ] TestClsRbd.get_all_features
+2022-06-22T16:49:01.898 INFO:tasks.workunit.client.0.smithi102.stdout:/build/ceph-17.2.0-437-g981b3026/src/test/cls_rbd/test_cls_rbd.cc:125: Failure
+2022-06-22T16:49:01.899 INFO:tasks.workunit.client.0.smithi102.stdout:Expected equality of these values:
+2022-06-22T16:49:01.899 INFO:tasks.workunit.client.0.smithi102.stdout:  5
+2022-06-22T16:49:01.899 INFO:tasks.workunit.client.0.smithi102.stdout:  _rados.ioctx_create(_pool_name.c_str(), ioctx)
+2022-06-22T16:49:01.899 INFO:tasks.workunit.client.0.smithi102.stdout:    Which is: 0
+2022-06-22T16:49:01.900 INFO:tasks.workunit.client.0.smithi102.stdout:[  FAILED  ] TestClsRbd.get_all_features (0 ms)
+2022-06-22T16:49:01.900 INFO:tasks.workunit.client.0.smithi102.stdout:[ RUN      ] TestClsRbd.copyup
+2022-06-22T16:49:01.900 INFO:tasks.workunit.client.0.smithi102.stdout:/build/ceph-17.2.0-437-g981b3026/src/test/cls_rbd/test_cls_rbd.cc:141: Failure
+2022-06-22T16:49:01.900 INFO:tasks.workunit.client.0.smithi102.stdout:Expected equality of these values:
+2022-06-22T16:49:01.901 INFO:tasks.workunit.client.0.smithi102.stdout:  5
+2022-06-22T16:49:01.901 INFO:tasks.workunit.client.0.smithi102.stdout:  _rados.ioctx_create(_pool_name.c_str(), ioctx)
+2022-06-22T16:49:01.901 INFO:tasks.workunit.client.0.smithi102.stdout:    Which is: 0
+2022-06-22T16:49:01.902 INFO:tasks.workunit.client.0.smithi102.stdout:[  FAILED  ] TestClsRbd.copyup (0 ms)
+2022-06-22T16:49:01.902 INFO:tasks.workunit.client.0.smithi102.stdout:[ RUN      ] TestClsRbd.sparse_copyup
+2022-06-22T16:49:01.932 INFO:tasks.workunit.client.0.smithi102.stdout:[       OK ] TestClsRbd.sparse_copyup (35 ms)
+2022-06-22T16:49:01.933 INFO:tasks.workunit.client.0.smithi102.stdout:[ RUN      ] TestClsRbd.get_and_set_id
+2022-06-22T16:49:01.947 INFO:tasks.workunit.client.0.smithi102.stdout:[       OK ] TestClsRbd.get_and_set_id (15 ms)
+2022-06-22T16:49:08.649 INFO:tasks.workunit.client.0.smithi102.stdout:[ RUN      ] TestClsRbd.group_dir_rename
+2022-06-22T16:49:08.666 INFO:tasks.workunit.client.0.smithi102.stdout:[       OK ] TestClsRbd.group_dir_rename (18 ms)
+2022-06-22T16:49:08.666 INFO:tasks.workunit.client.0.smithi102.stdout:[ RUN      ] TestClsRbd.group_dir_remove
+2022-06-22T16:49:11.864 DEBUG:teuthology.orchestra.run:got remote process result: 1
+2022-06-22T16:49:11.865 INFO:tasks.workunit.client.0.smithi102.stdout:[----------] 69 tests from TestClsRbd (9017 ms total)
+2022-06-22T16:49:11.866 INFO:tasks.workunit.client.0.smithi102.stdout:
+2022-06-22T16:49:11.866 INFO:tasks.workunit.client.0.smithi102.stdout:[----------] Global test environment tear-down
+2022-06-22T16:49:11.867 INFO:tasks.workunit.client.0.smithi102.stdout:[==========] 69 tests from 1 test suite ran. (11511 ms total)
+2022-06-22T16:49:11.867 INFO:tasks.workunit.client.0.smithi102.stdout:[  PASSED  ] 67 tests.
+2022-06-22T16:49:11.868 INFO:tasks.workunit.client.0.smithi102.stdout:[  FAILED  ] 2 tests, listed below:
+2022-06-22T16:49:11.868 INFO:tasks.workunit.client.0.smithi102.stdout:[  FAILED  ] TestClsRbd.get_all_features
+2022-06-22T16:49:11.869 INFO:tasks.workunit.client.0.smithi102.stdout:[  FAILED  ] TestClsRbd.copyup
+2022-06-22T16:49:11.869 INFO:tasks.workunit.client.0.smithi102.stdout:
+2022-06-22T16:49:11.870 INFO:tasks.workunit.client.0.smithi102.stdout: 2 FAILED TESTS
+2022-06-22T16:49:11.870 INFO:tasks.workunit.client.0.smithi102.stdout:[  FAILED  ] TestClsRbd: SetUpTestSuite or TearDownTestSuite
+2022-06-22T16:49:11.871 INFO:tasks.workunit.client.0.smithi102.stdout:
+2022-06-22T16:49:11.871 INFO:tasks.workunit.client.0.smithi102.stdout: 1 FAILED TEST SUITE
+2022-06-22T16:49:11.873 DEBUG:teuthology.orchestra.run:__flag__ pointer at: 0
+2022-06-22T16:49:11.928 INFO:tasks.workunit:Stopping ['cls/test_cls_rbd.sh scan_logs', 'cls/test_cls_lock.sh', 'cls/test_cls_journal.sh'] on client.0...
+2022-06-22T16:49:11.929 DEBUG:teuthology.orchestra.run.smithi102:> sudo rm -rf -- /home/ubuntu/cephtest/workunits.list.client.0 /home/ubuntu/cephtest/clone.client.0
+2022-06-22T16:49:12.146 ERROR:teuthology.run_tasks:Saw exception from tasks.
+Traceback (most recent call last):
+  File "/home/teuthworker/src/git.ceph.com_git_teuthology_ce9c4e16d831168c36080911cf14a1d132dc14e3/teuthology/run_tasks.py", line 103, in run_tasks
+    manager = run_one_task(taskname, ctx=ctx, config=config)
+  File "/home/teuthworker/src/git.ceph.com_git_teuthology_ce9c4e16d831168c36080911cf14a1d132dc14e3/teuthology/run_tasks.py", line 82, in run_one_task
+    return task(**kwargs)
+  File "/home/teuthworker/src/github.com_ceph_ceph-c_981b3026c5ac9ca8337e2de832641b9f125a2a80/qa/tasks/workunit.py", line 135, in task
+    coverage_and_limits=not config.get('no_coverage_and_limits', None))
+  File "/home/teuthworker/src/git.ceph.com_git_teuthology_ce9c4e16d831168c36080911cf14a1d132dc14e3/teuthology/parallel.py", line 84, in __exit__
+    for result in self:
+  File "/home/teuthworker/src/git.ceph.com_git_teuthology_ce9c4e16d831168c36080911cf14a1d132dc14e3/teuthology/parallel.py", line 98, in __next__
+    resurrect_traceback(result)
+  File "/home/teuthworker/src/git.ceph.com_git_teuthology_ce9c4e16d831168c36080911cf14a1d132dc14e3/teuthology/parallel.py", line 30, in resurrect_traceback
+    raise exc.exc_info[1]
+  File "/home/teuthworker/src/git.ceph.com_git_teuthology_ce9c4e16d831168c36080911cf14a1d132dc14e3/teuthology/parallel.py", line 23, in capture_traceback
+    return func(*args, **kwargs)
+  File "/home/teuthworker/src/github.com_ceph_ceph-c_981b3026c5ac9ca8337e2de832641b9f125a2a80/qa/tasks/workunit.py", line 434, in _run_tests
+    scan_tests_errors=scan_tests_errors
+  File "/home/teuthworker/src/git.ceph.com_git_teuthology_ce9c4e16d831168c36080911cf14a1d132dc14e3/teuthology/orchestra/remote.py", line 510, in run
+    r = self._runner(client=self.ssh, name=self.shortname, **kwargs)
+  File "/home/teuthworker/src/git.ceph.com_git_teuthology_ce9c4e16d831168c36080911cf14a1d132dc14e3/teuthology/orchestra/run.py", line 537, in run
+    r.wait()
+  File "/home/teuthworker/src/git.ceph.com_git_teuthology_ce9c4e16d831168c36080911cf14a1d132dc14e3/teuthology/orchestra/run.py", line 165, in wait
+    self._raise_for_status()
+  File "/home/teuthworker/src/git.ceph.com_git_teuthology_ce9c4e16d831168c36080911cf14a1d132dc14e3/teuthology/orchestra/run.py", line 191, in _raise_for_status
+    test=test, message=error,
+teuthology.exceptions.UnitTestError: gtest test failed (workunit test cls/test_cls_rbd.sh) on smithi102 with status 1: '[  FAILED  ] TestClsRbd.get_all_features (0 ms)'
+2022-06-22T16:49:12.322 ERROR:teuthology.run_tasks: Sentry event: https://sentry.ceph.com/organizations/ceph/?query=25520cbd2458460d8887bfe89ed0dde3
+Traceback (most recent call last):
