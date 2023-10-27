@@ -44,7 +44,7 @@ Reason: 'NoSuchTagSetError' != 'NoSuchTagSet'.",
         m_open.return_value = open(xml_path, "rb")
         self.remote._sftp_open_file = m_open
         result = UnitTestScanner(remote=self.remote).scan_and_write(xml_path, "test_summary.yaml")
-        assert result == self.test_values["error_msg"]
+        assert result == "(total 1 failed) " + self.test_values["error_msg"]
 
     def test_parse(self):
         xml_content = b'<?xml version="1.0" encoding="UTF-8"?>\n<testsuite name="xyz" tests="1" \

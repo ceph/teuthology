@@ -89,7 +89,7 @@ class UnitTestScanner(Scanner):
                 if child.tag in ['failure', 'error']:
                     fault_kind = child.tag
                     reason = child.get('message', 'No message found in xml output, check logs.')
-                    short_reason = reason[:200]
+                    short_reason = (reason[:200].strip() + '...') if len(reason) > 200 else reason.strip()
                     error_data[testcase_suitename] += [{
                             "kind": fault_kind, 
                             "testcase": testcase_name,
@@ -99,7 +99,16 @@ class UnitTestScanner(Scanner):
                         exception_txt = f'{fault_kind.upper()}: Test `{testcase_name}` of `{testcase_suitename}`. Reason: {short_reason}.'
         
         return exception_txt, { "failed_testsuites": dict(error_data), "num_of_failures": len(failed_testcases) }
-    
+
+    @property
+    def num_of_total_failures(self):
+        total_failed_testcases = 0
+        if self.summary_data:
+            for file_data in self.summary_data:
+                failed_tests = file_data.get("num_of_failures", 0)
+                total_failed_testcases += failed_tests
+        return total_failed_testcases
+
     def scan_and_write(self, path_regex: str, summary_path: str) -> Optional[str]:
         """
         Scan all files matching 'path_regex'
@@ -109,7 +118,8 @@ class UnitTestScanner(Scanner):
             errors = self.scan_all_files(path_regex)
             self.write_summary(summary_path)
             if errors:
-                return errors[0]
+                count = self.num_of_total_failures
+                return f"(total {count} failed) " + errors[0]
         except Exception as scanner_exc:
             log.error(str(scanner_exc))
 
