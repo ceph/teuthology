@@ -70,7 +70,8 @@ def kill_run(run_name, archive_base=None, owner=None, machine_type=None,
     if not preserve_queue:
         remove_beanstalk_jobs(run_name, machine_type)
         remove_paddles_jobs(run_name)
-    kill_processes(run_name, run_info.get('pids'))
+    if kill_processes(run_name, run_info.get('pids')):
+        return
     if owner is not None:
         targets = find_targets(run_name, owner)
         nuke_targets(targets, owner)
@@ -85,7 +86,8 @@ def kill_job(run_name, job_id, archive_base=None, owner=None, skip_nuke=False):
                 "I could not figure out the owner of the requested job. "
                 "Please pass --owner <owner>.")
         owner = job_info['owner']
-    kill_processes(run_name, [job_info.get('pid')])
+    if kill_processes(run_name, [job_info.get('pid')]):
+        return
     if 'machine_type' in job_info:
         teuthology.exporter.JobResults.record(
             job_info["machine_type"],
@@ -187,6 +189,7 @@ def kill_processes(run_name, pids=None):
     if len(to_kill) == 0:
         log.info("No teuthology processes running")
     else:
+        survivors = []
         log.info("Killing Pids: " + str(to_kill))
         may_need_sudo = \
             psutil.Process(int(pid)).username() != getpass.getuser()
@@ -200,7 +203,13 @@ def kill_processes(run_name, pids=None):
             # Don't attempt to use sudo if it's not necessary
             if use_sudo:
                 args = ['sudo', '-n'] + args
-            subprocess.call(args)
+            try:
+                subprocess.check_call(args)
+            except subprocess.CalledProcessError:
+                survivors.append(pid)
+    if survivors:
+        log.error(f"Failed to kill PIDs: {survivors}")
+    return survivors
 
 
 def process_matches_run(pid, run_name):
