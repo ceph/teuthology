@@ -148,7 +148,11 @@ def run_job(job_config, teuth_bin_path, archive_dir, verbose):
     arg.extend(['--', job_archive])
 
     log.debug("Running: %s" % ' '.join(arg))
-    p = subprocess.Popen(args=arg)
+    p = subprocess.Popen(
+        args=arg,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
     log.info("Job archive: %s", job_config['archive_path'])
     log.info("Job PID: %s", str(p.pid))
 
