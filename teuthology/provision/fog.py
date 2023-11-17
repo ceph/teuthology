@@ -103,7 +103,6 @@ class FOG(object):
                        unsuccessful (default: True)
         :returns: A requests.models.Response object
         """
-        self.log.debug(f"FOG request: {method} {url_suffix} {data}")
         req_kwargs = dict(
             headers={
                 'fog-api-token': config.fog['api_token'],
