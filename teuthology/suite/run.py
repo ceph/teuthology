@@ -487,9 +487,7 @@ class Run(object):
                 flavor = util.get_install_task_flavor(full_job_config)
                 version = util.package_version_for_hash(sha1, flavor, os_type,
                     os_version, self.args.machine_type)
-                if version:
-                    log.debug(f"Found {version} for {os_type} {os_version} {flavor}")
-                else:
+                if not version:
                     jobs_missing_packages.append(job)
                     log.error(f"Packages for os_type '{os_type}', flavor {flavor} and "
                          f"ceph hash '{sha1}' not found")
@@ -667,9 +665,6 @@ Note: If you still want to go ahead, use --job-threshold 0'''
                     name,
                     dry_run=self.args.dry_run,
                 )
-
-        if self.args.dry_run:
-            log.debug("Base job config:\n%s" % self.base_config)
 
         with open(base_yaml_path, 'w+b') as base_yaml:
             base_yaml.write(str(self.base_config).encode())

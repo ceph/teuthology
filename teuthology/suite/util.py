@@ -245,11 +245,10 @@ def package_version_for_hash(hash, flavor='default', distro='rhel',
         ),
     )
 
-    if bp.distro == CONTAINER_DISTRO and bp.flavor == CONTAINER_FLAVOR:
-        log.info('container build %s, checking for build_complete' % bp.distro)
-        if not bp.build_complete:
-            log.info('build not complete')
-            return None
+    if (bp.distro == CONTAINER_DISTRO and bp.flavor == CONTAINER_FLAVOR and 
+            not bp.build_complete):
+        log.info("Container build incomplete")
+        return None
 
     try:
         return bp.version
@@ -329,7 +328,7 @@ def teuthology_schedule(args, verbose, dry_run, log_prefix='', stdin=None):
                 printable_args.append("'%s'" % item)
             else:
                 printable_args.append(item)
-        log.info('{0}{1}'.format(
+        log.debug('{0} command: {1}'.format(
             log_prefix,
             ' '.join(printable_args),
         ))
