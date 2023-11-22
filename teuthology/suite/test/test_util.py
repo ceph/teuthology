@@ -349,32 +349,27 @@ class TestDistroDefaults(object):
     def setup_method(self):
         config.use_shaman = False
 
-    def test_distro_defaults_saya(self):
-        expected = ('armv7l', 'saucy',
-                    OS(name='ubuntu', version='13.10', codename='saucy'))
-        assert util.get_distro_defaults('ubuntu', 'saya') == expected
-
     def test_distro_defaults_plana(self):
-        expected = ('x86_64', 'xenial',
-                    OS(name='ubuntu', version='16.04', codename='xenial'))
+        expected = ('x86_64', 'ubuntu/22.04',
+                    OS(name='ubuntu', version='22.04', codename='jammy'))
         assert util.get_distro_defaults('ubuntu', 'plana') == expected
 
     def test_distro_defaults_debian(self):
-        expected = ('x86_64', 'wheezy',
-                    OS(name='debian', version='7', codename='wheezy'))
+        expected = ('x86_64', 'debian/8.0',
+                    OS(name='debian', version='8.0', codename='jessie'))
         assert util.get_distro_defaults('debian', 'magna') == expected
 
     def test_distro_defaults_centos(self):
-        expected = ('x86_64', 'centos7',
-                    OS(name='centos', version='7', codename='core'))
+        expected = ('x86_64', 'centos/8',
+                    OS(name='centos', version='8.stream', codename='core'))
         assert util.get_distro_defaults('centos', 'magna') == expected
 
     def test_distro_defaults_fedora(self):
-        expected = ('x86_64', 'fedora20',
-                    OS(name='fedora', version='20', codename='heisenbug'))
+        expected = ('x86_64', 'fedora/25',
+                    OS(name='fedora', version='25', codename='25'))
         assert util.get_distro_defaults('fedora', 'magna') == expected
 
     def test_distro_defaults_default(self):
-        expected = ('x86_64', 'centos7',
-                    OS(name='centos', version='7', codename='core'))
+        expected = ('x86_64', 'centos/8',
+                    OS(name='centos', version='8.stream', codename='core'))
         assert util.get_distro_defaults('rhel', 'magna') == expected

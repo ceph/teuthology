@@ -34,8 +34,7 @@ class Run(object):
     WAIT_PAUSE = 5 * 60
     __slots__ = (
         'args', 'name', 'base_config', 'suite_repo_path', 'base_yaml_paths',
-        'base_args', 'package_versions', 'kernel_dict', 'config_input',
-        'timestamp', 'user',
+        'base_args', 'kernel_dict', 'config_input', 'timestamp', 'user', 'os',
     )
 
     def __init__(self, args):
@@ -56,8 +55,6 @@ class Run(object):
             config.ceph_qa_suite_git_url = self.args.suite_repo
 
         self.base_config = self.create_initial_config()
-        # caches package versions to minimize requests to gbs
-        self.package_versions = dict()
 
         # Interpret any relative paths as being relative to ceph-qa-suite
         # (absolute paths are unchanged by this)
@@ -90,6 +87,7 @@ class Run(object):
 
         :returns: A JobConfig object
         """
+        self.os = self.choose_os()
         self.kernel_dict = self.choose_kernel()
         ceph_hash = self.choose_ceph_hash()
         # We don't store ceph_version because we don't use it yet outside of
@@ -118,8 +116,8 @@ class Run(object):
             teuthology_branch=teuthology_branch,
             teuthology_sha1=teuthology_sha1,
             machine_type=self.args.machine_type,
-            distro=self.args.distro,
-            distro_version=self.args.distro_version,
+            distro=self.os.name,
+            distro_version=self.os.version,
             archive_upload=config.archive_upload,
             archive_upload_key=config.archive_upload_key,
             suite_repo=config.get_ceph_qa_suite_git_url(),
@@ -127,6 +125,16 @@ class Run(object):
             flavor=self.args.flavor,
         )
         return self.build_base_config()
+
+    def choose_os(self):
+        os_type = self.args.distro
+        os_version = self.args.distro_version
+        if not (os_type and os_version):
+            os_ = util.get_distro_defaults(
+                self.args.distro, self.args.machine_type)[2]
+        else:
+            os_ = OS(os_type, os_version)
+        return os_
 
     def choose_kernel(self):
         # Put together a stanza specifying the kernel hash
@@ -194,13 +202,14 @@ class Run(object):
         if config.suite_verify_ceph_hash and not self.args.newest:
             # don't bother if newest; we'll search for an older one
             # Get the ceph package version
-            try:
-                ceph_version = util.package_version_for_hash(
-                    ceph_hash, self.args.flavor, self.args.distro,
-                    self.args.distro_version, self.args.machine_type,
-                )
-            except Exception as exc:
-                util.schedule_fail(str(exc), self.name, dry_run=self.args.dry_run)
+            ceph_version = util.package_version_for_hash(
+                ceph_hash, self.args.flavor, self.os.name,
+                self.os.version, self.args.machine_type,
+            )
+            if not ceph_version:
+                msg = f"Packages for os_type '{self.os.name}', flavor " \
+                    f"{self.args.flavor} and ceph hash '{ceph_hash}' not found"
+                util.schedule_fail(msg, self.name, dry_run=self.args.dry_run)
             log.info("ceph version: {ver}".format(ver=ceph_version))
             return ceph_version
         else:
@@ -476,27 +485,14 @@ class Run(object):
                 full_job_config = copy.deepcopy(self.base_config.to_dict())
                 deep_merge(full_job_config, parsed_yaml)
                 flavor = util.get_install_task_flavor(full_job_config)
-                # Get package versions for this sha1, os_type and flavor. If
-                # we've already retrieved them in a previous loop, they'll be
-                # present in package_versions and gitbuilder will not be asked
-                # again for them.
-                try:
-                    self.package_versions = util.get_package_versions(
-                        sha1,
-                        os_type,
-                        os_version,
-                        flavor,
-                        self.package_versions
-                    )
-                except VersionNotFoundError:
-                    pass
-                if not util.has_packages_for_distro(
-                    sha1, os_type, os_version, flavor, self.package_versions
-                ):
-                    m = "Packages for os_type '{os}', flavor {flavor} and " + \
-                        "ceph hash '{ver}' not found"
-                    log.error(m.format(os=os_type, flavor=flavor, ver=sha1))
+                version = util.package_version_for_hash(sha1, flavor, os_type,
+                    os_version, self.args.machine_type)
+                if version:
+                    log.debug(f"Found {version} for {os_type} {os_version} {flavor}")
+                else:
                     jobs_missing_packages.append(job)
+                    log.error(f"Packages for os_type '{os_type}', flavor {flavor} and "
+                         f"ceph hash '{sha1}' not found")
                     # optimization: one missing package causes backtrack in newest mode;
                     # no point in continuing the search
                     if newest:

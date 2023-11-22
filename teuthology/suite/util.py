@@ -1,4 +1,5 @@
 import copy
+import functools
 import logging
 import os
 import requests
@@ -17,8 +18,8 @@ from teuthology.config import config
 from teuthology.exceptions import BranchNotFoundError, ScheduleFailError
 from teuthology.misc import deep_merge
 from teuthology.repo_utils import fetch_qa_suite, fetch_teuthology
-from teuthology.orchestra.opsys import OS
-from teuthology.packaging import get_builder_project
+from teuthology.orchestra.opsys import OS, DEFAULT_OS_VERSION
+from teuthology.packaging import get_builder_project, VersionNotFoundError
 from teuthology.repo_utils import build_git_url
 from teuthology.task.install import get_flavor
 
@@ -122,53 +123,21 @@ def get_distro_defaults(distro, machine_type):
     """
     Given a distro (e.g. 'ubuntu') and machine type, return:
         (arch, release, pkg_type)
-
-    This is used to default to:
-        ('x86_64', 'trusty', 'deb') when passed 'ubuntu' and 'plana'
-        ('armv7l', 'saucy', 'deb') when passed 'ubuntu' and 'saya'
-        ('x86_64', 'wheezy', 'deb') when passed 'debian'
-        ('x86_64', 'fedora20', 'rpm') when passed 'fedora'
-    And ('x86_64', 'centos7', 'rpm') when passed anything else
     """
     arch = 'x86_64'
-    if distro in (None, 'None'):
-        os_type = 'centos'
-        os_version = '7'
-    elif distro in ('rhel', 'centos'):
-        os_type = 'centos'
-        os_version = '7'
-    elif distro == 'ubuntu':
+    if distro in (None, 'None', 'rhel'):
+        distro = 'centos'
+
+    try:
+        os_version = DEFAULT_OS_VERSION[distro]
         os_type = distro
-        if machine_type == 'saya':
-            os_version = '13.10'
-            arch = 'armv7l'
-        else:
-            os_version = '16.04'
-    elif distro == 'debian':
-        os_type = distro
-        os_version = '7'
-    elif distro == 'fedora':
-        os_type = distro
-        os_version = '20'
-    elif distro == 'opensuse':
-        os_type = distro
-        os_version = '15.1'
-    else:
+    except IndexError:
         raise ValueError("Invalid distro value passed: %s", distro)
     _os = OS(name=os_type, version=os_version)
     release = get_builder_project()._get_distro(
         _os.name,
         _os.version,
         _os.codename,
-    )
-    template = "Defaults for machine_type {mtype} distro {distro}: " \
-        "arch={arch}, release={release}, pkg_type={pkg}"
-    log.debug(template.format(
-        mtype=machine_type,
-        distro=_os.name,
-        arch=arch,
-        release=release,
-        pkg=_os.package_type)
     )
     return (
         arch,
@@ -254,6 +223,7 @@ def get_branch_info(project, branch, project_owner='ceph'):
         return resp.json()
 
 
+@functools.lru_cache()
 def package_version_for_hash(hash, flavor='default', distro='rhel',
                              distro_version='8.0', machine_type='smithi'):
     """
@@ -281,7 +251,10 @@ def package_version_for_hash(hash, flavor='default', distro='rhel',
             log.info('build not complete')
             return None
 
-    return bp.version
+    try:
+        return bp.version
+    except VersionNotFoundError:
+        return None
 
 
 def get_arch(machine_type):
@@ -331,101 +304,6 @@ def get_install_task_flavor(job_config):
     deep_merge(first_install_config, install_overrides)
     deep_merge(first_install_config, project_overrides)
     return get_flavor(first_install_config)
-
-
-def get_package_versions(sha1, os_type, os_version, flavor,
-                         package_versions=None):
-    """
-    Will retrieve the package versions for the given sha1, os_type/version,
-    and flavor from gitbuilder.
-
-    Optionally, a package_versions dict can be provided
-    from previous calls to this function to avoid calling gitbuilder for
-    information we've already retrieved.
-
-    The package_versions dict will be in the following format::
-
-        {
-            "sha1": {
-                "ubuntu": {
-                    "14.04": {
-                        "basic": "version",
-                    }
-                    "15.04": {
-                        "notcmalloc": "version",
-                    }
-                }
-                "rhel": {
-                    "basic": "version",
-                    }
-            },
-            "another-sha1": {
-                "ubuntu": {
-                    "basic": "version",
-                    }
-            }
-        }
-
-    :param sha1:             The sha1 hash of the ceph version.
-    :param os_type:          The distro we want to get packages for, given
-                             the ceph sha1. Ex. 'ubuntu', 'rhel', etc.
-    :param os_version:       The distro's version, e.g. '14.04', '7.0'
-    :param flavor:           Package flavor ('testing', 'notcmalloc', etc.)
-    :param package_versions: Use this optionally to use cached results of
-                             previous calls to gitbuilder.
-    :returns:                A dict of package versions. Will return versions
-                             for all hashes/distros/vers, not just for the given
-                             hash/distro/ver.
-    """
-    if package_versions is None:
-        package_versions = dict()
-
-    os_type = str(os_type)
-
-    os_types = package_versions.get(sha1, dict())
-    os_versions = os_types.get(os_type, dict())
-    flavors = os_versions.get(os_version, dict())
-    if flavor not in flavors:
-        package_version = package_version_for_hash(
-            sha1,
-            flavor,
-            distro=os_type,
-            distro_version=os_version,
-        )
-        flavors[flavor] = package_version
-        os_versions[os_version] = flavors
-        os_types[os_type] = os_versions
-        package_versions[sha1] = os_types
-
-    return package_versions
-
-
-def has_packages_for_distro(sha1, os_type, os_version, flavor,
-                            package_versions=None):
-    """
-    Checks to see if gitbuilder has packages for the given sha1, os_type and
-    flavor.
-
-    See above for package_versions description.
-
-    :param sha1:             The sha1 hash of the ceph version.
-    :param os_type:          The distro we want to get packages for, given
-                             the ceph sha1. Ex. 'ubuntu', 'rhel', etc.
-    :param flavor:           The ceph packages shaman flavor
-    :param package_versions: Use this optionally to use cached results of
-                             previous calls to gitbuilder.
-    :returns:                True, if packages are found. False otherwise.
-    """
-    os_type = str(os_type)
-    if package_versions is None:
-        package_versions = get_package_versions(
-            sha1, os_type, os_version, flavor)
-
-    flavors = package_versions.get(sha1, dict()).get(
-            os_type, dict()).get(
-            os_version, dict())
-    # we want to return a boolean here, not the actual package versions
-    return bool(flavors.get(flavor, None))
 
 
 def teuthology_schedule(args, verbose, dry_run, log_prefix='', stdin=None):
