@@ -1,3 +1,4 @@
+import functools
 import logging
 import os
 import re
@@ -56,6 +57,7 @@ def build_git_url(project, project_owner='ceph'):
     return url_templ.format(project_owner=project_owner, project=project)
 
 
+@functools.lru_cache()
 def ls_remote(url, ref):
     """
     Return the current sha1 for a given repository and ref
