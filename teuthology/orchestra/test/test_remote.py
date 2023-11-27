@@ -1,10 +1,12 @@
 from mock import patch, Mock, MagicMock
+from pytest import raises
 
 from io import BytesIO
 
 from teuthology.orchestra import remote
 from teuthology.orchestra import opsys
 from teuthology.orchestra.run import RemoteProcess
+from teuthology.exceptions import CommandFailedError, UnitTestError
 
 
 class TestRemote(object):
@@ -65,6 +67,23 @@ class TestRemote(object):
         assert m_run_call_kwargs['args'] == args
         assert result is proc
         assert result.remote is rem
+
+    @patch('teuthology.util.scanner.UnitTestScanner.scan_and_write')
+    def test_run_unit_test(self, m_scan_and_write):
+        m_transport = MagicMock()
+        m_transport.getpeername.return_value = ('name', 22)
+        self.m_ssh.get_transport.return_value = m_transport
+        m_run = MagicMock(name="run", side_effect=CommandFailedError('mocked error', 1, 'smithi'))
+        args = [
+            'something',
+            'more',
+        ]
+        rem = remote.Remote(name='jdoe@xyzzy.example.com', ssh=self.m_ssh)
+        rem._runner = m_run
+        m_scan_and_write.return_value = "Error Message"
+        with raises(UnitTestError) as exc:
+            rem.run_unit_test(args=args, xml_path_regex="xml_path", output_yaml="yaml_path")
+        assert str(exc.value) == "Unit test failed on smithi with status 1: 'Error Message'"
 
     def test_hostname(self):
         m_transport = MagicMock()

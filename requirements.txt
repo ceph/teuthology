@@ -124,6 +124,8 @@ keystoneauth1==4.3.1
     #   python-novaclient
 lupa==1.14.1
     # via teuthology (pyproject.toml)
+lxml==4.9.3
+    # via teuthology (pyproject.toml)
 markupsafe==2.0.1
     # via jinja2
 mock==4.0.3
