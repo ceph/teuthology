@@ -2,7 +2,6 @@ import os
 import pytest
 import tempfile
 
-from copy import deepcopy
 from mock import Mock, patch
 
 from teuthology.config import config
@@ -48,9 +47,6 @@ def git_repository(request):
 
 
 class TestUtil(object):
-    def setup_method(self):
-        config.use_shaman = False
-
     @patch('teuthology.suite.util.smtplib.SMTP')
     def test_schedule_fail(self, m_smtp):
         config.results_email = "example@example.com"
@@ -90,32 +86,6 @@ Branch 'no-branch' not found in repo: https://github.com/ceph/ceph-ci.git!"
         assert str(exc.value) == "Scheduling test1 failed: \
 Branch 'no-branch' not found in repo: https://github.com/ceph/ceph-ci.git!"
         m_smtp.assert_not_called()
-
-    @patch('requests.get')
-    def test_get_hash_success(self, m_get):
-        mock_resp = Mock()
-        mock_resp.ok = True
-        mock_resp.text = "the_hash"
-        m_get.return_value = mock_resp
-        result = util.get_gitbuilder_hash()
-        assert result == "the_hash"
-
-    @patch('requests.get')
-    def test_get_hash_fail(self, m_get):
-        mock_resp = Mock()
-        mock_resp.ok = False
-        m_get.return_value = mock_resp
-        result = util.get_gitbuilder_hash()
-        assert result is None
-
-    @patch('requests.get')
-    def test_package_version_for_hash(self, m_get):
-        mock_resp = Mock()
-        mock_resp.ok = True
-        mock_resp.text = "the_version"
-        m_get.return_value = mock_resp
-        result = util.package_version_for_hash("hash")
-        assert result == "the_version"
 
     @patch('requests.get')
     def test_get_branch_info(self, m_get):
@@ -244,111 +214,34 @@ class TestFlavor(object):
 class TestMissingPackages(object):
     """
     Tests the functionality that checks to see if a
-    scheduled job will have missing packages in gitbuilder.
+    scheduled job will have missing packages in shaman.
     """
-    def setup_method(self):
-        package_versions = {
-            'sha1': {
-                'ubuntu': {
-                    '14.04': {
-                        'basic': '1.0'
-                    }
-                }
-            }
-        }
-        self.pv = package_versions
-
-    def test_os_in_package_versions(self):
-        assert self.pv == util.get_package_versions(
+    @patch("teuthology.packaging.ShamanProject._get_package_version")
+    def test_distro_has_packages(self, m_gpv):
+        m_gpv.return_value = "v1"
+        result = util.package_version_for_hash(
             "sha1",
+            "basic",
             "ubuntu",
             "14.04",
-            "basic",
-            package_versions=self.pv
-        )
-
-    @patch("teuthology.suite.util.package_version_for_hash")
-    def test_os_not_in_package_versions(self, m_package_versions_for_hash):
-        m_package_versions_for_hash.return_value = "1.1"
-        result = util.get_package_versions(
-            "sha1",
-            "rhel",
-            "7.0",
-            "basic",
-            package_versions=self.pv
-        )
-        expected = deepcopy(self.pv)
-        expected['sha1'].update(
-            {
-                'rhel': {
-                    '7.0': {
-                        'basic': '1.1'
-                    }
-                }
-            }
-        )
-        assert result == expected
-
-    @patch("teuthology.suite.util.package_version_for_hash")
-    def test_package_versions_not_found(self, m_package_versions_for_hash):
-        # if gitbuilder returns a status that's not a 200, None is returned
-        m_package_versions_for_hash.return_value = None
-        result = util.get_package_versions(
-            "sha1",
-            "rhel",
-            "7.0",
-            "basic",
-            package_versions=self.pv
-        )
-        assert result == self.pv
-
-    @patch("teuthology.suite.util.package_version_for_hash")
-    def test_no_package_versions_kwarg(self, m_package_versions_for_hash):
-        m_package_versions_for_hash.return_value = "1.0"
-        result = util.get_package_versions(
-            "sha1",
-            "ubuntu",
-            "14.04",
-            "basic",
-        )
-        expected = deepcopy(self.pv)
-        assert result == expected
-
-    def test_distro_has_packages(self):
-        result = util.has_packages_for_distro(
-            "sha1",
-            "ubuntu",
-            "14.04",
-            "basic",
-            package_versions=self.pv,
+            "mtype",
         )
         assert result
 
-    def test_distro_does_not_have_packages(self):
-        result = util.has_packages_for_distro(
+    @patch("teuthology.packaging.ShamanProject._get_package_version")
+    def test_distro_does_not_have_packages(self, m_gpv):
+        m_gpv.return_value = None
+        result = util.package_version_for_hash(
             "sha1",
-            "rhel",
-            "7.0",
             "basic",
-            package_versions=self.pv,
-        )
-        assert not result
-
-    @patch("teuthology.suite.util.get_package_versions")
-    def test_has_packages_no_package_versions(self, m_get_package_versions):
-        m_get_package_versions.return_value = self.pv
-        result = util.has_packages_for_distro(
-            "sha1",
             "rhel",
             "7.0",
-            "basic",)
+            "mtype",
+        )
         assert not result
 
 
 class TestDistroDefaults(object):
-    def setup_method(self):
-        config.use_shaman = False
-
     def test_distro_defaults_plana(self):
         expected = ('x86_64', 'ubuntu/22.04',
                     OS(name='ubuntu', version='22.04', codename='jammy'))
