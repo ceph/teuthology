@@ -149,12 +149,11 @@ Branch 'no-branch' not found in repo: https://github.com/ceph/ceph-ci.git!"
 
     @patch('teuthology.suite.util.requests.get')
     def test_find_git_parents(self, m_requests_get):
-        refresh_resp = Mock(ok=True)
         history_resp = Mock(ok=True)
         history_resp.json.return_value = {'sha1s': ['sha1', 'sha1_p']}
-        m_requests_get.side_effect = [refresh_resp, history_resp]
+        m_requests_get.return_value = history_resp
         parent_sha1s = util.find_git_parents('ceph', 'sha1')
-        assert len(m_requests_get.mock_calls) == 2
+        assert m_requests_get.call_count == 1
         assert parent_sha1s == ['sha1_p']
 
 

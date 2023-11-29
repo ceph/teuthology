@@ -347,13 +347,6 @@ def find_git_parents(project: str, sha1: str, count=1):
         log.warning('githelper_base_url not set, --newest disabled')
         return []
 
-    def refresh(project):
-        url = '%s/%s.git/refresh/' % (base_url, project)
-        resp = requests.get(url)
-        if not resp.ok:
-            log.error('git refresh failed for %s: %s',
-                      project, resp.content.decode())
-
     def get_sha1s(project, committish, count):
         url = '/'.join((base_url, '%s.git' % project,
                        'history/?committish=%s&count=%d' % (committish, count)))
@@ -366,7 +359,6 @@ def find_git_parents(project: str, sha1: str, count=1):
                        int(count), sha1, project, resp.json()['error'])
         return sha1s
 
-    refresh(project)
     # index 0 will be the commit whose parents we want to find.
     # So we will query for count+1, and strip index 0 from the result.
     sha1s = get_sha1s(project, sha1, count + 1)
