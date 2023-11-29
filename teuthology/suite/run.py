@@ -15,7 +15,6 @@ from teuthology import repo_utils
 from teuthology.config import config, JobConfig
 from teuthology.exceptions import (
     BranchMismatchError, BranchNotFoundError, CommitNotFoundError,
-    VersionNotFoundError
 )
 from teuthology.misc import deep_merge, get_results_url
 from teuthology.orchestra.opsys import OS
@@ -173,6 +172,7 @@ class Run(object):
         """
         repo_name = self.ceph_repo_name
 
+        ceph_hash = None
         if self.args.ceph_sha1:
             ceph_hash = self.args.ceph_sha1
             if self.args.validate_sha1:
@@ -494,7 +494,7 @@ class Run(object):
                     # optimization: one missing package causes backtrack in newest mode;
                     # no point in continuing the search
                     if newest:
-                        return jobs_missing_packages, None
+                        return jobs_missing_packages, []
 
             jobs_to_schedule.append(job)
         return jobs_missing_packages, jobs_to_schedule
@@ -642,6 +642,8 @@ Note: If you still want to go ahead, use --job-threshold 0'''
         backtrack = 0
         limit = self.args.newest
         sha1s = []
+        jobs_to_schedule = []
+        jobs_missing_packages = []
         while backtrack <= limit:
             jobs_missing_packages, jobs_to_schedule = \
                 self.collect_jobs(arch, configs, self.args.newest, job_limit)
