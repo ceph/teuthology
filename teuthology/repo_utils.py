@@ -1,3 +1,4 @@
+import functools
 import logging
 import os
 import re
@@ -56,6 +57,7 @@ def build_git_url(project, project_owner='ceph'):
     return url_templ.format(project_owner=project_owner, project=project)
 
 
+@functools.lru_cache()
 def ls_remote(url, ref):
     """
     Return the current sha1 for a given repository and ref
@@ -119,8 +121,6 @@ def enforce_repo_state(repo_url, dest_path, branch, commit=None, remove_on_error
             set_remote(dest_path, repo_url)
             fetch_branch(dest_path, branch)
             touch_file(sentinel)
-        else:
-            log.info("%s was just updated or references a specific commit; assuming it is current", dest_path)
 
         if commit and os.path.exists(repo_reset):
             return
@@ -275,7 +275,7 @@ def fetch_branch(repo_path, branch, shallow=True):
                       GitError for other errors
     """
     validate_branch(branch)
-    log.info("Fetching %s from origin", branch)
+    log.info("Fetching %s from origin", repo_path.split("/")[-1])
     args = ['git', 'fetch']
     if shallow:
         args.extend(['--depth', '1'])
@@ -312,7 +312,7 @@ def reset_repo(repo_url, dest_path, branch, commit=None):
     else:
         reset_branch = 'origin/%s' % branch
     reset_ref = commit or reset_branch
-    log.info('Resetting repo at %s to %s', dest_path, reset_ref)
+    log.debug('Resetting repo at %s to %s', dest_path, reset_ref)
     # This try/except block will notice if the requested branch doesn't
     # exist, whether it was cloned or fetched.
     try:
