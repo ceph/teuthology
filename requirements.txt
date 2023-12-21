@@ -41,7 +41,7 @@ charset-normalizer==2.0.4
     # via requests
 click==8.0.1
     # via pip-tools
-configobj==5.0.6
+configobj==5.0.8
     # via teuthology (pyproject.toml)
 configparser==5.0.2
     # via teuthology (pyproject.toml)
