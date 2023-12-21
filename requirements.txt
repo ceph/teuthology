@@ -152,7 +152,7 @@ pyyaml==6.0.1
     # via
     #   ansible-base
     #   teuthology (pyproject.toml)
-requests==2.27.1
+requests==2.31.0
     # via
     #   apache-libcloud
     #   teuthology (pyproject.toml)
