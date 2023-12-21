@@ -28,7 +28,7 @@ botocore==1.24.46
     #   s3transfer
 build==0.9.0
     # via pip-tools
-certifi==2021.5.30
+certifi==2023.11.17
     # via
     #   requests
     #   sentry-sdk
