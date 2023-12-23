@@ -1,0 +1,30 @@
+---
+- hosts: teuthology
+  strategy: free
+  pre_tasks:
+    - name: Add teuthology repo
+      zypper_repository:
+        name: teuthology
+        repo: "{{ item }}"
+        auto_import_keys: yes
+        disable_gpg_check: yes
+        state: present
+      with_items: "{{ teuthology_rpm_repo[ansible_distribution][ansible_distribution_version] }}"
+      when: ansible_os_family == "Suse"
+  roles:
+    #- { role: 'ansible/roles/ansible-managed' }
+    #- { role: 'ansible/roles/common' }
+    #- { role: 'ansible/roles/paddles' }
+    #- { role: 'ansible/roles/pulpito' }
+    #- { role: 'ansible/roles/teuthology' }
+    - ansible-managed
+    - common
+    - paddles
+    - paddles_nodes
+    - pulpito
+    - teuthology
+    - teuthology_workers
+    - teuthology_users
+    #- nameserver
+    #- nsupdate_web
+  become: true

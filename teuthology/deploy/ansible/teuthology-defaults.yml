@@ -1,0 +1,9 @@
+---
+teuthology_repo: https://github.com/ceph/teuthology.git
+paddles_repo: https://github.com/ceph/paddles.git
+pulpito_repo: https://github.com/ceph/pulpito.git
+ceph_repo: https://github.com/ceph/ceph.git
+
+teuthology_branch: master
+paddles_branch: master
+pulpito_branch: master
