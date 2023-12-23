@@ -1,0 +1,34 @@
+#Moved dnssec key generation from deploy-teuthology script to the ansible task due to HMAC-MD5 being deprecated on Tumbleweed.
+- name: Generate new keys
+  shell: "/usr/sbin/dnssec-keygen -r /dev/urandom -a HMAC-MD5 -b  512 -n HOST '{{ zone_name }}'"
+  register:
+    dns_keygen
+
+- name: Get prikey contents
+  slurp:
+    src: "{{ dns_keygen.stdout }}.private"
+  register: prikey_out
+
+- name: Set key vars
+  set_fact:
+    dns_key: "{{ dns_keygen.stdout }}"
+    pubkey_name: "{{ dns_keygen.stdout }}.key"
+    prikey_name: "{{ dns_keygen.stdout }}.private"
+    zone_secret: "{{ (prikey_out.content |  b64decode | from_yaml).Key }}"
+
+- name: Define named.conf key data
+  set_fact:
+    named_conf_key: |
+        key "{{ zone_name }}." {
+          algorithm hmac-md5;
+          secret "{{ zone_secret }}";
+        };
+
+- name: Fetch the keys to secrets local path
+  fetch:
+    src: "{{ ansible_env.HOME }}/{{ item }}"
+    dest: "{{ secrets_path }}/"
+    flat: true
+  loop:
+    - "{{ pubkey_name }}"
+    - "{{ prikey_name }}"
