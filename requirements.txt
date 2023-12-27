@@ -8,127 +8,127 @@ ansible==6.7.0
     # via teuthology (pyproject.toml)
 ansible-core==2.13.13
     # via ansible
-apache-libcloud==3.3.1
+apache-libcloud==3.8.0
     # via teuthology (pyproject.toml)
-attrs==21.2.0
-    # via pytest
 backports-ssl-match-hostname==3.7.0.1
     # via teuthology (pyproject.toml)
-bcrypt==3.2.0
+bcrypt==4.1.2
     # via paramiko
 beanstalkc3==0.4.0
     # via teuthology (pyproject.toml)
 boto==2.49.0
     # via teuthology (pyproject.toml)
-boto3==1.21.46
+boto3==1.34.8
     # via teuthology (pyproject.toml)
-botocore==1.24.46
+botocore==1.34.8
     # via
     #   boto3
     #   s3transfer
-build==0.9.0
+build==1.0.3
     # via pip-tools
+cachetools==5.3.2
+    # via tox
 certifi==2023.11.17
     # via
     #   requests
     #   sentry-sdk
-cffi==1.14.6
+cffi==1.16.0
     # via
-    #   bcrypt
     #   cryptography
     #   pynacl
-charset-normalizer==2.0.4
+chardet==5.2.0
+    # via tox
+charset-normalizer==3.3.2
     # via requests
-click==8.0.1
+click==8.1.7
     # via pip-tools
+colorama==0.4.6
+    # via tox
 configobj==5.0.8
     # via teuthology (pyproject.toml)
-configparser==5.0.2
+configparser==6.0.0
     # via teuthology (pyproject.toml)
 cryptography==41.0.7
     # via
     #   ansible-core
     #   paramiko
     #   pyopenssl
-distlib==0.3.4
+distlib==0.3.8
     # via virtualenv
 docopt==0.6.2
     # via teuthology (pyproject.toml)
-filelock==3.4.1
+filelock==3.13.1
     # via
     #   tox
     #   virtualenv
-gevent==21.12.0
+gevent==23.9.1
     # via teuthology (pyproject.toml)
-greenlet==1.1.0
+greenlet==3.0.3
     # via gevent
-httplib2==0.19.1
+httplib2==0.22.0
     # via teuthology (pyproject.toml)
-humanfriendly==9.2
+humanfriendly==10.0
     # via teuthology (pyproject.toml)
-idna==3.2
+idna==3.6
     # via requests
-iniconfig==1.1.1
+iniconfig==2.0.0
     # via pytest
 ipy==1.1
     # via teuthology (pyproject.toml)
-jinja2==3.0.1
+jinja2==3.1.2
     # via ansible-core
-jmespath==0.10.0
+jmespath==1.0.1
     # via
     #   boto3
     #   botocore
-lupa==1.14.1
+lupa==2.0
     # via teuthology (pyproject.toml)
-lxml==4.9.3
+lxml==4.9.4
     # via teuthology (pyproject.toml)
-markupsafe==2.0.1
+markupsafe==2.1.3
     # via jinja2
-mock==4.0.3
+mock==5.1.0
     # via teuthology (pyproject.toml)
 ndg-httpsclient==0.5.1
     # via teuthology (pyproject.toml)
-netaddr==0.8.0
+netaddr==0.9.0
     # via teuthology (pyproject.toml)
 nose==1.3.7
     # via teuthology (pyproject.toml)
-packaging==22.0
+packaging==23.2
     # via
     #   ansible-core
     #   build
+    #   pyproject-api
     #   pytest
     #   tox
 paramiko==3.4.0
     # via teuthology (pyproject.toml)
-pep517==0.11.0
-    # via build
-pexpect==4.8.0
+pexpect==4.9.0
     # via teuthology (pyproject.toml)
 pip-tools==7.3.0
     # via teuthology (pyproject.toml)
-platformdirs==2.4.0
-    # via virtualenv
-pluggy==1.0.0
+platformdirs==4.1.0
+    # via
+    #   tox
+    #   virtualenv
+pluggy==1.3.0
     # via
     #   pytest
     #   tox
-prettytable==2.1.0
+prettytable==3.9.0
     # via teuthology (pyproject.toml)
-prometheus-client==0.16.0
+prometheus-client==0.19.0
     # via teuthology (pyproject.toml)
-psutil==5.8.0
+psutil==5.9.7
     # via teuthology (pyproject.toml)
 ptyprocess==0.7.0
     # via pexpect
-py==1.11.0
-    # via
-    #   pytest
-    #   tox
-pyasn1==0.4.8
+pyasn1==0.5.1
     # via
     #   ndg-httpsclient
     #   teuthology (pyproject.toml)
-pycparser==2.20
+pycparser==2.21
     # via cffi
 pyjwt==2.8.0
     # via teuthology (pyproject.toml)
@@ -136,13 +136,17 @@ pynacl==1.5.0
     # via
     #   paramiko
     #   teuthology (pyproject.toml)
-pyopenssl==20.0.1
+pyopenssl==23.3.0
     # via
     #   ndg-httpsclient
     #   teuthology (pyproject.toml)
-pyparsing==2.4.7
+pyparsing==3.1.1
     # via httplib2
-pytest==7.0.1
+pyproject-api==1.6.1
+    # via tox
+pyproject-hooks==1.0.0
+    # via build
+pytest==7.4.3
     # via teuthology (pyproject.toml)
 python-dateutil==2.8.2
     # via
@@ -158,44 +162,35 @@ requests==2.31.0
     #   teuthology (pyproject.toml)
 resolvelib==0.8.1
     # via ansible-core
-s3transfer==0.5.2
+s3transfer==0.10.0
     # via boto3
-sentry-sdk==1.6.0
+sentry-sdk==1.39.1
     # via teuthology (pyproject.toml)
 six==1.16.0
     # via
-    #   bcrypt
     #   configobj
-    #   pyopenssl
     #   python-dateutil
-    #   tox
-    #   virtualenv
 toml==0.10.2
-    # via
-    #   teuthology (pyproject.toml)
-    #   tox
-tomli==2.0.1
-    # via
-    #   pep517
-    #   pytest
-tox==3.25.0
+    # via teuthology (pyproject.toml)
+tox==4.11.4
     # via teuthology (pyproject.toml)
 urllib3==1.26.18
     # via
     #   botocore
     #   requests
     #   sentry-sdk
-virtualenv==20.14.1
+    #   teuthology (pyproject.toml)
+virtualenv==20.25.0
     # via tox
-wcwidth==0.2.5
+wcwidth==0.2.12
     # via prettytable
-wheel==0.38.1
+wheel==0.42.0
     # via pip-tools
-xmltodict==0.12.0
+xmltodict==0.13.0
     # via teuthology (pyproject.toml)
-zope-event==4.5.0
+zope-event==5.0
     # via gevent
-zope-interface==5.4.0
+zope-interface==6.1
     # via gevent
 
 # The following packages are considered to be unsafe in a requirements file:
