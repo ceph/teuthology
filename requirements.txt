@@ -98,7 +98,7 @@ packaging==22.0
     #   build
     #   pytest
     #   tox
-paramiko==2.12.0
+paramiko==3.4.0
     # via teuthology (pyproject.toml)
 pep517==0.11.0
     # via build
@@ -164,7 +164,6 @@ six==1.16.0
     # via
     #   bcrypt
     #   configobj
-    #   paramiko
     #   pyopenssl
     #   python-dateutil
     #   tox
