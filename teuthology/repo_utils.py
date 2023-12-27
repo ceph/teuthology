@@ -358,7 +358,7 @@ def fetch_repo(url, branch, commit=None, bootstrap=None, lock=True):
     # only let one worker create/update the checkout at a time
     lock_path = dest_path.rstrip('/') + '.lock'
     with FileLock(lock_path, noop=not lock):
-        with safe_while(sleep=10, tries=60) as proceed:
+        with safe_while(sleep=10, tries=6) as proceed:
             try:
                 while proceed():
                     try:
