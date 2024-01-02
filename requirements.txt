@@ -4,10 +4,8 @@
 #
 #    pip-compile --extra=test pyproject.toml
 #
-ansible==6.7.0
-    # via teuthology (pyproject.toml)
 ansible-core==2.13.13
-    # via ansible
+    # via teuthology (pyproject.toml)
 apache-libcloud==3.8.0
     # via teuthology (pyproject.toml)
 backports-ssl-match-hostname==3.7.0.1
