@@ -219,3 +219,6 @@ fi
 
 # Check to make sure requirements are met
 ./$VENV/bin/pip check
+
+# Install ansible collections
+./$VENV/bin/ansible-galaxy install -r requirements.yml
