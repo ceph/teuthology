@@ -208,7 +208,10 @@ def main(args):
 
 def find_dispatcher_processes() -> Dict[str, List[psutil.Process]]:
     def match(proc):
-        cmdline = proc.cmdline()
+        try:
+            cmdline = proc.cmdline()
+        except psutil.ZombieProcess:
+            return False
         if len(cmdline) < 3:
             return False
         if not cmdline[1].endswith("/teuthology-dispatcher"):
