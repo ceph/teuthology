@@ -17,7 +17,7 @@ RUN apt-get update && \
     lsb-release && \
     apt-get clean all
 WORKDIR /teuthology
-COPY requirements.txt bootstrap /teuthology/
+COPY requirements.txt requirements.yml ansible.cfg bootstrap /teuthology/
 RUN \
     cd /teuthology && \
     mkdir ../archive_dir && \

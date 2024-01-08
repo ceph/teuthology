@@ -144,7 +144,10 @@ class JobProcesses(TeuthologyMetric):
 
     @staticmethod
     def _match(proc):
-        cmdline = proc.cmdline()
+        try:
+            cmdline = proc.cmdline()
+        except psutil.ZombieProcess:
+            return False
         if not len(cmdline) > 1:
             return False
         if not cmdline[1].endswith("teuthology"):
