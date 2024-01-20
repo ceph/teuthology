@@ -474,20 +474,19 @@ class Remote(RemoteShell):
             self._shortname = host_shortname(self.hostname)
         return self._shortname
 
-    @property
-    def is_online(self):
+    async def is_online(self):
         if self.ssh is None:
             return False
         if self.ssh.get_transport() is None:
             return False
         try:
-            self.run(args="true")
+            await self.run(args="true")
         except Exception:
             return False
         return self.ssh.get_transport().is_active()
 
     def ensure_online(self):
-        if self.is_online:
+        if self.is_online():
             return
         self.connect()
         if not self.is_online:
@@ -509,7 +508,7 @@ class Remote(RemoteShell):
             name=self.name,
             )
 
-    def run(self, **kwargs):
+    async def run(self, **kwargs):
         """
         This calls `orchestra.run.run` with our SSH client.
 
@@ -520,7 +519,7 @@ class Remote(RemoteShell):
            not self.ssh.get_transport().is_active():
             if not self.reconnect():
                 raise ConnectionError(f'Failed to reconnect to {self.shortname}')
-        r = self._runner(client=self.ssh, name=self.shortname, **kwargs)
+        r = await self._runner(client=self.ssh, name=self.shortname, **kwargs)
         r.remote = self
         return r
 

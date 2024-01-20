@@ -1,37 +1,10 @@
+import asyncio
 import logging
-import sys
 
-import gevent
-import gevent.pool
-import gevent.queue
+from typing import List
 
 
 log = logging.getLogger(__name__)
-
-
-class ExceptionHolder(object):
-    def __init__(self, exc_info):
-        self.exc_info = exc_info
-
-
-def capture_traceback(func, *args, **kwargs):
-    """
-    Utility function to capture tracebacks of any exception func
-    raises.
-    """
-    try:
-        return func(*args, **kwargs)
-    except Exception:
-        return ExceptionHolder(sys.exc_info())
-
-
-def resurrect_traceback(exc):
-    if isinstance(exc, ExceptionHolder):
-        raise exc.exc_info[1]
-    elif isinstance(exc, BaseException):
-        raise exc
-    else:
-        return
 
 
 class parallel(object):
@@ -61,55 +34,41 @@ class parallel(object):
     """
 
     def __init__(self):
-        self.group = gevent.pool.Group()
-        self.results = gevent.queue.Queue()
+        # self.results = asyncio.Queue()
+        self.results = []
         self.count = 0
-        self.any_spawned = False
         self.iteration_stopped = False
+        self.tasks: List[asyncio.Task] = []
+        self.any_spawned = False
 
     def spawn(self, func, *args, **kwargs):
-        self.count += 1
         self.any_spawned = True
-        greenlet = self.group.spawn(capture_traceback, func, *args, **kwargs)
-        greenlet.link(self._finish)
+        self.count += 1
+        async def wrapper():
+            # print(f"{func} {args} {kwargs}")
+            return func(*args, **kwargs)
+        self.tasks.append(asyncio.create_task(
+            wrapper()
+        ))
 
-    def __enter__(self):
+    async def __aenter__(self):
         return self
 
-    def __exit__(self, type_, value, traceback):
-        if value is not None:
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        if exc_value is not None:
             return False
-
-        # raises if any greenlets exited with an exception
-        for result in self:
-            log.debug('result is %s', repr(result))
+        self.results = await asyncio.gather(*self.tasks)#, return_exceptions=True)
 
         return True
 
-    def __iter__(self):
+    def __aiter__(self):
         return self
 
-    def __next__(self):
-        if not self.any_spawned or self.iteration_stopped:
-            raise StopIteration()
-        result = self.results.get()
-
-        try:
-            resurrect_traceback(result)
-        except StopIteration:
-            self.iteration_stopped = True
-            raise
-
-        return result
-
-    next = __next__
-
-    def _finish(self, greenlet):
-        if greenlet.successful():
-            self.results.put(greenlet.value)
-        else:
-            self.results.put(greenlet.exception)
-
-        self.count -= 1
-        if self.count <= 0:
-            self.results.put(StopIteration())
+    async def __anext__(self):
+        print(f"tasks={self.tasks}")
+        if not self.tasks:
+            raise StopAsyncIteration
+        task = self.tasks.pop(0)
+        res = await task
+        print(f"res={res}")
+        return res

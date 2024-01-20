@@ -1,3 +1,5 @@
+import pytest
+
 from teuthology.parallel import parallel
 
 
@@ -10,19 +12,22 @@ def identity(item, input_set=None, remove=False):
 
 
 class TestParallel(object):
-    def test_basic(self):
+    @pytest.mark.asyncio
+    async def test_basic(self):
         in_set = set(range(10))
-        with parallel() as para:
+        async with parallel() as para:
             for i in in_set:
                 para.spawn(identity, i, in_set, remove=True)
                 assert para.any_spawned is True
             assert para.count == len(in_set)
 
-    def test_result(self):
+    @pytest.mark.asyncio
+    async def test_result(self):
         in_set = set(range(10))
-        with parallel() as para:
+        async with parallel() as para:
             for i in in_set:
                 para.spawn(identity, i, in_set)
-            for result in para:
+            async for result in para:
+                print(f"res in test = {result}")
                 in_set.remove(result)
 

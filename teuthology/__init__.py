@@ -7,11 +7,6 @@ except ImportError:
 
 __version__ = importlib_metadata.version("teuthology")
 
-# Tell gevent not to patch os.waitpid() since it is susceptible to race
-# conditions. See:
-# http://www.gevent.org/gevent.monkey.html#gevent.monkey.patch_os
-os.environ['GEVENT_NOWAITPID'] = 'true'
-
 # Use manhole to give us a way to debug hung processes
 # https://pypi.python.org/pypi/manhole
 try:
@@ -23,20 +18,10 @@ try:
     )
 except ImportError:
     pass
-from gevent import monkey
-monkey.patch_all(
-    dns=False,
-    # Don't patch subprocess to avoid http://tracker.ceph.com/issues/14990
-    subprocess=False,
-)
 import sys
-from gevent.hub import Hub
 
 # Don't write pyc files
 sys.dont_write_bytecode = True
-
-from teuthology.orchestra import monkey
-monkey.patch_all()
 
 import logging
 
@@ -56,6 +41,9 @@ logging.getLogger('urllib3.connectionpool').setLevel(
 # We also don't need the "Converted retries value" messages
 logging.getLogger('urllib3.util.retry').setLevel(
     logging.WARN)
+# TODO re-check: gevent-related debug statement from asyncio
+logging.getLogger('asyncio').setLevel(
+    logging.INFO)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -94,19 +82,3 @@ def install_except_hook():
                                                          exc_traceback))
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
     sys.excepthook = log_exception
-
-
-def patch_gevent_hub_error_handler():
-    Hub._origin_handle_error = Hub.handle_error
-
-    def custom_handle_error(self, context, type, value, tb):
-        if context is None or issubclass(type, Hub.SYSTEM_ERROR):
-            self.handle_system_error(type, value)
-        elif issubclass(type, Hub.NOT_ERROR):
-            pass
-        else:
-            log.error("Uncaught exception (Hub)", exc_info=(type, value, tb))
-
-    Hub.handle_error = custom_handle_error
-
-patch_gevent_hub_error_handler()

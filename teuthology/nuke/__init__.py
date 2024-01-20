@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import datetime
 import json
 import logging
@@ -176,7 +177,7 @@ def openstack_remove_again():
         openstack_delete_volume(i)
 
 
-def main(args):
+async def main(args):
     ctx = FakeNamespace(args)
     if ctx.verbose:
         teuthology.log.setLevel(logging.DEBUG)
@@ -234,15 +235,22 @@ def main(args):
         else:
             subprocess.check_call(["kill", "-9", str(ctx.pid)])
 
-    nuke(ctx, ctx.unlock, ctx.synch_clocks, ctx.noipmi, ctx.keep_logs, not ctx.no_reboot)
+    await nuke(ctx, ctx.unlock, ctx.synch_clocks, ctx.noipmi, ctx.keep_logs, not ctx.no_reboot)
 
 
-def nuke(ctx, should_unlock, sync_clocks=True, noipmi=False, keep_logs=False, should_reboot=True):
+async def nuke(ctx, should_unlock, sync_clocks=True, noipmi=False, keep_logs=False, should_reboot=True):
     if 'targets' not in ctx.config:
         return
     total_unnuked = {}
+    tasks = set()
+    def callback(task):
+        result = task.result()
+        if result:
+            total_unnuked.update(result)
+        tasks.discard(task)
+
     log.info('Checking targets against current locks')
-    with parallel() as p:
+    async with parallel() as p:
         for target, hostkey in ctx.config['targets'].items():
             status = get_status(target)
             if ctx.name and ctx.name not in (status.get('description') or ""):
@@ -256,18 +264,22 @@ def nuke(ctx, should_unlock, sync_clocks=True, noipmi=False, keep_logs=False, sh
                 total_unnuked[target] = hostkey
                 log.info(f"Not nuking {target} because it is down")
                 continue
+            # task = asyncio.create_task(
             p.spawn(
                 nuke_one,
-                ctx,
-                {target: hostkey},
-                should_unlock,
-                sync_clocks,
-                ctx.config.get('check-locks', True),
-                noipmi,
-                keep_logs,
-                should_reboot,
+                    ctx,
+                    {target: hostkey},
+                    should_unlock,
+                    sync_clocks,
+                    ctx.config.get('check-locks', True),
+                    noipmi,
+                    keep_logs,
+                    should_reboot,
             )
-        for unnuked in p:
+            # tasks.add(task)
+            # task.add_done_callback(callback)
+        async for task in p:
+            unnuked = await task
             if unnuked:
                 total_unnuked.update(unnuked)
     if total_unnuked:
@@ -278,7 +290,7 @@ def nuke(ctx, should_unlock, sync_clocks=True, noipmi=False, keep_logs=False, sh
                                   default_flow_style=False).splitlines()))
 
 
-def nuke_one(ctx, target, should_unlock, synch_clocks,
+async def nuke_one(ctx, target, should_unlock, synch_clocks,
              check_locks, noipmi, keep_logs, should_reboot):
     ret = None
     ctx = argparse.Namespace(
@@ -291,7 +303,7 @@ def nuke_one(ctx, target, should_unlock, synch_clocks,
         noipmi=noipmi,
     )
     try:
-        nuke_helper(ctx, should_unlock, keep_logs, should_reboot)
+        await nuke_helper(ctx, should_unlock, keep_logs, should_reboot)
     except Exception:
         log.exception('Could not nuke %s' % target)
         # not re-raising the so that parallel calls aren't killed
@@ -302,7 +314,7 @@ def nuke_one(ctx, target, should_unlock, synch_clocks,
     return ret
 
 
-def nuke_helper(ctx, should_unlock, keep_logs, should_reboot):
+async def nuke_helper(ctx, should_unlock, keep_logs, should_reboot):
     # ensure node is up with ipmi
     (target,) = ctx.config['targets'].keys()
     host = target.split('@')[-1]
@@ -324,7 +336,7 @@ def nuke_helper(ctx, should_unlock, keep_logs, should_reboot):
         provision.pelagos.park_node(host)
         return
     elif remote_.is_container:
-        remote_.run(
+        await remote_.run(
             args=['sudo', '/testnode_stop.sh'],
             check_status=False,
         )

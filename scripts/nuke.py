@@ -1,3 +1,4 @@
+import asyncio
 import docopt
 
 import teuthology.nuke
@@ -44,4 +45,4 @@ teuthology-nuke -t target.yaml --pid 1234 --unlock --owner user@host
 
 def main():
     args = docopt.docopt(doc)
-    teuthology.nuke.main(args)
+    asyncio.run(teuthology.nuke.main(args))

@@ -1,3 +1,4 @@
+import asyncio
 import contextlib
 import copy
 import logging
@@ -7,7 +8,6 @@ import yaml
 
 from teuthology import misc as teuthology
 from teuthology import contextutil, packaging
-from teuthology.parallel import parallel
 from teuthology.task import ansible
 
 from distutils.version import LooseVersion
@@ -63,7 +63,7 @@ def verify_package_version(ctx, config, remote):
         )
 
 
-def install_packages(ctx, pkgs, config):
+async def install_packages(ctx, pkgs, config):
     """
     Installs packages on each remote in ctx.
 
@@ -75,19 +75,19 @@ def install_packages(ctx, pkgs, config):
         "deb": deb._update_package_list_and_install,
         "rpm": rpm._update_package_list_and_install,
     }
-    with parallel() as p:
-        for remote in ctx.cluster.remotes.keys():
-            system_type = teuthology.get_system_type(remote)
-            p.spawn(
-                install_pkgs[system_type],
-                ctx, remote, pkgs[system_type], config)
+    tasks = set()
+    for remote in ctx.cluster.remotes.keys():
+        system_type = teuthology.get_system_type(remote)
+        install_fn = install_pkgs[system_type]
+        tasks.add(
+            asyncio.create_task(install_fn(ctx, remote, pkgs[system_type], config)))
 
     for remote in ctx.cluster.remotes.keys():
         # verifies that the install worked as expected
         verify_package_version(ctx, config, remote)
 
 
-def remove_packages(ctx, config, pkgs):
+async def remove_packages(ctx, config, pkgs):
     """
     Removes packages from each remote in ctx.
 
@@ -100,15 +100,16 @@ def remove_packages(ctx, config, pkgs):
         "rpm": rpm._remove,
     }
     cleanup = config.get('cleanup', False)
-    with parallel() as p:
-        for remote in ctx.cluster.remotes.keys():
-            if not remote.is_reimageable or cleanup:
-                system_type = teuthology.get_system_type(remote)
-                p.spawn(remove_pkgs[
-                        system_type], ctx, config, remote, pkgs[system_type])
+    tasks = set()
+    for remote in ctx.cluster.remotes.keys():
+        if not remote.is_reimageable or cleanup:
+            system_type = teuthology.get_system_type(remote)
+            remove_fn = remove_pkgs[system_type]
+            tasks.add(
+                asyncio.create_task(remove_fn(ctx, config, remote, pkgs[system_type])))
 
 
-def remove_sources(ctx, config):
+async def remove_sources(ctx, config):
     """
     Removes repo source files from each remote in ctx.
 
@@ -121,13 +122,13 @@ def remove_sources(ctx, config):
     }
     cleanup = config.get('cleanup', False)
     project = config.get('project', 'ceph')
-    with parallel() as p:
-        for remote in ctx.cluster.remotes.keys():
-            if not remote.is_reimageable or cleanup:
-                log.info("Removing {p} sources lists on {r}"
-                         .format(p=project,r=remote))
-                remove_fn = remove_sources_pkgs[remote.os.package_type]
-                p.spawn(remove_fn, ctx, config, remote)
+    tasks = set()
+    for remote in ctx.cluster.remotes.keys():
+        if not remote.is_reimageable or cleanup:
+            log.info("Removing {p} sources lists on {r}"
+                     .format(p=project,r=remote))
+            remove_fn = remove_sources_pkgs[remote.os.package_type]
+            tasks.add(asyncio.create_task(remove_fn(ctx, config, remote)))
 
 
 def get_package_list(ctx, config):
@@ -179,8 +180,8 @@ def get_package_list(ctx, config):
     return package_list
 
 
-@contextlib.contextmanager
-def install(ctx, config):
+@contextlib.asynccontextmanager
+async def install(ctx, config):
     """
     The install task. Installs packages for a given project on all hosts in
     ctx. May work for projects besides ceph, but may not. Patches welcomed!
@@ -215,12 +216,12 @@ def install(ctx, config):
                 'python-ceph']
         rpms = ['ceph-fuse', 'librbd1', 'librados2', 'ceph-test', 'python-ceph']
     package_list = dict(deb=debs, rpm=rpms)
-    install_packages(ctx, package_list, config)
+    await install_packages(ctx, package_list, config)
     try:
         yield
     finally:
-        remove_packages(ctx, config, package_list)
-        remove_sources(ctx, config)
+        await remove_packages(ctx, config, package_list)
+        await remove_sources(ctx, config)
 
 
 def upgrade_old_style(ctx, node, remote, pkgs, system_type):

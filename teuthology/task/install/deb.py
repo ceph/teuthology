@@ -165,7 +165,7 @@ def _remove(ctx, config, remote, debs):
 def _remove_sources_list(ctx, config, remote):
     builder = _get_builder_project(ctx, remote, config)
     builder.remove_repo()
-    remote.run(
+    return remote.run(
         args=[
             'sudo', 'apt-get', 'update',
         ],

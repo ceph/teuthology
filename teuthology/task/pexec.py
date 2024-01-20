@@ -1,38 +1,15 @@
 """
 Handle parallel execution on remote hosts
 """
+import asyncio
 import logging
 
 from teuthology import misc as teuthology
-from teuthology.parallel import parallel
-from teuthology.orchestra import run as tor
+from teuthology.orchestra.run import PIPE, wait
 
 log = logging.getLogger(__name__)
 
-from gevent import queue as queue
-from gevent import event as event
-
-def _init_barrier(barrier_queue, remote):
-    """current just queues a remote host""" 
-    barrier_queue.put(remote)
-
-def _do_barrier(barrier, barrier_queue, remote):
-    """special case for barrier"""
-    barrier_queue.get()
-    if barrier_queue.empty():
-        barrier.set()
-        barrier.clear()
-    else:
-        barrier.wait()
-
-    barrier_queue.put(remote)
-    if barrier_queue.full():
-        barrier.set()
-        barrier.clear()
-    else:
-        barrier.wait()
-
-def _exec_host(barrier, barrier_queue, remote, sudo, testdir, ls):
+def _exec_host(remote, sudo, testdir, ls):
     """Execute command remotely"""
     log.info('Running commands on host %s', remote.name)
     args = [
@@ -43,21 +20,17 @@ def _exec_host(barrier, barrier_queue, remote, sudo, testdir, ls):
     if sudo:
         args.insert(0, 'sudo')
     
-    r = remote.run( args=args, stdin=tor.PIPE, wait=False)
+    r = remote.run( args=args, stdin=PIPE, wait=False)
     r.stdin.writelines(['set -e\n'])
     r.stdin.flush()
     for l in ls:
         l.replace('$TESTDIR', testdir)
-        if l == "barrier":
-            _do_barrier(barrier, barrier_queue, remote)
-            continue
-
         r.stdin.writelines([l, '\n'])
         r.stdin.flush()
     r.stdin.writelines(['\n'])
     r.stdin.flush()
     r.stdin.close()
-    tor.wait([r])
+    return r.wait()
 
 def _generate_remotes(ctx, config):
     """Return remote roles and the type of role specified in config"""
@@ -109,23 +82,6 @@ def task(ctx, config):
         - pexec:
             clients:
               - dd if=/dev/zero of={testdir}/mnt.* count=1024 bs=1024
-
-    You can also ensure that parallel commands are synchronized with the
-    special 'barrier' statement:
-
-    tasks:
-    - pexec:
-        clients:
-          - cd {testdir}/mnt.*
-          - while true; do
-          -   barrier
-          -   dd if=/dev/zero of=./foo count=1024 bs=1024
-          - done
-
-    The above writes to the file foo on all clients over and over, but ensures that
-    all clients perform each write command in sync.  If one client takes longer to
-    write, all the other clients will wait.
-
     """
     log.info('Executing custom commands...')
     assert isinstance(config, dict), "task pexec got invalid config"
@@ -138,12 +94,11 @@ def task(ctx, config):
     testdir = teuthology.get_testdir(ctx)
 
     remotes = list(_generate_remotes(ctx, config))
-    count = len(remotes)
-    barrier_queue = queue.Queue(count)
-    barrier = event.Event()
-
+    tasks = set()
     for remote in remotes:
-        _init_barrier(barrier_queue, remote[0])
-    with parallel() as p:
-        for remote in remotes:
-            p.spawn(_exec_host, barrier, barrier_queue, remote[0], sudo, testdir, remote[1])
+        task = _exec_host(remote[0], sudo, testdir, remote[1])
+        # task = asyncio.create_task(
+        #     _exec_host(remote[0], sudo, testdir, remote[1])
+        # )
+        tasks.add(task)
+    asyncio.gather(list(tasks))
