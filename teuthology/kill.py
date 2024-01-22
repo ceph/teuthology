@@ -75,6 +75,7 @@ def kill_run(run_name, archive_base=None, owner=None, machine_type=None,
     if owner is not None:
         targets = find_targets(run_name, owner)
         nuke_targets(targets, owner)
+    report.try_mark_run_dead(run_name)
 
 
 def kill_job(run_name, job_id, archive_base=None, owner=None, skip_nuke=False):
