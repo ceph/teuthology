@@ -63,10 +63,6 @@ Standard arguments:
                               files respectively, otherwise use `main`.
   -m <type>, --machine-type <type>
                               Machine type [default: {default_machine_type}]
-  -d <distro>, --distro <distro>
-                              Distribution to run against
-  -D <distroversion>, --distro-version <distroversion>
-                              Distro version to run against
   --ceph-repo <ceph_repo>     Query this repository for Ceph branch and SHA1
                               values [default: {default_ceph_repo}]
   --suite-repo <suite_repo>   Use tasks and suite definition in this repository

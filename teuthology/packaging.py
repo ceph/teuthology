@@ -880,7 +880,7 @@ class ShamanProject(GitbuilderProject):
         req_obj['project'] = self.project
         req_obj['flavor'] = flavor
         arch = "noarch" if self.force_noarch else self.arch
-        req_obj['distros'] = '%s/%s' % (self.distro, arch)
+        # req_obj['distros'] = '%s/%s' % (self.distro, arch)
         ref_name, ref_val = list(self._choose_reference().items())[0]
         if ref_name == 'tag':
             req_obj['sha1'] = self._sha1 = self._tag_to_sha1()

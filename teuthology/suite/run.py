@@ -102,9 +102,6 @@ class Run(object):
         teuthology_branch, teuthology_sha1 = self.choose_teuthology_branch()
 
 
-        if self.args.distro_version:
-            self.args.distro_version, _ = \
-                OS.version_codename(self.args.distro, self.args.distro_version)
         self.config_input = dict(
             suite=self.args.suite,
             suite_branch=suite_branch,
@@ -126,13 +123,8 @@ class Run(object):
         return self.build_base_config()
 
     def choose_os(self):
-        os_type = self.args.distro
-        os_version = self.args.distro_version
-        if not (os_type and os_version):
-            os_ = util.get_distro_defaults(
-                self.args.distro, self.args.machine_type)[2]
-        else:
-            os_ = OS(os_type, os_version)
+        os_ = util.get_distro_defaults(
+            None, self.args.machine_type)[2]
         return os_
 
     def choose_kernel(self):
@@ -146,8 +138,8 @@ class Run(object):
         else:
             kernel_hash = util.get_gitbuilder_hash(
                 'kernel', self.args.kernel_branch, 'default',
-                self.args.machine_type, self.args.distro,
-                self.args.distro_version,
+                self.args.machine_type, None,
+                None,
             )
             if not kernel_hash:
                 util.schedule_fail(
@@ -203,11 +195,11 @@ class Run(object):
             # don't bother if newest; we'll search for an older one
             # Get the ceph package version
             ceph_version = util.package_version_for_hash(
-                ceph_hash, self.args.flavor, self.os.name,
-                self.os.version, self.args.machine_type,
+                ceph_hash, self.args.flavor, None,
+                None, self.args.machine_type,
             )
             if not ceph_version:
-                msg = f"Packages for os_type '{self.os.name}', flavor " \
+                msg = f"Packages for flavor " \
                     f"{self.args.flavor} and ceph hash '{ceph_hash}' not found"
                 util.schedule_fail(msg, self.name, dry_run=self.args.dry_run)
             log.info("ceph version: {ver}".format(ver=ceph_version))
