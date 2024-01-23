@@ -88,7 +88,8 @@ class TestRemote(object):
             await rem.run_unit_test(args=args, xml_path_regex="xml_path", output_yaml="yaml_path")
         assert str(exc.value) == "Unit test failed on smithi with status 1: 'Error Message'"
 
-    def test_hostname(self):
+    @pytest.mark.asyncio
+    async def test_hostname(self):
         m_transport = MagicMock()
         m_transport.getpeername.return_value = ('name', 22)
         self.m_ssh.get_transport.return_value = m_transport
@@ -109,9 +110,10 @@ class TestRemote(object):
         r = remote.Remote(name='xyzzy.example.com', ssh=self.m_ssh)
         m_run.return_value = proc
         r._runner = m_run
-        assert r.hostname == 'test_hostname'
+        assert await r.hostname() == 'test_hostname'
 
-    def test_arch(self):
+    @pytest.mark.asyncio
+    async def test_arch(self):
         m_transport = MagicMock()
         m_transport.getpeername.return_value = ('name', 22)
         self.m_ssh.get_transport.return_value = m_transport
@@ -134,7 +136,7 @@ class TestRemote(object):
         m_run.return_value = proc
         r = remote.Remote(name='jdoe@xyzzy.example.com', ssh=self.m_ssh)
         r._runner = m_run
-        assert r.arch() == 'test_arch'
+        assert await r.arch() == 'test_arch'
         assert len(m_run.call_args_list) == 1
         m_run_call_kwargs = m_run.call_args_list[0][1]
         assert m_run_call_kwargs['client'] == self.m_ssh

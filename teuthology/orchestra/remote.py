@@ -82,7 +82,7 @@ class RemoteShell(object):
 
         return path
 
-    def sh(self, script, **kwargs):
+    async def sh(self, script, **kwargs):
         """
         Shortcut for run method.
 
@@ -94,7 +94,7 @@ class RemoteShell(object):
             kwargs['stdout'] = BytesIO()
         if 'args' not in kwargs:
             kwargs['args'] = script
-        proc = self.run(**kwargs)
+        proc = await self.run(**kwargs)
         out = proc.stdout.getvalue()
         if isinstance(out, bytes):
             return out.decode()
@@ -332,7 +332,7 @@ class RemoteShell(object):
 
     async def arch(self):
         if not hasattr(self, '_arch'):
-            self._arch = self.sh('uname -m').strip()
+            self._arch = (await self.sh('uname -m')).strip()
         return self._arch
 
 
@@ -345,7 +345,7 @@ class Remote(RemoteShell):
 
     # for unit tests to hook into
     _runner = staticmethod(run.run)
-    _reimage_types = None
+    _reimage_types = []
 
     def __init__(self, name, ssh=None, shortname=None, console=None,
                  host_key=None, keep_alive=True):
@@ -414,30 +414,27 @@ class Remote(RemoteShell):
             log.debug(e)
             return False
 
-    @property
-    def ip_address(self):
+    async def ip_address(self):
         return self.ssh.get_transport().getpeername()[0]
 
-    @property
-    def interface(self):
+    async def interface(self):
         """
         The interface used by the current SSH connection
         """
         if not hasattr(self, '_interface'):
-            self._set_iface_and_cidr()
+            await self._set_iface_and_cidr()
         return self._interface
 
-    @property
-    def cidr(self):
+    async def cidr(self):
         """
         The network (in CIDR notation) used by the remote's SSH connection
         """
         if not hasattr(self, '_cidr'):
-            self._set_iface_and_cidr()
+            await self._set_iface_and_cidr()
         return self._cidr
 
-    def _set_iface_and_cidr(self):
-        ip_addr_show = self.sh('PATH=/sbin:/usr/sbin ip addr show')
+    async def _set_iface_and_cidr(self):
+        ip_addr_show = await self.sh('PATH=/sbin:/usr/sbin ip addr show')
         regexp = 'inet.? %s' % self.ip_address
         for line in ip_addr_show.split('\n'):
             line = line.strip()
@@ -448,24 +445,21 @@ class Remote(RemoteShell):
                 return
         raise RuntimeError("Could not determine interface/CIDR!")
 
-    @property
-    def hostname(self):
+    async def hostname(self):
         if not hasattr(self, '_hostname'):
-            self._hostname = self.sh('hostname --fqdn').strip()
+            self._hostname = (await self.sh('hostname --fqdn')).strip()
         return self._hostname
 
-    @property
-    def machine_type(self):
+    async def machine_type(self):
         if not getattr(self, '_machine_type', None):
-            remote_info = teuthology.lock.query.get_status(self.hostname)
+            remote_info = teuthology.lock.query.get_status(await self.hostname())
             if not remote_info:
                 return None
             self._machine_type = remote_info.get("machine_type", None)
         return self._machine_type
 
-    @property
-    def is_reimageable(self):
-        return self.machine_type in self._reimage_types
+    async def is_reimageable(self):
+        return (await self.machine_type()) in self._reimage_types
 
     @property
     def shortname(self):
@@ -522,9 +516,9 @@ class Remote(RemoteShell):
         r.remote = self
         return r
 
-    def run_unit_test(self, xml_path_regex, output_yaml, **kwargs):
+    async def run_unit_test(self, xml_path_regex, output_yaml, **kwargs):
         try:
-            r = self.run(**kwargs)
+            r = await self.run(**kwargs)
         except CommandFailedError as exc:
             if xml_path_regex:
                 error_msg = UnitTestScanner(remote=self).scan_and_write(xml_path_regex, output_yaml)
@@ -685,7 +679,7 @@ class Remote(RemoteShell):
 
     async def inventory_info(self):
         node = dict()
-        node['name'] = self.hostname
+        node['name'] = await self.hostname()
         node['user'] = self.user
         node['arch'] = await self.arch()
         node['os_type'] = self.os.name
