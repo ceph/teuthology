@@ -330,8 +330,7 @@ class RemoteShell(object):
             self._os = OS.from_lsb_release(lsb_release)
         return self._os
 
-    @property
-    def arch(self):
+    async def arch(self):
         if not hasattr(self, '_arch'):
             self._arch = self.sh('uname -m').strip()
         return self._arch
@@ -684,12 +683,11 @@ class Remote(RemoteShell):
             self._host_key = ' '.join((key.get_name(), key.get_base64()))
         return self._host_key
 
-    @property
-    def inventory_info(self):
+    async def inventory_info(self):
         node = dict()
         node['name'] = self.hostname
         node['user'] = self.user
-        node['arch'] = self.arch
+        node['arch'] = await self.arch()
         node['os_type'] = self.os.name
         node['os_version'] = '.'.join(self.os.version.split('.')[:2])
         node['ssh_pub_key'] = self.host_key
@@ -708,17 +706,16 @@ class Remote(RemoteShell):
             self._is_vm = teuthology.lock.query.is_vm(self.name)
         return self._is_vm
 
-    @property
-    def is_container(self):
+    async def is_container(self):
         if not hasattr(self, '_is_container'):
-            self._is_container = not bool(self.run(
+            proc = await self.run(
                 args="test -f /run/.containerenv -o -f /.dockerenv",
                 check_status=False,
-            ).returncode)
+            )
+            self._is_container = 0 == proc.returncode
         return self._is_container
 
-    @property
-    def init_system(self):
+    async def init_system(self):
         """
         Which init system does the remote use?
 
@@ -726,7 +723,7 @@ class Remote(RemoteShell):
         """
         if not hasattr(self, '_init_system'):
             self._init_system = None
-            proc = self.run(
+            proc = await self.run(
                 args=['which', 'systemctl'],
                 check_status=False,
             )

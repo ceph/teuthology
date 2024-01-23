@@ -1,5 +1,6 @@
-from mock import patch, Mock, MagicMock
-from pytest import raises
+import pytest
+
+from mock import patch, Mock, MagicMock, AsyncMock
 
 from io import BytesIO
 
@@ -45,11 +46,12 @@ class TestRemote(object):
         assert r.shortname == 'xyzzy'
         assert str(r) == 'jdoe@xyzzy.example.com'
 
-    def test_run(self):
+    @pytest.mark.asyncio
+    async def test_run(self):
         m_transport = MagicMock()
         m_transport.getpeername.return_value = ('name', 22)
         self.m_ssh.get_transport.return_value = m_transport
-        m_run = MagicMock()
+        m_run = AsyncMock()
         args = [
             'something',
             'more',
@@ -61,19 +63,20 @@ class TestRemote(object):
         m_run.return_value = proc
         rem = remote.Remote(name='jdoe@xyzzy.example.com', ssh=self.m_ssh)
         rem._runner = m_run
-        result = rem.run(args=args)
+        result = await rem.run(args=args)
         m_transport.getpeername.assert_called_once_with()
         m_run_call_kwargs = m_run.call_args_list[0][1]
         assert m_run_call_kwargs['args'] == args
         assert result is proc
         assert result.remote is rem
 
+    @pytest.mark.asyncio
     @patch('teuthology.util.scanner.UnitTestScanner.scan_and_write')
-    def test_run_unit_test(self, m_scan_and_write):
+    async def test_run_unit_test(self, m_scan_and_write):
         m_transport = MagicMock()
         m_transport.getpeername.return_value = ('name', 22)
         self.m_ssh.get_transport.return_value = m_transport
-        m_run = MagicMock(name="run", side_effect=CommandFailedError('mocked error', 1, 'smithi'))
+        m_run = AsyncMock(name="run", side_effect=CommandFailedError('mocked error', 1, 'smithi'))
         args = [
             'something',
             'more',
@@ -81,15 +84,15 @@ class TestRemote(object):
         rem = remote.Remote(name='jdoe@xyzzy.example.com', ssh=self.m_ssh)
         rem._runner = m_run
         m_scan_and_write.return_value = "Error Message"
-        with raises(UnitTestError) as exc:
-            rem.run_unit_test(args=args, xml_path_regex="xml_path", output_yaml="yaml_path")
+        with pytest.raises(UnitTestError) as exc:
+            await rem.run_unit_test(args=args, xml_path_regex="xml_path", output_yaml="yaml_path")
         assert str(exc.value) == "Unit test failed on smithi with status 1: 'Error Message'"
 
     def test_hostname(self):
         m_transport = MagicMock()
         m_transport.getpeername.return_value = ('name', 22)
         self.m_ssh.get_transport.return_value = m_transport
-        m_run = MagicMock()
+        m_run = AsyncMock()
         args = [
             'hostname',
             '--fqdn',
@@ -112,7 +115,7 @@ class TestRemote(object):
         m_transport = MagicMock()
         m_transport.getpeername.return_value = ('name', 22)
         self.m_ssh.get_transport.return_value = m_transport
-        m_run = MagicMock()
+        m_run = AsyncMock()
         args = [
             'uname',
             '-m',
@@ -131,7 +134,7 @@ class TestRemote(object):
         m_run.return_value = proc
         r = remote.Remote(name='jdoe@xyzzy.example.com', ssh=self.m_ssh)
         r._runner = m_run
-        assert r.arch == 'test_arch'
+        assert r.arch() == 'test_arch'
         assert len(m_run.call_args_list) == 1
         m_run_call_kwargs = m_run.call_args_list[0][1]
         assert m_run_call_kwargs['client'] == self.m_ssh
@@ -150,11 +153,12 @@ class TestRemote(object):
         self.m_ssh.get_transport.assert_called_once_with()
         m_transport.get_remote_server_key.assert_called_once_with()
 
-    def test_inventory_info(self):
+    @pytest.mark.asyncio
+    async def test_inventory_info(self):
         r = remote.Remote('user@host', host_key='host_key')
         r._arch = 'arch'
         r._os = opsys.OS(name='os_name', version='1.2.3', codename='code')
-        inv_info = r.inventory_info
+        inv_info = await r.inventory_info()
         assert inv_info == dict(
             name='host',
             user='user',
@@ -201,11 +205,12 @@ class TestRemote(object):
         assert remote.Remote._format_size(1021112).strip() == '997KB'
         assert remote.Remote._format_size(1021112**2).strip() == '971GB'
 
-    def test_is_container(self):
+    @pytest.mark.asyncio
+    async def test_is_container(self):
         m_transport = MagicMock()
         m_transport.getpeername.return_value = ('name', 22)
         self.m_ssh.get_transport.return_value = m_transport
-        m_run = MagicMock()
+        m_run = AsyncMock()
         args = []
         proc = RemoteProcess(
             client=self.m_ssh,
@@ -215,8 +220,8 @@ class TestRemote(object):
         m_run.return_value = proc
         rem = remote.Remote(name='jdoe@xyzzy.example.com', ssh=self.m_ssh)
         rem._runner = m_run
-        assert rem.is_container
+        assert await rem.is_container() is True
         proc.returncode = 1
         rem2 = remote.Remote(name='jdoe@xyzzy.example.com', ssh=self.m_ssh)
         rem2._runner = m_run
-        assert not rem2.is_container
+        assert await rem2.is_container() is False

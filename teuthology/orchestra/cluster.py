@@ -179,7 +179,7 @@ class Cluster(object):
         Return a cluster whose remotes are filtered by `func`.
 
         Example::
-            cluster = ctx.cluster.filter(lambda r: r.is_online)
+            cluster = ctx.cluster.filter(lambda r: r.is_online())
         """
         result = self.__class__()
         for rem, roles in self.remotes.items():

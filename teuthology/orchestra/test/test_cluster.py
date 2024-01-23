@@ -51,7 +51,8 @@ class TestCluster(object):
             )
         assert str(c) == "r1[foo,bar] r2[baz]"
 
-    def test_run_all(self):
+    @pytest.mark.asyncio
+    async def test_run_all(self):
         r1 = Mock(spec=remote.Remote)
         r1.configure_mock(name='r1')
         ret1 = Mock(spec=run.RemoteProcess)
@@ -66,14 +67,14 @@ class TestCluster(object):
                 (r2, ['baz']),
                 ],
             )
-        got = c.run(args=['test'])
+        got = await c.run(args=['test'])
         r1.run.assert_called_once_with(args=['test'], wait=True)
         r2.run.assert_called_once_with(args=['test'], wait=True)
         assert len(got) == 2
         assert got, [ret1 == ret2]
         # check identity not equality
-        assert got[0] is ret1
-        assert got[1] is ret2
+        assert await got[0] is ret1
+        assert await got[1] is ret2
 
     def test_only_one(self):
         r1 = Mock()
