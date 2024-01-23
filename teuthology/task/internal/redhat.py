@@ -16,8 +16,8 @@ from teuthology.exceptions import CommandFailedError, ConfigError
 log = logging.getLogger(__name__)
 
 
-@contextlib.contextmanager
-def setup_stage_cdn(ctx, config):
+@contextlib.asynccontextmanager
+async def setup_stage_cdn(ctx, config):
     """
     Configure internal stage cdn
     """
@@ -31,7 +31,7 @@ def setup_stage_cdn(ctx, config):
         raise ConfigError('Provide rhbuild attribute')
     teuthconfig.rhbuild = str(rhbuild)
 
-    with parallel() as p:
+    async with parallel() as p:
         for remote in ctx.cluster.remotes.keys():
             if remote.os.name == 'rhel':
                 log.info("subscribing stage cdn on : %s", remote.shortname)
@@ -39,7 +39,7 @@ def setup_stage_cdn(ctx, config):
     try:
         yield
     finally:
-        with parallel() as p:
+        async with parallel() as p:
             for remote in ctx.cluster.remotes.keys():
                 p.spawn(_unsubscribe_stage_cdn, remote)
 
@@ -184,11 +184,11 @@ def setup_base_repo(ctx, config):
                                      ], check_status=False)
 
 
-def _setup_latest_repo(ctx, config):
+async def _setup_latest_repo(ctx, config):
     """
     Setup repo based on redhat nodes
     """
-    with parallel():
+    async with parallel():
         for remote in ctx.cluster.remotes.keys():
             if remote.os.package_type == 'rpm':
                 # pre-cleanup

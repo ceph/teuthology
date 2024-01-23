@@ -11,7 +11,7 @@ from teuthology.misc import decanonicalize_hostname as shortname
 
 log = logging.getLogger(__name__)
 
-def main(args):
+async def main(args):
     if (args['--verbose']):
         teuthology.log.setLevel(logging.DEBUG)
 
@@ -51,7 +51,7 @@ def main(args):
         ops.update_nodes([machine_name])
         log.debug("Node '%s' reimaging is complete", machine_name)
 
-    with parallel() as p:
+    async with parallel() as p:
         for node in statuses:
             log.debug("Start node '%s' reimaging", node['name'])
             p.spawn(reimage_node, ctx, shortname(node['name']), node['machine_type'])

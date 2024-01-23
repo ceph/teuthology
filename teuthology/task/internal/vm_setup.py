@@ -9,7 +9,7 @@ from teuthology.exceptions import CommandFailedError
 log = logging.getLogger(__name__)
 
 
-def vm_setup(ctx, config):
+async def vm_setup(ctx, config):
     """
     Look for virtual machines and handle their initialization
     """
@@ -18,7 +18,7 @@ def vm_setup(ctx, config):
     if 'kernel' in all_tasks and 'ansible.cephlab' not in all_tasks:
         need_ansible = True
     ansible_hosts = set()
-    with parallel():
+    async with parallel():
         editinfo = os.path.join(os.path.dirname(__file__), 'edit_sudoers.sh')
         for rem in ctx.cluster.remotes.keys():
             if rem.is_vm:

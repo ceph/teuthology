@@ -13,13 +13,13 @@ class parallel(object):
 
     You add functions to be run with the spawn method::
 
-        with parallel() as p:
+        async with parallel() as p:
             for foo in bar:
                 p.spawn(quux, foo, baz=True)
 
     You can iterate over the results (which are in arbitrary order)::
 
-        with parallel() as p:
+        async with parallel() as p:
             for foo in bar:
                 p.spawn(quux, foo, baz=True)
             for result in p:

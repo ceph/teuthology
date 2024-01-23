@@ -1,3 +1,4 @@
+import asyncio
 import docopt
 import sys
 
@@ -22,4 +23,4 @@ Standard arguments:
 
 def main(argv=sys.argv[1:]):
     args = docopt.docopt(doc, argv=argv)
-    return teuthology.reimage.main(args)
+    asyncio.run(teuthology.reimage.main(args))

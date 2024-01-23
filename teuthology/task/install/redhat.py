@@ -11,8 +11,8 @@ from teuthology.config import config as teuth_config
 log = logging.getLogger(__name__)
 
 
-@contextlib.contextmanager
-def install(ctx, config):
+@contextlib.asynccontextmanager
+async def install(ctx, config):
     """
     Installs rh ceph on all hosts in ctx.
 
@@ -60,7 +60,7 @@ def install(ctx, config):
         log.info("%s is a supported version", version)
     else:
         raise RuntimeError("Unsupported RH Ceph version %s", version)
-    with parallel() as p:
+    async with parallel() as p:
         for remote in ctx.cluster.remotes.keys():
             if remote.os.name == 'rhel':
                 log.info("Installing on RHEL node: %s", remote.shortname)
@@ -75,7 +75,7 @@ def install(ctx, config):
         if config.get('skip_uninstall'):
             log.info("Skipping uninstall of Ceph")
         else:
-            with parallel() as p:
+            async with parallel() as p:
                 for remote in ctx.cluster.remotes.keys():
                     p.spawn(uninstall_pkgs, ctx, remote, downstream_config)
 

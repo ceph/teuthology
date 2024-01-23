@@ -49,7 +49,7 @@ class Cluster(object):
                 )
         self.remotes[remote] = list(roles)
 
-    def run(self, wait=True, parallel=False, **kwargs):
+    async def run(self, wait=True, parallel=False, **kwargs):
         """
         Run a command on all the nodes in this cluster.
 
@@ -88,7 +88,7 @@ class Cluster(object):
         # we have run sequentially and all processes are complete.
 
         if parallel and wait:
-            run.wait(procs)
+            await run.wait(procs)
         return procs
 
     def sh(self, script, **kwargs):

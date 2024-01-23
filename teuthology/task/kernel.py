@@ -449,7 +449,7 @@ def _no_grub_link(in_file, remote, kernel_ver):
     )
 
 
-def install_latest_rh_kernel(ctx, config):
+async def install_latest_rh_kernel(ctx, config):
     """
     Installs the lastest z stream kernel
     Reboot for the new kernel to take effect
@@ -458,7 +458,7 @@ def install_latest_rh_kernel(ctx, config):
         config = {}
     if config.get('skip'):
         return
-    with parallel() as p:
+    async with parallel() as p:
         for remote in ctx.cluster.remotes.keys():
             p.spawn(update_rh_kernel, remote)
 
@@ -1131,8 +1131,8 @@ def get_sha1_from_pkg_name(path):
     return sha1
 
 
-@contextlib.contextmanager
-def task(ctx, config):
+@contextlib.asynccontextmanager
+async def task(ctx, config):
     """
     Make sure the specified kernel is installed.
     This can be a branch, tag, or sha1 of ceph-client.git or a local
@@ -1232,7 +1232,7 @@ def task(ctx, config):
     validate_config(ctx, config)
     log.info('config %s, timeout %d' % (config, timeout))
 
-    with parallel() as p:
+    async with parallel() as p:
         for role, role_config in config.items():
             p.spawn(process_role, ctx, config, timeout, role, role_config)
 

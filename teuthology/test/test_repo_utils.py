@@ -2,11 +2,12 @@ import logging
 import unittest.mock as mock
 import os
 import os.path
-from pytest import raises, mark
 import shutil
 import subprocess
 import tempfile
+
 from packaging.version import parse
+from pytest import raises, mark
 
 from teuthology.exceptions import BranchNotFoundError, CommitNotFoundError
 from teuthology import repo_utils
@@ -192,20 +193,22 @@ class TestRepoUtils(object):
         with raises(ValueError):
             repo_utils.enforce_repo_state(self.repo_url, self.dest_path, 'a b', self.commit)
 
-    def test_simultaneous_access(self):
+    @mark.asyncio
+    async def test_simultaneous_access(self):
         count = 5
-        with parallel.parallel() as p:
+        async with parallel.parallel() as p:
             for i in range(count):
                 p.spawn(repo_utils.enforce_repo_state, self.repo_url,
                         self.dest_path, 'main', self.commit)
             for result in p:
                 assert result is None
 
-    def test_simultaneous_access_different_branches(self):
+    @mark.asyncio
+    async def test_simultaneous_access_different_branches(self):
         branches = [('main', self.commit),  ('main', self.commit), ('nobranch', 'nocommit'),
                     ('nobranch', 'nocommit'), ('main', self.commit), ('nobranch', 'nocommit')]
 
-        with parallel.parallel() as p:
+        async with parallel.parallel() as p:
             for branch, commit in branches:
                 if branch == 'main':
                     p.spawn(repo_utils.enforce_repo_state, self.repo_url,

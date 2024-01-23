@@ -5,7 +5,7 @@ import asyncio
 import logging
 
 from teuthology import misc as teuthology
-from teuthology.orchestra.run import PIPE, wait
+from teuthology.orchestra.run import PIPE
 
 log = logging.getLogger(__name__)
 
@@ -52,7 +52,7 @@ def _generate_remotes(ctx, config):
             (remote,) = ctx.cluster.only(role).remotes.keys()
             yield (remote, ls)
 
-def task(ctx, config):
+async def task(ctx, config):
     """
     Execute commands on multiple hosts in parallel
 
@@ -97,8 +97,9 @@ def task(ctx, config):
     tasks = set()
     for remote in remotes:
         task = _exec_host(remote[0], sudo, testdir, remote[1])
+        # FIXME
         # task = asyncio.create_task(
         #     _exec_host(remote[0], sudo, testdir, remote[1])
         # )
         tasks.add(task)
-    asyncio.gather(list(tasks))
+    await asyncio.gather(*tasks)

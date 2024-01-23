@@ -22,7 +22,7 @@ from teuthology.lock import (
 log = logging.getLogger(__name__)
 
 
-def main(ctx):
+async def main(ctx):
     if ctx.verbose:
         teuthology.log.setLevel(logging.DEBUG)
 
@@ -184,7 +184,7 @@ def main(ctx):
                     ctx,
                     misc.canonicalize_hostname(machine),
                 )
-        with teuthology.parallel.parallel() as p:
+        async with teuthology.parallel.parallel() as p:
             ops.update_nodes(reimage_machines, True)
             for machine in reimage_machines:
                 p.spawn(teuthology.provision.reimage, ctx, machine, machine_types[machine])

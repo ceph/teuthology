@@ -303,7 +303,7 @@ def push_new_keys(keys_dict, reference):
     return ret
 
 
-def reimage_machines(ctx, machines, machine_type):
+async def reimage_machines(ctx, machines, machine_type):
     reimage_types = teuthology.provision.get_reimage_types()
     if machine_type not in reimage_types:
         log.info(f"Skipping reimage of {machines.keys()} because {machine_type} is not in {reimage_types}")
@@ -316,7 +316,7 @@ def reimage_machines(ctx, machines, machine_type):
                  for machine in machines],
     )
     with console_log.task(ctx, console_log_conf):
-        with teuthology.parallel.parallel() as p:
+        async with teuthology.parallel.parallel() as p:
             for machine in machines:
                 log.info("Start node '%s' reimaging", machine)
                 update_nodes([machine], True)

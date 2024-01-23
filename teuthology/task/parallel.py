@@ -10,7 +10,7 @@ from teuthology import parallel
 log = logging.getLogger(__name__)
 
 
-def task(ctx, config):
+async def task(ctx, config):
     """
     Run a group of tasks in parallel.
 
@@ -45,7 +45,7 @@ def task(ctx, config):
     """
 
     log.info('starting parallel...')
-    with parallel.parallel() as p:
+    async with parallel.parallel() as p:
         for entry in config:
             if not isinstance(entry, dict):
                 entry = ctx.config.get(entry, {})
