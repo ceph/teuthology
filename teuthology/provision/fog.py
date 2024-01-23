@@ -67,7 +67,7 @@ class FOG(object):
         self.os_version = os_version
         self.log = log.getChild(self.shortname)
 
-    def create(self):
+    async def create(self):
         """
         Initiate deployment and wait until completion
         """
@@ -87,7 +87,7 @@ class FOG(object):
         except Exception:
             self.cancel_deploy_task(task_id)
             raise
-        self._wait_for_ready()
+        await self._wait_for_ready()
         self._fix_hostname()
         self._verify_installed_os()
         self.log.info("Deploy complete!")
@@ -269,7 +269,7 @@ class FOG(object):
         )
         resp.raise_for_status()
 
-    def _wait_for_ready(self):
+    async def _wait_for_ready(self):
         """ Attempt to connect to the machine via SSH """
         with safe_while(sleep=6, timeout=config.fog_wait_for_ssh_timeout) as proceed:
             while proceed():
@@ -295,7 +295,7 @@ class FOG(object):
             with safe_while(action=action, timeout=1800, increment=3) as proceed:
                 while proceed():
                     try:
-                        self.remote.run(args=cmd, timeout=600)
+                        await self.remote.run(args=cmd, timeout=600)
                         break
                     except (
                         ConnectionError,

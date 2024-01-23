@@ -1,6 +1,7 @@
+import asyncio
 from copy import deepcopy
 from datetime import datetime
-from mock import patch, DEFAULT, PropertyMock
+from mock import patch, DEFAULT, PropertyMock, AsyncMock
 from pytest import raises, mark
 
 from teuthology.config import config
@@ -68,11 +69,12 @@ class TestFOG(object):
         else:
             assert types == []
 
-    def test_disabled(self):
+    @mark.asyncio
+    async def test_disabled(self):
         config.fog['endpoint'] = None
         obj = self.klass('name.fqdn', 'type', '1.0')
         with raises(RuntimeError):
-            obj.create()
+            await obj.create()
 
     def test_init(self):
         self.mocks['m_Remote_hostname'].return_value = 'name.fqdn'
@@ -82,8 +84,9 @@ class TestFOG(object):
         assert obj.os_type == 'type'
         assert obj.os_version == '1.0'
 
+    @mark.asyncio
     @mark.parametrize('success', [True, False])
-    def test_create(self, success):
+    async def test_create(self, success):
         self.mocks['m_Remote_hostname'].return_value = 'name.fqdn'
         self.mocks['m_Remote_machine_type'].return_value = 'type1'
         obj = self.klass('name.fqdn', 'type', '1.0')
@@ -105,9 +108,9 @@ class TestFOG(object):
             if not success:
                 local_mocks['wait_for_deploy_task'].side_effect = RuntimeError
                 with raises(RuntimeError):
-                    obj.create()
+                    await obj.create()
             else:
-                obj.create()
+                await obj.create()
             local_mocks['get_host_data'].assert_called_once_with()
             local_mocks['set_image'].assert_called_once_with(host_id)
             local_mocks['schedule_deploy_task'].assert_called_once_with(host_id)
@@ -299,35 +302,37 @@ class TestFOG(object):
                 data='{"id": 10}',
             )
 
+    @mark.asyncio
     @mark.parametrize(
         'tries',
         [1, 101],
     )
-    def test_wait_for_ready_tries(self, tries):
+    async def test_wait_for_ready_tries(self, tries):
         connect_results = [MaxWhileTries for i in range(tries)] + [True]
         obj = self.klass('name.fqdn', 'type', '1.0')
         self.mocks['m_Remote_connect'].side_effect = connect_results
         if tries >= 100:
             with raises(MaxWhileTries):
-                obj._wait_for_ready()
+                await obj._wait_for_ready()
             return
-        obj._wait_for_ready()
+        await obj._wait_for_ready()
         assert len(self.mocks['m_Remote_connect'].call_args_list) == tries + 1
 
+    @mark.asyncio
     @mark.parametrize(
         'sentinel_present',
         ([False, True]),
     )
-    def test_wait_for_ready_sentinel(self, sentinel_present):
+    async def test_wait_for_ready_sentinel(self, sentinel_present):
         config.fog['sentinel_file'] = '/a_file'
         obj = self.klass('name.fqdn', 'type', '1.0')
         if not sentinel_present:
             self.mocks['m_Remote_run'].side_effect = [
                 CommandFailedError(command='cmd', exitstatus=1)]
             with raises(CommandFailedError):
-                obj._wait_for_ready()
+                await obj._wait_for_ready()
         else:
-            obj._wait_for_ready()
+            await obj._wait_for_ready()
         assert len(self.mocks['m_Remote_run'].call_args_list) == 1
         assert "'/a_file'" in \
             self.mocks['m_Remote_run'].call_args_list[0][1]['args']
