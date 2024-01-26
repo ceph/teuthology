@@ -282,10 +282,6 @@ def unlock_targets(job_config):
                 machine, job_info['owner'],
                 job_info['archive_path']
             )
-    if job_status != 'pass' and job_config.get('nuke-on-error', False):
-        log.info('Nuking machines...')
-        fake_ctx = create_fake_context(job_config)
-        nuke.nuke(fake_ctx, True)
 
 
 def run_with_watchdog(process, job_config):
