@@ -138,9 +138,11 @@ def find_stale_locks(owner=None):
                 if resp.ok:
                     break
         if not resp.ok:
+            log.debug(f"{node['name'].split('.')[0]} {description} {resp.status_code}")
             return False
         job_info = resp.json()
         if job_info['status'] in ('running', 'waiting'):
+            log.debug(f"{node['name'].split('.')[0]} {description} {job_info['status']}")
             cache.add(description)
             return True
         return False
