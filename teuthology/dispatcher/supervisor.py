@@ -272,8 +272,7 @@ def unlock_targets(job_config):
     if not locked:
         return
     job_status = get_status(job_info)
-    if job_status == 'pass' or (job_config.get('unlock_on_failure', False)
-                                and not job_config.get('nuke-on-error', False)):
+    if job_status == 'pass' or job_config.get('unlock_on_failure', False):
         log.info('Unlocking machines...')
         fake_ctx = create_fake_context(job_config)
         for machine in locked:
