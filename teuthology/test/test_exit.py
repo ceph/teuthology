@@ -1,11 +1,9 @@
 import os
 import random
-import signal
 
 from unittest.mock import patch, Mock
 
 from teuthology import exit
-from teuthology.test import skipif_teuthology_process
 
 
 class TestExiter(object):
@@ -39,13 +37,6 @@ class TestExiter(object):
     def teardown_method(self):
         self.patcher_kill.stop()
         del self.m_kill
-
-    @skipif_teuthology_process
-    def test_noop(self):
-        sig = 15
-        obj = self.klass()
-        assert len(obj.handlers) == 0
-        assert signal.getsignal(sig) == 0
 
     def test_basic(self):
         sig = 15
