@@ -1,7 +1,8 @@
 import logging
 import os
-
 import requests
+
+from typing import Union
 
 from teuthology import misc
 from teuthology.config import config
@@ -12,7 +13,7 @@ from teuthology.util.compat import urlencode
 log = logging.getLogger(__name__)
 
 
-def get_status(name):
+def get_status(name) -> dict:
     name = misc.canonicalize_hostname(name, user=None)
     uri = os.path.join(config.lock_server, 'nodes', name, '')
     with safe_while(
@@ -21,6 +22,8 @@ def get_status(name):
             response = requests.get(uri)
             if response.ok:
                 return response.json()
+            elif response.status_code == 404:
+                return dict()
     log.warning(
         "Failed to query lock server for status of {name}".format(name=name))
     return dict()
@@ -88,7 +91,7 @@ def find_stale_locks(owner=None):
     """
     Return a list of node dicts corresponding to nodes that were locked to run
     a job, but the job is no longer running. The purpose of this is to enable
-    us to nuke nodes that were left locked due to e.g. infrastructure failures
+    us to find nodes that were left locked due to e.g. infrastructure failures
     and return them to the pool.
 
     :param owner: If non-None, return nodes locked by owner. Default is None.
@@ -117,41 +120,38 @@ def find_stale_locks(owner=None):
         nodes = [node for node in nodes if node['locked_by'] == owner]
     nodes = filter(might_be_stale, nodes)
 
-    def node_job_is_active(node, cache):
-        """
-        Is this node's job active (e.g. running or waiting)?
-
-        :param node:  The node dict as returned from the lock server
-        :param cache: A set() used for caching results
-        :returns:     True or False
-        """
-        description = node['description']
-        if description in cache:
-            return True
-        (name, job_id) = description.split('/')[-2:]
-        url = os.path.join(config.results_server, 'runs', name, 'jobs', job_id,
-                           '')
-        with safe_while(
-                sleep=1, increment=0.5, action='node_is_active') as proceed:
-            while proceed():
-                resp = requests.get(url)
-                if resp.ok:
-                    break
-        if not resp.ok:
-            return False
-        job_info = resp.json()
-        if job_info['status'] in ('running', 'waiting'):
-            cache.add(description)
-            return True
-        return False
-
-    result = list()
     # Here we build the list of of nodes that are locked, for a job (as opposed
     # to being locked manually for random monkeying), where the job is not
     # running
-    active_jobs = set()
+    result = list()
     for node in nodes:
-        if node_job_is_active(node, active_jobs):
+        if node_active_job(node["name"]):
             continue
         result.append(node)
     return result
+
+def node_active_job(name: str, status: Union[dict, None] = None) -> Union[str, None]:
+    """
+    Is this node's job active (e.g. running or waiting)?
+
+    :param node:  The node dict as returned from the lock server
+    :param cache: A set() used for caching results
+    :returns:     True or False
+    """
+    status = status or get_status(name)
+    if not status:
+        # This should never happen with a normal node
+        return "node had no status"
+    description = status['description']
+    (run_name, job_id) = description.split('/')[-2:]
+    url = f"{config.results_server}/runs/{run_name}/jobs/{job_id}/"
+    job_status = ""
+    with safe_while(
+            sleep=1, increment=0.5, action='node_is_active') as proceed:
+        while proceed():
+            resp = requests.get(url)
+            if resp.ok:
+                job_status = resp.json()["status"]
+                break
+    if job_status and job_status not in ('pass', 'fail', 'dead'):
+        return description
