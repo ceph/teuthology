@@ -1033,8 +1033,9 @@ def get_image_version(remote, path):
         raise UnsupportedPackageTypeError(remote)
 
     for file in files.split('\n'):
-        if '/boot/vmlinuz-' in file:
-            version = file.split('/boot/vmlinuz-')[1]
+        match = re.search('/lib/modules/(.*)/modules\.order$', file)
+        if match:
+            version = match.group(1)
             break
 
     log.debug("get_image_version: %s", version)
