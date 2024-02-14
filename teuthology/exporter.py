@@ -6,10 +6,10 @@ import time
 
 from pathlib import Path
 
-import teuthology.beanstalk as beanstalk
 import teuthology.dispatcher
 from teuthology.config import config
 from teuthology.lock.query import list_locks
+from teuthology.queue import beanstalk
 
 log = logging.getLogger(__name__)
 

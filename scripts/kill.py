@@ -12,7 +12,7 @@ usage: teuthology-kill -h
        teuthology-kill [-p] -o OWNER -m MACHINE_TYPE -r RUN
 
 Kill running teuthology jobs:
-1. Removes any queued jobs from the beanstalk queue
+1. Removes any queued jobs from the queue
 2. Kills any running jobs
 3. Nukes any machines involved
 

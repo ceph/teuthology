@@ -1,9 +1,10 @@
 import os
 import yaml
 
-import teuthology.beanstalk
+import teuthology.queue.beanstalk
 from teuthology.misc import get_user, merge_configs
 from teuthology import report
+from teuthology.config import config
 
 
 def main(args):
@@ -23,25 +24,22 @@ def main(args):
             if args[opt]:
                 raise ValueError(msg_fmt.format(opt=opt))
 
-    if args['--first-in-suite'] or args['--last-in-suite']:
-        report_status = False
-    else:
-        report_status = True
-
     name = args['--name']
     if not name or name.isdigit():
         raise ValueError("Please use a more descriptive value for --name")
     job_config = build_config(args)
-    backend = args['--queue-backend']
+    backend = config.queue_backend
     if args['--dry-run']:
         print('---\n' + yaml.safe_dump(job_config))
-    elif backend == 'beanstalk':
-        schedule_job(job_config, args['--num'], report_status)
     elif backend.startswith('@'):
         dump_job_to_file(backend.lstrip('@'), job_config, args['--num'])
+    elif backend == 'paddles':
+        paddles_schedule_job(job_config, args['--num'])
+    elif backend == 'beanstalk':
+        beanstalk_schedule_job(job_config, args['--num'])
     else:
         raise ValueError("Provided schedule backend '%s' is not supported. "
-                         "Try 'beanstalk' or '@path-to-a-file" % backend)
+                         "Try 'paddles', 'beanstalk' or '@path-to-a-file" % backend)
 
 
 def build_config(args):
@@ -87,29 +85,52 @@ def build_config(args):
     return job_config
 
 
-def schedule_job(job_config, num=1, report_status=True):
+def paddles_schedule_job(job_config, backend, num=1):
     """
-    Schedule a job.
+    Schedule a job with Paddles as the backend.
 
     :param job_config: The complete job dict
     :param num:      The number of times to schedule the job
     """
     num = int(num)
-    job = yaml.safe_dump(job_config)
-    tube = job_config.pop('tube')
-    beanstalk = teuthology.beanstalk.connect()
-    beanstalk.use(tube)
+    '''
+    Add 'machine_type' queue to DB here.
+    '''
+    queue = report.create_machine_type_queue(job_config['machine_type'])
+    job_config['queue'] = queue
     while num > 0:
-        jid = beanstalk.put(
+        job_id = report.try_create_job(job_config, dict(status='queued'))
+        print('Job scheduled in Paddles with name {name} and ID {job_id}'.format(
+            name=job_config['name'], job_id=job_id))
+        job_config['job_id'] = str(job_id)
+
+        num -= 1
+
+
+def beanstalk_schedule_job(job_config, backend, num=1):
+    """
+    Schedule a job with Beanstalk as the backend.
+
+    :param job_config: The complete job dict
+    :param num:      The number of times to schedule the job
+    """
+    num = int(num)
+    tube = job_config.pop('tube')
+    beanstalk = teuthology.queue.beanstalk.connect()
+    beanstalk.use(tube)
+    queue = report.create_machine_type_queue(tube)
+    job_config['queue'] = queue
+    while num > 0:
+        job_id = report.try_create_job(job_config, dict(status='queued'))
+        job_config['job_id'] = str(job_id)
+        job = yaml.safe_dump(job_config)
+        _ = beanstalk.put(
             job,
             ttr=60 * 60 * 24,
             priority=job_config['priority'],
         )
-        print('Job scheduled with name {name} and ID {jid}'.format(
-            name=job_config['name'], jid=jid))
-        job_config['job_id'] = str(jid)
-        if report_status:
-            report.try_push_job_info(job_config, dict(status='queued'))
+        print('Job scheduled in Beanstalk with name {name} and ID {job_id}'.format(
+            name=job_config['name'], job_id=job_id))
         num -= 1
 
 
@@ -140,4 +161,3 @@ def dump_job_to_file(path, job_config, num=1):
             num -= 1
     with open(count_file_path, 'w') as f:
         f.write(str(jid))
-

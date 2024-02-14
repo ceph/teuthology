@@ -21,7 +21,6 @@ optional arguments:
                                        Queue backend name, use prefix '@'
                                        to append job config to the given
                                        file path as yaml.
-                                       [default: beanstalk]
   -n <name>, --name <name>             Name of suite run the job is part of
   -d <desc>, --description <desc>      Job description
   -o <owner>, --owner <owner>          Job owner
