@@ -87,6 +87,8 @@ def connect(user_at_host, host_key=None, keep_alive=False, timeout=60,
         opts = ssh_config.lookup(host)
         if not key_filename and 'identityfile' in opts:
             key_filename = opts['identityfile']
+        if 'hostname' in opts:
+            connect_args['hostname'] = opts['hostname']
 
     if key_filename:
         if not isinstance(key_filename, list):
