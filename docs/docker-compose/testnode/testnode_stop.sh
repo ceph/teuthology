@@ -7,4 +7,3 @@ for i in $(seq 1 5); do
     curl -s -f -X PUT -d "$payload" http://paddles:8080/nodes/$hostname/ && break
     sleep 1
 done
-pkill sshd
