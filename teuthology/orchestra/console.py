@@ -36,7 +36,7 @@ class PhysicalConsole(RemoteConsole):
     Physical Console (set from getRemoteConsole)
     """
     def __init__(self, name, ipmiuser=None, ipmipass=None, ipmidomain=None,
-                 timeout=40):
+                 timeout=120):
         self.name = name
         self.shortname = self.getShortName(name)
         self.log = log.getChild(self.shortname)
