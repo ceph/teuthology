@@ -8,13 +8,12 @@ import requests
 from urllib.parse import urljoin
 from datetime import datetime
 
-from teuthology import exporter, kill, nuke, report, safepath
+from teuthology import exporter, kill, report, safepath
 from teuthology.config import config as teuth_config
 from teuthology.exceptions import SkipJob, MaxWhileTries
 from teuthology import setup_log_file, install_except_hook
 from teuthology.misc import get_user, archive_logs, compress_logs
 from teuthology.config import FakeNamespace
-from teuthology.job_status import get_status
 from teuthology.lock import ops as lock_ops
 from teuthology.task import internal
 from teuthology.misc import decanonicalize_hostname as shortname
@@ -242,7 +241,6 @@ def reimage(job_config):
         ctx.summary = {
             'sentry_event': sentry.report_error(job_config, e, task_name="reimage")
         }
-        nuke.nuke(ctx, True)
         # Machine that fails to reimage after 10 times will be marked down
         check_for_reimage_failures_and_mark_down(targets)
         raise
@@ -255,7 +253,7 @@ def unlock_targets(job_config):
     serializer = report.ResultsSerializer(teuth_config.archive_base)
     job_info = serializer.job_info(job_config['name'], job_config['job_id'])
     machine_statuses = query.get_statuses(job_info['targets'].keys())
-    # only unlock/nuke targets if locked and description matches
+    # only unlock targets if locked and description matches
     locked = []
     for status in machine_statuses:
         name = shortname(status['name'])
@@ -271,16 +269,9 @@ def unlock_targets(job_config):
         locked.append(name)
     if not locked:
         return
-    job_status = get_status(job_info)
-    if job_status == 'pass' or job_config.get('unlock_on_failure', False):
+    if job_config.get("unlock_on_failure", True):
         log.info('Unlocking machines...')
-        fake_ctx = create_fake_context(job_config)
-        for machine in locked:
-            lock_ops.unlock_one(
-                fake_ctx,
-                machine, job_info['owner'],
-                job_info['archive_path']
-            )
+        lock_ops.unlock_safe(locked, job_info["owner"], job_info["name"], job_info["job_id"])
 
 
 def run_with_watchdog(process, job_config):
@@ -305,12 +296,12 @@ def run_with_watchdog(process, job_config):
             log.warning("Job ran longer than {max}s. Killing...".format(
                 max=teuth_config.max_job_time))
             try:
-                # kill processes but do not nuke yet so we can save
+                # kill processes but do not unlock yet so we can save
                 # the logs, coredumps, etc.
                 kill.kill_job(
                     job_info['name'], job_info['job_id'],
                     teuth_config.archive_base, job_config['owner'],
-                    skip_nuke=True
+                    skip_unlock=True
                 )
             except Exception:
                 log.exception('Failed to kill job')
@@ -365,6 +356,7 @@ def create_fake_context(job_config, block=False):
         'os_type': job_config.get('os_type', 'ubuntu'),
         'os_version': os_version,
         'name': job_config['name'],
+        'job_id': job_config['job_id'],
     }
 
     return FakeNamespace(ctx_args)

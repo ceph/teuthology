@@ -222,12 +222,6 @@ new tasks in this directory.
 Many of these tasks are used to run python scripts that are defined in the
 ceph/ceph-qa-suite.
 
-If machines were locked as part of the run (with the --lock switch),
-teuthology normally leaves them locked when there is any task failure
-for investigation of the machine state.  When developing new teuthology
-tasks, sometimes this behavior is not useful.  The ``unlock_on_failure``
-global option can be set to true to make the unlocking happen unconditionally.
-
 Troubleshooting
 ===============
 

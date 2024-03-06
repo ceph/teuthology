@@ -4,7 +4,6 @@ import logging
 import teuthology.lock.ops
 import teuthology.lock.query
 import teuthology.lock.util
-from teuthology.job_status import get_status
 
 log = logging.getLogger(__name__)
 
@@ -24,13 +23,7 @@ def lock_machines(ctx, config):
     try:
         yield
     finally:
-        # If both unlock_on_failure and nuke-on-error are set, don't unlock now
-        # because we're just going to nuke (and unlock) later.
-        unlock_on_failure = (
-                ctx.config.get('unlock_on_failure', False)
-                and not ctx.config.get('nuke-on-error', False)
-            )
-        if get_status(ctx.summary) == 'pass' or unlock_on_failure:
+        if ctx.config.get("unlock_on_failure", True):
             log.info('Unlocking machines...')
             for machine in ctx.config['targets'].keys():
-                teuthology.lock.ops.unlock_one(ctx, machine, ctx.owner, ctx.archive)
+                teuthology.lock.ops.unlock_one(machine, ctx.owner, ctx.archive)

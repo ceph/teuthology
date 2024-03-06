@@ -200,7 +200,7 @@ def main(ctx):
             res = ops.unlock_many(machines, user)
             return 0 if res else 1
         for machine in machines:
-            if not ops.unlock_one(ctx, machine, user):
+            if not ops.unlock_one(machine, user):
                 ret = 1
                 if not ctx.f:
                     return ret
@@ -221,7 +221,7 @@ def main(ctx):
                 if len(result) < ctx.num_to_lock:
                     log.error("Locking failed.")
                     for machine in result:
-                        ops.unlock_one(ctx, machine, user)
+                        ops.unlock_one(machine, user)
                     ret = 1
                 else:
                     log.info("Successfully Locked:\n%s\n" % shortnames)

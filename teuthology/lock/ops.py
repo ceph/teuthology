@@ -4,14 +4,15 @@ import os
 import random
 import time
 import yaml
-
 import requests
+
+from typing import List, Union
 
 import teuthology.orchestra.remote
 import teuthology.parallel
 import teuthology.provision
 
-from teuthology import misc, report
+from teuthology import misc, report, provision
 from teuthology.config import config
 from teuthology.contextutil import safe_while
 from teuthology.task import console_log
@@ -19,6 +20,7 @@ from teuthology.misc import canonicalize_hostname
 from teuthology.job_status import set_status
 
 from teuthology.lock import util, query
+from teuthology.orchestra import remote
 
 log = logging.getLogger(__name__)
 
@@ -134,7 +136,7 @@ def lock_many(ctx, num, machine_type, user=None, description=None,
                     else:
                         log.error('Unable to create virtual machine: %s',
                                   machine)
-                        unlock_one(ctx, machine, user)
+                        unlock_one(machine, user)
                     ok_machs = do_update_keys(list(ok_machs.keys()))[1]
                 update_nodes(ok_machs)
                 return ok_machs
@@ -172,6 +174,29 @@ def lock_one(name, user=None, description=None):
     return response
 
 
+def unlock_safe(names: List[str], owner: str, run_name: str = "", job_id: str = ""):
+    # names = [misc.canonicalize_hostname(name, user=None) for name in names]
+    with teuthology.parallel.parallel() as p:
+        for name in names:
+            p.spawn(unlock_one_safe, name, owner, run_name, job_id)
+        return all(p)
+
+
+def unlock_one_safe(name: str, owner: str, run_name: str = "", job_id: str = "") -> bool:
+    node_status = query.get_status(name)
+    if node_status.get("locked", False) is False:
+        log.warn(f"Refusing to unlock {name} since it is already unlocked")
+        return False
+    maybe_job = query.node_active_job(name, node_status)
+    if not maybe_job:
+        return unlock_one(name, owner, node_status["description"], node_status)
+    if run_name and job_id and maybe_job.endswith(f"{run_name}/{job_id}"):
+            log.error(f"Refusing to unlock {name} since it has an active job: {run_name}/{job_id}")
+            return False
+    log.warning(f"Refusing to unlock {name} since it has an active job: {maybe_job}")
+    return False
+
+
 def unlock_many(names, user):
     fixed_names = [misc.canonicalize_hostname(name, user=None) for name in
                    names]
@@ -196,9 +221,11 @@ def unlock_many(names, user):
     return False
 
 
-def unlock_one(ctx, name, user, description=None):
+def unlock_one(name, user, description=None, status: Union[dict, None] = None) -> bool:
     name = misc.canonicalize_hostname(name, user=None)
-    if not teuthology.provision.destroy_if_vm(ctx, name, user, description):
+    if not description and status:
+        description = status["description"]
+    if not teuthology.provision.destroy_if_vm(name, user, description or ""):
         log.error('destroy failed for %s', name)
         return False
     request = dict(name=name, locked=False, locked_by=user,
@@ -211,6 +238,10 @@ def unlock_one(ctx, name, user, description=None):
                 response = requests.put(uri, json.dumps(request))
                 if response.ok:
                     log.info('unlocked: %s', name)
+                    try:
+                        stop_node(name, status)
+                    except Exception:
+                        log.exception(f"Failed to stop {name}!")
                     return response.ok
                 if response.status_code == 403:
                     break
@@ -402,7 +433,7 @@ def block_and_lock_machines(ctx, total_requested, machine_type, reimage=True, tr
         if len(all_locked) == total_requested:
             vmlist = []
             for lmach in all_locked:
-                if teuthology.lock.query.is_vm(lmach):
+                if query.is_vm(lmach):
                     vmlist.append(lmach)
             if vmlist:
                 log.info('Waiting for virtual machines to come up')
@@ -421,13 +452,13 @@ def block_and_lock_machines(ctx, total_requested, machine_type, reimage=True, tr
                             if guest not in keys_dict.keys():
                                 log.info('recreating: ' + guest)
                                 full_name = misc.canonicalize_hostname(guest)
-                                teuthology.provision.destroy_if_vm(ctx, full_name)
+                                teuthology.provision.destroy_if_vm(full_name)
                                 teuthology.provision.create_if_vm(ctx, full_name)
-                if teuthology.lock.ops.do_update_keys(keys_dict)[0]:
+                if do_update_keys(keys_dict)[0]:
                     log.info("Error in virtual machine keys")
                 newscandict = {}
                 for dkey in all_locked.keys():
-                    stats = teuthology.lock.query.get_status(dkey)
+                    stats = query.get_status(dkey)
                     newscandict[dkey] = stats['ssh_pub_key']
                 ctx.config['targets'] = newscandict
             else:
@@ -453,3 +484,20 @@ def block_and_lock_machines(ctx, total_requested, machine_type, reimage=True, tr
         )
         log.warning('Could not lock enough machines, waiting...')
         time.sleep(10)
+
+
+def stop_node(name: str, status: Union[dict, None]):
+    status = status or query.get_status(name)
+    remote_ = remote.Remote(name)
+    if status['machine_type'] in provision.fog.get_types():
+        remote_.console.power_off()
+        return
+    elif status['machine_type'] in provision.pelagos.get_types():
+        provision.pelagos.park_node(name)
+        return
+    elif remote_.is_container:
+        remote_.run(
+            args=['sudo', '/testnode_stop.sh'],
+            check_status=False,
+        )
+        return

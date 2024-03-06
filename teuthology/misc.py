@@ -22,6 +22,8 @@ from types import MappingProxyType
 
 from tarfile import ReadError
 
+from typing import Optional
+
 from teuthology.util.compat import urljoin, urlopen, HTTPError
 
 from netaddr.strategy.ipv4 import valid_str as _is_ipv4
@@ -50,7 +52,7 @@ def host_shortname(hostname):
     else:
         return hostname.split('.', 1)[0]
 
-def canonicalize_hostname(hostname, user='ubuntu'):
+def canonicalize_hostname(hostname, user: Optional[str] ='ubuntu'):
     hostname_expr = hostname_expr_templ.format(
         lab_domain=config.lab_domain.replace('.', r'\.'))
     match = re.match(hostname_expr, hostname)
@@ -106,20 +108,6 @@ def config_file(string):
     except IOError as e:
         raise argparse.ArgumentTypeError(str(e))
     return config_dict
-
-
-class MergeConfig(argparse.Action):
-    """
-    Used by scripts to mergeg configurations.   (nuke, run, and
-    schedule, for example)
-    """
-    def __call__(self, parser, namespace, values, option_string=None):
-        """
-        Perform merges of all the day in the config dictionaries.
-        """
-        config_dict = getattr(namespace, self.dest)
-        for new in values:
-            deep_merge(config_dict, new)
 
 
 def merge_configs(config_paths):

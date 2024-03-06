@@ -33,7 +33,6 @@ import teuthology.lock
 import teuthology.lock.cli
 import teuthology.lock.query
 import teuthology.lock.util
-import teuthology.nuke
 import teuthology.misc
 import teuthology.schedule
 import teuthology.suite
@@ -135,20 +134,6 @@ class TestSuite(Integration):
         else:
             ssh = ''
         assert 'teuthology.log' in teuthology.misc.sh(ssh + " rsync -av " + upload)
-
-    def test_suite_nuke(self):
-        cwd = os.getcwd()
-        args = ['--suite', 'nuke',
-                '--suite-dir', cwd + '/teuthology/openstack/test',
-                '--machine-type', 'openstack',
-                '--verbose']
-        logging.info("TestSuite:test_suite_nuke")
-        scripts.suite.main(args)
-        self.wait_worker()
-        log = self.get_teuthology_log()
-        assert "teuthology.run:FAIL" in log
-        locks = teuthology.lock.query.list_locks(locked=True)
-        assert len(locks) == 0
 
 class TestSchedule(Integration):
 
@@ -256,31 +241,3 @@ class TestLock(Integration):
         out, err = capsys.readouterr()
         assert 'machine_type' in out
         assert 'openstack' in out
-
-class TestNuke(Integration):
-
-    def setup_method(self):
-        self.options = ['--verbose',
-                        '--machine-type', 'openstack']
-
-    def test_nuke(self):
-        image = next(iter(teuthology.openstack.OpenStack.image2url.keys()))
-
-        (os_type, os_version, arch) = image.split('-')
-        args = scripts.lock.parse_args(self.options +
-                                       ['--lock-many', '1',
-                                        '--os-type', os_type,
-                                        '--os-version', os_version])
-        assert teuthology.lock.cli.main(args) == 0
-        locks = teuthology.lock.query.list_locks(locked=True)
-        logging.info('list_locks = ' + str(locks))
-        assert len(locks) == 1
-        ctx = argparse.Namespace(name=None,
-                                 config={
-                                     'targets': { locks[0]['name']: None },
-                                 },
-                                 owner=locks[0]['locked_by'],
-                                 teuthology_config={})
-        teuthology.nuke.nuke(ctx, should_unlock=True)
-        locks = teuthology.lock.query.list_locks(locked=True)
-        assert len(locks) == 0

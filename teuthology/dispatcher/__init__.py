@@ -15,7 +15,6 @@ from teuthology import (
     # modules
     beanstalk,
     exporter,
-    nuke,
     report,
     repo_utils,
     worker,
@@ -191,7 +190,13 @@ def main(args):
             error_message = "Saw error while trying to spawn supervisor."
             log.exception(error_message)
             if 'targets' in job_config:
-                nuke.nuke(supervisor.create_fake_context(job_config), True)
+                node_names = job_config["targets"].keys()
+                lock_ops.unlock_safe(
+                    node_names,
+                    job_config["owner"],
+                    job_config["name"],
+                    job_config["job_id"]
+                )
             report.try_push_job_info(job_config, dict(
                 status='fail',
                 failure_reason=error_message))

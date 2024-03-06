@@ -34,7 +34,6 @@ Provided Utilities
 * :ref:`teuthology-lock` - Lock, unlock, and update status of machines
 * :ref:`teuthology-ls` - List job results by examining an archive directory
 * :ref:`teuthology-openstack` - Use OpenStack backend (wrapper around ``teuthology-suite``)
-* :ref:`teuthology-nuke` - Attempt to return a machine to a pristine state
 * :ref:`teuthology-queue` - List, or delete, jobs in the queue
 * :ref:`teuthology-report` - Submit test results to a web service (we use `paddles <https://github.com/ceph/paddles/>`__)
 * :ref:`teuthology-results` - Examing a finished run and email results

@@ -14,6 +14,8 @@ class TestDownburst(object):
             vm_host=dict(name='host999'),
             is_vm=True,
             machine_type='mtype',
+            locked_by='user@a',
+            description="desc",
         )
 
     def test_create_if_vm_success(self):
@@ -48,7 +50,7 @@ class TestDownburst(object):
         dbrst.destroy = MagicMock(name='destroy')
         dbrst.destroy.return_value = True
 
-        result = provision.destroy_if_vm(ctx, name, _downburst=dbrst)
+        result = provision.destroy_if_vm(name, user="user@a", _downburst=dbrst)
         assert result is True
 
         dbrst.destroy.assert_called_with()
@@ -57,13 +59,12 @@ class TestDownburst(object):
         name = self.name
         ctx = self.ctx
         status = self.status
-        status['locked_by'] = 'user@a'
 
         dbrst = provision.downburst.Downburst(
             name, ctx.os_type, ctx.os_version, status)
         dbrst.destroy = MagicMock(name='destroy', side_effect=RuntimeError)
 
-        result = provision.destroy_if_vm(ctx, name, user='user@b',
+        result = provision.destroy_if_vm(name, user='user@b',
                                          _downburst=dbrst)
         assert result is False
 
@@ -71,14 +72,13 @@ class TestDownburst(object):
         name = self.name
         ctx = self.ctx
         status = self.status
-        status['description'] = 'desc_a'
 
         dbrst = provision.downburst.Downburst(
             name, ctx.os_type, ctx.os_version, status)
         dbrst.destroy = MagicMock(name='destroy')
         dbrst.destroy = MagicMock(name='destroy', side_effect=RuntimeError)
 
-        result = provision.destroy_if_vm(ctx, name, description='desc_b',
+        result = provision.destroy_if_vm(name, description='desc_b',
                                          _downburst=dbrst)
         assert result is False
 

@@ -51,7 +51,6 @@ dict_templ = {
     'archive_upload': Placeholder('archive_upload'),
     'archive_upload_key': Placeholder('archive_upload_key'),
     'machine_type': Placeholder('machine_type'),
-    'nuke-on-error': True,
     'os_type': Placeholder('distro'),
     'os_version': Placeholder('distro_version'),
     'overrides': {
