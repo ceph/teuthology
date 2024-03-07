@@ -16,6 +16,7 @@ from teuthology import repo_utils
 from teuthology.config import config, JobConfig
 from teuthology.exceptions import (
     BranchMismatchError, BranchNotFoundError, CommitNotFoundError,
+    ScheduleFailError, GitError
 )
 from teuthology.misc import deep_merge, get_results_url, update_key
 from teuthology.orchestra.opsys import OS
@@ -107,11 +108,14 @@ class Run(object):
         teuthology_branch, teuthology_sha1 = self.choose_teuthology_branch()
 
 
-        if self.args.distro and self.args.distro_version:
-            self.args.distro_version, _ = \
-                OS.version_codename(
-                    self.args.distro,
-                    self.args.distro_version,
+        if self.args.distro_version:
+            try:
+                self.args.distro_version, _ = \
+                    OS.version_codename(self.args.distro, self.args.distro_version)
+            except KeyError:
+                raise ScheduleFailError(
+                    " ditro: {} or distro_version: {} doesn't exists".format(
+                    self.args.distro, self.args.distro_version),''
                 )
         self.config_input = dict(
             suite=self.args.suite,
@@ -159,8 +163,11 @@ class Run(object):
         os_type = self.args.distro
         os_version = self.args.distro_version
         if not (os_type and os_version):
-            os_ = util.get_distro_defaults(
-                self.args.distro, self.args.machine_type)[2]
+            try:
+                os_ = util.get_distro_defaults(
+                    self.args.distro, self.args.machine_type)[2]
+            except KeyError:
+                raise ScheduleFailError(f"distro {self.args.distro} doesn't exist")
         else:
             os_ = OS(os_type, os_version)
         return os_
@@ -208,7 +215,6 @@ class Run(object):
         tip.
         """
         repo_name = self.ceph_repo_name
-
         ceph_hash = None
         if self.args.ceph_sha1:
             ceph_hash = self.args.ceph_sha1
@@ -223,8 +229,11 @@ class Run(object):
             log.info("ceph sha1 explicitly supplied")
 
         elif self.args.ceph_branch:
-            ceph_hash = util.git_ls_remote(
-                self.args.ceph_repo, self.args.ceph_branch)
+            try:
+                ceph_hash = util.git_ls_remote(
+                    self.args.ceph_repo, self.args.ceph_branch)
+            except GitError as e:
+                raise util.schedule_fail(message=str(e), name=self.name, dry_run=self.args.dry_run) from None
             if not ceph_hash:
                 exc = BranchNotFoundError(
                     self.args.ceph_branch,
@@ -610,8 +619,11 @@ Note: If you still want to go ahead, use --job-threshold 0'''
             self.suite_repo_path,
             self.args.suite_relpath,
             'suites',
-            self.base_config.suite.replace(':', '/'),
+            suite_name.replace(':', '/'),
         ))
+        if not os.path.exists(suite_path):
+            log.error("Suite path doesn't exists")
+            raise ScheduleFailError("Suite path doesn't exists", suite_name)
         log.debug('Suite %s in %s' % (suite_name, suite_path))
         log.debug(f"subset = {self.args.subset}")
         log.debug(f"no_nested_subset = {self.args.no_nested_subset}")
@@ -686,7 +698,9 @@ Note: If you still want to go ahead, use --job-threshold 0'''
                         self.args.newest
                     )
                 if not sha1s:
-                    util.schedule_fail('Backtrack for --newest failed', name, dry_run=self.args.dry_run)
+                    util.schedule_fail('Backtrack for --newest failed, could not find a git parent with the packages,' \
+                        ' (optionally) use --sha1 to directly point to' \
+                        ' your build.', name, dry_run=self.args.dry_run)
                 cur_sha1 = sha1s.pop(0)
                 self.config_input['ceph_hash'] = cur_sha1
                 # If ceph_branch and suite_branch are the same and
