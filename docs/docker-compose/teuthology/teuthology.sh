@@ -4,8 +4,8 @@ set -e
 if [ -n "$SSH_PRIVKEY_FILE" ]; then
     echo "$SSH_PRIVKEY" > $HOME/.ssh/$SSH_PRIVKEY_FILE
 fi
-source /teuthology/virtualenv/bin/activate
 set -x
+source /teuthology/virtualenv/bin/activate
 if [ -n "$TESTNODES" ]; then
     for node in $(echo $TESTNODES | tr , ' '); do
         teuthology-update-inventory -m $MACHINE_TYPE $node
@@ -40,6 +40,7 @@ if [ -z "$TEUTHOLOGY_WAIT" ]; then
     teuthology-queue -m $MACHINE_TYPE -s | \
       python3 -c "import sys, json; assert json.loads(sys.stdin.read())['count'] > 0, 'queue is empty!'"
 fi
+echo "$(pwd)"
 teuthology-dispatcher -v \
     --log-dir /teuthology/log \
     --tube $MACHINE_TYPE \
