@@ -16,6 +16,7 @@ from teuthology.results import UNFINISHED_STATUSES
 
 from teuthology.suite.run import Run
 from teuthology.suite.util import schedule_fail
+from teuthology.exceptions import ScheduleFailError
 
 log = logging.getLogger(__name__)
 
@@ -52,36 +53,42 @@ def process_args(args):
         key = key.lstrip('--').replace('-', '_')
         # Rename the key if necessary
         key = rename_args.get(key) or key
-        if key == 'suite_branch':
-            value = value or override_arg_defaults('--suite-branch', None)
-        if key == 'suite' and value is not None:
-            value = normalize_suite_name(value)
-        if key == 'suite_relpath' and value is None:
-            value = ''
-        elif key in ('limit', 'priority', 'num', 'newest', 'seed', 'job_threshold'):
-            value = int(value)
-        elif key == 'subset' and value is not None:
-            # take input string '2/3' and turn into (2, 3)
-            value = tuple(map(int, value.split('/')))
-        elif key == 'expire' and value is None:
-            # Skip empty 'expire' values
-            continue
-        elif key in ('filter_all', 'filter_in', 'filter_out', 'rerun_statuses'):
-            if not value:
-                value = []
-            else:
-                value = [x.strip() for x in value.split(',')]
-        elif key == 'ceph_repo':
-            value = expand_short_repo_name(
-                value,
-                config.get_ceph_git_url())
-        elif key == 'suite_repo':
-            value = expand_short_repo_name(
-                value,
-                config.get_ceph_qa_suite_git_url())
-        elif key in ('validate_sha1', 'filter_fragments', 'kdb'):
-            value = strtobool(value)
-        conf[key] = value
+        try:
+            if key == 'suite_branch':
+                value = value or override_arg_defaults('--suite-branch', None)
+            if key == 'suite' and value is not None:
+                value = normalize_suite_name(value)
+            if key == 'suite_relpath' and value is None:
+                value = ''
+            elif key in ('limit', 'priority', 'num', 'newest', 'seed', 'job_threshold'):
+                value = int(value)
+                if key != 'seed' and value < 0:
+                    log.error("{} value cannot be < 0".format(key))
+                    raise ScheduleFailError("{} value cannot be < 0".format(key),'')
+            elif key == 'subset' and value is not None:
+                # take input string '2/3' and turn into (2, 3)
+                value = tuple(map(int, value.split('/')))
+                if len(value) != 2:
+                    raise ValueError
+            elif key in ('filter_all', 'filter_in', 'filter_out', 'rerun_statuses'):
+                if not value:
+                    value = []
+                else:
+                    value = [x.strip() for x in value.split(',')]
+            elif key == 'ceph_repo':
+                value = expand_short_repo_name(
+                    value,
+                    config.get_ceph_git_url())
+            elif key == 'suite_repo':
+                value = expand_short_repo_name(
+                    value,
+                    config.get_ceph_qa_suite_git_url())
+            elif key in ('validate_sha1', 'filter_fragments'):
+                value = strtobool(value)
+            conf[key] = value
+        except ValueError:
+            log.error(" --{} value has incorrect type/format".format(key))
+            raise ScheduleFailError("--{} value has incorrect type/format".format(key),'')
     return conf
 
 
