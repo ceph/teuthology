@@ -66,10 +66,14 @@ def ls_remote(url, ref):
     """
     sha1 = None
     cmd = "git ls-remote {} {}".format(url, ref)
-    result = subprocess.check_output(
-        cmd, shell=True).split()
-    if result:
-        sha1 = result[0].decode()
+    try:
+        result = subprocess.check_output(
+            cmd, stderr=subprocess.STDOUT,
+            shell=True).split()
+        if result:
+            sha1 = result[0].decode()
+    except subprocess.CalledProcessError as e:
+        raise GitError(e.output) from None
     log.debug("{} -> {}".format(cmd, sha1))
     return sha1
 
