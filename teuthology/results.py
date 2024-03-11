@@ -75,15 +75,11 @@ def results(archive_dir, name, email, timeout, dry_run):
         print("Subject: %s" % subject)
         print(body)
     elif email:
-        email_results(
-            subject=subject,
-            from_=(config.results_sending_email or 'teuthology'),
-            to=email,
-            body=body,
-        )
+        sender = config.results_sending_email or 'teuthology'
+        email_results(config, subject, sender, to, body)
 
 
-def email_results(subject, from_, to, body):
+def email_results(config, subject, from_, to, body):
     log.info('Sending results to {to}: {body}'.format(to=to, body=body))
     import smtplib
     from email.mime.text import MIMEText
@@ -91,6 +87,12 @@ def email_results(subject, from_, to, body):
     msg['Subject'] = subject
     msg['From'] = from_
     msg['To'] = to
+    suite = config.get('suite')
+    if suite is not None:
+        msg['QA-suite'] = suite
+    user = config.get('user')
+    if user is not None:
+        msg['QA-user'] = user
     log.debug('sending email %s', msg.as_string())
     smtp = smtplib.SMTP('localhost')
     smtp.sendmail(msg['From'], [msg['To']], msg.as_string())
