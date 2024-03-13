@@ -449,6 +449,8 @@ class Run(object):
         if num_jobs:
             self.write_result()
 
+        return num_jobs
+
     def collect_jobs(self, arch, configs, newest=False, limit=0):
         jobs_to_schedule = []
         jobs_missing_packages = []
