@@ -144,10 +144,11 @@ def main(args):
 
     run = Run(conf)
     name = run.name
-    run.prepare_and_schedule()
+    job_count = run.prepare_and_schedule()
     if not conf.dry_run and conf.wait:
         return wait(name, config.max_job_time,
                     conf.archive_upload_url)
+    return job_count
 
 
 def get_rerun_conf_overrides(conf):
