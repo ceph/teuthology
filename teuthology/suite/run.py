@@ -591,6 +591,7 @@ Note: If you still want to go ahead, use --job-threshold 0'''
             filter_out=self.args.filter_out,
             filter_all=self.args.filter_all,
             filter_fragments=self.args.filter_fragments,
+            seed=self.args.seed,
             suite_name=suite_name))
 
         if self.args.dry_run:

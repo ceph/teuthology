@@ -115,6 +115,9 @@ def config_merge(configs, suite_name=None, **kwargs):
     the entire job (config) from the list.
     """
 
+    seed = kwargs.get('seed', 1)
+    log.debug("configuring Lua randomseed to %d", seed)
+    L.execute(f'local math = require"math"; math.randomseed({seed});')
     new_script = L.eval('new_script')
     yaml_cache = {}
     for desc, paths in configs:
