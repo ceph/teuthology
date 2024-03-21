@@ -224,7 +224,7 @@ def get_initial_tasks(lock, config, machine_type):
             {'internal.archive': None},
             {'internal.coredump': None},
             {'internal.sudo': None},
-            {'internal.syslog': None},
+            {'internal.syslog': config.get('syslog', {})},
         ])
     init_tasks.append({'internal.timer': None})
 
