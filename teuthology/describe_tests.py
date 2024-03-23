@@ -137,7 +137,8 @@ def output_summary(path, limit=0,
                                  filter_in=filter_in,
                                  filter_out=filter_out,
                                  filter_all=filter_all,
-                                 filter_fragments=filter_fragments)
+                                 filter_fragments=filter_fragments,
+                                 seed=seed)
     for c in configs:
         if limit and count >= limit:
             break
@@ -185,7 +186,8 @@ def get_combinations(suite_dir,
                                  filter_in=filter_in,
                                  filter_out=filter_out,
                                  filter_all=filter_all,
-                                 filter_fragments=filter_fragments)
+                                 filter_fragments=filter_fragments,
+                                 seed=seed)
     for _, fragment_paths, __ in configs:
         if limit > 0 and num_listed >= limit:
             break
