@@ -1,5 +1,6 @@
 -- allow only some Lua (and lunatic) builtins for use by scripts
 local lua_allowlist = {
+  require = require,
   assert = assert,
   error = error,
   ipairs = ipairs,
