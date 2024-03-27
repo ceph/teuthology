@@ -155,9 +155,13 @@ class Run(object):
                      branch=self.args.kernel_branch),
                      dry_run=self.args.dry_run,
                 )
+        kdb = True
+        if self.args.kdb is not None:
+            kdb = self.args.kdb
+
         if kernel_hash:
             log.info("kernel sha1: {hash}".format(hash=kernel_hash))
-            kernel_dict = dict(kernel=dict(kdb=True, sha1=kernel_hash))
+            kernel_dict = dict(kernel=dict(kdb=kdb, sha1=kernel_hash))
             if kernel_hash != 'distro':
                 kernel_dict['kernel']['flavor'] = 'default'
         else:
