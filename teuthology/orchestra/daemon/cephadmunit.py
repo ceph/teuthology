@@ -137,6 +137,7 @@ class CephadmUnit(DaemonState):
             return
         self._start_logger()
         self.remote.run(args=self.start_cmd)
+        self.is_started = True
 
     def stop(self, timeout=300):
         """
