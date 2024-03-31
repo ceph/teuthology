@@ -1,5 +1,7 @@
 from __future__ import with_statement
 
+import glob
+import gzip
 import os
 import shutil
 import tempfile
@@ -12,7 +14,8 @@ class FakeResultDir(object):
     def __init__(self,
                 failure_reason="Dummy reason",
                 assertion="FAILED assert 1 == 2\n",
-                blank_backtrace=False
+                blank_backtrace=False,
+                assertion_osd=False,
     ):
         self.failure_reason = failure_reason
         self.assertion = assertion
@@ -34,6 +37,15 @@ class FakeResultDir(object):
                 f.write(".stderr: Dummy error\n")
                 f.write(self.assertion)
             f.write(" NOTE: a copy of the executable dummy text\n")
+
+        if assertion_osd:
+            host = "host1"
+            rem_log_dir = os.path.join(self.path, "remote", host, "log")
+            os.makedirs(rem_log_dir, exist_ok=True)
+            ceph_mon_log = os.path.join(rem_log_dir, "ceph-osd.0.log")
+            with open(ceph_mon_log, "w") as f:
+                f.write("ceph version 1000\n")
+                f.write(self.assertion)
 
     def __enter__(self):
         return self
@@ -165,3 +177,29 @@ class TestScrape(object):
         assert os.path.exists(os.path.join(d.path, "scrape.log"))
 
         shutil.rmtree(d.path)
+
+    def test_gzip_backtrace_decode(self):
+        with FakeResultDir(assertion="FAILED assert dummy backtrace line",
+                        blank_backtrace=True,
+                        assertion_osd=True) as d:
+
+            with open(os.path.join(d.path, "teuthology.log"), "a") as root_log:
+                root_log.write(
+                    "command crashed with signal SIGSEGV tasks.ceph.osd.0.host1.stderr\n"
+                )
+
+            pattern = os.path.join(d.path, "**", "ceph-osd.0.log")
+            raws = glob.glob(pattern, recursive=True)
+            assert len(raws) == 1, f"expected one raw log, found: {raws}"
+            raw_log = raws[0]
+            gz_log = raw_log + ".gz"
+
+            with gzip.open(gz_log, "wb") as out:
+                out.write(open(raw_log, "rb").read())
+            os.remove(raw_log)
+
+            assert not os.path.exists(raw_log)
+            assert os.path.exists(gz_log)
+
+            job = scrape.Job(d.path, 1)
+            assert job.get_assertion() == "FAILED assert dummy backtrace line"
