@@ -3,7 +3,7 @@
 
 import difflib
 from errno import ENOENT
-from gzip import GzipFile
+import gzip
 import sys
 import os
 import yaml
@@ -361,6 +361,8 @@ class Job(object):
             return
 
         for line in grep(tlog_path, "command crashed with signal"):
+            if not line:
+                continue
             log.debug("Found a crash indication: {0}".format(line))
             # tasks.ceph.osd.1.plana82.stderr
             match = re.search(r"tasks.ceph.([^\.]+).([^\.]+).([^\.]+).stderr", line)
@@ -387,7 +389,8 @@ class Job(object):
                 ))
                 continue
 
-            bt, ass = self._search_backtrace(GzipFile(gzipped_log_path))
+            with gzip.open(gzipped_log_path, 'rt',  errors='ignore') as f:
+                bt, ass = self._search_backtrace(f)
             if ass and not self.assertion:
                 self.assertion = ass
             if bt:
