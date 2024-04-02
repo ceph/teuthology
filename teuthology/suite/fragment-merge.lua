@@ -1,39 +1,20 @@
--- allow only some Lua (and lunatic) builtins for use by scripts
-local lua_allowlist = {
-  require = require,
-  assert = assert,
-  error = error,
-  ipairs = ipairs,
-  next = next,
-  pairs = pairs,
-  tonumber = tonumber,
-  tostring = tostring,
-  py_attrgetter = python.as_attrgetter,
-  py_dict = python.builtins.dict,
-  py_list = python.builtins.list,
-  py_tuple = python.builtins.tuple,
-  py_enumerate = python.enumerate,
-  py_iterex = python.iterex,
-  py_itemgetter = python.as_itemgetter,
-  math = math,
-}
-lua_allowlist.__index = lua_allowlist
-
 -- accept a fragment/config (or just return true from the script!)
 local function accept()
   coroutine.yield(true)
 end
+
 -- reject a fragment/config (or just return false from the script!)
 local function reject()
   coroutine.yield(false)
 end
+
 -- this implements logic for filtering (via teuthology-suite CLI flags)
 local function matches(_ENV, f)
   if description:find(f, 1, true) then
     return true
   end
   if filter_fragments then
-    for i,path in py_enumerate(base_frag_paths) do
+    for i, path in py_enumerate(base_frag_paths) do
       if path:find(f) then
         return true
       end
@@ -43,7 +24,7 @@ end
 
 local function check_filters(_ENV)
   if filter_all then
-    for i,f in py_enumerate(filter_all) do
+    for i, f in py_enumerate(filter_all) do
       if not matches(_ENV, f) then
         reject()
       end
@@ -51,7 +32,7 @@ local function check_filters(_ENV)
   end
   if filter_in then
     local found, tried = false, false
-    for i,f in py_enumerate(filter_in) do
+    for i, f in py_enumerate(filter_all) do
       tried = true
       if matches(_ENV, f) then
         found = true
@@ -63,13 +44,22 @@ local function check_filters(_ENV)
     end
   end
   if filter_out then
-    for i,f in py_enumerate(filter_out) do
+    for i, f in py_enumerate(filter_out) do
       if matches(_ENV, f) then
         reject()
       end
     end
   end
 end
+
+-- Define py_enumerate, py_iterex, py_attrgetter, py_itemgetter, py_dict, py_list, and py_tuple globally
+py_enumerate = python.enumerate
+py_iterex = python.iterex
+py_attrgetter = python.as_attrgetter
+py_itemgetter = python.as_itemgetter
+py_dict = python.builtins.dict
+py_list = python.builtins.list
+py_tuple = python.builtins.tuple
 
 function new_script(script, log, deep_merge, yaml_load)
   -- create a restricted sandbox for the script:
@@ -79,7 +69,27 @@ function new_script(script, log, deep_merge, yaml_load)
     log = log,
     reject = reject,
     yaml_load = yaml_load,
-  }, lua_allowlist)
+    python = python, -- Assuming python module is available
+    ["python.builtins"] = python.builtins, -- Assuming python.builtins module is available
+    py_enumerate = py_enumerate,
+    py_iterex = py_iterex,
+    py_attrgetter = py_attrgetter,
+    py_itemgetter = py_itemgetter,
+    py_dict = py_dict,
+    py_list = py_list,
+    py_tuple = py_tuple,
+  }, {
+    __index = function(t, k)
+      -- Allow only specified Python functions
+      if k == "py_enumerate" or k == "py_iterex" or k == "py_attrgetter" or k == "py_itemgetter" then
+        return python[k]
+      elseif k == "py_dict" or k == "py_list" or k == "py_tuple" then
+        return python.builtins[k]
+      else
+        return _G[k]
+      end
+    end
+  })
 
   -- avoid putting check_filters in _ENV
   -- try to keep line numbers correct:
