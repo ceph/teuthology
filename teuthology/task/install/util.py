@@ -9,6 +9,14 @@ from teuthology.orchestra import run
 log = logging.getLogger(__name__)
 
 
+TEUTHOLOGY_BIN_UTILITIES = [
+  'daemon-helper',
+  'adjust-ulimits',
+  'stdin-killer',
+  'daemon-rebooter',
+]
+
+
 def _get_builder_project(ctx, remote, config):
     return packaging.get_builder_project()(
         config.get('project', 'ceph'),
@@ -81,9 +89,8 @@ def _ship_utilities(ctx):
     except IOError as e:
         log.info('Cannot ship supression file for valgrind: %s...', e.strerror)
 
-    FILES = ['daemon-helper', 'adjust-ulimits', 'stdin-killer']
     destdir = '/usr/bin'
-    for filename in FILES:
+    for filename in TEUTHOLOGY_BIN_UTILITIES:
         log.info('Shipping %r...', filename)
         src = os.path.join(os.path.dirname(__file__), 'bin', filename)
         dst = os.path.join(destdir, filename)
