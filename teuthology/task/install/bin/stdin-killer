@@ -45,7 +45,7 @@ PAGE_SIZE = 4096
 POLL_HANGUP = select.POLLHUP | (select.POLLRDHUP if hasattr(select, 'POLLRDHUP') else 0) | select.POLLERR
 
 
-def handle_event(poll, buffer, fd, event, p):
+def handle_event(sigfdr, poll, buffer, fd, event, p):
     if sigfdr == fd:
         b = os.read(sigfdr, 1)
         (signum,) = struct.unpack("B", b)
@@ -136,7 +136,7 @@ def listen_for_events(sigfdr, p, timeout):
         events = poll.poll(wait)
         for fd, event in events:
             log.debug("event: (%d, %d)", fd, event)
-            if handle_event(poll, buffer, fd, event, p):
+            if handle_event(sigfdr, poll, buffer, fd, event, p):
                 if p.returncode is not None:
                     return
                 if expired == 0.0:
@@ -146,11 +146,22 @@ def listen_for_events(sigfdr, p, timeout):
                         NS.timeout,
                     )
 
-def do_exec(NS):
+def do_exec(NS, sigfdr):
     cargs = NS.cmd + NS.args
     popen_kwargs = {
         "stdin": subprocess.PIPE,
     }
+
+    signame = str(NS.signal).upper()
+    sig = getattr(signal, signame, None)
+    if sig is None:
+        sig = getattr(signal, "SIG"+signame, None)
+        if sig is None:
+            try:
+                sig = int(NS.signal)
+            except ValueError:
+                log.fatal(f"cannot convert {NS.signal} to signal number")
+                sys.exit(1)
 
     if NS.setpgrp == "self":
         pgrp = os.getpgrp()
@@ -175,12 +186,12 @@ def do_exec(NS):
     listen_for_events(sigfdr, p, NS.timeout)
 
     if p.returncode is None:
-        log.error("timeout expired: sending signal %d to command and myself", NS.signal)
+        log.error("timeout expired: sending signal %d to command and myself", sig)
         if pgrp == 0:
-            os.kill(p.pid, NS.signal)
+            os.kill(p.pid, sig)
         else:
-            os.killpg(pgrp, NS.signal)  # should kill me too
-        os.kill(os.getpid(), NS.signal)  # to exit abnormally with same signal
+            os.killpg(pgrp, sig)  # should kill me too
+        os.kill(os.getpid(), sig)  # to exit abnormally with same signal
         log.error("signal did not cause termination, sending myself SIGKILL")
         os.kill(os.getpid(), signal.SIGKILL)  # failsafe
     rc = p.returncode
@@ -231,8 +242,8 @@ def main():
         "--signal",
         action="store",
         help="signal to send",
-        type=int,
-        default=signal.SIGKILL,
+        type=str,
+        default='SIGKILL',
     )
     P.add_argument("--verbose", action="store_true", help="increase debugging")
     P.add_argument("--reboot-on-exit0", dest='reboot', action="store_true", help="reboot command on exit 0")
@@ -265,7 +276,7 @@ def main():
     logging.basicConfig(**logargs)
 
     while True:
-        rc = do_exec(NS)
+        rc = do_exec(NS, sigfdr)
         if rc != 0 or not NS.reboot:
             sys.exit(rc)
 
