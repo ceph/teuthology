@@ -146,74 +146,7 @@ def listen_for_events(sigfdr, p, timeout):
                         NS.timeout,
                     )
 
-
-if __name__ == "__main__":
-    signal.signal(signal.SIGPIPE, signal.SIG_IGN)
-    try:
-        (sigfdr, sigfdw) = os.pipe2(os.O_NONBLOCK | os.O_CLOEXEC)
-    except AttributeError:
-        # pipe2 is only available on "some flavors of Unix"
-        # https://docs.python.org/3.10/library/os.html?highlight=pipe2#os.pipe2
-        pipe_ends = os.pipe()
-        for fd in pipe_ends:
-            flags = fcntl.fcntl(fd, fcntl.F_GETFL)
-            fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK | os.O_CLOEXEC)
-        (sigfdr, sigfdw) = pipe_ends
-
-    signal.set_wakeup_fd(sigfdw)
-
-    def do_nothing(signum, frame):
-        pass
-
-    signal.signal(signal.SIGCHLD, do_nothing)
-
-    P = argparse.ArgumentParser(
-        description="wait for stdin EOF then kill forked subcommand"
-    )
-    P.add_argument(
-        "--timeout",
-        action="store",
-        default=5,
-        help="time to wait for forked subcommand to willing terminate",
-        type=int,
-    )
-    P.add_argument("--debug", action="store", help="debug file", type=str)
-    P.add_argument(
-        "--signal",
-        action="store",
-        help="signal to send",
-        type=int,
-        default=signal.SIGKILL,
-    )
-    P.add_argument("--verbose", action="store_true", help="increase debugging")
-    P.add_argument(
-        "--setpgrp",
-        action="store",
-        choices=["no", "self", "child"],
-        default="self",
-        help="create process group",
-    )
-    P.add_argument(
-        "cmd", metavar="command", type=str, nargs=1, help="command to execute"
-    )
-    P.add_argument(
-        "args", metavar="arguments", type=str, nargs="*", help="arguments to command"
-    )
-    NS = P.parse_args()
-
-    logargs = {}
-    if NS.debug is not None:
-        logargs["filename"] = NS.debug
-    else:
-        logargs["stream"] = sys.stderr
-    if NS.verbose:
-        logargs["level"] = logging.DEBUG
-    else:
-        logargs["level"] = logging.INFO
-    logargs["format"] = f"%(asctime)s {NAME} %(levelname)s: %(message)s"
-    logargs["datefmt"] = "%Y-%m-%dT%H:%M:%S"
-    logging.basicConfig(**logargs)
-
+def do_exec(NS):
     cargs = NS.cmd + NS.args
     popen_kwargs = {
         "stdin": subprocess.PIPE,
@@ -260,4 +193,81 @@ if __name__ == "__main__":
         os.kill(os.getpid(), signal.SIGKILL)  # failsafe
     else:
         log.info("command exited with status %d: exiting normally with same code!", rc)
-        sys.exit(rc)
+        return rc
+
+
+def main():
+    signal.signal(signal.SIGPIPE, signal.SIG_IGN)
+    try:
+        (sigfdr, sigfdw) = os.pipe2(os.O_NONBLOCK | os.O_CLOEXEC)
+    except AttributeError:
+        # pipe2 is only available on "some flavors of Unix"
+        # https://docs.python.org/3.10/library/os.html?highlight=pipe2#os.pipe2
+        pipe_ends = os.pipe()
+        for fd in pipe_ends:
+            flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+            fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK | os.O_CLOEXEC)
+        (sigfdr, sigfdw) = pipe_ends
+
+    signal.set_wakeup_fd(sigfdw)
+
+    def do_nothing(signum, frame):
+        pass
+
+    signal.signal(signal.SIGCHLD, do_nothing)
+
+    P = argparse.ArgumentParser(
+        description="wait for stdin EOF then kill forked subcommand"
+    )
+    P.add_argument(
+        "--timeout",
+        action="store",
+        default=5,
+        help="time to wait for forked subcommand to willing terminate",
+        type=int,
+    )
+    P.add_argument("--debug", action="store", help="debug file", type=str)
+    P.add_argument(
+        "--signal",
+        action="store",
+        help="signal to send",
+        type=int,
+        default=signal.SIGKILL,
+    )
+    P.add_argument("--verbose", action="store_true", help="increase debugging")
+    P.add_argument("--reboot-on-exit0", dest='reboot', action="store_true", help="reboot command on exit 0")
+    P.add_argument(
+        "--setpgrp",
+        action="store",
+        choices=["no", "self", "child"],
+        default="self",
+        help="create process group",
+    )
+    P.add_argument(
+        "cmd", metavar="command", type=str, nargs=1, help="command to execute"
+    )
+    P.add_argument(
+        "args", metavar="arguments", type=str, nargs="*", help="arguments to command"
+    )
+    NS = P.parse_args()
+
+    logargs = {}
+    if NS.debug is not None:
+        logargs["filename"] = NS.debug
+    else:
+        logargs["stream"] = sys.stderr
+    if NS.verbose:
+        logargs["level"] = logging.DEBUG
+    else:
+        logargs["level"] = logging.INFO
+    logargs["format"] = f"%(asctime)s {NAME} %(levelname)s: %(message)s"
+    logargs["datefmt"] = "%Y-%m-%dT%H:%M:%S"
+    logging.basicConfig(**logargs)
+
+    while True:
+        rc = do_exec(NS)
+        if rc != 0 or not NS.reboot:
+            sys.exit(rc)
+
+if __name__ == "__main__":
+    main()
