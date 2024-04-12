@@ -143,7 +143,7 @@ def listen_for_events(sigfdr, p, timeout):
                     expired = time.monotonic()
                     log.info(
                         "expiration expected; waiting %d seconds for command to complete",
-                        NS.timeout,
+                        timeout,
                     )
 
 def do_exec(NS, sigfdr):
