@@ -195,7 +195,7 @@ def kill_processes(run_name, pids=None):
         log.info("Killing Pids: " + str(to_kill))
         sudo_works = False
         if pids_need_sudo:
-            sudo_works = subprocess.Popen(['sudo', '-n', 'true']).wait() == 0
+            sudo_works = subprocess.Popen(['sudo', '-n', '-l']).wait() == 0
             if not sudo_works:
                 log.debug("Passwordless sudo not configured; not using sudo")
         for pid in to_kill:
