@@ -657,6 +657,7 @@ class GitbuilderProject(object):
 
         :returns: A string URI. Ex: ref/main
         """
+        log.debug('using _get_uri_reference')
         ref_name, ref_val = next(iter(self._choose_reference().items()))
         if ref_name == 'sha1':
             return 'sha1/%s' % ref_val
