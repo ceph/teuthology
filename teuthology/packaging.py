@@ -674,6 +674,7 @@ class GitbuilderProject(object):
         """
         tag = branch = sha1 = None
         if self.remote:
+            log.info('remote provided')
             tag = _get_config_value_for_remote(self.ctx, self.remote,
                                                self.job_config, 'tag')
             branch = _get_config_value_for_remote(self.ctx, self.remote,
@@ -682,6 +683,7 @@ class GitbuilderProject(object):
                                                 self.job_config, 'sha1')
             ref = None
         else:
+            log.info('no remote')
             ref = self.ref
             tag = self.tag
             branch = self.branch
@@ -700,6 +702,7 @@ class GitbuilderProject(object):
                 for n, v in zip(names, vars):
                     log.info('%s: %s' % (n, v))
 
+        log.info(f"@@@@ ref: {ref}, tag: {tag}, branch: {branch}, sha1: {sha1} @@@@")
         if ref:
             warn('ref')
             return dict(ref=ref)
