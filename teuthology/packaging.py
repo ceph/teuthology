@@ -496,6 +496,7 @@ class GitbuilderProject(object):
             self.os_version, self.codename = \
                 OS.version_codename(self.os_type, self.os_version)
         self.branch = self.job_config.get("branch")
+        log.info(f"@@@@@@@@ branch selected: {self.branch} @@@@@@")
         self.tag = self.job_config.get("tag")
         self.ref = self.job_config.get("ref")
         self.distro = self._get_distro(
