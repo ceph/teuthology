@@ -710,6 +710,7 @@ class GitbuilderProject(object):
             warn('tag')
             return dict(tag=tag)
         elif branch:
+            log.debug(f"branch returned: {branch}")
             warn('branch')
             return dict(branch=branch)
         elif sha1:
