@@ -571,6 +571,7 @@ def task(ctx, config):
         repos = install_overrides.get('repos', None)
         log.debug('INSTALL overrides: %s' % install_overrides)
     config['branch'] = 'pacific'
+    log.debug(f"config branch {config['branch']}")
     log.debug('config %s' % config)
 
     rhbuild = None
