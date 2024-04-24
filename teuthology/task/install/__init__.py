@@ -570,6 +570,7 @@ def task(ctx, config):
         teuthology.deep_merge(config, install_overrides.get(project, {}))
         repos = install_overrides.get('repos', None)
         log.debug('INSTALL overrides: %s' % install_overrides)
+    config['branch'] = 'pacific'
     log.debug('config %s' % config)
 
     rhbuild = None
