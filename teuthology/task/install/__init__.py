@@ -9,6 +9,7 @@ from teuthology import misc as teuthology
 from teuthology import contextutil, packaging
 from teuthology.parallel import parallel
 from teuthology.task import ansible
+from teuthology.suite import util
 
 from distutils.version import LooseVersion
 from teuthology.task.install.util import (
@@ -215,6 +216,43 @@ def install(ctx, config):
                 'python-ceph']
         rpms = ['ceph-fuse', 'librbd1', 'librados2', 'ceph-test', 'python-ceph']
     package_list = dict(deb=debs, rpm=rpms)
+
+    source_branch = config.get('branch')  # n-1 | n-2
+    if source_branch == 'n-1' or 'n-2':
+        import json
+        import subprocess
+        curlurl = 'curl -s  https://chacra.ceph.com/repos/ceph-release/ | jq "keys"'
+        status, output = subprocess.getstatusoutput(curlurl)
+        supplied_branch = ctx.config.get('branch')
+        # get rid of very old releases (just for brevity)
+        releases = (json.loads(output))[7:]
+        last_release = ""
+        second_last_release = ""
+        if util.git_branch_exists('ceph', supplied_branch):
+            if releases[-1] == 'test':
+                if supplied_branch == 'main' or supplied_branch not in releases:
+                    last_release = releases[-2]
+                    second_last_release = releases[-3]
+                elif supplied_branch in releases:
+                    dest_branch_index = releases.index(supplied_branch)
+                    last_release = releases[dest_branch_index - 1]
+                    second_last_release = releases[dest_branch_index - 2]
+            else:
+                if supplied_branch == 'main':
+                    last_release = releases[-1]
+                    second_last_release = releases[-2]
+                else:
+                    dest_branch_index = releases.index(supplied_branch)
+                    last_release = releases[dest_branch_index - 1]
+                    second_last_release = releases[dest_branch_index - 2]
+        else:
+            raise ValueError(f'{supplied_branch} does not exist')
+
+        if source_branch == 'n-1':
+            config.update({'branch': last_release})
+        else:
+            config.update({'branch': second_last_release})
+
     install_packages(ctx, package_list, config)
     try:
         yield
