@@ -92,11 +92,11 @@ class CephadmUnit(DaemonState):
         if not self.running():
             self.log.info('Restarting %s (starting--it wasn\'t running)...' % self.name())
             self._start_logger()
-            self.remote.sh(self.start_cmd)
+            self.proc = self.remote.sh(self.start_cmd)
             self.is_started = True
         else:
             self.log.info('Restarting %s...' % self.name())
-            self.remote.sh(self.restart_cmd)
+            self.proc = self.remote.sh(self.restart_cmd)
 
     def restart_with_args(self, extra_args):
         """
@@ -110,7 +110,7 @@ class CephadmUnit(DaemonState):
         """
         Are we running?
         """
-        return self.is_started
+        return self.is_started and self.proc is not None
 
     def signal(self, sig, silent=False):
         """
@@ -136,7 +136,7 @@ class CephadmUnit(DaemonState):
             self.restart()
             return
         self._start_logger()
-        self.remote.run(args=self.start_cmd)
+        self.proc = self.remote.run(args=self.start_cmd)
         self.is_started = True
 
     def stop(self, timeout=300):
@@ -154,6 +154,7 @@ class CephadmUnit(DaemonState):
         self.log.info('Stopping %s...' % self.name())
         self.remote.sh(self.stop_cmd)
         self.is_started = False
+        self.proc = None
         self._stop_logger()
         self.log.info('Stopped %s' % self.name())
 
@@ -168,6 +169,7 @@ class CephadmUnit(DaemonState):
         self.log.info('Waiting for %s to exit...' % self.name())
         self.remote.sh(self.stop_cmd)
         self.is_started = False
+        self.proc = None
         self._stop_logger()
         self.log.info('Finished waiting for %s to stop' % self.name())
 
