@@ -1003,9 +1003,10 @@ class ShamanProject(GitbuilderProject):
                 build['distro'] == search_result['distro'] and
                 build['distro_version'] == search_result['distro_version'] and
                 build['flavor'] == search_result['flavor'] and
-                build['distro_arch'] == self.arch
+                build['distro_arch'] == self.arch and
+                build['status'] == 'completed'
                ):
-                return build['status'] == 'completed'
+                return True
         return False
 
     def _get_repo(self):
