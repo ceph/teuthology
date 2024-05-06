@@ -496,6 +496,7 @@ class GitbuilderProject(object):
             self.os_version, self.codename = \
                 OS.version_codename(self.os_type, self.os_version)
         self.branch = self.job_config.get("branch")
+        log.info(f"@@@@@@@@ branch selected: {self.branch} @@@@@@")
         self.tag = self.job_config.get("tag")
         self.ref = self.job_config.get("ref")
         self.distro = self._get_distro(
@@ -656,6 +657,7 @@ class GitbuilderProject(object):
 
         :returns: A string URI. Ex: ref/main
         """
+        log.debug('using _get_uri_reference')
         ref_name, ref_val = next(iter(self._choose_reference().items()))
         if ref_name == 'sha1':
             return 'sha1/%s' % ref_val
@@ -673,6 +675,7 @@ class GitbuilderProject(object):
         """
         tag = branch = sha1 = None
         if self.remote:
+            log.info('remote provided')
             tag = _get_config_value_for_remote(self.ctx, self.remote,
                                                self.job_config, 'tag')
             branch = _get_config_value_for_remote(self.ctx, self.remote,
@@ -681,6 +684,7 @@ class GitbuilderProject(object):
                                                 self.job_config, 'sha1')
             ref = None
         else:
+            log.info('no remote')
             ref = self.ref
             tag = self.tag
             branch = self.branch
@@ -699,6 +703,7 @@ class GitbuilderProject(object):
                 for n, v in zip(names, vars):
                     log.info('%s: %s' % (n, v))
 
+        log.info(f"@@@@ ref: {ref}, tag: {tag}, branch: {branch}, sha1: {sha1} @@@@")
         if ref:
             warn('ref')
             return dict(ref=ref)
@@ -706,6 +711,7 @@ class GitbuilderProject(object):
             warn('tag')
             return dict(tag=tag)
         elif branch:
+            log.debug(f"branch returned: {branch}")
             warn('branch')
             return dict(branch=branch)
         elif sha1:
