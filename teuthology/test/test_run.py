@@ -119,7 +119,7 @@ class TestRun(object):
     @patch("teuthology.run.fetch_qa_suite")
     def test_fetch_tasks_if_needed(self, m_fetch_qa_suite):
         config = {"suite_path": "/some/suite/path", "suite_branch": "feature_branch",
-                  "suite_sha1": "commit"}
+                  "suite_hash": "commit"}
         m_fetch_qa_suite.return_value = "/some/other/suite/path"
         result = run.fetch_tasks_if_needed(config)
         m_fetch_qa_suite.assert_called_with("feature_branch", commit="commit")
