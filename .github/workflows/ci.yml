@@ -14,13 +14,16 @@ jobs:
       matrix:
         include:
           - os: ubuntu-20.04
-            python: 3.8
-          - os: ubuntu-20.04
-            python: 3.9
+            python: "3.10"
           - os: ubuntu-22.04
             python: "3.10"
+          - os: ubuntu-22.04
+            python: "3.11"
     steps:
       - uses: actions/checkout@v2
+      - name: Add deadsnakes PPA
+        if: matrix.os == 'ubuntu-20.04'
+        run: sudo add-apt-repository --yes ppa:deadsnakes/ppa
       - name: Setup Python
         uses: actions/setup-python@v2
         with:
