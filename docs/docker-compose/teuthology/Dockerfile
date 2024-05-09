@@ -1,22 +1,28 @@
 FROM ubuntu:latest
 ARG SSH_PRIVKEY_FILE=id_ed25519
 ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update
+RUN apt-get install -y software-properties-common
+RUN add-apt-repository ppa:deadsnakes/ppa -y
 RUN apt-get update && \
     apt-get install -y \
     git \
     qemu-utils \
-    python3-dev \
+    python3.8-dev \
+    python3.8 \
     libssl-dev \
     ipmitool \
     python3-pip \
-    python3-venv \
+    python3.8-venv \
     vim \
+    locales-all \
     libev-dev \
     libvirt-dev \
     libffi-dev \
     libyaml-dev \
     lsb-release && \
     apt-get clean all
+RUN ln -s /usr/bin/python3.8 /usr/bin/python
 WORKDIR /teuthology
 COPY requirements.txt requirements.yml ansible.cfg bootstrap /teuthology/
 RUN \
@@ -35,7 +41,7 @@ RUN mkdir -p /etc/ansible
 COPY docs/docker-compose/teuthology/ansible_inventory/hosts /etc/ansible/
 COPY docs/docker-compose/teuthology/ansible_inventory/secrets /etc/ansible/
 RUN \
-    mkdir $HOME/.ssh && \
+    mkdir -p $HOME/.ssh && \
     touch $HOME/.ssh/${SSH_PRIVKEY_FILE} && \
     chmod 600 $HOME/.ssh/${SSH_PRIVKEY_FILE} && \
     echo "StrictHostKeyChecking=no" > $HOME/.ssh/config && \
