@@ -7,7 +7,7 @@ After=ceph.target
 [Service]
 Type=simple
 User=teuthworker
-ExecStart=/home/teuthworker/src/git.ceph.com_git_teuthology_main/virtualenv/bin/python3.8 \
+ExecStart=/home/teuthworker/src/git.ceph.com_git_teuthology_main/virtualenv/bin/python3.9 \
     /home/teuthworker/src/git.ceph.com_git_teuthology_main/virtualenv/bin/teuthology-dispatcher \
     -v \
     --archive-dir /home/teuthworker/archive \

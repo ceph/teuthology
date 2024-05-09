@@ -16,11 +16,9 @@ if [[ "$PYTHON" =~ "python2" ]]; then
     exit 1
 fi
 
-# This dance is to keep us from using 3.6, even on systems where it is the OS's
-# preferred version. Can be dropped when no teuthology lab in production requires
-# an older version.
+# Use the newest version we find
 if [ -z "$PYTHON" ]; then
-  for i in 10 9 8 7; do
+  for i in 12 11 10 9; do
     command -v "python3.$i" && PYTHON="python3.$i" && break
   done
   # This would be bizarre, but I suppose possible
