@@ -565,11 +565,15 @@ def task(ctx, config):
     log.debug('project %s' % project)
     overrides = ctx.config.get('overrides')
     repos = None
+    extra_system_packages = config.get('extra_system_packages', [])
+
     if overrides:
         install_overrides = overrides.get('install', {})
-        teuthology.deep_merge(config, install_overrides.get(project, {}))
-        repos = install_overrides.get('repos', None)
         log.debug('INSTALL overrides: %s' % install_overrides)
+        teuthology.deep_merge(config, install_overrides.get(project, {}))
+        teuthology.deep_merge(extra_system_packages, install_overrides.get('extra_system_packages', {}))
+        repos = install_overrides.get('repos', None)
+
     log.debug('config %s' % config)
 
     rhbuild = None
@@ -603,7 +607,7 @@ def task(ctx, config):
                 downgrade_packages=config.get('downgrade_packages', []),
                 exclude_packages=config.get('exclude_packages', []),
                 extra_packages=config.get('extra_packages', []),
-                extra_system_packages=config.get('extra_system_packages', []),
+                extra_system_packages=extra_system_packages,
                 extras=config.get('extras', None),
                 enable_coprs=config.get('enable_coprs', []),
                 flavor=flavor,
