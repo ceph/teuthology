@@ -272,7 +272,7 @@ def check_ceph_data(ctx, config):
         try:
             proc.wait()
         except run.CommandFailedError:
-            log.error('Host %s has stale /var/lib/ceph, check lock and nuke/cleanup.', proc.remote.shortname)
+            log.error('Host %s has stale /var/lib/ceph!', proc.remote.shortname)
             failed = True
     if failed:
         raise RuntimeError('Stale /var/lib/ceph detected, aborting.')
