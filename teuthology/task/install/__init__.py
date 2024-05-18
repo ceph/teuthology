@@ -571,7 +571,9 @@ def task(ctx, config):
         install_overrides = overrides.get('install', {})
         log.debug('INSTALL overrides: %s' % install_overrides)
         teuthology.deep_merge(config, install_overrides.get(project, {}))
-        teuthology.deep_merge(extra_system_packages, install_overrides.get('extra_system_packages', {}))
+        overrides_extra_system_packages = install_overrides.get('extra_system_packages')
+        if overrides_extra_system_packages:
+            teuthology.deep_merge(extra_system_packages, overrides_extra_system_packages)
         repos = install_overrides.get('repos', None)
 
     log.debug('config %s' % config)
