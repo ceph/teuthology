@@ -21,16 +21,11 @@ if [ -z "$PYTHON" ]; then
   for i in 12 11 10; do
     command -v "python3.$i" && PYTHON="python3.$i" && break
   done
+fi
+if [ -z "$PYTHON" ]; then
   # This would be bizarre, but I suppose possible
   PYTHON=${PYTHON:-"python3"}
 fi
-PYTHON_VER_OUT=$($PYTHON --version)
-PYTHON_BIN=$(command -v $PYTHON)
-if [ -z $PYTHON_BIN -o ! -e $PYTHON_BIN -o ! -x $PYTHON_BIN ]; then
-  echo "Cannot find $PYTHON!"
-  exit 1
-fi
-VENV=${VENV:-"virtualenv"}
 
 case "$(uname -s)" in
 Linux)
@@ -176,6 +171,14 @@ Darwin)
     ;;
 esac
 
+PYTHON_BIN=$(command -v $PYTHON)
+if [ -z $PYTHON_BIN -o ! -e $PYTHON_BIN -o ! -x $PYTHON_BIN ]; then
+  echo "Cannot find $PYTHON!"
+  exit 1
+fi
+PYTHON_VER_OUT=$($PYTHON_BIN --version)
+
+VENV=${VENV:-"virtualenv"}
 # If the venv was set to use system site-packages, fix that
 if [ -f "$VENV/pyvenv.cfg" ]; then
     sed -i'' -e 's/\(include-system-site-packages\s*=\s*\)true/\1false/g' $VENV/pyvenv.cfg
