@@ -80,7 +80,8 @@ Linux)
         fi
         ;;
     CentOSStream)
-        deps=(python3-pip python3-devel)
+       PYTHON=python3.12
+        deps=($PYTHON-pip $PYTHON-devel)
         for package in ${deps[@]}; do
           if ! rpm -q --whatprovides $package ; then
               missing="${missing:+$missing }$package"
@@ -100,7 +101,9 @@ Linux)
         fi
         ;;
     Fedora)
-        deps=(python3-pip python3-devel libev-devel libvirt-devel libffi-devel)
+       PYTHON=python3.12
+        deps=($PYTHON-pip $PYTHON-devel)
+        deps=($PYTHON-pip $PYTHON-devel libev-devel libvirt-devel libffi-devel)
         for package in ${deps[@]}; do
           if ! rpm -q --whatprovides $package; then
               missing="${missing:+$missing }$package"
