@@ -2,7 +2,7 @@ import logging
 import os
 import requests
 
-from typing import Union
+from typing import Dict, List, Union
 
 from teuthology import misc
 from teuthology.config import config
@@ -87,7 +87,7 @@ def list_locks(keyed_by_name=False, tries=10, **kwargs):
     return dict()
 
 
-def find_stale_locks(owner=None):
+def find_stale_locks(owner=None) -> List[Dict]:
     """
     Return a list of node dicts corresponding to nodes that were locked to run
     a job, but the job is no longer running. The purpose of this is to enable
@@ -136,7 +136,7 @@ def node_active_job(name: str, status: Union[dict, None] = None) -> Union[str, N
 
     :param node:  The node dict as returned from the lock server
     :param cache: A set() used for caching results
-    :returns:     True or False
+    :returns:     A string if the node has an active job, or None if not
     """
     status = status or get_status(name)
     if not status:
@@ -144,6 +144,9 @@ def node_active_job(name: str, status: Union[dict, None] = None) -> Union[str, N
         return "node had no status"
     description = status['description']
     (run_name, job_id) = description.split('/')[-2:]
+    if not run_name or job_id == '':
+        # We thought this node might have a stale job, but no.
+        return "node description does not contained scheduled job info"
     url = f"{config.results_server}/runs/{run_name}/jobs/{job_id}/"
     job_status = ""
     with safe_while(
