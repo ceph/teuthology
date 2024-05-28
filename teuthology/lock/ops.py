@@ -175,7 +175,6 @@ def lock_one(name, user=None, description=None):
 
 
 def unlock_safe(names: List[str], owner: str, run_name: str = "", job_id: str = ""):
-    # names = [misc.canonicalize_hostname(name, user=None) for name in names]
     with teuthology.parallel.parallel() as p:
         for name in names:
             p.spawn(unlock_one_safe, name, owner, run_name, job_id)
