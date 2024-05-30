@@ -25,7 +25,7 @@ from teuthology.task.install import get_flavor
 
 log = logging.getLogger(__name__)
 
-CONTAINER_DISTRO = 'centos/8'       # the one to check for build_complete
+CONTAINER_DISTRO = 'centos/9'       # the one to check for build_complete
 CONTAINER_FLAVOR = 'default'
 
 
