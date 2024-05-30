@@ -252,8 +252,8 @@ class TestDistroDefaults(object):
         assert util.get_distro_defaults('debian', 'magna') == expected
 
     def test_distro_defaults_centos(self):
-        expected = ('x86_64', 'centos/8',
-                    OS(name='centos', version='8.stream', codename='core'))
+        expected = ('x86_64', 'centos/9',
+                    OS(name='centos', version='9.stream', codename='stream'))
         assert util.get_distro_defaults('centos', 'magna') == expected
 
     def test_distro_defaults_fedora(self):
@@ -262,6 +262,6 @@ class TestDistroDefaults(object):
         assert util.get_distro_defaults('fedora', 'magna') == expected
 
     def test_distro_defaults_default(self):
-        expected = ('x86_64', 'centos/8',
-                    OS(name='centos', version='8.stream', codename='core'))
+        expected = ('x86_64', 'centos/9',
+                    OS(name='centos', version='9.stream', codename='stream'))
         assert util.get_distro_defaults('rhel', 'magna') == expected
