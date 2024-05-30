@@ -100,7 +100,7 @@ Linux)
             fi
         fi
         ;;
-    Fedora)
+    Fedora|FedoraLinux)
        PYTHON=python3.12
         deps=($PYTHON-pip $PYTHON-devel)
         deps=($PYTHON-pip $PYTHON-devel libev-devel libvirt-devel libffi-devel)
