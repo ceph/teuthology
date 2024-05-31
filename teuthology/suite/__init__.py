@@ -160,15 +160,24 @@ def get_rerun_conf_overrides(conf):
         log.info('Using rerun seed=%s', seed)
         conf.seed = seed
 
-    subset = None if job0 is None else tuple(map(int, job0.get('subset').split('/')))
+    if job0 is not None:
+        subset = job0.get('subset', '1/1')
+        if subset is None:
+            subset = '1/1'
+        subset =  tuple(map(int, subset.split('/')))
+    else:
+        subset = None
     if conf.subset is not None and conf.subset != subset:
         log.error('--subset %s does not match with '
                   'rerun subset: %s',
                   conf.subset, subset)
         sys.exit(1)
     else:
-        log.info('Using rerun subset=%s', subset)
-        conf.subset = subset
+        if subset == (1, 1):
+            conf.subset = None
+        else:
+            log.info('Using rerun subset=%s', subset)
+            conf.subset = subset
 
     no_nested_subset = False if job0 is None else job0.get('no_nested_subset', False)
     if conf.no_nested_subset is not None and conf.no_nested_subset != no_nested_subset:
