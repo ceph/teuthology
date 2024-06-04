@@ -2,6 +2,7 @@ import re
 
 DISTRO_CODENAME_MAP = {
     "ubuntu": {
+        "24.04": "noble",
         "22.04": "jammy",
         "20.04": "focal",
         "18.04": "bionic",
@@ -31,6 +32,7 @@ DISTRO_CODENAME_MAP = {
         "6": "santiago",
     },
     "centos": {
+        "10": "stream",
         "9": "stream",
         "8": "core",
         "7": "core",
