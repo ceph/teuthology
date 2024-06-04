@@ -255,7 +255,7 @@ class TestOS(object):
     def test_centos_9_os_release(self):
         os = OS.from_os_release(self.str_centos_9_os_release)
         assert os.name == 'centos'
-        assert os.version == '9'
+        assert os.version == '9.stream'
         assert os.codename == 'stream'
         assert os.package_type == 'rpm'
 

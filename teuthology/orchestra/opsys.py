@@ -1,5 +1,8 @@
 import re
 
+from packaging.version import parse as parse_version, Version
+
+
 DISTRO_CODENAME_MAP = {
     "ubuntu": {
         "24.04": "noble",
@@ -173,6 +176,7 @@ class OS(object):
             package_type = 'deb'
         """
         str_ = os_release_str.strip()
+        version = cls._get_value(str_, 'VERSION_ID')
         name = cls._get_value(str_, 'ID').lower()
         if name == 'sles':
             name = 'sle'
@@ -180,9 +184,10 @@ class OS(object):
             name = 'opensuse'
         elif name == 'opensuse-tumbleweed':
             name = 'opensuse'
-        version = cls._get_value(str_, 'VERSION_ID')
+        elif name == 'centos':
+            if parse_version(version) >= Version("8.0"):
+                version = f"{version}.stream"
         obj = cls(name=name, version=version)
-
         return obj
 
 
