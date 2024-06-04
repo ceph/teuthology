@@ -148,18 +148,28 @@ class FOG(object):
         represents it
         :returns: A dict describing the image
         """
-        name = '_'.join([
-            self.remote.machine_type, self.os_type.lower(), self.os_version])
-        resp = self.do_request(
-            '/image',
-            data=json.dumps(dict(name=name)),
-        )
-        obj = resp.json()
-        if not obj['count']:
+        def do_get(name):
+            resp = self.do_request(
+                '/image',
+                data=json.dumps(dict(name=name)),
+            )
+            obj = resp.json()
+            if obj['count']:
+                return obj['images'][0]
+
+        os_type = self.os_type.lower()
+        os_version = self.os_version
+        name = f"{self.remote.machine_type}_{os_type}_{os_version}"
+        if image := do_get(name):
+            return image
+        elif os_type == 'centos' and not os_version.endswith('.stream'):
+            image = do_get(f"{name}.stream")
+        if image:
+            return image
+        else:
             raise RuntimeError(
                 "Fog has no %s image. Available %s images: %s" %
                 (name, self.remote.machine_type, self.suggest_image_names()))
-        return obj['images'][0]
 
     def suggest_image_names(self):
         """
