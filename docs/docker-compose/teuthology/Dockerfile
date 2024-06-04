@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM ubuntu:22.04
 ARG SSH_PRIVKEY_FILE=id_ed25519
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
