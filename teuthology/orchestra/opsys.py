@@ -251,7 +251,7 @@ class OS(object):
                     codename=repr(self.codename))
 
     def __eq__(self, other):
-        for slot in self.__slots__:
-            if not getattr(self, slot) == getattr(other, slot):
-                return False
-        return True
+        if self.name.lower() != other.name.lower():
+            return False
+        normalize = lambda s: s.lower().removesuffix(".stream")
+        return normalize(self.version) == normalize(other.version)
