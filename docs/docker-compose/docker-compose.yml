@@ -67,6 +67,8 @@ services:
     links:
         - paddles
         - beanstalk
+    volumes:
+      - teuthology-volume:/teuthology/:rw
     environment:
       SSH_PRIVKEY:
       SSH_PRIVKEY_FILE:
@@ -90,3 +92,32 @@ services:
     environment:
       SSH_PUBKEY:
     platform: linux/amd64
+  teuthology_api:
+    # image: TODO: deploy tapi's image to quay and add here 
+    #           (by default use image instead of build context which is only for dev mode)
+    build:
+      context: ../../../teuthology-api
+    env_file: ../../../teuthology-api/.env
+    ports:
+        - 8082:8082
+    environment:
+        TEUTHOLOGY_API_SERVER_HOST: 0.0.0.0
+        TEUTHOLOGY_API_SERVER_PORT: 8082
+        PADDLES_URL: http://paddles:8080
+        DEPLOYMENT: development
+    volumes:
+        - teuthology-volume:/teuthology/:rw
+        - ../../../teuthology-api:/teuthology_api/:rw
+    depends_on:
+        - teuthology
+        - paddles
+    links:
+        - teuthology
+        - paddles
+        - beanstalk
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://0.0.0.0:8082" ]
+    pid: service:teuthology
+
+volumes:
+  teuthology-volume:
