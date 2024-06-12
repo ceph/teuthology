@@ -74,7 +74,7 @@ def kill_run(run_name, archive_base=None, owner=None, machine_type=None,
         return
     if owner is not None:
         targets = find_targets(run_name)
-        names = [t["name"] for t in targets]
+        names = [t for t in targets]
         lock_ops.unlock_safe(names, owner, run_name)
     report.try_mark_run_dead(run_name)
 
@@ -233,11 +233,11 @@ def find_pids(run_name):
 def find_targets(run_name: str, job_id: Union[str, int, None] = None) -> dict:
     if job_id is not None:
         job_info = report.ResultsReporter().get_jobs(run_name, str(job_id))
-        return job_info.get("targets", dict())
+        return job_info.get("targets" or dict())
     result = dict()
     run_info = report.ResultsReporter().get_jobs(run_name)
     for job_info in run_info:
         if job_info.get("status") not in ("running", "waiting"):
             continue
-        result.update(job_info.get("targets", dict()))
+        result.update(job_info.get("targets") or dict())
     return result
