@@ -13,6 +13,7 @@ import teuthology.orchestra
 from teuthology.config import config
 from teuthology.contextutil import safe_while
 from teuthology.exceptions import MaxWhileTries
+from teuthology.orchestra.opsys import OS
 from teuthology import misc
 
 log = logging.getLogger(__name__)
@@ -347,16 +348,11 @@ class FOG(object):
         )
 
     def _verify_installed_os(self):
-        # What we call "CentOS X.Stream", we will see as "CentOS X"
-        os_version = self.os_version.lower()
-        # When we drop support for python 3.8, str.removesuffix() is helpful
-        if os_version.endswith(".stream"):
-            os_version = os_version[:-len(".stream")]
-        if self.remote.os.name.lower() != self.os_type.lower() or \
-                self.remote.os.version.lower() != os_version:
+        wanted_os = OS(name=self.os_type, version=self.os_version)
+        if self.remote.os != wanted_os:
             raise RuntimeError(
-                f"Expected {self.remote.shortname}'s OS to be {self.os_type} {os_version} but "
-                f"found {self.remote.os.name} {self.remote.os.version}"
+                f"Expected {self.remote.shortname}'s OS to be {wanted_os} but "
+                f"found {self.remote.os}"
             )
 
     def destroy(self):
