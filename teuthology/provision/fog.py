@@ -13,6 +13,7 @@ import teuthology.orchestra
 from teuthology.config import config
 from teuthology.contextutil import safe_while
 from teuthology.exceptions import MaxWhileTries
+from teuthology.orchestra.opsys import OS
 from teuthology import misc
 
 log = logging.getLogger(__name__)
@@ -148,18 +149,28 @@ class FOG(object):
         represents it
         :returns: A dict describing the image
         """
-        name = '_'.join([
-            self.remote.machine_type, self.os_type.lower(), self.os_version])
-        resp = self.do_request(
-            '/image',
-            data=json.dumps(dict(name=name)),
-        )
-        obj = resp.json()
-        if not obj['count']:
+        def do_get(name):
+            resp = self.do_request(
+                '/image',
+                data=json.dumps(dict(name=name)),
+            )
+            obj = resp.json()
+            if obj['count']:
+                return obj['images'][0]
+
+        os_type = self.os_type.lower()
+        os_version = self.os_version
+        name = f"{self.remote.machine_type}_{os_type}_{os_version}"
+        if image := do_get(name):
+            return image
+        elif os_type == 'centos' and not os_version.endswith('.stream'):
+            image = do_get(f"{name}.stream")
+        if image:
+            return image
+        else:
             raise RuntimeError(
                 "Fog has no %s image. Available %s images: %s" %
                 (name, self.remote.machine_type, self.suggest_image_names()))
-        return obj['images'][0]
 
     def suggest_image_names(self):
         """
@@ -337,16 +348,11 @@ class FOG(object):
         )
 
     def _verify_installed_os(self):
-        # What we call "CentOS X.Stream", we will see as "CentOS X"
-        os_version = self.os_version.lower()
-        # When we drop support for python 3.8, str.removesuffix() is helpful
-        if os_version.endswith(".stream"):
-            os_version = os_version[:-len(".stream")]
-        if self.remote.os.name.lower() != self.os_type.lower() or \
-                self.remote.os.version.lower() != os_version:
+        wanted_os = OS(name=self.os_type, version=self.os_version)
+        if self.remote.os != wanted_os:
             raise RuntimeError(
-                f"Expected {self.remote.shortname}'s OS to be {self.os_type} {os_version} but "
-                f"found {self.remote.os.name} {self.remote.os.version}"
+                f"Expected {self.remote.shortname}'s OS to be {wanted_os} but "
+                f"found {self.remote.os}"
             )
 
     def destroy(self):

@@ -4,6 +4,23 @@ import pytest
 
 
 class TestOS(object):
+    str_centos_9_os_release = dedent("""
+        NAME="CentOS Stream"
+        VERSION="9"
+        ID="centos"
+        ID_LIKE="rhel fedora"
+        VERSION_ID="9"
+        PLATFORM_ID="platform:el9"
+        PRETTY_NAME="CentOS Stream 9"
+        ANSI_COLOR="0;31"
+        LOGO="fedora-logo-icon"
+        CPE_NAME="cpe:/o:centos:centos:9"
+        HOME_URL="https://centos.org/"
+        BUG_REPORT_URL="https://issues.redhat.com/"
+        REDHAT_SUPPORT_PRODUCT="Red Hat Enterprise Linux 9"
+        REDHAT_SUPPORT_PRODUCT_VERSION="CentOS Stream"
+    """)
+
     str_centos_7_os_release = dedent("""
         NAME="CentOS Linux"
         VERSION="7 (Core)"
@@ -234,6 +251,13 @@ class TestOS(object):
         BUG_REPORT_URL="https://bugs.opensuse.org"
         HOME_URL="https://www.opensuse.org/"
     """)
+
+    def test_centos_9_os_release(self):
+        os = OS.from_os_release(self.str_centos_9_os_release)
+        assert os.name == 'centos'
+        assert os.version == '9.stream'
+        assert os.codename == 'stream'
+        assert os.package_type == 'rpm'
 
     def test_centos_7_os_release(self):
         os = OS.from_os_release(self.str_centos_7_os_release)

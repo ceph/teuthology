@@ -1,7 +1,11 @@
 import re
 
+from packaging.version import parse as parse_version, Version
+
+
 DISTRO_CODENAME_MAP = {
     "ubuntu": {
+        "24.04": "noble",
         "22.04": "jammy",
         "20.04": "focal",
         "18.04": "bionic",
@@ -31,6 +35,7 @@ DISTRO_CODENAME_MAP = {
         "6": "santiago",
     },
     "centos": {
+        "10": "stream",
         "9": "stream",
         "8": "core",
         "7": "core",
@@ -171,6 +176,7 @@ class OS(object):
             package_type = 'deb'
         """
         str_ = os_release_str.strip()
+        version = cls._get_value(str_, 'VERSION_ID')
         name = cls._get_value(str_, 'ID').lower()
         if name == 'sles':
             name = 'sle'
@@ -178,9 +184,10 @@ class OS(object):
             name = 'opensuse'
         elif name == 'opensuse-tumbleweed':
             name = 'opensuse'
-        version = cls._get_value(str_, 'VERSION_ID')
+        elif name == 'centos':
+            if parse_version(version) >= Version("8.0"):
+                version = f"{version}.stream"
         obj = cls(name=name, version=version)
-
         return obj
 
 
@@ -244,7 +251,7 @@ class OS(object):
                     codename=repr(self.codename))
 
     def __eq__(self, other):
-        for slot in self.__slots__:
-            if not getattr(self, slot) == getattr(other, slot):
-                return False
-        return True
+        if self.name.lower() != other.name.lower():
+            return False
+        normalize = lambda s: s.lower().removesuffix(".stream")
+        return normalize(self.version) == normalize(other.version)
