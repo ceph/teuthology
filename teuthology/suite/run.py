@@ -512,13 +512,10 @@ class Run(object):
             log_prefix = ''
             if job in jobs_missing_packages:
                 log_prefix = "Missing Packages: "
-                if (
-                    not self.args.dry_run and
-                    not config.suite_allow_missing_packages
-                ):
+                if not config.suite_allow_missing_packages:
                     util.schedule_fail(
-                        "At least one job needs packages that don't exist for "
-                        "hash {sha1}.".format(sha1=self.base_config.sha1),
+                        "At least one job needs packages that don't exist "
+                        f"for hash {self.base_config.sha1}.",
                         name,
                         dry_run=self.args.dry_run,
                     )
