@@ -348,15 +348,19 @@ def find_git_parents(project: str, sha1: str, count=1):
         return []
 
     def get_sha1s(project, committish, count):
-        url = '/'.join((base_url, '%s.git' % project,
-                       'history/?committish=%s&count=%d' % (committish, count)))
+        url = '/'.join((
+            base_url,
+            f"{project}.git",
+            f"history/?committish={committish}&count={count}"
+        ))
         resp = requests.get(url)
         resp.raise_for_status()
         sha1s = resp.json()['sha1s']
         if len(sha1s) != count:
-            log.debug('got response: %s', resp.json())
-            log.error('can''t find %d parents of %s in %s: %s',
-                       int(count), sha1, project, resp.json()['error'])
+            resp_json = resp.json()
+            err_msg = resp_json.get("error") or resp_json.get("err")
+            log.debug(f"Got response: {resp_json}")
+            log.error(f"Can't find {count} parents of {sha1} in {project}: {err_msg}")
         return sha1s
 
     # index 0 will be the commit whose parents we want to find.
