@@ -13,13 +13,23 @@ def main():
     stale = query.find_stale_locks(args.owner)
     if not stale:
         return
+    by_owner = {}
+    for node in stale:
+        if args.owner and node['locked_by'] != args.owner:
+            log.warning(
+                f"Node {node['name']} expected to be locked by {args.owner} "
+                f"but found {node['locked_by']} instead"
+            )
+            continue
+        by_owner.setdefault(node['locked_by'], []).append(node)
     if args.dry_run:
         log.info("Would attempt to unlock:")
-        for node in stale:
-            log.info(f"{node['name']}\t{node['description']}")
+        for owner, nodes in by_owner.items():
+            for node in nodes:
+                log.info(f"{node['name']}\t{node['description']}")
     else:
-        names = [node["name"] for node in stale]
-        ops.unlock_safe(names, args.owner)
+        for owner, nodes in by_owner.items():
+            ops.unlock_safe([node["name"] for node in nodes], owner)
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(
