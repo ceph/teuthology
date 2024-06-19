@@ -74,7 +74,7 @@ def kill_run(run_name, archive_base=None, owner=None, machine_type=None,
         return
     if owner is not None:
         targets = find_targets(run_name)
-        names = [t["name"] for t in targets]
+        names = list(targets.keys())
         lock_ops.unlock_safe(names, owner, run_name)
     report.try_mark_run_dead(run_name)
 
