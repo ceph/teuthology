@@ -107,7 +107,7 @@ services:
         DEPLOYMENT: development
     volumes:
         - teuthology-volume:/teuthology/:rw
-        - ../../../teuthology-api:/teuthology_api/:rw
+        - ../../../teuthology-api/src:/teuthology_api/src:rw
     depends_on:
         - teuthology
         - paddles
