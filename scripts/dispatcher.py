@@ -1,7 +1,9 @@
 import argparse
 import sys
 
-import teuthology.dispatcher
+import teuthology.dispatcher.supervisor
+
+from .supervisor import parse_args as parse_supervisor_args
 
 
 def parse_args(argv):
@@ -43,7 +45,17 @@ def parse_args(argv):
 
 
 def main():
-    sys.exit(teuthology.dispatcher.main(parse_args(sys.argv[1:])))
+    if "--supervisor" in sys.argv:
+        # This is for transitional compatibility, so the old dispatcher can
+        # invoke the new supervisor. Once old dispatchers are phased out,
+        # this block can be as well.
+        sys.argv.remove("--supervisor")
+        sys.argv[0] = "teuthology-supervisor"
+        sys.exit(teuthology.dispatcher.supervisor.main(
+            parse_supervisor_args(sys.argv[1:])
+        ))
+    else:
+        sys.exit(teuthology.dispatcher.main(parse_args(sys.argv[1:])))
 
 
 if __name__ == "__main__":
