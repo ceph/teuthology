@@ -112,6 +112,18 @@ class CephadmUnit(DaemonState):
         """
         return self.is_started
 
+    def finished(self):
+        """
+        Is the daemon finished? 
+        Return False if active.
+        """
+        proc = self.remote.run(
+            args=self.status_cmd,
+            check_status=False,
+            quiet=True,
+        )
+        return proc.returncode != 0
+
     def signal(self, sig, silent=False):
         """
         Send a signal to associated remote command
