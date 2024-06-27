@@ -1,12 +1,20 @@
-import yaml
 import json
+import pytest
+import yaml
+
 from teuthology.test import fake_archive
 from teuthology import report
 
 
+@pytest.fixture(autouse=True)
+def archive(tmp_path):
+    return fake_archive.FakeArchive(archive_base=str(tmp_path))
+
+
 class TestSerializer(object):
-    def setup_method(self):
-        self.archive = fake_archive.FakeArchive()
+    @pytest.fixture(autouse=True)
+    def setup_method(self, archive):
+        self.archive = archive
         self.archive.setup()
         self.archive_base = self.archive.archive_base
         self.reporter = report.ResultsReporter(archive_base=self.archive_base)
