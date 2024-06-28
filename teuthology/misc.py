@@ -110,11 +110,11 @@ def config_file(string):
     return config_dict
 
 
-def merge_configs(config_paths):
+def merge_configs(config_paths) -> dict:
     """ Takes one or many paths to yaml config files and merges them
         together, returning the result.
     """
-    conf_dict = dict()
+    conf_dict: dict = dict()
     for conf_path in config_paths:
         if conf_path == "-":
             partial_dict = yaml.safe_load(stdin)
@@ -123,7 +123,7 @@ def merge_configs(config_paths):
             continue
         else:
             with open(conf_path) as partial_file:
-                partial_dict = yaml.safe_load(partial_file)
+                partial_dict: dict = yaml.safe_load(partial_file)
         try:
             conf_dict = deep_merge(conf_dict, partial_dict)
         except Exception:
@@ -986,7 +986,9 @@ def replace_all_with_clients(cluster, config):
     return norm_config
 
 
-def deep_merge(a, b):
+DictOrProxy = dict | MappingProxyType
+Mergeable = DictOrProxy | list
+def deep_merge(a: Mergeable, b: Mergeable) -> Mergeable:
     """
     Deep Merge.  If a and b are both lists, all elements in b are
     added into a.  If a and b are both dictionaries, elements in b are
@@ -1008,7 +1010,7 @@ def deep_merge(a, b):
     elif isinstance(b, dict) or isinstance(b, list):
         return deep_merge(b.__class__(), b)
     elif isinstance(b, MappingProxyType):
-        return deep_merge(dict(), b)
+        return dict() | b
     else:
         return b
 
