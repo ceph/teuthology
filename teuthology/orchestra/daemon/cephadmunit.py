@@ -35,9 +35,9 @@ class CephadmUnit(DaemonState):
 
     def kill_cmd(self, sig):
         return ' '.join([
-            'sudo', 'docker', 'kill',
+            'sudo', 'systemctl', 'kill',
             '-s', str(int(sig)),
-            'ceph-%s-%s.%s' % (self.fsid, self.type_, self.id_),
+            'ceph-%s@%s.%s' % (self.fsid, self.type_, self.id_),
         ])
 
     def _start_logger(self):
