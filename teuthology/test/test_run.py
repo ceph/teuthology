@@ -139,7 +139,7 @@ class TestRun(object):
         config = {"email-on-error": True}
         config_dump = "email-on-error: true\n"
         m_safe_dump.side_effect = [None, summary_dump, config_dump]
-        run.report_outcome(config, "the/archive/path", summary, fake_ctx)
+        run.report_outcome(config, "the/archive/path", summary)
         m_try_push_job_info.assert_called_with(config, summary)
         m_open.assert_called_with("the/archive/path/summary.yaml", "w")
         assert m_email_results.called
