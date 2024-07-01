@@ -127,7 +127,7 @@ Linux)
             fi
         fi
         ;;
-    "openSUSE project"|"SUSE LINUX"|"openSUSE")
+    "openSUSE project"|"SUSE LINUX"|"openSUSE"|"openSUSELeap"|"openSUSETumbleweed")
 	deps=(python3-pip python3-devel python3 libev-devel libvirt-devel libffi-devel)
 	for package in ${deps[@]}; do
             if ! rpm -q --whatprovides $package; then
