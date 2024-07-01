@@ -97,6 +97,13 @@ class DaemonState(object):
         """
         return self.proc is not None
 
+    def finished(self):
+        """
+        Is the daemon finished? 
+        Return False if active.
+        """
+        return self.proc.finished if self.proc is not None else False
+
     def signal(self, sig, silent=False):
         """
         Send a signal to associated remote command.
