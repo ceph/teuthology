@@ -128,7 +128,8 @@ Linux)
         fi
         ;;
     "openSUSE project"|"SUSE LINUX"|"openSUSE"|"openSUSELeap"|"openSUSETumbleweed")
-	deps=(python3-pip python3-devel python3 libev-devel libvirt-devel libffi-devel)
+	PYTHON=python3.12
+	deps=(python312-pip python312-devel python312 libev-devel libvirt-devel libffi-devel)
 	for package in ${deps[@]}; do
             if ! rpm -q --whatprovides $package; then
                 if [ "$(rpm -q --whatprovides $package)" == "no package provides $package" ]; then
