@@ -112,6 +112,10 @@ Scheduler arguments:
                               When tests finish or time out, send an email
                               here. May also be specified in ~/.teuthology.yaml
                               as 'results_email'
+  --expire <datetime>         Do not execute jobs in the run if they have not
+                              completed by this time. Valid formats include
+                              ISO 8601, and relative offsets like '90s', '30m',
+                              '1h', '3d', or '1w'
   --rocketchat <rocketchat>   Comma separated list of Rocket.Chat channels where
                               to send a message when tests finished or time out.
                               To be used with --sleep-before-teardown option.

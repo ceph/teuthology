@@ -1,4 +1,5 @@
 import copy
+import datetime
 import logging
 import os
 import pwd
@@ -8,7 +9,6 @@ import time
 
 from humanfriendly import format_timespan
 
-from datetime import datetime
 from tempfile import NamedTemporaryFile
 from teuthology import repo_utils
 
@@ -24,7 +24,7 @@ from teuthology.suite import util
 from teuthology.suite.merge import config_merge
 from teuthology.suite.build_matrix import build_matrix
 from teuthology.suite.placeholder import substitute_placeholders, dict_templ
-from teuthology.util.time import TIMESTAMP_FMT
+from teuthology.util.time import parse_offset, parse_timestamp, TIMESTAMP_FMT
 
 log = logging.getLogger(__name__)
 
@@ -87,6 +87,15 @@ class Run(object):
 
         :returns: A JobConfig object
         """
+        now = datetime.datetime.now(datetime.timezone.utc)
+        expires = self.get_expiration()
+        if expires:
+            if now > expires:
+                util.schedule_fail(
+                    f"Refusing to schedule because the expiration date is in the past: {self.args.expire}",
+                    dry_run=self.args.dry_run,
+                )
+
         self.os = self.choose_os()
         self.kernel_dict = self.choose_kernel()
         ceph_hash = self.choose_ceph_hash()
@@ -123,8 +132,28 @@ class Run(object):
             suite_repo=config.get_ceph_qa_suite_git_url(),
             suite_relpath=self.args.suite_relpath,
             flavor=self.args.flavor,
+            expire=expires.strftime(TIMESTAMP_FMT) if expires else None,
         )
         return self.build_base_config()
+
+    def get_expiration(self, _base_time: datetime.datetime | None = None) -> datetime.datetime | None:
+        """
+        _base_time: For testing, calculate relative offsets from this base time
+
+        :returns:   True if the job should run; False if it has expired
+        """
+        log.info(f"Checking for expiration ({self.args.expire})")
+        expires_str = self.args.expire
+        if expires_str is None:
+            return None
+        now = datetime.datetime.now(datetime.timezone.utc)
+        if _base_time is None:
+            _base_time = now
+        try:
+            expires = parse_timestamp(expires_str)
+        except ValueError:
+            expires = _base_time + parse_offset(expires_str)
+        return expires
 
     def choose_os(self):
         os_type = self.args.distro

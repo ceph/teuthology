@@ -85,6 +85,10 @@ Here is a sample configuration with many of the options set and documented::
     # processes
     watchdog_interval: 120
 
+    # How old a scheduled job can be, in seconds, before the dispatcher
+    # considers it 'expired', skipping it.
+    max_job_age: 1209600
+
     # How long a scheduled job should be allowed to run, in seconds, before 
     # it is killed by the supervisor process.
     max_job_time: 259200

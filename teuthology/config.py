@@ -158,6 +158,7 @@ class TeuthologyConfig(YamlConfig):
         'job_threshold': 500,
         'lab_domain': 'front.sepia.ceph.com',
         'lock_server': 'http://paddles.front.sepia.ceph.com/',
+        'max_job_age': 1209600,  # 2 weeks
         'max_job_time': 259200,  # 3 days
         'nsupdate_url': 'http://nsupdate.front.sepia.ceph.com/update',
         'results_server': 'http://paddles.front.sepia.ceph.com/',
