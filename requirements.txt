@@ -71,7 +71,7 @@ httplib2==0.22.0
     # via teuthology (pyproject.toml)
 humanfriendly==10.0
     # via teuthology (pyproject.toml)
-idna==3.6
+idna==3.7
     # via requests
 iniconfig==2.0.0
     # via pytest
