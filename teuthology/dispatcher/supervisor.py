@@ -24,17 +24,11 @@ log = logging.getLogger(__name__)
 
 
 def main(args):
-
-    verbose = args["--verbose"]
-    archive_dir = args["--archive-dir"]
-    teuth_bin_path = args["--bin-path"]
-    config_file_path = args["--job-config"]
-
-    with open(config_file_path, 'r') as config_file:
+    with open(args.job_config, 'r') as config_file:
         job_config = yaml.safe_load(config_file)
 
     loglevel = logging.INFO
-    if verbose:
+    if args.verbose:
         loglevel = logging.DEBUG
     logging.getLogger().setLevel(loglevel)
     log.setLevel(loglevel)
@@ -57,7 +51,7 @@ def main(args):
                 reimage(job_config)
         else:
             reimage(job_config)
-        with open(config_file_path, 'w') as f:
+        with open(args.job_config, 'w') as f:
             yaml.safe_dump(job_config, f, default_flow_style=False)
 
     try:
@@ -66,16 +60,16 @@ def main(args):
             with exporter.JobTime.labels(suite).time():
                 return run_job(
                     job_config,
-                    teuth_bin_path,
-                    archive_dir,
-                    verbose
+                    args.bin_path,
+                    args.archive_dir,
+                    args.verbose
                 )
         else:
             return run_job(
                 job_config,
-                teuth_bin_path,
-                archive_dir,
-                verbose
+                args.bin_path,
+                args.archive_dir,
+                args.verbose
             )
     except SkipJob:
         return 0
