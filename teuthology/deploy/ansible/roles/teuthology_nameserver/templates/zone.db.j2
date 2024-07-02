@@ -1,0 +1,21 @@
+$ORIGIN .
+$TTL 604800     ; 1 week
+{{ zone_name }}             IN SOA  {{ zone_name }}. root.{{ zone_name }}. (
+                                503201902  ; serial
+                                172800     ; refresh (2 days)
+                                14400      ; retry (4 hours)
+                                3628800    ; expire (6 weeks)
+                                604800     ; minimum (1 week)
+                                )
+
+                        NS      master.ddns.{{ zone_name }}.
+{% for ns in nslist %}
+ns{{ loop.index }}                     NS {{ ns }}
+{% endfor %}
+$ORIGIN {{ zone_name }}.
+ci                      A       {{ teuthology_addr }}
+$ORIGIN ddns.{{ zone_name }}.
+master                  A       {{ nameserver_addr }}
+$ORIGIN {{ zone_name }}.
+www                     CNAME   master.ddns
+
