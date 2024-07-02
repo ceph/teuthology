@@ -8,7 +8,6 @@ from teuthology import install_except_hook
 from teuthology import report
 from teuthology.job_status import get_status
 from teuthology.misc import get_user, merge_configs
-from teuthology.nuke import nuke
 from teuthology.run_tasks import run_tasks
 from teuthology.repo_utils import fetch_qa_suite
 from teuthology.results import email_results
@@ -265,10 +264,6 @@ def report_outcome(config, archive, summary, fake_ctx):
     """ Reports on the final outcome of the command. """
     status = get_status(summary)
     passed = status == 'pass'
-
-    if not passed and bool(config.get('nuke-on-error')):
-        # only unlock if we locked them in the first place
-        nuke(fake_ctx, fake_ctx.lock)
 
     if archive is not None:
         with open(os.path.join(archive, 'summary.yaml'), 'w') as f:

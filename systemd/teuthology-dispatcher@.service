@@ -1,0 +1,18 @@
+[Unit]
+Description=Teuthology Dispatcher
+
+Wants=ceph.target
+After=ceph.target
+
+[Service]
+Type=simple
+User=teuthworker
+ExecStart=/home/teuthworker/src/git.ceph.com_git_teuthology_main/virtualenv/bin/python3 \
+    /home/teuthworker/src/git.ceph.com_git_teuthology_main/virtualenv/bin/teuthology-dispatcher \
+    -v \
+    --archive-dir /home/teuthworker/archive \
+    --tube %i \
+    --log-dir /home/teuthworker/archive/worker_logs
+ExecStop=touch /tmp/teuthology-stop-dispatcher
+Restart=on-failure
+TimeoutStopSec=infinity

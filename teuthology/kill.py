@@ -4,17 +4,17 @@ import sys
 import yaml
 import psutil
 import subprocess
-import tempfile
 import logging
 import getpass
 
+from typing import Union
 
 import teuthology.exporter
 
 from teuthology import beanstalk
 from teuthology import report
 from teuthology.config import config
-from teuthology import misc
+from teuthology.lock import ops as lock_ops
 
 log = logging.getLogger(__name__)
 
@@ -70,13 +70,16 @@ def kill_run(run_name, archive_base=None, owner=None, machine_type=None,
     if not preserve_queue:
         remove_beanstalk_jobs(run_name, machine_type)
         remove_paddles_jobs(run_name)
-    kill_processes(run_name, run_info.get('pids'))
+    if kill_processes(run_name, run_info.get('pids')):
+        return
     if owner is not None:
-        targets = find_targets(run_name, owner)
-        nuke_targets(targets, owner)
+        targets = find_targets(run_name)
+        names = list(targets.keys())
+        lock_ops.unlock_safe(names, owner, run_name)
+    report.try_mark_run_dead(run_name)
 
 
-def kill_job(run_name, job_id, archive_base=None, owner=None, skip_nuke=False):
+def kill_job(run_name, job_id, archive_base=None, owner=None, skip_unlock=False):
     serializer = report.ResultsSerializer(archive_base)
     job_info = serializer.job_info(run_name, job_id)
     if not owner:
@@ -85,7 +88,9 @@ def kill_job(run_name, job_id, archive_base=None, owner=None, skip_nuke=False):
                 "I could not figure out the owner of the requested job. "
                 "Please pass --owner <owner>.")
         owner = job_info['owner']
-    kill_processes(run_name, [job_info.get('pid')])
+    if kill_processes(run_name, [job_info.get('pid')]):
+        return
+    report.try_push_job_info(job_info, dict(status="dead"))
     if 'machine_type' in job_info:
         teuthology.exporter.JobResults.record(
             job_info["machine_type"],
@@ -93,12 +98,9 @@ def kill_job(run_name, job_id, archive_base=None, owner=None, skip_nuke=False):
         )
     else:
         log.warn(f"Job {job_id} has no machine_type; cannot report via Prometheus")
-    # Because targets can be missing for some cases, for example, when all
-    # the necessary nodes ain't locked yet, we do not use job_info to get them,
-    # but use find_targets():
-    targets = find_targets(run_name, owner, job_id)
-    if not skip_nuke:
-        nuke_targets(targets, owner)
+    if not skip_unlock:
+        targets = find_targets(run_name, job_id)
+        lock_ops.unlock_safe(list(targets.keys()), owner, run_name, job_id)
 
 
 def find_run_info(serializer, run_name):
@@ -178,29 +180,36 @@ def kill_processes(run_name, pids=None):
     else:
         to_kill = find_pids(run_name)
 
-    # Remove processes that don't match run-name from the set
-    to_check = set(to_kill)
-    for pid in to_check:
+    pids_need_sudo = set()
+    for pid in set(to_kill):
         if not process_matches_run(pid, run_name):
             to_kill.remove(pid)
+        elif psutil.Process(int(pid)).username() != getpass.getuser():
+            pids_need_sudo.add(pid)
 
+    survivors = []
     if len(to_kill) == 0:
         log.info("No teuthology processes running")
     else:
         log.info("Killing Pids: " + str(to_kill))
-        may_need_sudo = \
-            psutil.Process(int(pid)).username() != getpass.getuser()
-        if may_need_sudo:
-            sudo_works = subprocess.Popen(['sudo', '-n', 'true']).wait() == 0
+        sudo_works = False
+        if pids_need_sudo:
+            sudo_works = subprocess.Popen(['sudo', '-n', '-l']).wait() == 0
             if not sudo_works:
                 log.debug("Passwordless sudo not configured; not using sudo")
-        use_sudo = may_need_sudo and sudo_works
         for pid in to_kill:
+            use_sudo = pid in pids_need_sudo and sudo_works
             args = ['kill', str(pid)]
             # Don't attempt to use sudo if it's not necessary
             if use_sudo:
                 args = ['sudo', '-n'] + args
-            subprocess.call(args)
+            try:
+                subprocess.check_call(args)
+            except subprocess.CalledProcessError:
+                survivors.append(pid)
+    if survivors:
+        log.error(f"Failed to kill PIDs: {survivors}")
+    return survivors
 
 
 def process_matches_run(pid, run_name):
@@ -221,58 +230,14 @@ def find_pids(run_name):
             run_pids.append(pid)
     return run_pids
 
-
-def find_targets(run_name, owner, job_id=None):
-    lock_args = [
-        'teuthology-lock',
-        '--list-targets',
-        '--desc-pattern',
-        '/' + run_name + '/' + str(job_id or ''),
-        '--status',
-        'up',
-        '--owner',
-        owner
-    ]
-    proc = subprocess.Popen(lock_args, stdout=subprocess.PIPE)
-    stdout, stderr = proc.communicate()
-    out_obj = yaml.safe_load(stdout)
-    if not out_obj or 'targets' not in out_obj:
-        return {}
-
-    return out_obj
-
-
-def nuke_targets(targets_dict, owner):
-    targets = targets_dict.get('targets')
-    if not targets:
-        log.info("No locked machines. Not nuking anything")
-        return
-
-    to_nuke = []
-    for target in targets:
-        to_nuke.append(misc.decanonicalize_hostname(target))
-
-    target_file = tempfile.NamedTemporaryFile(delete=False, mode='w+t')
-    target_file.write(yaml.safe_dump(targets_dict))
-    target_file.close()
-
-    log.info("Nuking machines: " + str(to_nuke))
-    nuke_args = [
-        'teuthology-nuke',
-        '-t',
-        target_file.name,
-        '--owner',
-        owner
-    ]
-    nuke_args.extend(['--reboot-all', '--unlock'])
-
-    proc = subprocess.Popen(
-        nuke_args,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT)
-    for line in proc.stdout:
-        line = line.replace(b'\r', b'').replace(b'\n', b'')
-        log.info(line.decode())
-        sys.stdout.flush()
-
-    os.unlink(target_file.name)
+def find_targets(run_name: str, job_id: Union[str, int, None] = None) -> dict:
+    if job_id is not None:
+        job_info = report.ResultsReporter().get_jobs(run_name, str(job_id))
+        return job_info.get("targets", dict())
+    result = dict()
+    run_info = report.ResultsReporter().get_jobs(run_name)
+    for job_info in run_info:
+        if job_info.get("status") not in ("running", "waiting"):
+            continue
+        result.update(job_info.get("targets", dict()))
+    return result

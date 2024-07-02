@@ -5,6 +5,7 @@
 import logging
 import os
 import random
+import sys
 import time
 from distutils.util import strtobool
 
@@ -75,7 +76,7 @@ def process_args(args):
             value = expand_short_repo_name(
                 value,
                 config.get_ceph_qa_suite_git_url())
-        elif key in ('validate_sha1', 'filter_fragments'):
+        elif key in ('validate_sha1', 'filter_fragments', 'kdb'):
             value = strtobool(value)
         conf[key] = value
     return conf
@@ -126,16 +127,7 @@ def main(args):
         log.info('Will upload archives to ' + conf.archive_upload)
 
     if conf.rerun:
-        rerun_filters = get_rerun_filters(conf.rerun, conf.rerun_statuses)
-        if len(rerun_filters['descriptions']) == 0:
-            log.warning(
-                "No jobs matched the status filters: %s",
-                conf.rerun_statuses,
-            )
-            return
-        conf.filter_in.extend(rerun_filters['descriptions'])
-        conf.suite = normalize_suite_name(rerun_filters['suite'])
-        conf.subset, conf.no_nested_subset, conf.seed = get_rerun_conf(conf)
+        get_rerun_conf_overrides(conf)
     if conf.seed < 0:
         conf.seed = random.randint(0, 9999)
         log.info('Using random seed=%s', conf.seed)
@@ -148,48 +140,74 @@ def main(args):
                     conf.archive_upload_url)
 
 
-def get_rerun_filters(name, statuses):
+def get_rerun_conf_overrides(conf):
     reporter = ResultsReporter()
-    run = reporter.get_run(name)
+    run = reporter.get_run(conf.rerun)
+
+    conf.suite = normalize_suite_name(run['suite'])
+
+    try:
+        job0 = run['jobs'][0]
+    except IndexError:
+        job0 = None
+
+    seed = None if job0 is None else job0.get('seed')
+    if conf.seed >= 0 and conf.seed != seed:
+        log.error('--seed %s does not match with rerun seed: %s',
+                  conf.seed, seed)
+        sys.exit(1)
+    else:
+        log.info('Using rerun seed=%s', seed)
+        conf.seed = seed
+
+    if job0 is not None:
+        subset = job0.get('subset', '1/1')
+        if subset is None:
+            subset = '1/1'
+        subset =  tuple(map(int, subset.split('/')))
+    else:
+        subset = None
+    if conf.subset is not None and conf.subset != subset:
+        log.error('--subset %s does not match with '
+                  'rerun subset: %s',
+                  conf.subset, subset)
+        sys.exit(1)
+    else:
+        if subset == (1, 1):
+            conf.subset = None
+        else:
+            log.info('Using rerun subset=%s', subset)
+            conf.subset = subset
+
+    no_nested_subset = False if job0 is None else job0.get('no_nested_subset', False)
+    if conf.no_nested_subset is not None and conf.no_nested_subset != no_nested_subset:
+        log.error('--no-nested-subset specified but does not match with '
+                  'rerun --no-nested-subset: %s',
+                  no_nested_subset)
+        sys.exit(1)
+    else:
+        log.info('Using rerun no_nested_subset=%s', no_nested_subset)
+        conf.no_nested_subset = no_nested_subset
+
+    rerun_filters = get_rerun_filters(run, conf.rerun_statuses)
+    if len(rerun_filters['descriptions']) == 0:
+        log.warning(
+            "No jobs matched the status filters: %s",
+            conf.rerun_statuses,
+        )
+        return
+
+    conf.filter_in.extend(rerun_filters['descriptions'])
+
+
+def get_rerun_filters(run, statuses):
     filters = dict()
-    filters['suite'] = run['suite']
     jobs = []
     for job in run['jobs']:
         if job['status'] in statuses:
             jobs.append(job)
     filters['descriptions'] = [job['description'] for job in jobs if job['description']]
     return filters
-
-
-def get_rerun_conf(conf):
-    reporter = ResultsReporter()
-    try:
-        subset, no_nested_subset, seed = reporter.get_rerun_conf(conf.rerun)
-    except IOError:
-        log.error('Error accessing results.log, file might be missing.')
-        log.warning('Using default/specified values for --seed, --subset and --no-nested-subset')
-        return conf.subset, conf.no_nested_subset, conf.seed
-    if seed is None:
-        log.warning('Missing seed in results.log, using default/specified values for --seed')
-        return conf.subset, conf.no_nested_subset, conf.seed
-    if conf.seed < 0:
-        log.info('Using stored seed=%s', seed)
-    elif conf.seed != seed:
-        log.error('--seed {conf_seed} does not match with ' +
-                  'stored seed: {stored_seed}',
-                  conf_seed=conf.seed,
-                  stored_seed=seed)
-    if conf.subset is None:
-        log.info('Using stored subset=%s', subset)
-    elif conf.subset != subset:
-        log.error('--subset {conf_subset} does not match with ' +
-                  'stored subset: {stored_subset}',
-                  conf_subset=conf.subset,
-                  stored_subset=subset)
-    if conf.no_nested_subset is True:
-        log.info('Nested subsets disabled')
-        no_nested_subset = conf.no_nested_subset
-    return subset, no_nested_subset, seed
 
 
 class WaitException(Exception):

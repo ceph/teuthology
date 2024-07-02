@@ -3,6 +3,7 @@ import logging
 import re
 import requests
 import os
+import pathlib
 import pexpect
 import yaml
 import shutil
@@ -354,6 +355,10 @@ class Ansible(Task):
         environ['ANSIBLE_FAILURE_LOG'] = self.failure_log.name
         environ['ANSIBLE_ROLES_PATH'] = "%s/roles" % self.repo_path
         environ['ANSIBLE_NOCOLOR'] = "1"
+        # Store collections in <repo root>/.ansible/
+        # This is the same path used in <repo root>/ansible.cfg
+        environ['ANSIBLE_COLLECTIONS_PATH'] = str(
+            pathlib.Path(__file__).parents[2] / ".ansible")
         args = self._build_args()
         command = ' '.join(args)
         log.debug("Running %s", command)

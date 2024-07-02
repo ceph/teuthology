@@ -15,7 +15,6 @@ from teuthology import (
     # modules
     beanstalk,
     exporter,
-    nuke,
     report,
     repo_utils,
     worker,
@@ -180,14 +179,24 @@ def main(args):
         run_args.extend(["--job-config", job_config_path])
 
         try:
-            job_proc = subprocess.Popen(run_args)
+            job_proc = subprocess.Popen(
+                run_args,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
             job_procs.add(job_proc)
             log.info('Job supervisor PID: %s', job_proc.pid)
         except Exception:
             error_message = "Saw error while trying to spawn supervisor."
             log.exception(error_message)
             if 'targets' in job_config:
-                nuke.nuke(supervisor.create_fake_context(job_config), True)
+                node_names = job_config["targets"].keys()
+                lock_ops.unlock_safe(
+                    node_names,
+                    job_config["owner"],
+                    job_config["name"],
+                    job_config["job_id"]
+                )
             report.try_push_job_info(job_config, dict(
                 status='fail',
                 failure_reason=error_message))
@@ -204,7 +213,10 @@ def main(args):
 
 def find_dispatcher_processes() -> Dict[str, List[psutil.Process]]:
     def match(proc):
-        cmdline = proc.cmdline()
+        try:
+            cmdline = proc.cmdline()
+        except psutil.ZombieProcess:
+            return False
         if len(cmdline) < 3:
             return False
         if not cmdline[1].endswith("/teuthology-dispatcher"):

@@ -35,9 +35,9 @@ class CephadmUnit(DaemonState):
 
     def kill_cmd(self, sig):
         return ' '.join([
-            'sudo', 'docker', 'kill',
+            'sudo', 'systemctl', 'kill',
             '-s', str(int(sig)),
-            'ceph-%s-%s.%s' % (self.fsid, self.type_, self.id_),
+            'ceph-%s@%s.%s' % (self.fsid, self.type_, self.id_),
         ])
 
     def _start_logger(self):
@@ -112,6 +112,18 @@ class CephadmUnit(DaemonState):
         """
         return self.is_started
 
+    def finished(self):
+        """
+        Is the daemon finished? 
+        Return False if active.
+        """
+        proc = self.remote.run(
+            args=self.status_cmd,
+            check_status=False,
+            quiet=True,
+        )
+        return proc.returncode != 0
+
     def signal(self, sig, silent=False):
         """
         Send a signal to associated remote command
@@ -136,7 +148,8 @@ class CephadmUnit(DaemonState):
             self.restart()
             return
         self._start_logger()
-        self.remote.run(self.start_cmd)
+        self.remote.run(args=self.start_cmd)
+        self.is_started = True
 
     def stop(self, timeout=300):
         """

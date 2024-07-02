@@ -52,11 +52,10 @@ nodes if they are available, and invokes ``teuthology-dispatcher`` in
 ``supervisor`` mode. ``supervisor`` reimages the target machines and invokes
 ``teuthology`` (the command). ``teuthology`` proceeds to execute the job
 (execute every task in the YAML job description). After the execution is
-completed (ie ``teuthology`` process exits), ``supervisor`` unlocks or nukes
-the target machines depending on the status of the job. If the requested
-machines are not available, the ``dispatcher`` waits for the machines to be
-available before running anymore jobs. Results from the job are stored in the
-archive directory of the worker for forensic analysis.
+completed (ie ``teuthology`` process exits), ``supervisor`` unlocks the 
+target machines. If the requested machines are not available, the ``dispatcher``
+waits for the machines to be available before running anymore jobs. Results from
+the job are stored in the archive directory of the worker for forensic analysis.
 
 Since `QA suites <https://github.com/ceph/ceph-qa-suite>`__ usually
 specify ``install`` and ``ceph`` tasks, we briefly describe what they do. When

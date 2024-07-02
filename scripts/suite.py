@@ -86,6 +86,9 @@ Standard arguments:
   --validate-sha1 <bool>
                               Validate that git SHA1s passed to -S exist.
                               [default: true]
+  --kdb <bool>
+                              Enable/disable kdb in kernel
+                              [default: true]
   --sleep-before-teardown <seconds>
                               Number of seconds to sleep before teardown.
                               Use with care, as this applies to all jobs in the

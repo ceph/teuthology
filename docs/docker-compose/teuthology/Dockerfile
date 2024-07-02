@@ -1,6 +1,7 @@
-FROM ubuntu:latest
+FROM ubuntu:22.04
 ARG SSH_PRIVKEY_FILE=id_ed25519
 ENV DEBIAN_FRONTEND=noninteractive
+ENV LANG=C.UTF-8
 RUN apt-get update && \
     apt-get install -y \
     git \
@@ -11,14 +12,17 @@ RUN apt-get update && \
     python3-pip \
     python3-venv \
     vim \
+    locales-all \
     libev-dev \
     libvirt-dev \
     libffi-dev \
     libyaml-dev \
+    locales \
     lsb-release && \
-    apt-get clean all
+    apt-get clean all && \
+    locale-gen $LC_ALL
 WORKDIR /teuthology
-COPY requirements.txt bootstrap /teuthology/
+COPY requirements.txt requirements.yml ansible.cfg bootstrap /teuthology/
 RUN \
     cd /teuthology && \
     mkdir ../archive_dir && \

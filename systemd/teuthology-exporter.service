@@ -1,0 +1,12 @@
+[Unit]
+Description=Teuthology Exporter
+
+Wants=ceph.target
+After=ceph.target
+
+[Service]
+Type=simple
+User=teuthworker
+ExecStart=/home/teuthworker/src/git.ceph.com_git_teuthology_main/virtualenv/bin/teuthology-exporter
+Restart=on-failure
+TimeoutStopSec=60

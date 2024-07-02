@@ -28,3 +28,5 @@ docs/teuthology.*.rst
 
 # vscode 
 .vscode/
+
+.ansible

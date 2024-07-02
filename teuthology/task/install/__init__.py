@@ -9,6 +9,7 @@ from teuthology import misc as teuthology
 from teuthology import contextutil, packaging
 from teuthology.parallel import parallel
 from teuthology.task import ansible
+from teuthology.exceptions import ConfigError
 
 from distutils.version import LooseVersion
 from teuthology.task.install.util import (
@@ -565,11 +566,25 @@ def task(ctx, config):
     log.debug('project %s' % project)
     overrides = ctx.config.get('overrides')
     repos = None
+
     if overrides:
-        install_overrides = overrides.get('install', {})
-        teuthology.deep_merge(config, install_overrides.get(project, {}))
-        repos = install_overrides.get('repos', None)
-        log.debug('INSTALL overrides: %s' % install_overrides)
+        try:
+            install_overrides = overrides.get('install', {})
+            log.debug('INSTALL overrides: %s' % install_overrides)
+            teuthology.deep_merge(config, install_overrides.get(project, {}))
+            overrides_extra_system_packages = install_overrides.get('extra_system_packages')
+            if overrides_extra_system_packages:
+                extra_system_packages = config.get('extra_system_packages')
+                config['extra_system_packages'] = teuthology.deep_merge(extra_system_packages, overrides_extra_system_packages)
+            repos = install_overrides.get('repos', None)
+        except AssertionError:
+            raise ConfigError(
+                "'install' task config and its overrides contain" \
+                "conflicting types for the same config key. Ensure that " \
+                "the configuration is of the same type (dict, list, etc.) " \
+                "in both the task definition and its overrides."
+            )
+
     log.debug('config %s' % config)
 
     rhbuild = None

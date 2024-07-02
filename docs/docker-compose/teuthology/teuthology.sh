@@ -29,7 +29,7 @@ if [ -z "$TEUTHOLOGY_WAIT" ]; then
         -n 100 \
         --suite teuthology:no-ceph \
         --filter-out "libcephfs,kclient,stream,centos,rhel" \
-        -d ubuntu -D 20.04 \
+        -d ubuntu -D 22.04 \
         --suite-branch main \
         --subset 9000/100000 \
         -p 75 \

@@ -15,7 +15,6 @@ from teuthology import repo_utils
 from teuthology.config import config, JobConfig
 from teuthology.exceptions import (
     BranchMismatchError, BranchNotFoundError, CommitNotFoundError,
-    VersionNotFoundError
 )
 from teuthology.misc import deep_merge, get_results_url
 from teuthology.orchestra.opsys import OS
@@ -34,8 +33,7 @@ class Run(object):
     WAIT_PAUSE = 5 * 60
     __slots__ = (
         'args', 'name', 'base_config', 'suite_repo_path', 'base_yaml_paths',
-        'base_args', 'package_versions', 'kernel_dict', 'config_input',
-        'timestamp', 'user',
+        'base_args', 'kernel_dict', 'config_input', 'timestamp', 'user', 'os',
     )
 
     def __init__(self, args):
@@ -56,8 +54,6 @@ class Run(object):
             config.ceph_qa_suite_git_url = self.args.suite_repo
 
         self.base_config = self.create_initial_config()
-        # caches package versions to minimize requests to gbs
-        self.package_versions = dict()
 
         # Interpret any relative paths as being relative to ceph-qa-suite
         # (absolute paths are unchanged by this)
@@ -90,6 +86,7 @@ class Run(object):
 
         :returns: A JobConfig object
         """
+        self.os = self.choose_os()
         self.kernel_dict = self.choose_kernel()
         ceph_hash = self.choose_ceph_hash()
         # We don't store ceph_version because we don't use it yet outside of
@@ -118,8 +115,8 @@ class Run(object):
             teuthology_branch=teuthology_branch,
             teuthology_sha1=teuthology_sha1,
             machine_type=self.args.machine_type,
-            distro=self.args.distro,
-            distro_version=self.args.distro_version,
+            distro=self.os.name,
+            distro_version=self.os.version,
             archive_upload=config.archive_upload,
             archive_upload_key=config.archive_upload_key,
             suite_repo=config.get_ceph_qa_suite_git_url(),
@@ -127,6 +124,16 @@ class Run(object):
             flavor=self.args.flavor,
         )
         return self.build_base_config()
+
+    def choose_os(self):
+        os_type = self.args.distro
+        os_version = self.args.distro_version
+        if not (os_type and os_version):
+            os_ = util.get_distro_defaults(
+                self.args.distro, self.args.machine_type)[2]
+        else:
+            os_ = OS(os_type, os_version)
+        return os_
 
     def choose_kernel(self):
         # Put together a stanza specifying the kernel hash
@@ -148,9 +155,13 @@ class Run(object):
                      branch=self.args.kernel_branch),
                      dry_run=self.args.dry_run,
                 )
+        kdb = True
+        if self.args.kdb is not None:
+            kdb = self.args.kdb
+
         if kernel_hash:
             log.info("kernel sha1: {hash}".format(hash=kernel_hash))
-            kernel_dict = dict(kernel=dict(kdb=True, sha1=kernel_hash))
+            kernel_dict = dict(kernel=dict(kdb=kdb, sha1=kernel_hash))
             if kernel_hash != 'distro':
                 kernel_dict['kernel']['flavor'] = 'default'
         else:
@@ -165,6 +176,7 @@ class Run(object):
         """
         repo_name = self.ceph_repo_name
 
+        ceph_hash = None
         if self.args.ceph_sha1:
             ceph_hash = self.args.ceph_sha1
             if self.args.validate_sha1:
@@ -194,13 +206,14 @@ class Run(object):
         if config.suite_verify_ceph_hash and not self.args.newest:
             # don't bother if newest; we'll search for an older one
             # Get the ceph package version
-            try:
-                ceph_version = util.package_version_for_hash(
-                    ceph_hash, self.args.flavor, self.args.distro,
-                    self.args.distro_version, self.args.machine_type,
-                )
-            except Exception as exc:
-                util.schedule_fail(str(exc), self.name, dry_run=self.args.dry_run)
+            ceph_version = util.package_version_for_hash(
+                ceph_hash, self.args.flavor, self.os.name,
+                self.os.version, self.args.machine_type,
+            )
+            if not ceph_version:
+                msg = f"Packages for os_type '{self.os.name}', flavor " \
+                    f"{self.args.flavor} and ceph hash '{ceph_hash}' not found"
+                util.schedule_fail(msg, self.name, dry_run=self.args.dry_run)
             log.info("ceph version: {ver}".format(ver=ceph_version))
             return ceph_version
         else:
@@ -476,31 +489,16 @@ class Run(object):
                 full_job_config = copy.deepcopy(self.base_config.to_dict())
                 deep_merge(full_job_config, parsed_yaml)
                 flavor = util.get_install_task_flavor(full_job_config)
-                # Get package versions for this sha1, os_type and flavor. If
-                # we've already retrieved them in a previous loop, they'll be
-                # present in package_versions and gitbuilder will not be asked
-                # again for them.
-                try:
-                    self.package_versions = util.get_package_versions(
-                        sha1,
-                        os_type,
-                        os_version,
-                        flavor,
-                        self.package_versions
-                    )
-                except VersionNotFoundError:
-                    pass
-                if not util.has_packages_for_distro(
-                    sha1, os_type, os_version, flavor, self.package_versions
-                ):
-                    m = "Packages for os_type '{os}', flavor {flavor} and " + \
-                        "ceph hash '{ver}' not found"
-                    log.error(m.format(os=os_type, flavor=flavor, ver=sha1))
+                version = util.package_version_for_hash(sha1, flavor, os_type,
+                    os_version, self.args.machine_type)
+                if not version:
                     jobs_missing_packages.append(job)
+                    log.error(f"Packages for os_type '{os_type}', flavor {flavor} and "
+                         f"ceph hash '{sha1}' not found")
                     # optimization: one missing package causes backtrack in newest mode;
                     # no point in continuing the search
                     if newest:
-                        return jobs_missing_packages, None
+                        return jobs_missing_packages, []
 
             jobs_to_schedule.append(job)
         return jobs_missing_packages, jobs_to_schedule
@@ -514,13 +512,10 @@ class Run(object):
             log_prefix = ''
             if job in jobs_missing_packages:
                 log_prefix = "Missing Packages: "
-                if (
-                    not self.args.dry_run and
-                    not config.suite_allow_missing_packages
-                ):
+                if not config.suite_allow_missing_packages:
                     util.schedule_fail(
-                        "At least one job needs packages that don't exist for "
-                        "hash {sha1}.".format(sha1=self.base_config.sha1),
+                        "At least one job needs packages that don't exist "
+                        f"for hash {self.base_config.sha1}.",
                         name,
                         dry_run=self.args.dry_run,
                     )
@@ -597,6 +592,7 @@ Note: If you still want to go ahead, use --job-threshold 0'''
             filter_out=self.args.filter_out,
             filter_all=self.args.filter_all,
             filter_fragments=self.args.filter_fragments,
+            seed=self.args.seed,
             suite_name=suite_name))
 
         if self.args.dry_run:
@@ -648,6 +644,8 @@ Note: If you still want to go ahead, use --job-threshold 0'''
         backtrack = 0
         limit = self.args.newest
         sha1s = []
+        jobs_to_schedule = []
+        jobs_missing_packages = []
         while backtrack <= limit:
             jobs_missing_packages, jobs_to_schedule = \
                 self.collect_jobs(arch, configs, self.args.newest, job_limit)
@@ -671,9 +669,6 @@ Note: If you still want to go ahead, use --job-threshold 0'''
                     name,
                     dry_run=self.args.dry_run,
                 )
-
-        if self.args.dry_run:
-            log.debug("Base job config:\n%s" % self.base_config)
 
         with open(base_yaml_path, 'w+b') as base_yaml:
             base_yaml.write(str(self.base_config).encode())
