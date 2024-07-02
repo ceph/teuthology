@@ -1026,7 +1026,8 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
         cluster, based on a template where the OpenStack credentials
         and a few other values are substituted.
         """
-        path = tempfile.mktemp()
+        fd, path = tempfile.mkstemp()
+        os.close(fd)
 
         with open(os.path.dirname(__file__) + '/bootstrap-teuthology.sh', 'rb') as f:
             b64_bootstrap = base64.b64encode(f.read())
