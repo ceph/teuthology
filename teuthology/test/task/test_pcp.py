@@ -9,7 +9,7 @@ from pytest import raises
 from teuthology.config import config, FakeNamespace
 from teuthology.orchestra.cluster import Cluster
 from teuthology.orchestra.remote import Remote
-from teuthology.orchestra.run import Raw
+from teuthology.orchestra.run_helper import Raw
 from teuthology.task.pcp import (PCPDataSource, PCPArchive, PCPGrapher,
                                  GrafanaGrapher, GraphiteGrapher, PCP)
 
