@@ -80,13 +80,16 @@ def connect(user_at_host, host_key=None, keep_alive=False, timeout=60,
     )
 
     key_filename = key_filename or config.ssh_key
-    ssh_config_path = os.path.expanduser("~/.ssh/config")
+    ssh_config_path = config.ssh_config_path or "~/.ssh/config"
+    ssh_config_path = os.path.expanduser(ssh_config_path)
     if not key_filename and os.path.exists(ssh_config_path):
         ssh_config = paramiko.SSHConfig()
         ssh_config.parse(open(ssh_config_path))
         opts = ssh_config.lookup(host)
         if not key_filename and 'identityfile' in opts:
             key_filename = opts['identityfile']
+        if 'hostname' in opts:
+            connect_args['hostname'] = opts['hostname']
 
     if key_filename:
         if not isinstance(key_filename, list):
