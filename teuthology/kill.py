@@ -233,11 +233,11 @@ def find_pids(run_name):
 def find_targets(run_name: str, job_id: Union[str, int, None] = None) -> dict:
     if job_id is not None:
         job_info = report.ResultsReporter().get_jobs(run_name, str(job_id))
-        return job_info.get("targets", dict())
+        return job_info.get("targets") or dict()
     result = dict()
     run_info = report.ResultsReporter().get_jobs(run_name)
     for job_info in run_info:
         if job_info.get("status") not in ("running", "waiting"):
             continue
-        result.update(job_info.get("targets", dict()))
+        result.update(job_info.get("targets") or dict())
     return result
