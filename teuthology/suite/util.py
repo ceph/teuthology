@@ -359,8 +359,9 @@ def find_git_parents(project: str, sha1: str, count=1):
         if len(sha1s) != count:
             resp_json = resp.json()
             err_msg = resp_json.get("error") or resp_json.get("err")
-            log.debug(f"Got response: {resp_json}")
-            log.error(f"Can't find {count} parents of {sha1} in {project}: {err_msg}")
+            log.debug('got response: %s', resp.json())
+            log.error('can''t find %d parents of %s in %s: %s',
+                       int(count), sha1, project, resp.json())
         return sha1s
 
     # index 0 will be the commit whose parents we want to find.
