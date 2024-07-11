@@ -18,7 +18,6 @@ import re
 from sys import stdin
 import pprint
 import datetime
-from types import MappingProxyType
 
 from tarfile import ReadError
 
@@ -997,21 +996,18 @@ def deep_merge(a: DeepMerge, b: DeepMerge) -> DeepMerge:
     """
     if b is None:
         return a
-    elif isinstance(a, list):
+    if a is None:
+        return deep_merge(b.__class__(), b)
+    if isinstance(a, list):
         assert isinstance(b, list)
         a.extend(b)
         return a
-    elif isinstance(a, dict):
-        assert isinstance(b, dict) or isinstance(b, MappingProxyType)
+    if isinstance(a, dict):
+        assert isinstance(b, dict)
         for (k, v) in b.items():
             a[k] = deep_merge(a.get(k), v)
         return a
-    elif isinstance(b, dict) or isinstance(b, list):
-        return deep_merge(b.__class__(), b)
-    elif isinstance(b, MappingProxyType):
-        return dict() | b
-    else:
-        return b
+    return b
 
 
 def get_valgrind_args(testdir, name, preamble, v, exit_on_first_error=True):
