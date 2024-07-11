@@ -8,12 +8,15 @@ from teuthology.exceptions import MaxWhileTries, CommandFailedError
 from teuthology.provision import fog
 
 
-test_config = dict(fog=dict(
-    endpoint='http://fog.example.com/fog',
-    api_token='API_TOKEN',
-    user_token='USER_TOKEN',
-    machine_types='type1,type2',
-))
+test_config = dict(
+    fog=dict(
+        endpoint='http://fog.example.com/fog',
+        api_token='API_TOKEN',
+        user_token='USER_TOKEN',
+        machine_types='type1,type2',
+    ),
+    fog_reimage_timeout=1800,
+)
 
 
 class TestFOG(object):
