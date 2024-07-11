@@ -14,28 +14,10 @@ from teuthology import repo_utils
 from teuthology.config import config as teuth_config
 from teuthology.exceptions import CommandFailedError, AnsibleFailedError
 from teuthology.job_status import set_status
-
 from teuthology.task import Task
+from teuthology.util.loggerfile import LoggerFile
 
 log = logging.getLogger(__name__)
-
-
-class LoggerFile(object):
-    """
-    A thin wrapper around a logging.Logger instance that provides a file-like
-    interface.
-
-    Used by Ansible.execute_playbook() when it calls pexpect.run()
-    """
-    def __init__(self, logger, level):
-        self.logger = logger
-        self.level = level
-
-    def write(self, string):
-        self.logger.log(self.level, string.decode('utf-8', 'ignore'))
-
-    def flush(self):
-        pass
 
 
 class FailureAnalyzer:

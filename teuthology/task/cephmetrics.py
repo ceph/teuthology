@@ -5,8 +5,9 @@ import time
 
 from teuthology.config import config as teuth_config
 from teuthology.exceptions import CommandFailedError
+from teuthology.task.ansible import Ansible
+from teuthology.util.loggerfile import LoggerFile
 
-from teuthology.task.ansible import Ansible, LoggerFile
 
 log = logging.getLogger(__name__)
 
