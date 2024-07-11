@@ -260,7 +260,7 @@ def get_initial_tasks(lock, config, machine_type):
     return init_tasks
 
 
-def report_outcome(config, archive, summary, fake_ctx):
+def report_outcome(config, archive, summary):
     """ Reports on the final outcome of the command. """
     status = get_status(summary)
     passed = status == 'pass'
@@ -406,4 +406,4 @@ def main(args):
         run_tasks(tasks=config['tasks'], ctx=fake_ctx)
     finally:
         # print to stdout the results and possibly send an email on any errors
-        report_outcome(config, archive, fake_ctx.summary, fake_ctx)
+        report_outcome(config, archive, fake_ctx.summary)
