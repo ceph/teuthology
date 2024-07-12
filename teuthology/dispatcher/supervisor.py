@@ -1,3 +1,4 @@
+import datetime
 import logging
 import os
 import subprocess
@@ -6,7 +7,6 @@ import yaml
 import requests
 
 from urllib.parse import urljoin
-from datetime import datetime
 
 from teuthology import exporter, kill, report, safepath
 from teuthology.config import config as teuth_config
@@ -275,7 +275,7 @@ def unlock_targets(job_config):
 
 
 def run_with_watchdog(process, job_config):
-    job_start_time = datetime.utcnow()
+    job_start_time = datetime.datetime.now(datetime.timezone.utc)
 
     # Only push the information that's relevant to the watchdog, to save db
     # load
@@ -289,7 +289,7 @@ def run_with_watchdog(process, job_config):
     hit_max_timeout = False
     while process.poll() is None:
         # Kill jobs that have been running longer than the global max
-        run_time = datetime.utcnow() - job_start_time
+        run_time = datetime.datetime.now(datetime.timezone.utc) - job_start_time
         total_seconds = run_time.days * 60 * 60 * 24 + run_time.seconds
         if total_seconds > teuth_config.max_job_time:
             hit_max_timeout = True

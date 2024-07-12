@@ -1,5 +1,4 @@
 import datetime
-import dateutil.tz
 import dateutil.parser
 import json
 import os
@@ -103,7 +102,7 @@ class AuthToken(object):
     def expired(self):
         if self.expires is None:
             return True
-        utcnow = datetime.datetime.now(dateutil.tz.tzutc())
+        utcnow = datetime.datetime.now(datetime.timezone.utc)
         offset = datetime.timedelta(minutes=30)
         return self.expires < (utcnow + offset)
 

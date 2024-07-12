@@ -3,10 +3,10 @@
 Ssh-key key handlers and associated routines
 """
 import contextlib
+import datetime
 import logging
 import paramiko
 import re
-from datetime import datetime
 
 from io import StringIO
 from teuthology import contextutil
@@ -21,7 +21,7 @@ def timestamp(format_='%Y-%m-%d_%H:%M:%S:%f'):
     """
     Return a UTC timestamp suitable for use in filenames
     """
-    return datetime.utcnow().strftime(format_)
+    return datetime.datetime.now(datetime.timezone.utc).strftime(format_)
 
 
 def backup_file(remote, path, sudo=False):
