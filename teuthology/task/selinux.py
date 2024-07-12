@@ -137,6 +137,7 @@ class SELinux(Task):
             'comm="sssd"',
             'comm="sss_cache"',
             'context=system_u:system_r:NetworkManager_dispatcher_t:s0',
+            'context=system_u:system_r:getty_t:s0',
         ]
         se_allowlist = self.config.get('allowlist', [])
         if se_allowlist:
