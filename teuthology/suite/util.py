@@ -347,25 +347,34 @@ def find_git_parents(project: str, sha1: str, count=1):
         log.warning('githelper_base_url not set, --newest disabled')
         return []
 
+    def refresh():
+        url = f"{base_url}/{project}.git/refresh"
+        log.info(f"Forcing refresh of git mirror: {url}")
+        resp = requests.get(url)
+        if not resp.ok:
+            log.error('git refresh failed for %s: %s',
+                      project, resp.content.decode())
+
     def get_sha1s(project, committish, count):
-        url = '/'.join((
-            base_url,
-            f"{project}.git",
-            f"history/?committish={committish}&count={count}"
-        ))
+        url = f"base_url/{project}.git/history?committish={committish}&count={count}"
+        log.info(f"Looking for parent commits: {url}")
         resp = requests.get(url)
         resp.raise_for_status()
         sha1s = resp.json()['sha1s']
         if len(sha1s) != count:
             resp_json = resp.json()
             err_msg = resp_json.get("error") or resp_json.get("err")
-            log.debug(f"Got response: {resp_json}")
+            log.debug(f"Got {resp.status_code} response: {resp_json}")
             log.error(f"Can't find {count} parents of {sha1} in {project}: {err_msg}")
         return sha1s
 
     # index 0 will be the commit whose parents we want to find.
     # So we will query for count+1, and strip index 0 from the result.
     sha1s = get_sha1s(project, sha1, count + 1)
+    if not sha1s:
+        log.error("Will try to refresh git mirror and try again")
+        refresh()
+        sha1s = get_sha1s(project, sha1, count + 1)
     if sha1s:
         return sha1s[1:]
     return []
