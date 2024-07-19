@@ -356,7 +356,7 @@ def find_git_parents(project: str, sha1: str, count=1):
                       project, resp.content.decode())
 
     def get_sha1s(project, committish, count):
-        url = f"base_url/{project}.git/history?committish={committish}&count={count}"
+        url = f"{base_url}/{project}.git/history?committish={committish}&count={count}"
         log.info(f"Looking for parent commits: {url}")
         resp = requests.get(url)
         resp.raise_for_status()
