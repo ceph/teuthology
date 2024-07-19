@@ -82,6 +82,9 @@ def kill_run(run_name, archive_base=None, owner=None, machine_type=None,
 def kill_job(run_name, job_id, archive_base=None, owner=None, skip_unlock=False):
     serializer = report.ResultsSerializer(archive_base)
     job_info = serializer.job_info(run_name, job_id)
+    # If we can't read the filesystem, job_info will be nearly empty. Ask paddles:
+    if 'name' not in job_info:
+        job_info = report.ResultsReporter().get_jobs(run_name, job_id)
     if not owner:
         if 'owner' not in job_info:
             raise RuntimeError(
