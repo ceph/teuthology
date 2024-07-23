@@ -1,7 +1,7 @@
 import pytest
 import docopt
 
-from unittest.mock import patch, call, Mock
+from unittest.mock import patch, call
 
 from teuthology import run
 from scripts import run as scripts_run
@@ -133,13 +133,12 @@ class TestRun(object):
     @patch("sys.exit")
     def test_report_outcome(self, m_sys_exit, m_open, m_email_results, m_try_push_job_info, m_safe_dump, m_get_status):
         m_get_status.return_value = "fail"
-        fake_ctx = Mock()
         summary = {"failure_reason": "reasons"}
         summary_dump = "failure_reason: reasons\n"
         config = {"email-on-error": True}
         config_dump = "email-on-error: true\n"
         m_safe_dump.side_effect = [None, summary_dump, config_dump]
-        run.report_outcome(config, "the/archive/path", summary, fake_ctx)
+        run.report_outcome(config, "the/archive/path", summary)
         m_try_push_job_info.assert_called_with(config, summary)
         m_open.assert_called_with("the/archive/path/summary.yaml", "w")
         assert m_email_results.called

@@ -18,11 +18,10 @@ import re
 from sys import stdin
 import pprint
 import datetime
-from types import MappingProxyType
 
 from tarfile import ReadError
 
-from typing import Optional
+from typing import Optional, TypeVar
 
 from teuthology.util.compat import urljoin, urlopen, HTTPError
 
@@ -110,7 +109,7 @@ def config_file(string):
     return config_dict
 
 
-def merge_configs(config_paths):
+def merge_configs(config_paths) -> dict:
     """ Takes one or many paths to yaml config files and merges them
         together, returning the result.
     """
@@ -123,7 +122,7 @@ def merge_configs(config_paths):
             continue
         else:
             with open(conf_path) as partial_file:
-                partial_dict = yaml.safe_load(partial_file)
+                partial_dict: dict = yaml.safe_load(partial_file)
         try:
             conf_dict = deep_merge(conf_dict, partial_dict)
         except Exception:
@@ -986,7 +985,8 @@ def replace_all_with_clients(cluster, config):
     return norm_config
 
 
-def deep_merge(a, b):
+DeepMerge = TypeVar('DeepMerge')
+def deep_merge(a: DeepMerge, b: DeepMerge) -> DeepMerge:
     """
     Deep Merge.  If a and b are both lists, all elements in b are
     added into a.  If a and b are both dictionaries, elements in b are
@@ -996,21 +996,18 @@ def deep_merge(a, b):
     """
     if b is None:
         return a
-    elif isinstance(a, list):
+    if a is None:
+        return deep_merge(b.__class__(), b)
+    if isinstance(a, list):
         assert isinstance(b, list)
         a.extend(b)
         return a
-    elif isinstance(a, dict):
-        assert isinstance(b, dict) or isinstance(b, MappingProxyType)
+    if isinstance(a, dict):
+        assert isinstance(b, dict)
         for (k, v) in b.items():
             a[k] = deep_merge(a.get(k), v)
         return a
-    elif isinstance(b, dict) or isinstance(b, list):
-        return deep_merge(b.__class__(), b)
-    elif isinstance(b, MappingProxyType):
-        return deep_merge(dict(), b)
-    else:
-        return b
+    return b
 
 
 def get_valgrind_args(testdir, name, preamble, v, exit_on_first_error=True):

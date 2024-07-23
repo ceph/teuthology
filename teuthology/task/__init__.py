@@ -24,7 +24,7 @@ class Task(object):
                   name = 'mytask.mysubtask'
     """
 
-    def __init__(self, ctx=None, config=None):
+    def __init__(self, ctx, config=None):
         if not hasattr(self, 'name'):
             self.name = self.__class__.__name__.lower()
         self.log = log

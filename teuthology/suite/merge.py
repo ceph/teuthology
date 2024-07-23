@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 TEUTHOLOGY_TEMPLATE = MappingProxyType({
   "teuthology": {
     "fragments_dropped": [],
-    "meta": MappingProxyType({}),
+    "meta": {},
     "postmerge": [],
   }
 })
@@ -114,7 +114,6 @@ def config_merge(configs, suite_name=None, **kwargs):
     postmerge scripts. Logically, if a filter matches then reject will drop
     the entire job (config) from the list.
     """
-
     seed = kwargs.setdefault('seed', 1)
     if not isinstance(seed, int):
         log.debug("no valid seed input: using 1")
@@ -130,7 +129,7 @@ def config_merge(configs, suite_name=None, **kwargs):
             desc = combine_path(suite_name, desc)
 
         yaml_complete_obj = {}
-        deep_merge(yaml_complete_obj, TEUTHOLOGY_TEMPLATE)
+        deep_merge(yaml_complete_obj, dict(TEUTHOLOGY_TEMPLATE))
         for path in paths:
             if path not in yaml_cache:
                 with open(path) as f:

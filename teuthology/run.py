@@ -93,7 +93,7 @@ def fetch_tasks_if_needed(job_config):
     return suite_path
 
 
-def setup_config(config_paths):
+def setup_config(config_paths) -> dict:
     """
     Takes a list of config yaml files and combines them
     into a single dictionary. Processes / validates the dictionary and then
@@ -260,7 +260,7 @@ def get_initial_tasks(lock, config, machine_type):
     return init_tasks
 
 
-def report_outcome(config, archive, summary, fake_ctx):
+def report_outcome(config, archive, summary):
     """ Reports on the final outcome of the command. """
     status = get_status(summary)
     passed = status == 'pass'
@@ -326,8 +326,6 @@ def main(args):
     os_version = args["--os-version"]
     interactive_on_error = args["--interactive-on-error"]
 
-    set_up_logging(verbose, archive)
-
     # print the command being ran
     log.debug("Teuthology command: {0}".format(get_teuthology_command(args)))
 
@@ -338,6 +336,10 @@ def main(args):
 
     if archive is not None and 'archive_path' not in config:
         config['archive_path'] = archive
+    elif archive is None and 'archive_path' in config:
+        archive = args['--archive'] = config['archive_path']
+
+    set_up_logging(verbose, archive)
 
     write_initial_metadata(archive, config, name, description, owner)
     report.try_push_job_info(config, dict(status='running'))
@@ -400,10 +402,10 @@ def main(args):
     # FIXME this should become more generic, and the keys should use
     # '_' uniformly
     if fake_ctx.config.get('interactive-on-error'):
-        teuthology.config.config.ctx = fake_ctx
+        teuth_config.config.ctx = fake_ctx
 
     try:
         run_tasks(tasks=config['tasks'], ctx=fake_ctx)
     finally:
         # print to stdout the results and possibly send an email on any errors
-        report_outcome(config, archive, fake_ctx.summary, fake_ctx)
+        report_outcome(config, archive, fake_ctx.summary)
