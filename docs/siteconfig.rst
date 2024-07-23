@@ -81,12 +81,12 @@ Here is a sample configuration with many of the options set and documented::
     # itself from git. This is disabled by default.
     automated_scheduling: false
 
-    # How often, in seconds, teuthology-worker should poll its child job 
+    # How often, in seconds, teuthology-supervisor should poll its child job
     # processes
     watchdog_interval: 120
 
     # How long a scheduled job should be allowed to run, in seconds, before 
-    # it is killed by the worker process.
+    # it is killed by the supervisor process.
     max_job_time: 259200
 
     # The template from which the URL of the repository containing packages
