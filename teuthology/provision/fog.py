@@ -1,10 +1,10 @@
+import datetime
 import json
 import logging
 import requests
 import socket
 import re
 
-from datetime import datetime
 from paramiko import SSHException
 from paramiko.ssh_exception import NoValidConnectionsError
 
@@ -227,8 +227,8 @@ class FOG(object):
         for task in host_tasks:
             timestamp = task['createdTime']
             time_delta = (
-                datetime.utcnow() - datetime.strptime(
-                    timestamp, self.timestamp_format)
+                datetime.datetime.now(datetime.timezone.utc) - datetime.datetime.strptime(
+                    timestamp, self.timestamp_format).replace(tzinfo=datetime.timezone.utc)
             ).total_seconds()
             # There should only be one deploy task matching our host. Just in
             # case there are multiple, select a very recent one.

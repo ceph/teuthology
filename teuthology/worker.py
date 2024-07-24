@@ -1,3 +1,4 @@
+import datetime
 import logging
 import os
 import subprocess
@@ -5,8 +6,6 @@ import sys
 import tempfile
 import time
 import yaml
-
-from datetime import datetime
 
 from teuthology import (
     # non-modules
@@ -24,7 +23,7 @@ from teuthology.config import set_config_attr
 from teuthology.exceptions import BranchNotFoundError, CommitNotFoundError, SkipJob, MaxWhileTries
 
 log = logging.getLogger(__name__)
-start_time = datetime.utcnow()
+start_time = datetime.datetime.now(datetime.timezone.utc)
 restart_file_path = '/tmp/teuthology-restart-workers'
 stop_file_path = '/tmp/teuthology-stop-workers'
 
@@ -32,7 +31,10 @@ stop_file_path = '/tmp/teuthology-stop-workers'
 def sentinel(path):
     if not os.path.exists(path):
         return False
-    file_mtime = datetime.utcfromtimestamp(os.path.getmtime(path))
+    file_mtime = datetime.datetime.fromtimestamp(
+        os.path.getmtime(path),
+        datetime.timezone.utc,
+    )
     if file_mtime > start_time:
         return True
     else:
@@ -325,7 +327,7 @@ def run_job(job_config, teuth_bin_path, archive_dir, verbose):
 
 
 def run_with_watchdog(process, job_config):
-    job_start_time = datetime.utcnow()
+    job_start_time = datetime.datetime.now(datetime.timezone.utc)
 
     # Only push the information that's relevant to the watchdog, to save db
     # load
@@ -339,7 +341,7 @@ def run_with_watchdog(process, job_config):
     symlink_worker_log(job_config['worker_log'], job_config['archive_path'])
     while process.poll() is None:
         # Kill jobs that have been running longer than the global max
-        run_time = datetime.utcnow() - job_start_time
+        run_time = datetime.datetime.now(datetime.timezone.utc) - job_start_time
         total_seconds = run_time.days * 60 * 60 * 24 + run_time.seconds
         if total_seconds > teuth_config.max_job_time:
             log.warning("Job ran longer than {max}s. Killing...".format(

@@ -1,7 +1,7 @@
+import datetime
 import os
 
 from unittest.mock import patch, Mock, MagicMock
-from datetime import datetime, timedelta
 
 from teuthology import worker
 
@@ -24,21 +24,19 @@ class TestWorker(object):
 
     @patch("os.path.getmtime")
     @patch("os.path.exists")
-    @patch("teuthology.worker.datetime")
-    def test_needs_restart(self, m_datetime, m_exists, m_getmtime):
+    def test_needs_restart(self, m_exists, m_getmtime):
         m_exists.return_value = True
-        m_datetime.utcfromtimestamp.return_value = datetime.utcnow() + timedelta(days=1)
-        result = worker.sentinel(worker.restart_file_path)
-        assert result
+        now = datetime.datetime.now(datetime.timezone.utc)
+        m_getmtime.return_value = (now + datetime.timedelta(days=1)).timestamp()
+        assert worker.sentinel(worker.restart_file_path)
 
     @patch("os.path.getmtime")
     @patch("os.path.exists")
-    @patch("teuthology.worker.datetime")
-    def test_does_not_need_restart(self, m_datetime, m_exists, getmtime):
+    def test_does_not_need_restart(self, m_exists, m_getmtime):
         m_exists.return_value = True
-        m_datetime.utcfromtimestamp.return_value = datetime.utcnow() - timedelta(days=1)
-        result = worker.sentinel(worker.restart_file_path)
-        assert not result
+        now = datetime.datetime.now(datetime.timezone.utc)
+        m_getmtime.return_value = (now - datetime.timedelta(days=1)).timestamp()
+        assert not worker.sentinel(worker.restart_file_path)
 
     @patch("os.symlink")
     def test_symlink_success(self, m_symlink):

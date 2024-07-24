@@ -1,5 +1,6 @@
+import datetime
+
 from copy import deepcopy
-from datetime import datetime
 from mock import patch, DEFAULT, PropertyMock
 from pytest import raises, mark
 
@@ -216,8 +217,10 @@ class TestFOG(object):
         tasktype_result = dict(tasktypes=[dict(name='deploy', id=tasktype_id)])
         schedule_result = dict()
         host_tasks = [dict(
-            createdTime=datetime.strftime(
-                datetime.utcnow(), self.klass.timestamp_format),
+            createdTime=datetime.datetime.strftime(
+                datetime.datetime.now(datetime.timezone.utc),
+                self.klass.timestamp_format
+            ),
             id=task_id,
         )]
         self.mocks['m_requests_Session_send']\

@@ -19,6 +19,8 @@ jobs:
             python: "3.10"
           - os: ubuntu-22.04
             python: "3.11"
+          - os: ubuntu-24.04
+            python: "3.12"
     steps:
       - uses: actions/checkout@v2
       - name: Add deadsnakes PPA

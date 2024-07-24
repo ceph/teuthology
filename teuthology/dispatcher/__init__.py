@@ -1,3 +1,4 @@
+import datetime
 import logging
 import os
 import psutil
@@ -5,7 +6,6 @@ import subprocess
 import sys
 import yaml
 
-from datetime import datetime
 from typing import Dict, List
 
 from teuthology import (
@@ -26,7 +26,7 @@ from teuthology.lock import ops as lock_ops
 from teuthology import safepath
 
 log = logging.getLogger(__name__)
-start_time = datetime.utcnow()
+start_time = datetime.datetime.now(datetime.timezone.utc)
 restart_file_path = '/tmp/teuthology-restart-dispatcher'
 stop_file_path = '/tmp/teuthology-stop-dispatcher'
 
@@ -34,7 +34,10 @@ stop_file_path = '/tmp/teuthology-stop-dispatcher'
 def sentinel(path):
     if not os.path.exists(path):
         return False
-    file_mtime = datetime.utcfromtimestamp(os.path.getmtime(path))
+    file_mtime = datetime.datetime.fromtimestamp(
+        os.path.getmtime(path),
+        datetime.timezone.utc,
+    )
     return file_mtime > start_time
 
 
