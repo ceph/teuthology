@@ -1,7 +1,8 @@
+import importlib
 import pytest
+import sys
 
 from pathlib import Path
-from subprocess import check_call
 from typing import List
 
 root = Path("./teuthology")
@@ -26,4 +27,5 @@ def find_modules() -> List[str]:
 
 @pytest.mark.parametrize("module", find_modules())
 def test_import_modules(module):
-    check_call(["python3", "-c", f"import {module}"])
+    importlib.import_module(module)
+    assert module in sys.modules
