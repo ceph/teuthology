@@ -180,6 +180,8 @@ toml==0.10.2
     # via teuthology (pyproject.toml)
 tox==4.11.4
     # via teuthology (pyproject.toml)
+types-psutil==6.0.0.20240621
+    # via teuthology (pyproject.toml)
 urllib3==1.26.18
     # via
     #   botocore
