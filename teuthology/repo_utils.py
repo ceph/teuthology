@@ -440,7 +440,7 @@ def fetch_teuthology(branch, commit=None, lock=True):
 
 
 def bootstrap_teuthology(dest_path):
-    with exporter.BootstrapTime.time():
+    with exporter.BootstrapTime().time():
         log.info("Bootstrapping %s", dest_path)
         # This magic makes the bootstrap script not attempt to clobber an
         # existing virtualenv. But the branch's bootstrap needs to actually

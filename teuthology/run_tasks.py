@@ -105,7 +105,10 @@ def run_tasks(tasks, ctx):
             manager = run_one_task(taskname, ctx=ctx, config=config)
             if hasattr(manager, '__enter__'):
                 stack.append((taskname, manager))
-                with exporter.TaskTime.labels(taskname, "enter").time():
+                with exporter.TaskTime().time(
+                    name=taskname,
+                    phase="enter"
+                ):
                     manager.__enter__()
     except BaseException as e:
         if isinstance(e, ConnectionLostError):
@@ -150,7 +153,10 @@ def run_tasks(tasks, ctx):
                 log.debug('Unwinding manager %s', taskname)
                 timer.mark('%s exit' % taskname)
                 try:
-                    with exporter.TaskTime.labels(taskname, "exit").time():
+                    with exporter.TaskTime().time(
+                        name=taskname,
+                        phase="exit"
+                    ):
                         suppress = manager.__exit__(*exc_info)
                 except Exception as e:
                     if isinstance(e, ConnectionLostError):

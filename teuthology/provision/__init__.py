@@ -48,9 +48,9 @@ def reimage(ctx, machine_name, machine_type):
         # or SystemExit
         raise
     finally:
-        teuthology.exporter.NodeReimagingResults.record(
-            machine_type,
-            status,
+        teuthology.exporter.NodeReimagingResults().record(
+            machine_type=machine_type,
+            status=status,
         )
     return result
 

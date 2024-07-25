@@ -474,7 +474,10 @@ def push_job_info(run_name, job_id, job_info, base_uri=None):
     reporter.report_job(run_name, job_id, job_info)
     status = get_status(job_info)
     if status in ["pass", "fail", "dead"] and "machine_type" in job_info:
-        teuthology.exporter.JobResults.record(job_info["machine_type"], status)
+        teuthology.exporter.JobResults().record(
+            machine_type=job_info["machine_type"],
+            status=status,
+        )
 
 
 def try_push_job_info(job_config, extra_info=None):
@@ -584,7 +587,10 @@ def try_mark_run_dead(run_name):
                 log.info("Marking job {job_id} as dead".format(job_id=job_id))
                 reporter.report_job(run_name, job['job_id'], dead=True)
                 if "machine_type" in job:
-                    teuthology.exporter.JobResults.record(job["machine_type"], job["status"])
+                    teuthology.exporter.JobResults().record(
+                        machine_type=job["machine_type"],
+                        status=job["status"],
+                    )
             except report_exceptions:
                 log.exception("Could not mark job as dead: {job_id}".format(
                     job_id=job_id))

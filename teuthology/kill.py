@@ -95,9 +95,9 @@ def kill_job(run_name, job_id, archive_base=None, owner=None, skip_unlock=False)
         return
     report.try_push_job_info(job_info, dict(status="dead"))
     if 'machine_type' in job_info:
-        teuthology.exporter.JobResults.record(
-            job_info["machine_type"],
-            job_info.get("status", "dead")
+        teuthology.exporter.JobResults().record(
+            machine_type=job_info["machine_type"],
+            status=job_info.get("status", "dead")
         )
     else:
         log.warn(f"Job {job_id} has no machine_type; cannot report via Prometheus")
