@@ -148,6 +148,8 @@ class JobProcesses(TeuthologyMetric):
             cmdline = proc.cmdline()
         except psutil.ZombieProcess:
             return False
+        except psutil.AccessDenied:
+            return False
         if not len(cmdline) > 1:
             return False
         if not cmdline[1].endswith("teuthology"):
