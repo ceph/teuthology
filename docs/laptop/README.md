@@ -52,7 +52,7 @@ docker network create paddles
 Start postgres containers in order to use paddles:
 
 ```bash
-mkdir $HOME/.teuthology/postgres
+mkdir -p $HOME/.teuthology/postgres
 docker run -d -p 5432:5432 --network paddles --name paddles-postgres \
     -e POSTGRES_PASSWORD=secret \
     -e POSTGRES_USER=paddles \
