@@ -24,6 +24,7 @@ from teuthology.suite import util
 from teuthology.suite.merge import config_merge
 from teuthology.suite.build_matrix import build_matrix
 from teuthology.suite.placeholder import substitute_placeholders, dict_templ
+from teuthology.util.time import TIMESTAMP_FMT
 
 log = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ class Run(object):
         self.args = args
         # We assume timestamp is a datetime.datetime object
         self.timestamp = self.args.timestamp or \
-            datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
+            datetime.datetime.now().strftime(TIMESTAMP_FMT)
         self.user = self.args.user or pwd.getpwuid(os.getuid()).pw_name
 
         self.name = self.make_run_name()

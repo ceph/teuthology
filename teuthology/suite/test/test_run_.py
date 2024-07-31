@@ -12,6 +12,7 @@ from io import BytesIO
 from teuthology.config import config, YamlConfig
 from teuthology.exceptions import ScheduleFailError
 from teuthology.suite import run
+from teuthology.util.time import TIMESTAMP_FMT
 
 
 class TestRun(object):
@@ -52,7 +53,7 @@ class TestRun(object):
 
     @patch('teuthology.suite.run.util.fetch_repos')
     def test_name(self, m_fetch_repos):
-        stamp = datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
+        stamp = datetime.now().strftime(TIMESTAMP_FMT)
         with patch.object(run.Run, 'create_initial_config',
                           return_value=run.JobConfig()):
             name = run.Run(self.args).name

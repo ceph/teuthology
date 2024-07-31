@@ -1,9 +1,33 @@
 import pytest
 
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Type
 
 from teuthology.util import time
+
+
+@pytest.mark.parametrize(
+    ["timestamp", "result"],
+    [
+        ["1999-12-31_23:59:59", datetime(1999, 12, 31, 23, 59, 59, tzinfo=timezone.utc)],
+        ["1999-12-31_23:59", datetime(1999, 12, 31, 23, 59, 0, tzinfo=timezone.utc)],
+        ["1999-12-31T23:59:59", datetime(1999, 12, 31, 23, 59, 59, tzinfo=timezone.utc)],
+        ["1999-12-31T23:59:59+00:00", datetime(1999, 12, 31, 23, 59, 59, tzinfo=timezone.utc)],
+        ["1999-12-31T17:59:59-06:00", datetime(1999, 12, 31, 23, 59, 59, tzinfo=timezone.utc)],
+        ["2024-01-01", datetime(2024, 1, 1, 0, 0, tzinfo=timezone.utc)],
+        ["tomorrow", ValueError],
+        ["1d", ValueError],
+        ["", ValueError],
+        ["2024", ValueError],
+
+    ]
+)
+def test_parse_timestamp(timestamp: str, result: datetime | Type[Exception]):
+    if isinstance(result, datetime):
+        assert time.parse_timestamp(timestamp) == result
+    else:
+        with pytest.raises(result):
+            time.parse_timestamp(timestamp)
 
 
 @pytest.mark.parametrize(

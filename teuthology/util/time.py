@@ -1,6 +1,24 @@
 import re
 
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
+
+# When we're not using ISO format, we're using this
+TIMESTAMP_FMT = "%Y-%m-%d_%H:%M:%S"
+
+def parse_timestamp(timestamp: str) -> datetime:
+    """
+    timestamp: A string either in ISO 8601 format or TIMESTAMP_FMT.
+               If no timezone is specified, UTC is assumed.
+
+    :returns: a datetime object
+    """
+    try:
+        dt = datetime.fromisoformat(timestamp)
+    except ValueError:
+        dt = datetime.strptime(timestamp, TIMESTAMP_FMT)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
 
 def parse_offset(offset: str) -> timedelta:
     """
