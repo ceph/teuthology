@@ -1127,7 +1127,8 @@ def _ssh_keyscan(hostname):
     for line in p.stdout:
         host, key = line.strip().decode().split(' ', 1)
         keys.append(key)
-    return sorted(keys)[0]
+    if len(keys) > 0:
+        return sorted(keys)[0]
 
 
 def ssh_keyscan_wait(hostname):
