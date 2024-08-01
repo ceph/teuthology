@@ -33,12 +33,13 @@ class YamlConfig(MutableMapping):
             self._conf = dict()
 
     def load(self, conf=None):
-        if conf:
+        if conf is not None:
             if isinstance(conf, dict):
                 self._conf = conf
-            else:
+                return
+            elif conf:
                 self._conf = yaml.safe_load(conf)
-            return
+                return
         if os.path.exists(self.yaml_path):
             with open(self.yaml_path) as f:
                 self._conf = yaml.safe_load(f)
