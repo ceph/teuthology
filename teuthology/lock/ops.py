@@ -227,6 +227,13 @@ def unlock_one(name, user, description=None, status: Union[dict, None] = None) -
     if not teuthology.provision.destroy_if_vm(name, user, description or ""):
         log.error('destroy failed for %s', name)
         return False
+    # we're trying to stop node before actual unlocking
+    status_info = teuthology.lock.query.get_status(name)
+    try:
+        if not teuthology.lock.query.is_vm(status=status_info):
+            stop_node(name, status)
+    except Exception:
+        log.exception(f"Failed to stop {name}!")
     request = dict(name=name, locked=False, locked_by=user,
                    description=description)
     uri = os.path.join(config.lock_server, 'nodes', name, 'lock', '')
@@ -237,10 +244,6 @@ def unlock_one(name, user, description=None, status: Union[dict, None] = None) -
                 response = requests.put(uri, json.dumps(request))
                 if response.ok:
                     log.info('unlocked: %s', name)
-                    try:
-                        stop_node(name, status)
-                    except Exception:
-                        log.exception(f"Failed to stop {name}!")
                     return response.ok
                 if response.status_code == 403:
                     break
