@@ -205,6 +205,8 @@ def find_dispatcher_processes() -> Dict[str, List[psutil.Process]]:
     def match(proc):
         try:
             cmdline = proc.cmdline()
+        except psutil.AccessDenied:
+            return False
         except psutil.ZombieProcess:
             return False
         if len(cmdline) < 3:
