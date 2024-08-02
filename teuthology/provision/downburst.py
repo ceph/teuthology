@@ -215,7 +215,7 @@ class Downburst(object):
             'additional-disks-size': machine['volumes']['size'],
             'arch': 'x86_64',
         }
-        fqdn = self.name.split('@')[1]
+        fqdn = self.name.split('@')[-1]
         file_out = {
             'downburst': file_info,
             'local-hostname': fqdn,
