@@ -17,7 +17,7 @@ Currently, it's possible to execute against two classes of test nodes:
 
 Additionally, there are two modes of execution:
 * One-shot (the default): Containers start up, schedule and run the `teuthology:no-ceph` suite, and shut down. Success or failure is indicated by the `start.sh` exit code.
-* Wait: Containers start up, and `teuthology-dispatcher` is started, but no jobs are scheduled. Runs until the user presses Ctrl-C or `docker-compose down` is run.
+* Wait: Containers start up, and `teuthology-dispatcher` is started, but no jobs are scheduled. Runs until the user presses Ctrl-C or `docker compose down` is run.
   
 The teuthology container will be built with code from the repository clone that's currently in use.
 
