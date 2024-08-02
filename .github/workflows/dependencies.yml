@@ -24,11 +24,11 @@ jobs:
         if: matrix.os == 'ubuntu-20.04'
         run: sudo add-apt-repository --yes ppa:deadsnakes/ppa
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
       - name: Checkout default branch
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: main
           path: teuthology
@@ -45,7 +45,7 @@ jobs:
       - name: Move initial repository
         run: mv teuthology teuthology.orig
       - name: Checkout desired ref
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: teuthology
       - name: Move virtualenv to new checkout
