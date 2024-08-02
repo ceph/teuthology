@@ -223,6 +223,8 @@ def process_matches_run(pid, run_name):
             return True
     except psutil.NoSuchProcess:
         pass
+    except psutil.AccessDenied:
+        pass
     return False
 
 
