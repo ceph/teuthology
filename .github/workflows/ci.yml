@@ -22,12 +22,12 @@ jobs:
           - os: ubuntu-24.04
             python: "3.12"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Add deadsnakes PPA
         if: matrix.os == 'ubuntu-20.04'
         run: sudo add-apt-repository --yes ppa:deadsnakes/ppa
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
       - name: Install tox
