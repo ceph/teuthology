@@ -9,7 +9,7 @@ from paramiko import ChannelFile
 import gevent
 import gevent.event
 import socket
-import pipes
+import shlex
 import logging
 import shutil
 
@@ -252,7 +252,7 @@ def quote(args):
             if isinstance(a, Raw):
                 yield a.value
             else:
-                yield pipes.quote(a)
+                yield shlex.quote(a)
     if isinstance(args, list):
         return ' '.join(_quote(args))
     else:
@@ -400,7 +400,7 @@ def run(
     """
     Run a command remotely.  If any of 'args' contains shell metacharacters
     that you want to pass unquoted, pass it as an instance of Raw(); otherwise
-    it will be quoted with pipes.quote() (single quote, and single quotes
+    it will be quoted with shlex.quote() (single quote, and single quotes
     enclosed in double quotes).
 
     :param client: SSHConnection to run the command with
