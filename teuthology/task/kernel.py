@@ -1033,7 +1033,7 @@ def get_image_version(remote, path):
         raise UnsupportedPackageTypeError(remote)
 
     for file in files.split('\n'):
-        match = re.search('/lib/modules/(.*)/modules\.order$', file)
+        match = re.search(r'/lib/modules/(.*)/modules\.order$', file)
         if match:
             version = match.group(1)
             break
