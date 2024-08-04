@@ -68,7 +68,7 @@ class Timer(object):
 
         :param time: Time in seconds; like from time.time()
         """
-        _datetime = datetime.datetime.fromtimestamp(time, datetime.UTC)
+        _datetime = datetime.datetime.fromtimestamp(time, datetime.timezone.utc)
         return datetime.datetime.strftime(
             _datetime,
             self.datetime_format,
