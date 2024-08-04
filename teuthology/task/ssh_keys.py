@@ -54,7 +54,7 @@ def particular_ssh_key_test(line_to_test, ssh_key):
     """
     Check the validity of the ssh_key
     """
-    match = re.match('[\w-]+ {key} \S+@\S+'.format(key=re.escape(ssh_key)), line_to_test)
+    match = re.match(r'[\w-]+ {key} \S+@\S+'.format(key=re.escape(ssh_key)), line_to_test)
 
     if match:
         return False
@@ -65,7 +65,7 @@ def ssh_keys_user_line_test(line_to_test, username ):
     """
     Check the validity of the username
     """
-    match = re.match('[\w-]+ \S+ {username}@\S+'.format(username=username), line_to_test)
+    match = re.match(r'[\w-]+ \S+ {username}@\S+'.format(username=username), line_to_test)
 
     if match:
         return False
