@@ -9,6 +9,7 @@ local lua_allowlist = {
   tostring = tostring,
   py_attrgetter = python.as_attrgetter,
   py_dict = python.builtins.dict,
+  py_len = python.builtins.len,
   py_list = python.builtins.list,
   py_tuple = python.builtins.tuple,
   py_enumerate = python.enumerate,
