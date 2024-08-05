@@ -102,56 +102,21 @@ def syslog(ctx, config):
         # flush the file fully. oh well.
 
         log.info('Checking logs for errors...')
+        exclude_errors = config.get('ignorelist', [])
+        log.info('Exclude error list: {0}'.format(exclude_errors))
         for rem in cluster.remotes.keys():
             log.debug('Checking %s', rem.name)
-            stdout = rem.sh(
-                [
+            args = [
                     'egrep', '--binary-files=text',
-                    '\\bBUG\\b|\\bINFO\\b|\\bDEADLOCK\\b',
+                    '\\bBUG\\b|\\bINFO\\b|\\bDEADLOCK\\b|\\bOops\\b|\\bWARNING\\b|\\bKASAN\\b',
                     run.Raw(f'{archive_dir}/syslog/kern.log'),
-                    run.Raw('|'),
-                    'grep', '-v', 'task .* blocked for more than .* seconds',
-                    run.Raw('|'),
-                    'grep', '-v', 'lockdep is turned off',
-                    run.Raw('|'),
-                    'grep', '-v', 'trying to register non-static key',
-                    run.Raw('|'),
-                    'grep', '-v', 'DEBUG: fsize',  # xfs_fsr
-                    run.Raw('|'),
-                    'grep', '-v', 'CRON',  # ignore cron noise
-                    run.Raw('|'),
-                    'grep', '-v', 'BUG: bad unlock balance detected',  # #6097
-                    run.Raw('|'),
-                    'grep', '-v', 'inconsistent lock state',  # FIXME see #2523
-                    run.Raw('|'),
-                    'grep', '-v', '*** DEADLOCK ***',  # part of lockdep output
-                    run.Raw('|'),
-                    'grep', '-v',
-                    # FIXME see #2590 and #147
-                    'INFO: possible irq lock inversion dependency detected',
-                    run.Raw('|'),
-                    'grep', '-v',
-                    'INFO: NMI handler (perf_event_nmi_handler) took too long to run',  # noqa
-                    run.Raw('|'),
-                    'grep', '-v', 'INFO: recovery required on readonly',
-                    run.Raw('|'),
-                    'grep', '-v', 'ceph-create-keys: INFO',
-                    run.Raw('|'),
-                    'grep', '-v', 'INFO:ceph-create-keys',
-                    run.Raw('|'),
-                    'grep', '-v', 'Loaded datasource DataSourceOpenStack',
-                    run.Raw('|'),
-                    'grep', '-v', 'container-storage-setup: INFO: Volume group backing root filesystem could not be determined',  # noqa
-                    run.Raw('|'),
-                    'egrep', '-v', '\\bsalt-master\\b|\\bsalt-minion\\b|\\bsalt-api\\b',
-                    run.Raw('|'),
-                    'grep', '-v', 'ceph-crash',
-                    run.Raw('|'),
-                    'egrep', '-v', '\\btcmu-runner\\b.*\\bINFO\\b',
-                    run.Raw('|'),
-                    'head', '-n', '1',
-                ],
-            )
+            ]
+            for exclude in exclude_errors:
+                args.extend([run.Raw('|'), 'egrep', '-v', exclude])
+            args.extend([
+                run.Raw('|'), 'head', '-n', '1',
+            ])
+            stdout = rem.sh(args)
             if stdout != '':
                 log.error('Error in syslog on %s: %s', rem.name, stdout)
                 set_status(ctx.summary, 'fail')
