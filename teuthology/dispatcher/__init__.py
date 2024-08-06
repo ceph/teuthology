@@ -313,7 +313,10 @@ def lock_machines(job_config):
     fake_ctx = supervisor.create_fake_context(job_config, block=True)
     machine_type = job_config["machine_type"]
     count = len(job_config['roles'])
-    with exporter.NodeLockingTime.labels(machine_type, count).time():
+    with exporter.NodeLockingTime().time(
+        machine_type=machine_type,
+        count=count,
+    ):
         lock_ops.block_and_lock_machines(
             fake_ctx,
             count,

@@ -44,10 +44,10 @@ def main(args):
         # If a job (e.g. from the nop suite) doesn't need nodes, avoid
         # submitting a zero here.
         if node_count:
-            with exporter.NodeReimagingTime.labels(
-                job_config["machine_type"],
-                node_count
-            ).time():
+            with exporter.NodeReimagingTime().time(
+                machine_type=job_config["machine_type"],
+                node_count=node_count,
+            ):
                 reimage(job_config)
         else:
             reimage(job_config)
@@ -57,7 +57,7 @@ def main(args):
     try:
         suite = job_config.get("suite")
         if suite:
-            with exporter.JobTime.labels(suite).time():
+            with exporter.JobTime().time(suite=suite):
                 return run_job(
                     job_config,
                     args.bin_path,
