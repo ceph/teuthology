@@ -115,20 +115,20 @@ class safe_while(object):
 
         msg = msg.format(
             action=self.action,
-            tries=self.counter,
+            tries=self.counter - 1,
             total=self.total_seconds,
         )
         return msg
 
     def __call__(self):
-        if self.tries < 0:
-            return True
         self.counter += 1
         if self.counter == 1:
             return True
+        def must_stop():
+            return self.tries > 0 and self.counter > self.tries
         if ((self.timeout > 0 and
              self.total_seconds >= self.timeout) or
-            (self.timeout == 0 and self.counter > self.tries)):
+            (self.timeout == 0 and must_stop())):
             error_msg = self._make_error_msg()
             if self._raise:
                 raise MaxWhileTries(error_msg)
