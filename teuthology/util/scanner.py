@@ -130,7 +130,7 @@ class ValgrindScanner(Scanner):
 
     def _parse(self, file_content: str) -> Tuple[Optional[str], Optional[dict]]:
         xml_tree = etree.fromstring(file_content)
-        if not xml_tree:
+        if xml_tree is None:
             return None, None
         
         error_tree = xml_tree.find('error')

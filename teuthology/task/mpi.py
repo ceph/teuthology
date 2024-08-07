@@ -18,7 +18,7 @@ def _check_mpi_version(remotes):
     for remote in remotes:
         version_str = remote.sh("mpiexec --version")
         try:
-            version = re.search("^\s+Version:\s+(.+)$", version_str, re.MULTILINE).group(1)
+            version = re.search(r"^\s+Version:\s+(.+)$", version_str, re.MULTILINE).group(1)
         except AttributeError:
             raise RuntimeError("Malformed MPI version output: {0}".format(version_str))
         else:

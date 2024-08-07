@@ -2,7 +2,7 @@ import logging
 import time
 import yaml
 
-from datetime import datetime
+import datetime
 
 log = logging.getLogger(__name__)
 
@@ -68,8 +68,8 @@ class Timer(object):
 
         :param time: Time in seconds; like from time.time()
         """
-        _datetime = datetime.utcfromtimestamp(time)
-        return datetime.strftime(
+        _datetime = datetime.datetime.fromtimestamp(time, datetime.timezone.utc)
+        return datetime.datetime.strftime(
             _datetime,
             self.datetime_format,
         )

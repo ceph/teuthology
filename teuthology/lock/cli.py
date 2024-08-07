@@ -133,7 +133,7 @@ def main(ctx):
                 for s in sorted(statuses, key=lambda s: s.get('name')):
                     locked = 'unlocked' if s['locked'] == 0 else 'locked'
                     up = 'up' if s['up'] else 'down'
-                    mo = re.match('\w+@(\w+?)\..*', s['name'])
+                    mo = re.match(r'\w+@(\w+?)\..*', s['name'])
                     host = mo.group(1) if mo else s['name']
                     print(node_status_template.format(
                         up=up, locked=locked, host=host,
