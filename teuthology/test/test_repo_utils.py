@@ -3,6 +3,7 @@ import unittest.mock as mock
 import os
 import os.path
 from pytest import raises, mark
+import re
 import shutil
 import subprocess
 import tempfile
@@ -29,13 +30,20 @@ class TestRepoUtils(object):
             cls.repo_url = 'file://' + cls.src_path
             cls.commit = None
 
-        cls.git_version = parse(
-            subprocess.check_output(('git', 'version')
-        ).decode().strip().split(' ')[-1])
+        cls.git_version = parse(cls.get_system_git_version())
 
     @classmethod
     def teardown_class(cls):
         shutil.rmtree(cls.temp_path)
+
+    @classmethod
+    def get_system_git_version(cls):
+        # parsing following patterns
+        # 1) git version 2.45.2
+        # 2) git version 2.39.3 (Apple Git-146)
+        git_version = subprocess.check_output(('git', 'version')).decode()
+        m = re.match(r"git version (?P<ver>\d+.\d+.\d+) ?", git_version)
+        return m['ver']
 
     def setup_method(self, method):
         # In git 2.28.0, the --initial-branch flag was added.
