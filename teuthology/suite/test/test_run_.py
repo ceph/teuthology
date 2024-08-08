@@ -4,7 +4,7 @@ import requests
 import contextlib
 import yaml
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from mock import patch, call, ANY
 from io import StringIO
 from io import BytesIO
@@ -12,6 +12,7 @@ from io import BytesIO
 from teuthology.config import config, YamlConfig
 from teuthology.exceptions import ScheduleFailError
 from teuthology.suite import run
+from teuthology.util.time import TIMESTAMP_FMT
 
 
 class TestRun(object):
@@ -52,7 +53,7 @@ class TestRun(object):
 
     @patch('teuthology.suite.run.util.fetch_repos')
     def test_name(self, m_fetch_repos):
-        stamp = datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
+        stamp = datetime.now().strftime(TIMESTAMP_FMT)
         with patch.object(run.Run, 'create_initial_config',
                           return_value=run.JobConfig()):
             name = run.Run(self.args).name
@@ -88,6 +89,45 @@ class TestRun(object):
         self.args.ceph_sha1 = None
         with pytest.raises(ScheduleFailError):
             self.klass(self.args)
+
+    @pytest.mark.parametrize(
+        ["expire", "delta", "result"],
+        [
+            [None, timedelta(), False],
+            ["1m", timedelta(), True],
+            ["1m", timedelta(minutes=-2), False],
+            ["1m", timedelta(minutes=2), True],
+            ["7d", timedelta(days=-14), False],
+        ]
+    )
+    @patch('teuthology.repo_utils.fetch_repo')
+    @patch('teuthology.suite.run.util.git_branch_exists')
+    @patch('teuthology.suite.run.util.package_version_for_hash')
+    @patch('teuthology.suite.run.util.git_ls_remote')
+    def test_get_expiration(
+        self,
+        m_git_ls_remote,
+        m_package_version_for_hash,
+        m_git_branch_exists,
+        m_fetch_repo,
+        expire,
+        delta,
+        result,
+    ):
+        m_git_ls_remote.side_effect = 'hash'
+        m_package_version_for_hash.return_value = 'a_version'
+        m_git_branch_exists.return_value = True
+        self.args.expire = expire
+        obj = self.klass(self.args)
+        now = datetime.now(timezone.utc)
+        expires_result = obj.get_expiration(_base_time=now + delta)
+        if expire is None:
+            assert expires_result is None
+            assert obj.base_config['expire'] is None
+        else:
+            assert expires_result is not None
+            assert (now < expires_result) is result
+            assert obj.base_config['expire']
 
     @patch('teuthology.suite.run.util.fetch_repos')
     @patch('requests.head')

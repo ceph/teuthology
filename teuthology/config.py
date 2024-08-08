@@ -33,12 +33,13 @@ class YamlConfig(MutableMapping):
             self._conf = dict()
 
     def load(self, conf=None):
-        if conf:
+        if conf is not None:
             if isinstance(conf, dict):
                 self._conf = conf
-            else:
+                return
+            elif conf:
                 self._conf = yaml.safe_load(conf)
-            return
+                return
         if os.path.exists(self.yaml_path):
             with open(self.yaml_path) as f:
                 self._conf = yaml.safe_load(f)
@@ -157,6 +158,7 @@ class TeuthologyConfig(YamlConfig):
         'job_threshold': 500,
         'lab_domain': 'front.sepia.ceph.com',
         'lock_server': 'http://paddles.front.sepia.ceph.com/',
+        'max_job_age': 1209600,  # 2 weeks
         'max_job_time': 259200,  # 3 days
         'nsupdate_url': 'http://nsupdate.front.sepia.ceph.com/update',
         'results_server': 'http://paddles.front.sepia.ceph.com/',

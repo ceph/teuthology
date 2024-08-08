@@ -7,6 +7,7 @@ from unittest.mock import patch, Mock, MagicMock
 from teuthology import dispatcher
 from teuthology.config import FakeNamespace
 from teuthology.contextutil import MaxWhileTries
+from teuthology.util.time import TIMESTAMP_FMT
 
 
 class TestDispatcher(object):
@@ -172,3 +173,31 @@ class TestDispatcher(object):
         for i in range(len(jobs)):
             push_call = m_try_push_job_info.call_args_list[i]
             assert push_call[0][1]['status'] == 'dead'
+
+    @pytest.mark.parametrize(
+        ["timestamp", "expire", "skip"],
+        [
+            [datetime.timedelta(days=-1), None, False],
+            [datetime.timedelta(days=-30), None, True],
+            [None, datetime.timedelta(days=1), False],
+            [None, datetime.timedelta(days=-1), True],
+            [datetime.timedelta(days=-1), datetime.timedelta(days=1), False],
+            [datetime.timedelta(days=1), datetime.timedelta(days=-1), True],
+        ]
+    )
+    @patch("teuthology.dispatcher.report.try_push_job_info")
+    def test_check_job_expiration(self, _, timestamp, expire, skip):
+        now = datetime.datetime.now(datetime.timezone.utc)
+        job_config = dict(
+            job_id="1",
+            name="job_name",
+        )
+        if timestamp:
+            job_config["timestamp"] = (now + timestamp).strftime(TIMESTAMP_FMT)
+        if expire:
+            job_config["expire"] = (now + expire).strftime(TIMESTAMP_FMT)
+        if skip:
+            with pytest.raises(dispatcher.SkipJob):
+                dispatcher.check_job_expiration(job_config)
+        else:
+            dispatcher.check_job_expiration(job_config)

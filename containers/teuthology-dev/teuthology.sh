@@ -28,6 +28,7 @@ if [ "$TEUTHOLOGY_SUITE" != "none" ]; then
         --filter-out "libcephfs,kclient" \
         --force-priority \
         --seed 349 \
+        ${TEUTHOLOGY_SUITE_EXTRA_ARGS} \
         $TEUTHOLOGY_CONF
     DISPATCHER_EXIT_FLAG='--exit-on-empty-queue'
     teuthology-queue -m $TEUTHOLOGY_MACHINE_TYPE -s | \

@@ -63,6 +63,9 @@ def process_args(args):
         elif key == 'subset' and value is not None:
             # take input string '2/3' and turn into (2, 3)
             value = tuple(map(int, value.split('/')))
+        elif key == 'expire' and value is None:
+            # Skip empty 'expire' values
+            continue
         elif key in ('filter_all', 'filter_in', 'filter_out', 'rerun_statuses'):
             if not value:
                 value = []

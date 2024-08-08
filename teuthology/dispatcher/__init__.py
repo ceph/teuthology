@@ -22,6 +22,7 @@ from teuthology.config import config as teuth_config
 from teuthology.dispatcher import supervisor
 from teuthology.exceptions import BranchNotFoundError, CommitNotFoundError, SkipJob, MaxWhileTries
 from teuthology.lock import ops as lock_ops
+from teuthology.util.time import parse_timestamp
 from teuthology import safepath
 
 log = logging.getLogger(__name__)
@@ -234,6 +235,8 @@ def find_dispatcher_processes() -> Dict[str, List[psutil.Process]]:
 
 def prep_job(job_config, log_file_path, archive_dir):
     job_id = job_config['job_id']
+    check_job_expiration(job_config)
+
     safe_archive = safepath.munge(job_config['name'])
     job_config['worker_log'] = log_file_path
     archive_path_full = os.path.join(
@@ -306,6 +309,31 @@ def prep_job(job_config, log_file_path, archive_dir):
         raise RuntimeError("teuthology branch %s at %s not bootstrapped!" %
                            (teuthology_branch, teuth_bin_path))
     return job_config, teuth_bin_path
+
+
+def check_job_expiration(job_config):
+    job_id = job_config['job_id']
+    expired = False
+    now = datetime.datetime.now(datetime.timezone.utc)
+    if expire_str := job_config.get('timestamp'):
+        expire = parse_timestamp(expire_str) + \
+            datetime.timedelta(seconds=teuth_config.max_job_age)
+        expired = expire < now
+    if not expired and (expire_str := job_config.get('expire')):
+        try:
+            expire = parse_timestamp(expire_str)
+            expired = expired or expire < now
+        except ValueError:
+            log.warning(f"Failed to parse job expiration: {expire_str=}")
+            pass
+    if expired:
+        log.info(f"Skipping job {job_id} because it is expired: {expire_str} is in the past")
+        report.try_push_job_info(
+            job_config,
+            # TODO: Add a 'canceled' status to paddles, and use that.
+            dict(status='dead'),
+        )
+        raise SkipJob()
 
 
 def lock_machines(job_config):

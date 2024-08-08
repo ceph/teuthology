@@ -8,7 +8,7 @@ import requests
 
 from urllib.parse import urljoin
 
-from teuthology import exporter, kill, report, safepath
+from teuthology import exporter, dispatcher, kill, report, safepath
 from teuthology.config import config as teuth_config
 from teuthology.exceptions import SkipJob, MaxWhileTries
 from teuthology import setup_log_file, install_except_hook
@@ -37,6 +37,10 @@ def main(args):
                                  f"supervisor.{job_config['job_id']}.log")
     setup_log_file(log_file_path)
     install_except_hook()
+    try:
+        dispatcher.check_job_expiration(job_config)
+    except SkipJob:
+        return 0
 
     # reimage target machines before running the job
     if 'targets' in job_config:
@@ -54,25 +58,22 @@ def main(args):
         with open(args.job_config, 'w') as f:
             yaml.safe_dump(job_config, f, default_flow_style=False)
 
-    try:
-        suite = job_config.get("suite")
-        if suite:
-            with exporter.JobTime().time(suite=suite):
-                return run_job(
-                    job_config,
-                    args.bin_path,
-                    args.archive_dir,
-                    args.verbose
-                )
-        else:
+    suite = job_config.get("suite")
+    if suite:
+        with exporter.JobTime().time(suite=suite):
             return run_job(
                 job_config,
                 args.bin_path,
                 args.archive_dir,
                 args.verbose
             )
-    except SkipJob:
-        return 0
+    else:
+        return run_job(
+            job_config,
+            args.bin_path,
+            args.archive_dir,
+            args.verbose
+        )
 
 
 def run_job(job_config, teuth_bin_path, archive_dir, verbose):
