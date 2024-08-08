@@ -44,6 +44,7 @@ def downburst_executable():
 
 def downburst_environment():
     env = dict()
+    env['PATH'] = os.environ.get('PATH')
     discover_url = os.environ.get('DOWNBURST_DISCOVER_URL')
     if config.downburst and not discover_url:
         if isinstance(config.downburst, dict):
@@ -215,7 +216,7 @@ class Downburst(object):
             'additional-disks-size': machine['volumes']['size'],
             'arch': 'x86_64',
         }
-        fqdn = self.name.split('@')[1]
+        fqdn = self.name.split('@')[-1]
         file_out = {
             'downburst': file_info,
             'local-hostname': fqdn,
