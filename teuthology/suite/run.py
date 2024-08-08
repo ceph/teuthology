@@ -108,7 +108,7 @@ class Run(object):
             self.suite_repo_path = self.args.suite_dir
         else:
             self.suite_repo_path = util.fetch_repos(
-                suite_branch, test_name=self.name, dry_run=self.args.dry_run)
+                suite_branch, test_name=self.name, dry_run=self.args.dry_run, commit=suite_hash)
         teuthology_branch, teuthology_sha1 = self.choose_teuthology_branch()
 
 
@@ -367,14 +367,27 @@ class Run(object):
 
     def choose_suite_hash(self, suite_branch):
         suite_repo_name = self.suite_repo_name
-        suite_repo_project_or_url = self.args.suite_repo or 'ceph-qa-suite'
-        suite_hash = util.git_ls_remote(
-            suite_repo_project_or_url,
-            suite_branch
-        )
-        if not suite_hash:
-            exc = BranchNotFoundError(suite_branch, suite_repo_name)
-            util.schedule_fail(message=str(exc), name=self.name, dry_run=self.args.dry_run)
+        suite_hash = None
+        if self.args.suite_sha1:
+            suite_hash = self.args.suite_sha1
+            if self.args.validate_sha1:
+                suite_hash = util.git_validate_sha1(suite_repo_name, suite_hash)
+            if not suite_hash:
+                exc = CommitNotFoundError(
+                    self.args.suite_sha1,
+                    '%s.git' % suite_repo_name
+                )
+                util.schedule_fail(message=str(exc), name=self.name, dry_run=self.args.dry_run)
+            log.info("suite sha1 explicitly supplied")
+        else:
+            suite_repo_project_or_url = self.args.suite_repo or 'ceph-qa-suite'
+            suite_hash = util.git_ls_remote(
+                suite_repo_project_or_url,
+                suite_branch
+            )
+            if not suite_hash:
+                exc = BranchNotFoundError(suite_branch, suite_repo_name)
+                util.schedule_fail(message=str(exc), name=self.name, dry_run=self.args.dry_run)
         log.info("%s branch: %s %s", suite_repo_name, suite_branch, suite_hash)
         return suite_hash
 

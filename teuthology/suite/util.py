@@ -29,7 +29,7 @@ CONTAINER_DISTRO = 'centos/9'       # the one to check for build_complete
 CONTAINER_FLAVOR = 'default'
 
 
-def fetch_repos(branch, test_name, dry_run):
+def fetch_repos(branch, test_name, dry_run, commit=None):
     """
     Fetch the suite repo (and also the teuthology repo) so that we can use it
     to build jobs. Repos are stored in ~/src/.
@@ -49,7 +49,7 @@ def fetch_repos(branch, test_name, dry_run):
             # We use teuthology's main branch in all cases right now
             if config.teuthology_path is None:
                 fetch_teuthology('main')
-        suite_repo_path = fetch_qa_suite(branch)
+        suite_repo_path = fetch_qa_suite(branch, commit)
     except BranchNotFoundError as exc:
         schedule_fail(message=str(exc), name=test_name, dry_run=dry_run)
     return suite_repo_path
