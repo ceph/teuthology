@@ -5,6 +5,7 @@ import random
 import time
 import yaml
 import requests
+import sqlite3
 
 from typing import List, Union
 
@@ -20,6 +21,7 @@ from teuthology.misc import canonicalize_hostname
 from teuthology.job_status import set_status
 
 from teuthology.lock import util, query
+from teuthology.lock.machines import pool as machine_pool
 from teuthology.orchestra import remote
 
 log = logging.getLogger(__name__)
@@ -377,11 +379,13 @@ def block_and_lock_machines(ctx, total_requested, machine_type, reimage=True, tr
     # change the status during the locking process
     report.try_push_job_info(ctx.config, dict(status='waiting'))
 
+    mpool = machine_pool()
     all_locked = dict()
     requested = total_requested
     while True:
         # get a candidate list of machines
-        machines = query.list_locks(
+        machines = mpool.list_locks(
+            ctx,
             machine_type=machine_type,
             up=True,
             locked=False,
@@ -414,9 +418,17 @@ def block_and_lock_machines(ctx, total_requested, machine_type, reimage=True, tr
                            (reserved, requested, len(machines)))
 
         try:
-            newly_locked = lock_many(ctx, requested, machine_type,
-                                     ctx.owner, ctx.archive, os_type,
-                                     os_version, arch, reimage=reimage)
+            newly_locked = mpool.acquire(
+                ctx,
+                requested,
+                machine_type,
+                ctx.owner,
+                ctx.archive,
+                os_type,
+                os_version,
+                arch,
+                reimage=reimage,
+            )
         except Exception:
             # Lock failures should map to the 'dead' status instead of 'fail'
             if 'summary' in ctx:
@@ -435,7 +447,7 @@ def block_and_lock_machines(ctx, total_requested, machine_type, reimage=True, tr
         if len(all_locked) == total_requested:
             vmlist = []
             for lmach in all_locked:
-                if query.is_vm(lmach):
+                if mpool.is_vm(lmach):
                     vmlist.append(lmach)
             if vmlist:
                 log.info('Waiting for virtual machines to come up')
