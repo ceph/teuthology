@@ -137,7 +137,6 @@ class TeuthologyConfig(YamlConfig):
     objects. Currently it serves as a convenient interface to
     ~/.teuthology.yaml and nothing else.
     """
-    yaml_path = os.path.join(os.path.expanduser('~/.teuthology.yaml'))
     _defaults = {
         'archive_base': '/home/teuthworker/archive',
         'archive_upload': None,
@@ -285,10 +284,13 @@ def set_config_attr(obj):
 
 
 def _get_config_path():
+    config_path = os.environ.get('TEUTHOLOGY_CONFIG', '~/.teuthology.yaml')
+    config_path = os.path.join(os.path.expanduser(config_path))
     system_config_path = '/etc/teuthology.yaml'
-    if not os.path.exists(TeuthologyConfig.yaml_path) and \
-            os.path.exists(system_config_path):
-        return system_config_path
-    return TeuthologyConfig.yaml_path
+    for path in (config_path, system_config_path):
+        if os.path.exists(path):
+            return path
+    return None
+
 
 config = TeuthologyConfig(yaml_path=_get_config_path())
