@@ -55,6 +55,9 @@ def is_vm(name=None, status=None):
 
 
 def list_locks(keyed_by_name=False, tries=10, **kwargs):
+    if not config.lock_server:
+        log.info("No lock_server in config, skipping list_locks")
+        return {}
     uri = os.path.join(config.lock_server, 'nodes', '')
     for key, value in kwargs.items():
         if kwargs[key] is False:
