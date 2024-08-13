@@ -60,8 +60,8 @@ class TestRun(object):
         assert str(stamp) in name
 
     @patch('teuthology.suite.run.util.fetch_repos')
-    def test_name_user(self, m_fetch_repos):
-        self.args.user = 'USER'
+    def test_name_owner(self, m_fetch_repos):
+        self.args.owner = 'USER'
         with patch.object(run.Run, 'create_initial_config',
                           return_value=run.JobConfig()):
             name = run.Run(self.args).name

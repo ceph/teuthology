@@ -45,10 +45,8 @@ class Run(object):
         # We assume timestamp is a datetime.datetime object
         self.timestamp = self.args.timestamp or \
             datetime.datetime.now().strftime(TIMESTAMP_FMT)
-        self.user = self.args.user or pwd.getpwuid(os.getuid()).pw_name
-
+        self.user = self.args.owner or pwd.getpwuid(os.getuid()).pw_name
         self.name = self.make_run_name()
-
         if self.args.ceph_repo:
             config.ceph_git_url = self.args.ceph_repo
         if self.args.suite_repo:
