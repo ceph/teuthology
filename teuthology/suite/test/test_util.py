@@ -103,7 +103,7 @@ Branch 'no-branch' not found in repo: https://github.com/ceph/ceph-ci.git!"
     def test_get_arch_fail(self, m_query):
         m_query.list_locks.return_value = False
         util.get_arch('magna')
-        m_query.list_locks.assert_called_with(machine_type="magna", count=1)
+        m_query.list_locks.assert_called_with(machine_type="magna", count=1, tries=1)
 
     @patch('teuthology.lock.query')
     def test_get_arch_success(self, m_query):
@@ -111,7 +111,7 @@ Branch 'no-branch' not found in repo: https://github.com/ceph/ceph-ci.git!"
         result = util.get_arch('magna')
         m_query.list_locks.assert_called_with(
             machine_type="magna",
-            count=1
+            count=1, tries=1
         )
         assert result == "arch"
 

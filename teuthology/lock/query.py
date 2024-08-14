@@ -68,7 +68,7 @@ def list_locks(keyed_by_name=False, tries=10, **kwargs):
     with safe_while(
             sleep=1,
             increment=0.5,
-            tries=-1,
+            tries=tries,
             action='list_locks'
     ) as proceed:
         while proceed():
