@@ -402,6 +402,7 @@ def main(args):
     # FIXME this should become more generic, and the keys should use
     # '_' uniformly
     if fake_ctx.config.get('interactive-on-error'):
+        teuth_config.config = getattr(teuth_config, 'config') or FakeNamespace()
         teuth_config.config.ctx = fake_ctx
 
     try:
