@@ -66,13 +66,18 @@ Repository = "https://github.com/ceph/teuthology"
 [project.optional-dependencies]
 manhole = ["manhole"]
 rocketchat = ["rocket-python>=1.2.15"]
+docs = [
+    "sphinx",
+    "sphinxcontrib-programoutput",
+]
 test = [
-    "PyJWT",
     "boto>=2.0b4",
     "boto3",
     "coverage",
+    "flake8",
     "ipy",
     "mock",
+    "PyJWT",
     "pynose",
     "pytest",
     "pytest-cov",
@@ -82,8 +87,8 @@ test = [
     "xmltodict",
 ]
 openstack = [
-    "python-openstackclient",
     "python-novaclient",
+    "python-openstackclient",
 ]
 
 [project.scripts]
