@@ -78,6 +78,7 @@ test = [
     "pytest-cov",
     "toml",
     "tox",
+    "tox-uv",
     "xmltodict",
 ]
 openstack = [
