@@ -10,8 +10,6 @@ bcrypt==4.2.0
     # via paramiko
 beanstalkc3==0.4.0
     # via teuthology (pyproject.toml)
-build==1.2.1
-    # via pip-tools
 certifi==2024.7.4
     # via
     #   requests
@@ -22,8 +20,6 @@ cffi==1.17.0
     #   pynacl
 charset-normalizer==3.3.2
     # via requests
-click==8.1.7
-    # via pip-tools
 configobj==5.0.8
     # via teuthology (pyproject.toml)
 configparser==7.1.0
@@ -58,16 +54,10 @@ ndg-httpsclient==0.5.1
 netaddr==1.3.0
     # via teuthology (pyproject.toml)
 packaging==24.1
-    # via
-    #   ansible-core
-    #   build
+    # via ansible-core
 paramiko==3.4.1
     # via teuthology (pyproject.toml)
 pexpect==4.9.0
-    # via teuthology (pyproject.toml)
-pip==24.2
-    # via pip-tools
-pip-tools==7.4.1
     # via teuthology (pyproject.toml)
 prettytable==3.11.0
     # via teuthology (pyproject.toml)
@@ -93,10 +83,6 @@ pyopenssl==24.2.1
     #   ndg-httpsclient
 pyparsing==3.1.4
     # via httplib2
-pyproject-hooks==1.1.0
-    # via
-    #   build
-    #   pip-tools
 python-dateutil==2.9.0.post0
     # via teuthology (pyproject.toml)
 pyyaml==6.0.2
@@ -111,9 +97,8 @@ resolvelib==1.0.1
     # via ansible-core
 sentry-sdk==2.13.0
     # via teuthology (pyproject.toml)
-setuptools==73.0.1
+setuptools==74.0.0
     # via
-    #   pip-tools
     #   zope-event
     #   zope-interface
 six==1.16.0
@@ -129,9 +114,7 @@ urllib3==1.26.19
     #   sentry-sdk
 wcwidth==0.2.13
     # via prettytable
-wheel==0.44.0
-    # via pip-tools
 zope-event==5.0
     # via gevent
-zope-interface==7.0.2
+zope-interface==7.0.3
     # via gevent
