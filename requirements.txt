@@ -10,6 +10,8 @@ bcrypt==4.2.0
     # via paramiko
 beanstalkc3==0.4.0
     # via teuthology (pyproject.toml)
+build==1.2.1
+    # via teuthology (pyproject.toml)
 certifi==2024.7.4
     # via
     #   requests
@@ -54,7 +56,9 @@ ndg-httpsclient==0.5.1
 netaddr==1.3.0
     # via teuthology (pyproject.toml)
 packaging==24.1
-    # via ansible-core
+    # via
+    #   ansible-core
+    #   build
 paramiko==3.4.1
     # via teuthology (pyproject.toml)
 pexpect==4.9.0
@@ -83,6 +87,8 @@ pyopenssl==24.2.1
     #   ndg-httpsclient
 pyparsing==3.1.4
     # via httplib2
+pyproject-hooks==1.1.0
+    # via build
 python-dateutil==2.9.0.post0
     # via teuthology (pyproject.toml)
 pyyaml==6.0.2
