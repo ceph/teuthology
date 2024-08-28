@@ -1,7 +1,4 @@
 import docopt
-
-import teuthology.misc
-import teuthology.schedule
 import sys
 
 doc = """
@@ -58,4 +55,6 @@ optional arguments:
 
 def main(argv=sys.argv[1:]):
     args = docopt.docopt(doc, argv=argv)
+    import teuthology.misc
+    import teuthology.schedule
     teuthology.schedule.main(args)
