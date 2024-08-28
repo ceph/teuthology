@@ -17,9 +17,9 @@ optional arguments:
   --no-nested-subset    disable nested subsets used in teuthology-suite
 """
 import docopt
-import teuthology.results
 
 
 def main():
     args = docopt.docopt(__doc__)
+    import teuthology.results
     teuthology.results.main(args)

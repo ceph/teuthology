@@ -1,9 +1,6 @@
 import docopt
 import sys
 
-import teuthology.lock
-import teuthology.lock.cli
-
 doc = """
 usage: teuthology-updatekeys -h
        teuthology-updatekeys [-v] -t <targets>
@@ -27,5 +24,7 @@ optional arguments:
 
 def main():
     args = docopt.docopt(doc)
+    import teuthology.lock
+    import teuthology.lock.cli
     status = teuthology.lock.cli.updatekeys(args)
     sys.exit(status)
