@@ -19,7 +19,7 @@ fi
 # Use the newest version we find
 if [ -z "$PYTHON" ]; then
   for i in 12 11 10; do
-    command -v "python3.$i" && PYTHON="python3.$i" && break
+    command -v "python3.$i" && PYTHON="python3.$i" &>/dev/null && break
   done
 fi
 if [ -z "$PYTHON" ]; then
@@ -35,166 +35,63 @@ Linux)
         . /etc/os-release
         OS=$(echo $NAME | tr -d ' ')
     fi
+    # rpm/dnf is the default, to reduce repetition in the case statement
+    has_pkg="rpm --whatprovides"
+    install_pkg="sudo dnf install -y"
     case "$OS" in
     Ubuntu|Debian|LinuxMint)
         deps=(qemu-utils python3-dev libssl-dev python3-pip python3-wheel $PYTHON-venv libev-dev libvirt-dev libffi-dev libyaml-dev)
-        for package in ${deps[@]}; do
-            if [ "$(dpkg --status -- $package|sed -n 's/^Status: //p')" != "install ok installed" ]; then
-                # add a space after old values
-                missing="${missing:+$missing }$package"
-            fi
-        done
-        if [ -n "$missing" ]; then
-            echo "$0: missing required packages:" 1>&2
-            echo "$missing"
-            if [ "$install" = true ]; then
-                echo "Updating metadata..."
-                sudo apt-get update
-                echo "Installing missing packages..."
-                sudo apt-get -y install $missing
-            else
-                echo "Please install missing packages or run './bootstrap install' if you have sudo"
-                echo "sudo apt-get -y install $missing"
-                exit 1
-            fi
-        fi
+        has_pkg="dpkg -C"
+        install_pkg="sudo apt install -y"
         ;;
     RedHatEnterpriseWorkstation|RedHatEnterpriseServer|RedHatEnterprise|CentOS)
         deps=(python39-pip python39-devel mariadb-devel libev-devel libvirt-devel libffi-devel)
-        for package in ${deps[@]}; do
-          if ! rpm -q --whatprovides $package ; then
-              missing="${missing:+$missing }$package"
-          fi
-        done
-        if [ -n "$missing" ]; then
-            echo "$0: missing required packages:" 1>&2
-            echo "$missing"
-            if [ "$install" = true ]; then
-                echo "Installing missing packages..."
-                sudo yum -y install $missing
-            else
-                echo "Please install missing packages or run './bootstrap install' if you have sudo"
-                echo "sudo yum -y install $missing"
-                exit 1
-            fi
-        fi
         ;;
     CentOSStream)
-       PYTHON=python3.12
+        PYTHON=python3.12
         deps=($PYTHON-pip $PYTHON-devel)
-        for package in ${deps[@]}; do
-          if ! rpm -q --whatprovides $package ; then
-              missing="${missing:+$missing }$package"
-          fi
-        done
-        if [ -n "$missing" ]; then
-            echo "$0: missing required packages:" 1>&2
-            echo "$missing"
-            if [ "$install" = true ]; then
-                echo "Installing missing packages..."
-                sudo yum -y install $missing
-            else
-                echo "Please install missing packages or run './bootstrap install' if you have sudo"
-                echo "sudo yum -y install $missing"
-                exit 1
-            fi
-        fi
         ;;
     AlmaLinux|RockyLinux)
-       PYTHON=python3.12
+        PYTHON=python3.12
         deps=($PYTHON-pip $PYTHON-devel libev-devel libvirt-devel libffi-devel)
-        for package in ${deps[@]}; do
-          if ! rpm -q --whatprovides $package; then
-              missing="${missing:+$missing }$package"
-          fi
-        done
-        if [ -n "$missing" ]; then
-            echo "$0: missing required packages:" 1>&2
-            echo "$missing"
-            if [ "$install" = true ]; then
-                echo "Installing missing packages..."
-                sudo yum -y install $missing
-            else
-                echo "Please install missing packages or run './bootstrap install' if you have sudo"
-                echo "sudo yum -y install $missing"
-                exit 1
-            fi
-        fi
         ;;
     Fedora|FedoraLinux)
-       PYTHON=python3.12
-        deps=($PYTHON-pip $PYTHON-devel)
+        PYTHON=python3.12
         deps=($PYTHON-pip $PYTHON-devel libev-devel libvirt-devel libffi-devel)
-        for package in ${deps[@]}; do
-          if ! rpm -q --whatprovides $package; then
-              missing="${missing:+$missing }$package"
-          fi
-        done
-        fedora_release=$(lsb_release -rs)
-        package_manager=dnf
-        if [ $fedora_release -lt 23 ]; then
-            package_manager=yum
-        fi
-        if [ -n "$missing" ]; then
-            echo "$0: missing required packages:" 1>&2
-            echo "$missing"
-            if [ "$install" = true ]; then
-                echo "Installing missing packages..."
-                sudo $package_manager -y install $missing
-            else
-                echo "Please install missing packages or run './bootstrap install' if you have sudo"
-                echo "sudo $package_manager -y install $missing"
-                exit 1
-            fi
-        fi
         ;;
     "openSUSE project"|"SUSE LINUX"|"openSUSE"|"openSUSELeap"|"openSUSETumbleweed")
-	PYTHON=python3.12
-	deps=(python312-pip python312-devel python312 libev-devel libvirt-devel libffi-devel)
-	for package in ${deps[@]}; do
-            if ! rpm -q --whatprovides $package; then
-                if [ "$(rpm -q --whatprovides $package)" == "no package provides $package" ]; then
-                    missing="${missing:+$missing }$package"
-                fi
-            fi
-        done
-        if [ -n "$missing" ]; then
-            echo "$0: missing required packages, please install them:" 1>&2
-            echo "sudo zypper install $missing"
-            exit 1
-        fi
-        ;;
-    *)
-        echo "This script does not support your Linux distribution yet. Patches encouraged!"
-        exit 1
+        PYTHON=python3.12
+        deps=(python312-pip python312-devel python312 libev-devel libvirt-devel libffi-devel)
+        install_pkg="sudo zypper install"
         ;;
     esac
     ;;
+
 Darwin)
-    if ! brew --version &>/dev/null; then
-        echo "You need Homebrew: http://brew.sh/"
-        exit 1
-    fi
-    for keg in python libvirt libev libffi; do
-        if brew list $keg >/dev/null 2>&1; then
-            echo "Found $keg"
-        else
-            if [ "$install" = true ]; then
-                brew install $keg
-            else
-                missing="${missing:+$missing }$keg"
-                echo "Please install missing packages or run './bootstrap install':"
-                echo "brew install $missing"
-                exit 1
-            fi
-        fi
-    done
-    ;;
-*)
-    echo "This script does not support your OS yet. Patches encouraged!"
-    exit 1
+    deps="python libvirt libev libffi"
+    has_pkg="brew list"
+    install_pkg="brew install"
     ;;
 esac
+for package in ${deps[@]}; do
+    if ! $has_pkg $package &>/dev/null; then
+        # add a space after old values
+        missing="${missing:+$missing }$package"
+        echo missing=${missing}
+    fi
+done
+if [ -n "$missing" ]; then
+    echo "$0: missing required packages:" 1>&2
+    echo "$missing"
+    if [ "$install" = true ]; then
+        echo "Installing missing packages..."
+        $install_pkg $missing
+    else
+        echo "Please install missing packages or run './bootstrap install'"
+        echo "$install_pkg $missing"
+        exit 1
+    fi
+    fi
 
 PYTHON_BIN=$(command -v $PYTHON)
 if [ -z $PYTHON_BIN -o ! -e $PYTHON_BIN -o ! -x $PYTHON_BIN ]; then
