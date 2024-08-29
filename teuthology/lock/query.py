@@ -143,6 +143,10 @@ def node_active_job(name: str, status: Union[dict, None] = None) -> Union[str, N
         # This should never happen with a normal node
         return "node had no status"
     description = status['description']
+    if '/' not in description:
+        # technically not an "active job", but someone locked the node
+        # for a different purpose and is likely still using it.
+        return description
     (run_name, job_id) = description.split('/')[-2:]
     if not run_name or job_id == '':
         # We thought this node might have a stale job, but no.
