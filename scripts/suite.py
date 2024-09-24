@@ -77,6 +77,8 @@ Standard arguments:
                               [default: qa]
   --suite-branch <suite_branch>
                               Use this suite branch instead of the ceph branch
+  --suite-sha1 <suite_sha1>   The suite sha1 to use for the tests (overrides
+                              --suite-branch)
   --suite-dir <suite_dir>     Use this alternative directory as-is when
                               assembling jobs from yaml fragments. This causes
                               <suite_branch> to be ignored for scheduling
