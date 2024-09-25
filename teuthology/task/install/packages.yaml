@@ -7,10 +7,8 @@ ceph:
   - ceph-fuse
   - ceph-test
   - radosgw
-  - python-ceph
-  - libcephfs1
-  - libcephfs-java
-  - libcephfs-jni
+  - python3-ceph
+  - libcephfs2
   - librados2
   - librbd1
   - rbd-fuse
@@ -19,7 +17,7 @@ ceph:
   - ceph-common-dbg
   - ceph-fuse-dbg
   - radosgw-dbg
-  - libcephfs1-dbg
+  - libcephfs2-dbg
   - librados2-dbg
   - librbd1-dbg
   rpm:
@@ -27,11 +25,9 @@ ceph:
   - ceph-test
   - ceph
   - ceph-fuse
-  - cephfs-java
-  - libcephfs_jni1
-  - libcephfs1
+  - libcephfs2
   - librados2
   - librbd1
-  - python-ceph
+  - python3-ceph
   - rbd-fuse
   - ceph-debuginfo
