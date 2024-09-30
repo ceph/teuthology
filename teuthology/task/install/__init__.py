@@ -146,6 +146,7 @@ def get_package_list(ctx, config):
             yaml_path = suite_packages_path
     # If packages.yaml isn't found in the suite_path, potentially use
     # teuthology's
+    yaml_path = None
     yaml_path = yaml_path or os.path.join(
         os.path.dirname(__file__),
         'packages.yaml',
