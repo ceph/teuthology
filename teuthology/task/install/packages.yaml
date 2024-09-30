@@ -7,7 +7,10 @@ ceph:
   - ceph-fuse
   - ceph-test
   - radosgw
-  - python3-ceph
+  - python3-rados
+  - python3-rgw
+  - python3-cephfs
+  - python3-rbd
   - libcephfs2
   - librados2
   - librbd1
@@ -28,6 +31,9 @@ ceph:
   - libcephfs2
   - librados2
   - librbd1
-  - python3-ceph
+  - python3-rados
+  - python3-rgw
+  - python3-cephfs
+  - python3-rbd
   - rbd-fuse
   - ceph-debuginfo
