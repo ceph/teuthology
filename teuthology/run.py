@@ -402,7 +402,7 @@ def main(args):
     # FIXME this should become more generic, and the keys should use
     # '_' uniformly
     if fake_ctx.config.get('interactive-on-error'):
-        teuth_config.config.ctx = fake_ctx
+        teuth_config.ctx = fake_ctx
 
     try:
         run_tasks(tasks=config['tasks'], ctx=fake_ctx)
