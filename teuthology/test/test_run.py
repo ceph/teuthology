@@ -216,6 +216,48 @@ class TestRun(object):
         assert fake_ctx["config"]["os_type"] == "os_type"
         assert fake_ctx["config"]["os_version"] == "os_version"
 
+    @patch("teuthology.run.set_up_logging")
+    @patch("teuthology.run.setup_config")
+    @patch("teuthology.run.get_user")
+    @patch("teuthology.run.write_initial_metadata")
+    @patch("teuthology.report.try_push_job_info")
+    @patch("teuthology.run.get_machine_type")
+    @patch("teuthology.run.get_summary")
+    @patch("yaml.safe_dump")
+    @patch("teuthology.run.validate_tasks")
+    @patch("teuthology.run.get_initial_tasks")
+    @patch("teuthology.run.fetch_tasks_if_needed")
+    @patch("teuthology.run.run_tasks")
+    @patch("teuthology.run.report_outcome")
+    def test_main_interactive(
+        self,
+        m_report_outcome,
+        m_run_tasks,
+        m_fetch_tasks_if_needed,
+        m_get_initial_tasks,
+        m_validate_tasks,
+        m_safe_dump,
+        m_get_summary,
+        m_get_machine_type,
+        m_try_push_job_info,
+        m_write_initial_metadata,
+        m_get_user,
+        m_setup_config,
+        m_set_up_logging,
+    ):
+        config = {"job_id": 1}
+        m_setup_config.return_value = config
+        m_get_machine_type.return_value = "machine_type"
+        doc = scripts_run.__doc__
+        args = docopt.docopt(doc, [
+            "--interactive-on-error",
+            "path/to/config.yml",
+        ])
+        run.main(args)
+        args, kwargs = m_run_tasks.call_args
+        fake_ctx = kwargs["ctx"]._conf
+        assert fake_ctx['interactive_on_error'] is True
+
     def test_get_teuthology_command(self):
         doc = scripts_run.__doc__
         args = docopt.docopt(doc, [
