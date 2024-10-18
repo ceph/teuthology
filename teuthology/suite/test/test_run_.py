@@ -1,3 +1,4 @@
+import logging
 import os
 import pytest
 import requests
@@ -14,6 +15,7 @@ from teuthology.exceptions import ScheduleFailError
 from teuthology.suite import run
 from teuthology.util.time import TIMESTAMP_FMT
 
+log = logging.getLogger(__name__)
 
 class TestRun(object):
     klass = run.Run
@@ -270,14 +272,35 @@ class TestScheduleSuite(object):
             [call('ceph_sha1', 'default', 'ubuntu', '14.04', 'machine_type')],
         )
         y = {
-          'teuthology': {
-            'fragments_dropped': [],
-            'meta': {},
-            'postmerge': []
-          },
           'field1': 'val1',
           'field2': 'val2'
         }
+        teuthology_keys = [
+          'branch',
+          'machine_type',
+          'name',
+          'os_type',
+          'os_version',
+          'overrides',
+          'priority',
+          'repo',
+          'seed',
+          'sha1',
+          'sleep_before_teardown',
+          'suite',
+          'suite_branch',
+          'suite_relpath',
+          'suite_repo',
+          'suite_sha1',
+          'tasks',
+          'teuthology_branch',
+          'teuthology_sha1',
+          'timestamp',
+          'user',
+          'teuthology',
+        ]
+        for t in teuthology_keys:
+            y[t] = ANY
         expected_job = dict(
             yaml=y,
             sha1='ceph_sha1',
@@ -287,16 +310,23 @@ class TestScheduleSuite(object):
                 '--description',
                 os.path.join(self.args.suite, build_matrix_desc),
                 '--',
-                ANY, # base config
                 '-'
             ],
-            stdin=yaml.dump(y),
+            stdin=ANY,
             desc=os.path.join(self.args.suite, build_matrix_desc),
         )
 
         m_schedule_jobs.assert_has_calls(
             [call([], [expected_job], runobj.name)],
         )
+        args = m_schedule_jobs.call_args.args
+        log.debug("args =\n%s", args)
+        jobargs  = args[1][0]
+        stdin_yaml = yaml.safe_load(jobargs['stdin'])
+        for k in y:
+            assert y[k] == stdin_yaml[k]
+        for k in teuthology_keys:
+            assert k in stdin_yaml
         m_write_rerun_memo.assert_called_once_with()
 
     @patch('teuthology.suite.util.find_git_parents')
