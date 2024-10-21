@@ -115,12 +115,14 @@ def config_merge(configs, suite_name=None, **kwargs):
     the entire job (config) from the list.
     """
     seed = kwargs.setdefault('seed', 1)
+    base_config = kwargs.setdefault('base_config', {})
     if not isinstance(seed, int):
         log.debug("no valid seed input: using 1")
         seed = 1
     log.debug("configuring Lua randomseed to %d", seed)
     L.execute(f'local math = require"math"; math.randomseed({seed});')
     new_script = L.eval('new_script')
+    base_config_yaml = yaml.safe_load(str(base_config))
     yaml_cache = {}
     for desc, paths in configs:
         log.debug("merging config %s", desc)
@@ -128,7 +130,7 @@ def config_merge(configs, suite_name=None, **kwargs):
         if suite_name is not None:
             desc = combine_path(suite_name, desc)
 
-        yaml_complete_obj = {}
+        yaml_complete_obj = copy.deepcopy(base_config_yaml)
         deep_merge(yaml_complete_obj, dict(TEUTHOLOGY_TEMPLATE))
         for path in paths:
             if path not in yaml_cache:

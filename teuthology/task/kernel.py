@@ -33,7 +33,7 @@ from teuthology.task.install.deb import install_dep_packages
 
 log = logging.getLogger(__name__)
 
-CONFIG_DEFAULT = {'branch': 'main'}
+CONFIG_DEFAULT = {'branch': 'distro', 'sha1': 'distro'}
 TIMEOUT_DEFAULT = 300
 
 VERSION_KEYS = ['branch', 'tag', 'sha1', 'deb', 'rpm', 'koji', 'koji_task']
