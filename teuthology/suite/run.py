@@ -9,7 +9,6 @@ import time
 
 from humanfriendly import format_timespan
 
-from tempfile import NamedTemporaryFile
 from teuthology import repo_utils
 
 from teuthology.config import config, JobConfig
@@ -167,13 +166,16 @@ class Run(object):
         # Put together a stanza specifying the kernel hash
         if self.args.kernel_branch == 'distro':
             kernel_hash = 'distro'
+            kernel_branch = 'distro'
         # Skip the stanza if '-k none' is given
         elif self.args.kernel_branch is None or \
              self.args.kernel_branch.lower() == 'none':
             kernel_hash = None
+            kernel_branch = None
         else:
+            kernel_branch = self.args.kernel_branch
             kernel_hash = util.get_gitbuilder_hash(
-                'kernel', self.args.kernel_branch, 'default',
+                'kernel', kernel_branch, 'default',
                 self.args.machine_type, self.args.distro,
                 self.args.distro_version,
             )
@@ -189,7 +191,7 @@ class Run(object):
 
         if kernel_hash:
             log.info("kernel sha1: {hash}".format(hash=kernel_hash))
-            kernel_dict = dict(kernel=dict(kdb=kdb, sha1=kernel_hash))
+            kernel_dict = dict(kernel=dict(branch=kernel_branch, kdb=kdb, sha1=kernel_hash))
             if kernel_hash != 'distro':
                 kernel_dict['kernel']['flavor'] = 'default'
         else:
@@ -622,6 +624,9 @@ Note: If you still want to go ahead, use --job-threshold 0'''
         log.debug('Suite %s in %s' % (suite_name, suite_path))
         log.debug(f"subset = {self.args.subset}")
         log.debug(f"no_nested_subset = {self.args.no_nested_subset}")
+        if self.args.dry_run:
+            log.debug("Base job config:\n%s" % self.base_config)
+
         configs = build_matrix(suite_path,
                                subset=self.args.subset,
                                no_nested_subset=self.args.no_nested_subset,
@@ -633,19 +638,9 @@ Note: If you still want to go ahead, use --job-threshold 0'''
             filter_out=self.args.filter_out,
             filter_all=self.args.filter_all,
             filter_fragments=self.args.filter_fragments,
+            base_config=self.base_config,
             seed=self.args.seed,
             suite_name=suite_name))
-
-        if self.args.dry_run:
-            log.debug("Base job config:\n%s" % self.base_config)
-
-        # create, but do not write, the temp file here, so it can be
-        # added to the args in collect_jobs, but not filled until
-        # any backtracking is done
-        base_yaml_path = NamedTemporaryFile(
-            prefix='schedule_suite_', delete=False
-        ).name
-        self.base_yaml_paths.insert(0, base_yaml_path)
 
         # compute job limit in respect of --sleep-before-teardown
         job_limit = self.args.limit or 0
@@ -711,9 +706,6 @@ Note: If you still want to go ahead, use --job-threshold 0'''
                     dry_run=self.args.dry_run,
                 )
 
-        with open(base_yaml_path, 'w+b') as base_yaml:
-            base_yaml.write(str(self.base_config).encode())
-
         if jobs_to_schedule:
             self.write_rerun_memo()
 
@@ -724,8 +716,6 @@ Note: If you still want to go ahead, use --job-threshold 0'''
         self.check_num_jobs(len(jobs_to_schedule))
 
         self.schedule_jobs(jobs_missing_packages, jobs_to_schedule, name)
-
-        os.remove(base_yaml_path)
 
         count = len(jobs_to_schedule)
         missing_count = len(jobs_missing_packages)
