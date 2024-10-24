@@ -119,8 +119,8 @@ class FOG(object):
         )
         prepped = req.prepare()
         resp = requests.Session().send(prepped)
-        if not resp.ok and resp.text:
-            self.log.error("%s: %s", resp.status_code, resp.text)
+        if not resp.ok:
+            self.log.error(f"Got status {resp.status_code} from {url_suffix}: '{resp.text}'")
         if verify:
             resp.raise_for_status()
         return resp
