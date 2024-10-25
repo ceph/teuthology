@@ -5,6 +5,7 @@ import os
 from types import MappingProxyType
 import yaml
 
+from teuthology.config import JobConfig
 from teuthology.suite.build_matrix import combine_path
 from teuthology.suite.util import strip_fragment_path
 from teuthology.misc import deep_merge
@@ -115,6 +116,7 @@ def config_merge(configs, suite_name=None, **kwargs):
     the entire job (config) from the list.
     """
     seed = kwargs.setdefault('seed', 1)
+    base_config = kwargs.setdefault('base_config', JobConfig())
     if not isinstance(seed, int):
         log.debug("no valid seed input: using 1")
         seed = 1
@@ -128,7 +130,7 @@ def config_merge(configs, suite_name=None, **kwargs):
         if suite_name is not None:
             desc = combine_path(suite_name, desc)
 
-        yaml_complete_obj = {}
+        yaml_complete_obj = copy.deepcopy(base_config.to_dict())
         deep_merge(yaml_complete_obj, dict(TEUTHOLOGY_TEMPLATE))
         for path in paths:
             if path not in yaml_cache:
