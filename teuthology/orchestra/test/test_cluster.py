@@ -230,3 +230,13 @@ class TestWriteFile(object):
     def test_with_sudo(self, m_write_file):
         self.c.write_file("filename", "content", sudo=True)
         m_write_file.assert_called_with("filename", "content", sudo=True, owner=None, mode=None)
+
+    @patch("teuthology.orchestra.remote.RemoteShell.write_file")
+    def test_write_file_offset(self, m_write_file):
+        self.c.write_file("filename", "content", bs=1, offset=1024)
+        m_write_file.assert_called_with("filename", "content", bs=1, offset=1024)
+
+    @patch("teuthology.orchestra.remote.RemoteShell.write_file")
+    def test_write_file_sync(self, m_write_file):
+        self.c.write_file("filename", "content", sync=True)
+        m_write_file.assert_called_with("filename", "content", sync=True)
