@@ -21,7 +21,7 @@ from teuthology.repo_utils import build_git_url
 
 from teuthology.suite import util
 from teuthology.suite.merge import config_merge
-from teuthology.suite.build_matrix import build_matrix
+from teuthology.suite.build_graph import build_graph
 from teuthology.suite.placeholder import substitute_placeholders, dict_templ
 from teuthology.util.time import parse_offset, parse_timestamp, TIMESTAMP_FMT
 
@@ -627,10 +627,12 @@ Note: If you still want to go ahead, use --job-threshold 0'''
         if self.args.dry_run:
             log.debug("Base job config:\n%s" % self.base_config)
 
-        configs = build_matrix(suite_path,
-                               subset=self.args.subset,
-                               no_nested_subset=self.args.no_nested_subset,
-                               seed=self.args.seed)
+        configs = build_graph(suite_path,
+                              subset=self.args.subset,
+                              no_nested_subset=self.args.no_nested_subset,
+                              seed=self.args.seed,
+                              suite_repo_path=self.suite_repo_path,
+                              config=config)
         generated = len(configs)
         log.info(f'Suite {suite_name} in {suite_path} generated {generated} jobs (not yet filtered or merged)')
         configs = list(config_merge(configs,
