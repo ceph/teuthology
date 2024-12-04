@@ -102,7 +102,8 @@ class Cluster(object):
         remotes = sorted(self.remotes.keys(), key=lambda rem: rem.name)
         return [remote.sh(script, **kwargs) for remote in remotes]
 
-    def write_file(self, file_name, content, sudo=False, perms=None, owner=None):
+    def write_file(self, file_name, content, sudo=False, perms=None, owner=None,
+                   **kwargs):
         """
         Write text to a file on each node.
 
@@ -110,16 +111,19 @@ class Cluster(object):
         :param content: file content
         :param sudo: use sudo
         :param perms: file permissions (passed to chmod) ONLY if sudo is True
+        :param owner: file owner (passed to chmod) ONLY if sudo is True
         """
         remotes = sorted(self.remotes.keys(), key=lambda rem: rem.name)
         for remote in remotes:
             if sudo:
-                remote.write_file(file_name, content,
-                                  sudo=True, mode=perms, owner=owner)
+                kwargs['sudo'] = True
+                kwargs['mode'] = perms
+                kwargs['owner'] = owner
             else:
                 if perms is not None or owner is not None:
                     raise ValueError("To specify perms or owner, sudo must be True")
-                remote.write_file(file_name, content)
+
+            remote.write_file(file_name, content, **kwargs)
 
     def only(self, *roles):
         """
