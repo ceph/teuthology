@@ -1148,15 +1148,17 @@ def ssh_keyscan_wait(hostname):
             log.info("try ssh_keyscan again for " + str(hostname))
         return success
 
-def stop_daemons_of_type(ctx, type_, cluster='ceph'):
+def stop_daemons_of_type(ctx, type_, cluster='ceph', timeout=300):
     """
     :param type_: type of daemons to be stopped.
+    :param cluster: Cluster name, default is 'ceph'.
+    :param timeout: Timeout in seconds for stopping each daemon.
     """
     log.info('Shutting down %s daemons...' % type_)
     exc = None
     for daemon in ctx.daemons.iter_daemons_of_role(type_, cluster):
         try:
-            daemon.stop()
+            daemon.stop(timeout)
         except (CommandFailedError,
                 CommandCrashedError,
                 ConnectionLostError) as e:
