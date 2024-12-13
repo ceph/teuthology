@@ -18,7 +18,7 @@ We're currently running both paddles and pulpito on the same node. We have a pro
 
 Do the following as root or as another user with sudo access::
 
-    sudo apt-get install git python-dev python-virtualenv postgresql postgresql-contrib postgresql-server-dev-all supervisor
+    sudo apt-get install git python3-dev python3-virtualenv postgresql postgresql-contrib postgresql-server-dev-all supervisor
     sudo -u postgres createuser paddles -P
     sudo -u postgres createdb paddles
 
