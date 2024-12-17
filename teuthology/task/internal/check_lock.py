@@ -1,7 +1,6 @@
 import logging
 
-import teuthology.lock.query
-import teuthology.lock.util
+import teuthology.machines
 
 from teuthology.config import config as teuth_config
 
@@ -17,7 +16,7 @@ def check_lock(ctx, config, check_up=True):
         return
     log.info('Checking locks...')
     for machine in ctx.config['targets'].keys():
-        status = teuthology.lock.query.get_status(machine)
+        status = teuthology.machines.machine_status(machine)
         log.debug('machine status is %s', repr(status))
         assert status is not None, \
             'could not read lock status for {name}'.format(name=machine)

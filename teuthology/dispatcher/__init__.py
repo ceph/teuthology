@@ -20,10 +20,10 @@ from teuthology import (
 from teuthology.config import config as teuth_config
 from teuthology.dispatcher import supervisor
 from teuthology.exceptions import BranchNotFoundError, CommitNotFoundError, SkipJob, MaxWhileTries
-from teuthology.lock import ops as lock_ops
 from teuthology.util.time import parse_timestamp
 from teuthology import safepath
 from teuthology.jobqueue.base import QueueDirection
+import teuthology.machines
 import teuthology.jobqueue.choice
 
 
@@ -183,7 +183,7 @@ def main(args):
             log.exception(error_message)
             if 'targets' in job_config:
                 node_names = job_config["targets"].keys()
-                lock_ops.unlock_safe(
+                teuthology.machines.unlock_safe(
                     node_names,
                     job_config["owner"],
                     job_config["name"],
@@ -346,7 +346,7 @@ def lock_machines(job_config):
         machine_type=machine_type,
         count=count,
     ):
-        lock_ops.block_and_lock_machines(
+        teuthology.machines.must_reserve(
             fake_ctx,
             count,
             machine_type,
