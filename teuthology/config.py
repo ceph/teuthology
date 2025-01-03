@@ -7,6 +7,12 @@ except ImportError:
     from collections import MutableMapping
 
 
+# Configuration constants
+SYSTEM_CONFIG_PATH = '/etc/teuthology.yaml'
+USER_CONFIG_PATH = '~/.teuthology.yaml'
+CONFIG_PATH_VAR_NAME = 'TEUTHOLOGY_CONFIG'  # name of env var to check
+
+
 def init_logging():
     log = logging.getLogger(__name__)
     return log
@@ -135,9 +141,9 @@ class TeuthologyConfig(YamlConfig):
     """
     This class is intended to unify teuthology's many configuration files and
     objects. Currently it serves as a convenient interface to
-    ~/.teuthology.yaml and nothing else.
+    ~/.teuthology.yaml or equivalent.
     """
-    yaml_path = os.path.join(os.path.expanduser('~/.teuthology.yaml'))
+    yaml_path = USER_CONFIG_PATH  # yaml_path is updated in _get_config_path
     _defaults = {
         'archive_base': '/home/teuthworker/archive',
         'archive_upload': None,
@@ -285,10 +291,20 @@ def set_config_attr(obj):
 
 
 def _get_config_path():
-    system_config_path = '/etc/teuthology.yaml'
-    if not os.path.exists(TeuthologyConfig.yaml_path) and \
-            os.path.exists(system_config_path):
-        return system_config_path
-    return TeuthologyConfig.yaml_path
+    """Look for a teuthology config yaml and return it's path.
+    Raises ValueError if no config yaml can be found.
+    """
+    paths = [
+        os.path.join(os.path.expanduser(USER_CONFIG_PATH)),
+        SYSTEM_CONFIG_PATH,
+    ]
+    if CONFIG_PATH_VAR_NAME in os.environ:
+        paths.insert(0, os.path.expanduser(os.environ[CONFIG_PATH_VAR_NAME]))
+    for path in paths:
+        if os.path.exists(path):
+            return path
+    log.warning(f"no teuthology config found, looked for: {paths}")
+    return None
+
 
 config = TeuthologyConfig(yaml_path=_get_config_path())
