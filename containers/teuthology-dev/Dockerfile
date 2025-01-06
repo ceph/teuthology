@@ -29,6 +29,7 @@ RUN \
     PIP_INSTALL_FLAGS="-r requirements.txt" ./bootstrap
 COPY . /teuthology
 RUN \
+    git config -f ./.git/config --unset 'http.https://github.com/.extraheader' && \
     ./bootstrap
 COPY containers/teuthology-dev/containerized_node.yaml /teuthology
 COPY containers/teuthology-dev/.teuthology.yaml /root
