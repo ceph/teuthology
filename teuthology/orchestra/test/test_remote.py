@@ -220,3 +220,15 @@ class TestRemote(object):
         rem2 = remote.Remote(name='jdoe@xyzzy.example.com', ssh=self.m_ssh)
         rem2._runner = m_run
         assert not rem2.is_container
+
+    @patch("teuthology.orchestra.remote.Remote.run")
+    def test_write_file(self, m_run):
+        file = "fakefile"
+        contents = "fakecontents"
+        rem = remote.Remote(name='jdoe@xyzzy.example.com', ssh=self.m_ssh)
+
+        remote.Remote.write_file(rem, file, contents, bs=1, offset=1024)
+        m_run.assert_called_with(args=f"set -ex\ndd of={file} bs=1 seek=1024", stdin=contents, quiet=True)
+
+        remote.Remote.write_file(rem, file, contents, sync=True)
+        m_run.assert_called_with(args=f"set -ex\ndd of={file} conv=sync", stdin=contents, quiet=True)
