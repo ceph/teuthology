@@ -265,9 +265,12 @@ class RemoteShell(object):
 
 
     def write_file(self, path, data, sudo=False, mode=None, owner=None,
-                                     mkdir=False, append=False):
+                                     mkdir=False, append=False, bs=None,
+                                     offset=None, sync=False):
         """
         Write data to remote file
+
+        The data written in 512-byte blocks, provide `bs` to use bigger blocks.
 
         :param path:    file path on remote host
         :param data:    str, binary or fileobj to be written
@@ -276,11 +279,20 @@ class RemoteShell(object):
         :param owner:   set file owner if provided
         :param mkdir:   preliminary create the file directory, defaults False
         :param append:  append data to the file, defaults False
+        :param bs:      write up to N bytes at a time if provided, default is 512 in `dd`
+        :param offset:  number of bs blocks to seek to in file, defaults 0
+        :param sync:    sync file after write is complete if provided
         """
         dd = 'sudo dd' if sudo else 'dd'
         args = dd + ' of=' + path
         if append:
             args += ' conv=notrunc oflag=append'
+        if bs:
+            args += ' bs=' + str(bs)
+        if offset:
+            args += ' seek=' + str(offset)
+        if sync:
+            args += ' conv=sync'
         if mkdir:
             mkdirp = 'sudo mkdir -p' if sudo else 'mkdir -p'
             dirpath = os.path.dirname(path)
