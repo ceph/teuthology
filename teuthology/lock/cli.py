@@ -178,12 +178,14 @@ def main(ctx):
                 # Update keys last
                 updatekeys_machines = list()
             else:
-                machines_to_update.append(machine)
                 ops.update_nodes([machine], True)
-                teuthology.provision.create_if_vm(
+                created = teuthology.provision.create_if_vm(
                     ctx,
                     misc.canonicalize_hostname(machine),
                 )
+                # do not try to update inventory if failed to create vm
+                if created:
+                    machines_to_update.append(machine)
         with teuthology.parallel.parallel() as p:
             ops.update_nodes(reimage_machines, True)
             for machine in reimage_machines:
