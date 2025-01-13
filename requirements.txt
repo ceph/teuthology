@@ -188,7 +188,7 @@ urllib3==1.26.18
     #   requests
     #   sentry-sdk
     #   teuthology (pyproject.toml)
-virtualenv==20.25.0
+virtualenv==20.26.6
     # via tox
 wcwidth==0.2.12
     # via prettytable
