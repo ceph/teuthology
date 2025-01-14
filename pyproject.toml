@@ -7,7 +7,7 @@ authors = [
     {name = "Sage Weil", email = "sage@newdream.net"},
     {name = "Loic Dachary", email = "loic@dachary.org"},
 ]
-dynamic = ["version"]
+version = "1.2.2rc0"
 description = "Ceph test framework"
 readme = "README.rst"
 license = {text = "MIT"}
@@ -131,6 +131,3 @@ exclude = [
 
 [tool.setuptools.exclude-package-data]
 "*" = ["test*"]
-
-[tool.setuptools_scm]
-version_scheme = "python-simplified-semver"
