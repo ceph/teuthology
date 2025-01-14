@@ -8,8 +8,7 @@ RUN apt-get update && \
     python3-dev \
     libssl-dev \
     ipmitool \
-    python3-pip \
-    python3-venv \
+    python-pipx \
     vim \
     libev-dev \
     libvirt-dev \
@@ -26,7 +25,7 @@ RUN \
     mkdir ../archive_dir && \
     mkdir log && \
     chmod +x /teuthology/bootstrap && \
-    PIP_INSTALL_FLAGS="-r requirements.txt" ./bootstrap
+    ./bootstrap
 COPY . /teuthology
 RUN \
     git config -f ./.git/config --unset 'http.https://github.com/.extraheader' && \
