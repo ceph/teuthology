@@ -11,64 +11,45 @@ else
   fi
 fi
 
-if [[ "$PYTHON" =~ "python2" ]]; then
-    echo "python2 is not supported." >&2
-    exit 1
-fi
-
-# Use the newest version we find
-if [ -z "$PYTHON" ]; then
-  for i in 12 11 10; do
-    command -v "python3.$i" > /dev/null && PYTHON="python3.$i" && break
-  done
-fi
-if [ -z "$PYTHON" ]; then
-  # This would be bizarre, but I suppose possible
-  PYTHON=${PYTHON:-"python3"}
-fi
-
 case "$(uname -s)" in
 Linux)
-    if command -v lsb_release; then
+    if command -v lsb_release > /dev/null; then
         OS=$(lsb_release --id --short)
     else
         . /etc/os-release
         OS=$(echo $NAME | tr -d ' ')
     fi
-    # rpm/dnf is the default, to reduce repetition in the case statement
-    has_pkg="rpm --whatprovides"
-    install_pkg="sudo dnf install -y"
     case "$OS" in
     Ubuntu|Debian|LinuxMint)
-        deps=(qemu-utils python3-dev libssl-dev python3-pip python3-wheel $PYTHON-venv libev-dev libvirt-dev libffi-dev libyaml-dev)
+        deps=(qemu-utils python3-dev libssl-dev libev-dev libvirt-dev libffi-dev libyaml-dev pipx)
         has_pkg="dpkg -C"
         install_pkg="sudo apt install -y"
         ;;
-    RedHatEnterpriseWorkstation|RedHatEnterpriseServer|RedHatEnterprise|CentOS)
-        deps=(python39-pip python39-devel mariadb-devel libev-devel libvirt-devel libffi-devel)
-        ;;
-    CentOSStream)
-        PYTHON=python3.12
-        deps=($PYTHON-pip $PYTHON-devel)
-        ;;
-    AlmaLinux|RockyLinux)
-        PYTHON=python3.12
-        deps=($PYTHON-pip $PYTHON-devel libev-devel libvirt-devel libffi-devel)
-        ;;
-    Fedora|FedoraLinux)
-        PYTHON=python3.12
-        deps=($PYTHON-pip $PYTHON-devel libev-devel libvirt-devel libffi-devel)
+    RedHatEnterpriseWorkstation|RedHatEnterpriseServer|RedHatEnterprise|CentOS|CentOSStream|AlmaLinux|RockyLinux|Fedora|FedoraLinux)
+        # Use the newest version we find
+        if [ -z "$PYTHON" ]; then
+          for i in 13 12 11 10; do
+            command -v "python3.$i" > /dev/null && PYTHON="python3.$i" && break
+          done
+        fi
+        if [ -z "$PYTHON" ]; then
+          # This would be bizarre, but I suppose possible
+          PYTHON=${PYTHON:-"python3"}
+        fi
+        has_pkg="rpm --whatprovides"
+        install_pkg="sudo dnf install -y"
+        deps=(libev-devel libffi-devel libvirt-devel $PYTHON-devel pipx)
         ;;
     "openSUSE project"|"SUSE LINUX"|"openSUSE"|"openSUSELeap"|"openSUSETumbleweed")
-        PYTHON=python3.12
-        deps=(python312-pip python312-devel python312 libev-devel libvirt-devel libffi-devel)
+        deps=(python python-devel libev-devel libffi-devel libvirt-devel python-pipx)
+        has_pkg="rpm --whatprovides"
         install_pkg="sudo zypper install"
         ;;
     esac
     ;;
 
 Darwin)
-    deps="python libvirt libev libffi"
+    deps="python libvirt libev libffi pipx uv"
     has_pkg="brew list"
     install_pkg="brew install"
     ;;
@@ -91,60 +72,17 @@ if [ -n "$missing" ]; then
         echo "$install_pkg $missing"
         exit 1
     fi
-    fi
-
-PYTHON_BIN=$(command -v $PYTHON)
-if [ -z $PYTHON_BIN -o ! -e $PYTHON_BIN -o ! -x $PYTHON_BIN ]; then
-  echo "Cannot find $PYTHON!"
-  exit 1
-fi
-PYTHON_VER_OUT=$($PYTHON_BIN --version)
-
-VENV=${VENV:-"./virtualenv"}
-# If the venv was set to use system site-packages, fix that
-if [ -f "$VENV/pyvenv.cfg" ]; then
-    sed -i'' -e 's/\(include-system-site-packages\s*=\s*\)true/\1false/g' $VENV/pyvenv.cfg
 fi
 
 # Attempt to force a UTF-8 locale without being specific to English
 export LANG=${LANG:-C.UTF-8}
 (echo $LANG | grep -qi utf-8) || export LC_ALL=$LANG.UTF-8
 
-# If the venv but exists but has the wrong python version, recreate it
-if [ -z "$NO_CLOBBER" ] && \
-  [ ! -e "${VENV}/bin/${PYTHON}" ] || \
-  [ "${PYTHON_VER_OUT}" != "$(${VENV}/bin/${PYTHON} --version)" ]; then
-    rm -rf virtualenv
-fi
-
-# if we do not have uv, make venv, then use pip to install it
+[ -z "$NO_CLOBBER" ] && rm -rf virtualenv
 if ! UV=$(command -v uv); then
-    $PYTHON_BIN -m venv $VENV
-    $VENV/bin/python3 -m pip install uv
-    UV=$VENV/bin/uv
+    pipx install uv
 fi
-UV_PROJECT_ENVIRONMENT=$VENV
-if [ ! -e $VENV ]; then
-    uv venv $VENV
-fi
-# Use uv for pip operations
-PIP="${UV} pip"
-
-# It is impossible to upgrade ansible from 2.9 to 2.10 via pip.
-# See https://docs.ansible.com/ansible/devel/porting_guides/porting_guide_2.10.html#known-issues
-if [ -f "$VENV/bin/ansible" ]; then
-    uninstall_ansible=$($VENV/bin/python3 -c "import ansible; from packaging.version import parse; print(parse(ansible.__version__) < parse('2.10.0'))")
-    if [ "$uninstall_ansible" = "True" ]; then
-        $PIP uninstall -y ansible
-    fi
-fi
-
-$PIP install -r requirements.txt
-# By default, install teuthology in editable mode
-$PIP install --python $VENV/bin/python ${PIP_INSTALL_FLAGS:---editable '.[test]'}
-
-# Check to make sure requirements are met
-$PIP check
+uv sync --frozen --all-extras
 
 # Install ansible collections
-$VENV/bin/ansible-galaxy install -r requirements.yml
+uv run ansible-galaxy install -r requirements.yml
