@@ -33,9 +33,9 @@ cryptography==43.0.0
     #   pyopenssl
 docopt==0.6.2
     # via teuthology (pyproject.toml)
-gevent==24.2.1
+gevent==24.11.1
     # via teuthology (pyproject.toml)
-greenlet==3.0.3
+greenlet==3.1.1
     # via gevent
 httplib2==0.22.0
     # via teuthology (pyproject.toml)
