@@ -21,7 +21,7 @@ Linux)
     fi
     case "$OS" in
     Ubuntu|Debian|LinuxMint)
-        deps=(qemu-utils python3-dev libssl-dev libev-dev libvirt-dev libffi-dev libyaml-dev python-pipx)
+        deps=(qemu-utils python3-dev libssl-dev libev-dev libvirt-dev libffi-dev libyaml-dev pipx)
         has_pkg="dpkg -C"
         install_pkg="sudo apt install -y"
         ;;
@@ -72,7 +72,7 @@ if [ -n "$missing" ]; then
         echo "$install_pkg $missing"
         exit 1
     fi
-    fi
+fi
 
 # Attempt to force a UTF-8 locale without being specific to English
 export LANG=${LANG:-C.UTF-8}
