@@ -462,7 +462,7 @@ def bootstrap_teuthology(dest_path):
         if returncode != 0:
             for line in out.split("\n"):
                 log.warning(line.strip())
-            venv_path = os.path.join(dest_path, 'virtualenv')
+            venv_path = os.path.join(dest_path, '.venv')
             log.info("Removing %s", venv_path)
             shutil.rmtree(venv_path, ignore_errors=True)
             raise BootstrapError("Bootstrap failed!")
