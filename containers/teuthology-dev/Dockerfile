@@ -8,7 +8,7 @@ RUN apt-get update && \
     python3-dev \
     libssl-dev \
     ipmitool \
-    python-pipx \
+    pipx \
     vim \
     libev-dev \
     libvirt-dev \
