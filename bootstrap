@@ -82,6 +82,8 @@ export LANG=${LANG:-C.UTF-8}
 if ! UV=$(command -v uv); then
     pipx install uv
 fi
+command -v uv > /dev/null || pipx ensurepath
+PATH=$PATH:$HOME/.local/bin
 uv sync --frozen --all-extras
 
 # Install ansible collections
