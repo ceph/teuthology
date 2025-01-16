@@ -113,6 +113,7 @@ def connect(user_at_host, host_key=None, keep_alive=False, timeout=60,
                 log.debug(f"Local port for host {host} is {local_port}")
                 connect_args['hostname'] = '127.0.0.1'
                 connect_args['port'] = local_port
+                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 break
 
     key_filename = key_filename or config.ssh_key
