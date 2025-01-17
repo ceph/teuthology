@@ -259,12 +259,19 @@ class Ansible(Task):
         we're using an existing file.
         """
         hosts = self.cluster.remotes.keys()
-        hostnames = [remote.hostname for remote in hosts]
-        hostnames.sort()
+        hostnames = []
+        for remote in hosts:
+            if remote.ssh:
+                host, port = remote.ssh.get_transport().getpeername()
+                i = f"{remote.hostname} ansible_host={host} ansible_port={port} ansible_ssh_common_args='-o StrictHostKeyChecking=no'"
+            else:
+                i = remote.hostname
+            hostnames.append(i)
         inventory = []
         if self.inventory_group:
             inventory.append('[{0}]'.format(self.inventory_group))
-        inventory.extend(hostnames + [''])
+
+        inventory.extend(sorted(hostnames) + [''])
         hosts_str = '\n'.join(inventory)
         self.inventory = self._write_inventory_files(hosts_str)
         self.generated_inventory = True
