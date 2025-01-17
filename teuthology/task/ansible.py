@@ -262,7 +262,7 @@ class Ansible(Task):
         hostnames = []
         for remote in hosts:
             host, port = remote.ssh.get_transport().getpeername()
-            i = f"{remote.hostname} ansible_host={host} ansible_port={port}"
+            i = f"{remote.hostname} ansible_host={host} ansible_port={port} ansible_ssh_common_args='-o StrictHostKeyChecking=no'"
             hostnames.append(i)
         inventory = []
         if self.inventory_group:
