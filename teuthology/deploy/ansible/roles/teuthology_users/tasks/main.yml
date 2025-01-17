@@ -1,0 +1,32 @@
+- name: Generate a key
+  shell: |
+    printf "\n" | ssh-keygen  -m PEM -t rsa -C "{{ teuthology_execution_user }}@{{ teuthology_name }}" -N '' -q
+  become_user: "{{ item }}"
+  with_items:
+    - "{{ teuthology_execution_user }}"
+
+- name: "Grab {{ teuthology_execution_user }} public key"
+  shell: |
+    cat ~/.ssh/id_rsa.pub
+  become_user: "{{ teuthology_execution_user }}"
+  register: cat_worker_id_rsa_pub
+
+- set_fact:
+    worker_pub_key: "{{ cat_worker_id_rsa_pub.stdout }}"
+
+- name: Update teuthology.conf
+  blockinfile:
+    block: |
+      ssh_authorized_keys:
+        - "{{ worker_pub_key }}"
+    path: "/etc/teuthology.yaml"
+
+- name: Add your key to authorized
+  lineinfile:
+      create: yes
+      path: "/home/{{ item }}/.ssh/authorized_keys"
+      line: "{{ lookup(\"file\", \"{{ lookup('env', 'HOME') }}/.ssh/id_rsa.pub\") }}"
+      owner: "{{ item }}"
+  with_items:
+    - "{{ teuthology_execution_user }}"
+    - "{{ teuthology_scheduler_user }}"
