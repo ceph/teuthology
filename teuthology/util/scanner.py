@@ -74,8 +74,12 @@ class UnitTestScanner(Scanner):
         super().__init__(remote)
 
     def _parse(self, file_content: str) -> Tuple[Optional[str], Optional[dict]]:
-        xml_tree = etree.fromstring(file_content)
-
+        try:
+            xml_tree = etree.fromstring(file_content)
+        except Exception as e:
+            log.debug(f"Unable to parse xml file: {e}")
+            return None, None
+    
         failed_testcases = xml_tree.xpath('.//failure/.. | .//error/..')
         if len(failed_testcases) == 0:
             return None, None
@@ -129,7 +133,12 @@ class ValgrindScanner(Scanner):
         super().__init__(remote)
 
     def _parse(self, file_content: str) -> Tuple[Optional[str], Optional[dict]]:
-        xml_tree = etree.fromstring(file_content)
+        try:
+            xml_tree = etree.fromstring(file_content)
+        except Exception as e:
+            log.debug(f"Unable to parse xml file, {e}")
+            return None, None
+        
         if xml_tree is None:
             return None, None
         
