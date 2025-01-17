@@ -861,8 +861,9 @@ def install_kernel(remote, role_config, path=None, version=None):
     if package_type == 'deb':
         newversion = get_latest_image_version_deb(remote, dist_release, role_config)
         if 'ubuntu' in dist_release:
-            grub2conf = teuthology.get_file(remote,
-                '/boot/grub/grub.cfg', sudo=True).decode()
+            #grub2conf = teuthology.get_file(remote,
+            #    '/boot/grub/grub.cfg', sudo=True).decode()
+            grub2conf = remote.read_file('/boot/grub/grub.cfg', sudo=True).decode()
             submenu = ''
             menuentry = ''
             for line in grub2conf.split('\n'):
@@ -882,9 +883,10 @@ def install_kernel(remote, role_config, path=None, version=None):
                 grubvalue = submenu + '>' + menuentry
             else:
                 grubvalue = menuentry
-            grubfile = 'cat <<EOF\nset default="' + grubvalue + '"\nEOF'
-            teuthology.delete_file(remote, '/etc/grub.d/01_ceph_kernel', sudo=True, force=True)
-            teuthology.sudo_write_file(remote, '/etc/grub.d/01_ceph_kernel', StringIO(grubfile), '755')
+            path = '/etc/grub.d/01_ceph_kernel'
+            data = f"cat <<EOF\nset default=\"{grubvalue}\"\nEOF"
+            remote.sh(f"sudo rm -rf {path}")
+            remote.write_file(path, data, sudo=True, mode='755')
             log.info('Distro Kernel Version: {version}'.format(version=newversion))
             remote.run(args=['sudo', 'update-grub'])
             remote.run(args=['sudo', 'shutdown', '-r', 'now'], wait=False )
@@ -1077,7 +1079,6 @@ def get_latest_image_version_deb(remote, ostype, role_config):
     """
     remote.run(args=['sudo', 'apt-get', 'clean'])
     remote.run(args=['sudo', 'apt-get', 'update'])
-    output = StringIO()
     newest = ''
     # Depend of virtual package has uname -r output in package name. Grab that.
     # Note that a dependency list may have multiple comma-separated entries,
@@ -1085,11 +1086,10 @@ def get_latest_image_version_deb(remote, ostype, role_config):
     if 'debian' in ostype:
         args=['sudo', 'apt-get', '-y', 'install', 'linux-image-amd64']
         install_dep_packages(remote, args)
-        remote.run(args=['dpkg', '-s', 'linux-image-amd64'], stdout=output)
-        for line in output.getvalue().split('\n'):
+        status = remote.run("dpkg -s linux-image-amd64")
+        for line in status.split('\n'):
             if 'Depends:' in line:
                 newest = line.split('linux-image-')[1]
-                output.close()
                 return newest
     # Ubuntu is a depend in a depend.
     if 'ubuntu' in ostype:
@@ -1100,10 +1100,8 @@ def get_latest_image_version_deb(remote, ostype, role_config):
         args=['sudo', 'DEBIAN_FRONTEND=noninteractive',
               'apt-get', '-y', 'install', name]
         install_dep_packages(remote, args)
-        remote.run(args=['dpkg', '-s', name],
-                   stdout=output)
-
-        for line in output.getvalue().split('\n'):
+        status = remote.sh(f"dpkg -s {name}")
+        for line in status.split('\n'):
             if 'Depends:' in line:
                 newest = line.split('linux-image-')[1]
                 if ',' in newest:
@@ -1112,7 +1110,6 @@ def get_latest_image_version_deb(remote, ostype, role_config):
                     # not strictly correct, as any of the |-joined
                     # packages may satisfy the dependency
                     newest = newest.split('|')[0].strip()
-    output.close()
     return newest
 
 
