@@ -52,7 +52,7 @@ docker network create paddles
 Start postgres containers in order to use paddles:
 
 ```bash
-mkdir $HOME/.teuthology/postgres
+mkdir -p $HOME/.teuthology/postgres
 docker run -d -p 5432:5432 --network paddles --name paddles-postgres \
     -e POSTGRES_PASSWORD=secret \
     -e POSTGRES_USER=paddles \
@@ -60,6 +60,10 @@ docker run -d -p 5432:5432 --network paddles --name paddles-postgres \
     -e PGDATA=/var/lib/postgresql/data/pgdata \
     -v $HOME/.teuthology/postgres:/var/lib/postgresql/data postgres
 ```
+
+NOTE. When running container on MacOS X using podman postgres may experience
+troubles with volume directory binds because of podman machine,  thus use regular
+volumes like `-v paddlesdb:/var/lib/postgresql/data`.
 
 ### Run paddles
 
@@ -72,7 +76,7 @@ cd ~/paddles && docker build . --file Dockerfile --tag paddles
 Run the container with previously created network:
 
 ```bash
-docker run -d --network paddles --name api -p 80:8080 \
+docker run -d --network paddles --name api -p 8080:8080 \
 	-e PADDLES_SERVER_HOST=0.0.0.0 \
 	-e PADDLES_SQLALCHEMY_URL=postgresql+psycopg2://paddles:secret@paddles-postgres/paddles \
 	paddles

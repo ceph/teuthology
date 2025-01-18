@@ -107,8 +107,9 @@ class Downburst(object):
                         self.destroy()
                     else:
                         success = False
-                        log.info("Downburst failed on %s: %s" % (
-                            self.name, stderr.strip()))
+                        log.error("Downburst failed on %s" % self.name)
+                        for i in stderr.split('\n'):
+                            log.error(f">>> {i}")
                         break
             return success
 
