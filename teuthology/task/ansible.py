@@ -261,8 +261,11 @@ class Ansible(Task):
         hosts = self.cluster.remotes.keys()
         hostnames = []
         for remote in hosts:
-            host, port = remote.ssh.get_transport().getpeername()
-            i = f"{remote.hostname} ansible_host={host} ansible_port={port} ansible_ssh_common_args='-o StrictHostKeyChecking=no'"
+            if remote.ssh:
+                host, port = remote.ssh.get_transport().getpeername()
+                i = f"{remote.hostname} ansible_host={host} ansible_port={port} ansible_ssh_common_args='-o StrictHostKeyChecking=no'"
+            else:
+                i = remote.hostname
             hostnames.append(i)
         inventory = []
         if self.inventory_group:
