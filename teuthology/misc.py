@@ -1352,6 +1352,7 @@ def compress_logs(ctx, remote_dir):
     """
     Compress all files in remote_dir from all nodes in a cluster.
     """
+    time.sleep(30)
     log.info('Compressing logs...')
     run.wait(
         ctx.cluster.run(
