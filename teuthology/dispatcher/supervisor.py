@@ -245,17 +245,19 @@ def reimage(job_config):
 
 
 def unlock_targets(job_config):
-    serializer = report.ResultsSerializer(teuth_config.archive_base)
-    job_info = serializer.job_info(job_config['name'], job_config['job_id'])
-    machine_statuses = query.get_statuses(job_info['targets'].keys())
-    # only unlock targets if locked and description matches
+    """
+    Unlock machines only if locked and description matches.
+
+    :param job_config:      dict, job config data
+    """
+    machine_statuses = query.get_statuses(job_config['targets'].keys())
     locked = []
     for status in machine_statuses:
         name = shortname(status['name'])
         description = status['description']
         if not status['locked']:
             continue
-        if description != job_info['archive_path']:
+        if description != job_config['archive_path']:
             log.warning(
                 "Was going to unlock %s but it was locked by another job: %s",
                 name, description
@@ -266,7 +268,7 @@ def unlock_targets(job_config):
         return
     if job_config.get("unlock_on_failure", True):
         log.info('Unlocking machines...')
-        lock_ops.unlock_safe(locked, job_info["owner"], job_info["name"], job_info["job_id"])
+        lock_ops.unlock_safe(locked, job_config["owner"], job_config["name"], job_config["job_id"])
 
 
 def run_with_watchdog(process, job_config):
