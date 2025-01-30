@@ -1,0 +1,14 @@
+#cloud-config
+
+#chpasswd:
+#  list: |
+#    root:CHANGEME
+#  expire: False
+
+runcmd:
+  - [ sh, -c, echo "========= Teuthology setup started =========" ]
+  - zypper --non-interactive --gpg-auto-import-keys refresh
+  - zypper --non-interactive --gpg-auto-import-keys install -y python python-virtualenv ansible
+  #- zypper --non-interactive --gpg-auto-import-keys update --auto-agree-with-licenses
+
+final_message: "TEUTHOLOGYBOOT $UPTIME"
