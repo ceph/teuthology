@@ -445,7 +445,6 @@ def block_and_lock_machines(ctx, total_requested, machine_type, reimage=True, tr
                     loopcount += 1
                     time.sleep(10)
                     keys_dict = misc.ssh_keyscan(vmlist)
-                    log.info('virtual machine is still unavailable')
                     if loopcount == 40:
                         loopcount = 0
                         log.info('virtual machine(s) still not up, ' +
