@@ -242,15 +242,21 @@ class Raw(object):
 
 def quote(args):
     """
-    Internal quote wrapper.
+    Internal quote wrapper. None arguments are not allowed.
+
+    :param args: list of str or Raw objects
+
+    :raises: :class:`RuntimeError`: if one of the args is None.
     """
     def _quote(args):
         """
         Handle quoted string, testing for raw charaters.
         """
-        for a in args:
+        for i, a in enumerate(args):
             if isinstance(a, Raw):
                 yield a.value
+            elif a is None:
+                raise RuntimeError(f"Argument at position {i} is None: {args}")
             else:
                 yield shlex.quote(a)
     if isinstance(args, list):
