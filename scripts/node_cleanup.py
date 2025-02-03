@@ -30,6 +30,7 @@ def main():
     else:
         for owner, nodes in by_owner.items():
             ops.unlock_safe([node["name"] for node in nodes], owner)
+    log.info(f"unlocked {len(stale)} nodes")
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(
