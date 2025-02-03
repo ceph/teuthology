@@ -10,7 +10,11 @@ def main():
     if args.verbose:
         teuthology.log.setLevel(logging.DEBUG)
     log = logging.getLogger(__name__)
-    stale = query.find_stale_locks(args.owner)
+    try:
+        stale = query.find_stale_locks(args.owner)
+    except Exception:
+        log.exception(f"Error while check for stale locks held by {args.owner}")
+        return
     if not stale:
         return
     by_owner = {}
