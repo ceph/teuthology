@@ -226,6 +226,7 @@ def reimage(job_config):
         reimaged = lock_ops.reimage_machines(ctx, targets, job_config['machine_type'])
     except Exception as e:
         log.exception('Reimaging error. Nuking machines...')
+        unlock_targets(job_config)
         # Reimage failures should map to the 'dead' status instead of 'fail'
         report.try_push_job_info(
             ctx.config,
