@@ -34,6 +34,10 @@ DISTRO_CODENAME_MAP = {
         "7": "maipo",
         "6": "santiago",
     },
+    "rocky": {
+        "8.10": "rocky",
+        "9.5": "rocky",
+    },
     "centos": {
         "10": "stream",
         "9": "stream",
