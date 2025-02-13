@@ -10,7 +10,11 @@ def main():
     if args.verbose:
         teuthology.log.setLevel(logging.DEBUG)
     log = logging.getLogger(__name__)
-    stale = query.find_stale_locks(args.owner)
+    try:
+        stale = query.find_stale_locks(args.owner)
+    except Exception:
+        log.exception(f"Error while check for stale locks held by {args.owner}")
+        return
     if not stale:
         return
     by_owner = {}
@@ -30,6 +34,7 @@ def main():
     else:
         for owner, nodes in by_owner.items():
             ops.unlock_safe([node["name"] for node in nodes], owner)
+    log.info(f"unlocked {len(stale)} nodes")
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(

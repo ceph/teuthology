@@ -160,5 +160,9 @@ def node_active_job(name: str, status: Union[dict, None] = None) -> Union[str, N
             if resp.ok:
                 job_status = resp.json()["status"]
                 break
+            elif resp.status_code == 404:
+                break
+            else:
+                log.debug(f"Error {resp.status_code} listing job {run_name}/{job_id} for {name}: {resp.text}")
     if job_status and job_status not in ('pass', 'fail', 'dead'):
         return description
