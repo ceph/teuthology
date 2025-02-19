@@ -90,6 +90,8 @@ DEFAULT_OS_VERSION = dict(
     opensuse="15.4",
     sle="15.2",
     rhel="8.6",
+    rocky="9.5",
+    alma="9.5",
     debian='8.0'
 )
 
