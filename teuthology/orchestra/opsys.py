@@ -34,6 +34,14 @@ DISTRO_CODENAME_MAP = {
         "7": "maipo",
         "6": "santiago",
     },
+    "alma": {
+        "8.10": "alma",
+        "9.5": "alma",
+    },
+    "rocky": {
+        "8.10": "rocky",
+        "9.5": "rocky",
+    },
     "centos": {
         "10": "stream",
         "9": "stream",
@@ -53,6 +61,7 @@ DISTRO_CODENAME_MAP = {
         "20": "heisenbug",
     },
     "opensuse": {
+        "1.0": "tumbleweed",
         "15.0": "leap",
         "15.1": "leap",
         "15.2": "leap",
@@ -82,6 +91,8 @@ DEFAULT_OS_VERSION = dict(
     opensuse="15.4",
     sle="15.2",
     rhel="8.6",
+    rocky="9.5",
+    alma="9.5",
     debian='8.0'
 )
 
@@ -187,6 +198,8 @@ class OS(object):
         elif name == 'centos':
             if parse_version(version) >= Version("8.0"):
                 version = f"{version}.stream"
+        elif name == 'almalinux':
+            name = 'alma'
         obj = cls(name=name, version=version)
         return obj
 
