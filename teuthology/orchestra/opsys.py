@@ -61,6 +61,7 @@ DISTRO_CODENAME_MAP = {
         "20": "heisenbug",
     },
     "opensuse": {
+        "1.0": "tumbleweed",
         "15.0": "leap",
         "15.1": "leap",
         "15.2": "leap",
