@@ -107,7 +107,7 @@ def syslog(ctx, config):
             stdout = rem.sh(
                 [
                     'egrep', '--binary-files=text',
-                    '\\bBUG\\b|\\bINFO\\b|\\bDEADLOCK\\b',
+                    '\\bBUG\\b|\\bINFO\\b|\\bDEADLOCK\\b|ceph.*\\bhogged\ CPU\ for\\b',
                     run.Raw(f'{archive_dir}/syslog/kern.log'),
                     run.Raw('|'),
                     'grep', '-v', 'task .* blocked for more than .* seconds',
