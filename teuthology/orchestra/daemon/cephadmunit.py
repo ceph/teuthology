@@ -35,8 +35,8 @@ class CephadmUnit(DaemonState):
 
     def kill_cmd(self, sig):
         return ' '.join([
-            'sudo', 'docker', 'kill',
-            '-s', str(int(sig)),
+            'sudo', 'podman', 'kill',
+            f'-s={str(int(sig))}',
             'ceph-%s-%s.%s' % (self.fsid, self.type_, self.id_),
         ])
 
