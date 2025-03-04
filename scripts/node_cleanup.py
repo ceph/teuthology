@@ -11,7 +11,14 @@ def main():
     args = parse_args(sys.argv[1:])
     if args.verbose:
         teuthology.log.setLevel(logging.DEBUG)
+    else:
+        teuthology.log.setLevel(100)
     log = logging.getLogger(__name__)
+    logger = logging.getLogger()
+    for handler in logger.handlers:
+        handler.setFormatter(
+            logging.Formatter('%(message)s')
+        )
     try:
         stale = query.find_stale_locks(args.owner)
     except Exception:
