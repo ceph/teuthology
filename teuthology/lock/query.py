@@ -1,3 +1,4 @@
+import datetime
 import logging
 import os
 import requests
@@ -8,6 +9,7 @@ from teuthology import misc
 from teuthology.config import config
 from teuthology.contextutil import safe_while
 from teuthology.util.compat import urlencode
+from teuthology.util.time import parse_timestamp
 
 
 log = logging.getLogger(__name__)
@@ -153,16 +155,28 @@ def node_active_job(name: str, status: Union[dict, None] = None) -> Union[str, N
         return "node description does not contained scheduled job info"
     url = f"{config.results_server}/runs/{run_name}/jobs/{job_id}/"
     job_status = ""
+    active = True
     with safe_while(
             sleep=1, increment=0.5, action='node_is_active') as proceed:
         while proceed():
             resp = requests.get(url)
             if resp.ok:
-                job_status = resp.json()["status"]
+                job_obj = resp.json()
+                job_status = job_obj["status"]
+                active = job_status and job_status not in ('pass', 'fail', 'dead')
+                if active:
+                    break
+                job_updated = job_obj["updated"]
+                try:
+                    delta = datetime.datetime.now(datetime.timezone.utc) - parse_timestamp(job_updated)
+                    active = active or delta < datetime.timedelta(minutes=5)
+                    log.debug(f"{run_name}/{job_id} updated={job_updated} delta={delta} active={active}")
+                except Exception:
+                    log.exception(f"{run_name}/{job_id} updated={job_updated}")
                 break
             elif resp.status_code == 404:
                 break
             else:
                 log.debug(f"Error {resp.status_code} listing job {run_name}/{job_id} for {name}: {resp.text}")
-    if job_status and job_status not in ('pass', 'fail', 'dead'):
+    if active:
         return description
