@@ -174,24 +174,21 @@ def lock_one(name, user=None, description=None):
     return response
 
 
-def unlock_safe(names: List[str], owner: str, run_name: str = "", job_id: str = ""):
+def unlock_safe(names: List[str], owner: str):
     with teuthology.parallel.parallel() as p:
         for name in names:
-            p.spawn(unlock_one_safe, name, owner, run_name, job_id)
+            p.spawn(unlock_one_safe, name, owner)
         return all(p)
 
 
-def unlock_one_safe(name: str, owner: str, run_name: str = "", job_id: str = "") -> bool:
+def unlock_one_safe(name: str, owner: str) -> bool:
     node_status = query.get_status(name)
     if node_status.get("locked", False) is False:
-        log.warn(f"Refusing to unlock {name} since it is already unlocked")
+        log.debug(f"Refusing to unlock {name} since it is already unlocked")
         return False
     maybe_job = query.node_active_job(name, node_status)
     if not maybe_job:
         return unlock_one(name, owner, node_status["description"], node_status)
-    if run_name and job_id and maybe_job.endswith(f"{run_name}/{job_id}"):
-            log.error(f"Refusing to unlock {name} since it has an active job: {run_name}/{job_id}")
-            return False
     log.warning(f"Refusing to unlock {name} since it has an active job: {maybe_job}")
     return False
 
