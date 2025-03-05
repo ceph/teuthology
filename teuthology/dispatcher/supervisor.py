@@ -269,7 +269,7 @@ def unlock_targets(job_config):
         return
     if job_config.get("unlock_on_failure", True):
         log.info('Unlocking machines...')
-        lock_ops.unlock_safe(locked, job_config["owner"], job_config["name"], job_config["job_id"])
+        lock_ops.unlock_safe(locked, job_config["owner"])
 
 
 def run_with_watchdog(process, job_config):
