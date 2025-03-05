@@ -193,13 +193,13 @@ def unlock_one_safe(name: str, owner: str) -> bool:
     return False
 
 
-def unlock_many(names, user):
+def unlock_many(names: List[str], owner: str):
     fixed_names = [misc.canonicalize_hostname(name, user=None) for name in
                    names]
     names = fixed_names
     uri = os.path.join(config.lock_server, 'nodes', 'unlock_many', '')
     data = dict(
-        locked_by=user,
+        locked_by=owner,
         names=names,
     )
     with safe_while(
