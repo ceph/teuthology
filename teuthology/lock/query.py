@@ -127,17 +127,18 @@ def find_stale_locks(owner=None) -> List[Dict]:
     # running
     result = list()
     for node in nodes:
-        if node_active_job(node["name"]):
+        if node_active_job(node["name"], grace_time=5):
             continue
         result.append(node)
     return result
 
-def node_active_job(name: str, status: Union[dict, None] = None) -> Union[str, None]:
+def node_active_job(name: str, status: Union[dict, None] = None, grace_time: int = 0) -> Union[str, None]:
     """
     Is this node's job active (e.g. running or waiting)?
 
     :param node:  The node dict as returned from the lock server
     :param cache: A set() used for caching results
+    :param grace: A period of time (in mins) after job finishes before we consider the node inactive
     :returns:     A string if the node has an active job, or None if not
     """
     status = status or get_status(name)
@@ -167,9 +168,11 @@ def node_active_job(name: str, status: Union[dict, None] = None) -> Union[str, N
                 if active:
                     break
                 job_updated = job_obj["updated"]
+                if not grace_time:
+                    break
                 try:
                     delta = datetime.datetime.now(datetime.timezone.utc) - parse_timestamp(job_updated)
-                    active = active or delta < datetime.timedelta(minutes=5)
+                    active = active or delta < datetime.timedelta(minutes=grace_time)
                 except Exception:
                     log.exception(f"{run_name}/{job_id} updated={job_updated}")
                 break
