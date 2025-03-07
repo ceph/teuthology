@@ -7,6 +7,27 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - name: Make archive directory
+        run: mkdir /tmp/archive_dir
       - name: Test using docker-compose
         run: ./start.sh
         working-directory: ./docs/docker-compose
+      - name: Rename Directory
+        # Replace ":" with "_" everywhere in directory path.
+        # This needs to be done because GA does not support ":" colon character in artifacts (like in /root-2025-03-06_18:47:26-teuthology:no-ceph-main-distro-default-testnode).
+        # Invalid characters include:  Double quote ", Colon :, Less than <, Greater than >, Vertical bar |, Asterisk *, Question mark ?, Carriage return \r, Line feed \n
+        if: always()
+        run: |
+          for DIR in /tmp/archive_dir/root-*; do
+            SAFE_DIR="${DIR//:/_}"   # Replace in '/tmp/archive_dir/root-2025-03-06_18:47:26-teuthology:no-ceph-main-distro-default-testnode'
+            if [ "$DIR" != "$SAFE_DIR" ]; then
+              mv "$DIR" "$SAFE_DIR"
+            fi
+          done
+      - name: Upload teuthology archive logs 
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: teuthology-logs 
+          path: |
+            /tmp/archive_dir/*
