@@ -74,6 +74,8 @@ services:
       TESTNODES:
       TEUTHOLOGY_WAIT:
       TEUTH_BRANCH:
+    volumes:
+      - /tmp/archive_dir:/archive_dir:rw
   testnode:
     build:
       context: ./testnode
