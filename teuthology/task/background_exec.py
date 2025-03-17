@@ -56,6 +56,8 @@ def task(ctx, config):
         tasks[remote.name] = remote.run(
             args=[
                 'sudo',
+                'ASAN_OPTIONS=detect_leaks=0,detect_odr_violation=0',
+                'LD_PRELOAD=/lib64/libasan.so.6',
                 'TESTDIR=%s' % testdir,
                 'daemon-helper', 'kill', '--kill-group',
                 'bash', '-c', cmd,
