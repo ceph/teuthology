@@ -461,6 +461,30 @@ class Remote(RemoteShell):
                 return
         raise RuntimeError("Could not determine interface/CIDR!")
 
+
+    def resolve_ip(self, name=None, ipv='4') -> str:
+        """
+        Resolve IP address of the remote host via remote host
+
+        Because remote object maybe behind bastion host we need
+        the remote host address resolvable from remote side.
+        So in order to the ip address we just call `host` remotely
+        and parse output like:
+            'smithi001.front.sepia.ceph.com has address 172.21.15.1\n'
+        """
+        hostname = name or self.hostname
+        if str(ipv) in ['4', '6']:
+            remote_host_ip = self.sh(f'host -{ipv} {hostname}')
+        else:
+            raise Exception(f'Unknown IP version {ipv}, expected 4 or 6')
+        if 'has address' in remote_host_ip:
+            (host, ip) = remote_host_ip.strip().split(' has address ')
+            if hostname in host:
+                return ip
+        else:
+            raise Exception(f'Cannot get IPv{ipv} address for the host "{hostname}" via remote "{self.hostname}"')
+
+
     @property
     def hostname(self):
         if not hasattr(self, '_hostname'):
