@@ -16,6 +16,7 @@ local lua_allowlist = {
   py_iterex = python.iterex,
   py_itemgetter = python.as_itemgetter,
   math = math,
+  string = string,
 }
 lua_allowlist.__index = lua_allowlist
 
@@ -47,6 +48,18 @@ local function check_filters(_ENV)
       if not matches(_ENV, f) then
         reject()
       end
+    end
+  end
+  if os_type and yaml.os_type then
+    if os_type ~= yaml.os_type then
+      reject()
+    end
+  end
+  if os_version and yaml.os_version then
+    wanted_os_version = string.gsub(os_version, ".stream", "")
+    this_os_version = string.gsub(yaml.os_version, ".stream", "")
+    if wanted_os_version ~= this_os_version then
+      reject()
     end
   end
   if filter_in then

@@ -171,6 +171,10 @@ def config_merge(configs, suite_name=None, **kwargs):
         env['yaml'] = yaml_complete_obj
         for k,v in kwargs.items():
             env[k] = v
+        if os_type := base_config.get('os_type'):
+            env['os_type'] = os_type
+        if os_version := base_config.get('os_version'):
+            env['os_version'] = os_version
         if not script():
             log.debug("skipping config %s due to postmerge filter", desc)
             continue
