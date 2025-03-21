@@ -334,7 +334,8 @@ def fetch_binaries_for_coredumps(path, remote):
                     log.error(e)
                     continue
             try:
-                dump_program = re.findall("from '([^']+)'", dump_out)[0]
+                dump_command = re.findall("from '([^ ']+)", dump_out)[0]
+                dump_program = dump_command.split()[0]
                 log.info(f' dump_program: {dump_program}')
             except Exception as e:
                 log.info("core doesn't have the desired format, moving on ...")
