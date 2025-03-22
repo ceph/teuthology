@@ -830,6 +830,8 @@ def wait_until_healthy(ctx, remote, ceph_cluster='ceph', use_sudo=False):
     args = ['adjust-ulimits',
             'ceph-coverage',
             '{tdir}/archive/coverage'.format(tdir=testdir)]
+    args.extend(['env', 'ASAN_OPTIONS=detect_leaks=0,detect_odr_violation=0',
+                 'LD_PRELOAD=/lib64/libasan.so.6'])
     args.extend(cmd)
     with safe_while(tries=(900 // 6), action="wait_until_healthy") as proceed:
         while proceed():
@@ -854,6 +856,9 @@ def wait_until_osds_up(ctx, cluster, remote, ceph_cluster='ceph'):
                     'adjust-ulimits',
                     'ceph-coverage',
                     '{tdir}/archive/coverage'.format(tdir=testdir),
+                    'env',
+                    'ASAN_OPTIONS=detect_leaks=0,detect_odr_violation=0',
+                    'LD_PRELOAD=/lib64/libasan.so.6',
                     'ceph',
                     '--cluster', ceph_cluster,
                     'osd', 'dump', '--format=json'
