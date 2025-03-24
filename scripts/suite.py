@@ -9,6 +9,7 @@ doc = """
 usage: teuthology-suite --help
        teuthology-suite [-v | -vv ] --suite <suite> [options] [<config_yaml>...]
        teuthology-suite [-v | -vv ] --rerun <name>  [options] [<config_yaml>...]
+       teuthology-suite [-v | -vv ] --descr <descr> [options] [<config_yaml>...]
 
 Run a suite of ceph integration tests. A suite is a directory containing
 facets. A facet is a directory containing config snippets. Running a suite
@@ -132,6 +133,7 @@ Scheduler arguments:
                               2/<outof> ... <outof>-1/<outof> will schedule all
                               jobs in the suite (many more than once). If specified,
                               this value can be found in results.log.
+  --descr <list>              Schedule a suite based on comma separated list of descriptions.
   -p <priority>, --priority <priority>
                               Job priority (lower is sooner)
                               [default: 1000]
