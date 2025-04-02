@@ -18,14 +18,22 @@ jobs:
         # Invalid characters include:  Double quote ", Colon :, Less than <, Greater than >, Vertical bar |, Asterisk *, Question mark ?, Carriage return \r, Line feed \n
         if: always()
         run: |
-          DIR=$(ls -d /tmp/archive_dir/root-*)
-          SAFE_DIR=${DIR//:/_}  # Replace ":" with "_"
-          mv "$DIR" "$SAFE_DIR"
-          echo "ARCHIVE_DIR=$SAFE_DIR" >> $GITHUB_ENV
+          for DIR in /tmp/archive_dir/root-*; do
+            # [ -d "$DIR" ] || continue  
+            SAFE_DIR="${DIR//:/_}"   # Replace in '/tmp/archive_dir/root-2025-03-06_18:47:26-teuthology:no-ceph-main-distro-default-testnode'
+            if [ "$DIR" != "$SAFE_DIR" ]; then
+              mv "$DIR" "$SAFE_DIR"
+            fi
+            # echo "ARCHIVE_DIR=$SAFE_DIR" >> $GITHUB_ENV
+          done
+          # DIR=$(ls -d /tmp/archive_dir/root-*)
+          # SAFE_DIR=${DIR//:/_}  # Replace in '/tmp/archive_dir/root-2025-03-06_18:47:26-teuthology:no-ceph-main-distro-default-testnode'
+          # mv "$DIR" "$SAFE_DIR"
+          # echo "ARCHIVE_DIR=$SAFE_DIR" >> $GITHUB_ENV
       - name: Upload teuthology archive logs 
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: teuthology-logs 
           path: |
-            ${{ env.ARCHIVE_DIR }}/*
+            /tmp/archive_dir/*
