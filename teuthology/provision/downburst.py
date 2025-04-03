@@ -246,6 +246,15 @@ class Downburst(object):
             'git',
             'wget',
         ])
+        if os_type in ('centos', 'opensuse'):
+            user_info['packages'].extend([
+                'chrony',
+            ])
+        if os_type in ('ubuntu', 'debian'):
+            user_info['packages'].extend([
+                'ntp',
+            ])
+
         # On CentOS/RHEL/Fedora, write the correct mac address and
         # install redhab-lsb-core for `lsb_release`
         if os_type in ['centos', 'rhel', 'fedora']:
