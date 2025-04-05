@@ -259,13 +259,61 @@ class Ansible(Task):
         we're using an existing file.
         """
         hosts = self.cluster.remotes.keys()
-        hostnames = [remote.hostname for remote in hosts]
-        hostnames.sort()
+        hostnames = []
+        proxy = []
+        for remote in hosts:
+            if teuth_config.tunnel:
+                for tunnel in teuth_config.tunnel:
+                    cmd = None
+                    if remote.hostname in tunnel.get('hosts'):
+                        bastion = tunnel.get('bastion')
+                        if not bastion:
+                            log.error("The 'tunnel' config must include 'bastion' entry")
+                            continue
+                        host = bastion.get('host', None)
+                        if not host:
+                            log.error("Bastion host is not provided. Tunnel ignored.")
+                            continue
+                        user = bastion.get('user', None)
+                        word = bastion.get('word', None)
+                        port = bastion.get('port', 22)
+                        pkey = bastion.get('identity', None)
+                        opts = "-W %h:%p"
+                        if word:
+                            log.warning(f"Password authentication requested for the bastion '{host}' "
+                                        f"in order to connect to remote '{remote.hostname}'. "
+                                        f"The password authentication is not supported and will be ignored")
+                        if port:
+                            opts += f" -p {port}"
+                        if pkey:
+                            opts += f" -i {pkey}"
+                        if user:
+                            opts += f" {user}@{host}"
+                        else:
+                            opts += f" {host}"
+                        cmd = f"ssh {opts}"
+                        if not host in proxy:
+                            proxy.append(host)
+                        break
+                if cmd:
+                    i = f"{remote.hostname} ansible_ssh_common_args='-o ProxyCommand=\"{cmd}\" -o StrictHostKeyChecking=no'"
+                else:
+                    i = remote.hostname
+            else:
+                i = remote.hostname
+            hostnames.append(i)
         inventory = []
         if self.inventory_group:
             inventory.append('[{0}]'.format(self.inventory_group))
-        inventory.extend(hostnames + [''])
+
+        inventory.extend(sorted(hostnames) + [''])
+
+        if len(proxy) > 0:
+            inventory.append('[proxy]')
+            inventory.extend(sorted(proxy) + [''])
+
         hosts_str = '\n'.join(inventory)
+
         self.inventory = self._write_inventory_files(hosts_str)
         self.generated_inventory = True
 
