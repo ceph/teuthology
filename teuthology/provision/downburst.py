@@ -265,6 +265,8 @@ class Downburst(object):
         # to install 'python' to get python2.7, which ansible needs
         if os_type in ('ubuntu', 'fedora'):
             user_info['packages'].append('python')
+        if os_type in ('centos'):
+            user_info['packages'].append('python3-pip')
         user_fd = tempfile.NamedTemporaryFile(delete=False, mode='wt')
         user_str = "#cloud-config\n" + yaml.safe_dump(user_info)
         user_fd.write(user_str)
