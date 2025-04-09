@@ -6,8 +6,9 @@ class Placeholder(object):
     A placeholder for use with substitute_placeholders. Simply has a 'name'
     attribute.
     """
-    def __init__(self, name):
+    def __init__(self, name, required=True):
         self.name = name
+        self.required = required
 
 
 def substitute_placeholders(input_dict, values_dict):
@@ -31,12 +32,19 @@ def substitute_placeholders(input_dict, values_dict):
             if isinstance(value, dict):
                 _substitute(value, values_dict)
             elif isinstance(value, Placeholder):
-                if values_dict[value.name] is None:
+                if values_dict.get(value.name) is None:
                     del input_dict[key]
                     continue
                 # If there is a Placeholder without a corresponding entry in
                 # values_dict, we will hit a KeyError - we want this.
-                input_dict[key] = values_dict[value.name]
+                try:
+                    input_dict[key] = values_dict[value.name]
+                except KeyError:
+                    print(f"KeyError {key}={input_dict[key]} ")
+                    if value.required:
+                        raise
+                    else:
+                        del input_dict[key]
         return input_dict
 
     return _substitute(input_dict, values_dict)
@@ -52,8 +60,8 @@ dict_templ = {
     'archive_upload': Placeholder('archive_upload'),
     'archive_upload_key': Placeholder('archive_upload_key'),
     'machine_type': Placeholder('machine_type'),
-    'os_type': Placeholder('distro'),
-    'os_version': Placeholder('distro_version'),
+    'os_type': Placeholder('os_type', required=False),
+    'os_version': Placeholder('os_version', required=False),
     'overrides': {
         'admin_socket': {
             'branch': Placeholder('ceph_branch'),
