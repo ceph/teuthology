@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 set -e
-source /teuthology/virtualenv/bin/activate
+PATH=$PATH:/teuthology/.venv/bin
 set -x
 cat /run/secrets/id_rsa > $HOME/.ssh/id_rsa
 if [ -n "$TEUTHOLOGY_TESTNODES" ]; then
