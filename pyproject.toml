@@ -29,7 +29,6 @@ dependencies = [
     "netaddr",
     "paramiko",
     "pexpect",
-    "pip-tools",
     "prettytable",
     "prometheus_client>=0.16.0",
     "psutil>=2.1.0",
