@@ -20,7 +20,9 @@ dependencies = [
     "configobj",
     "configparser",
     "docopt",
-    "gevent",
+    # Set a minimum version for gevent in order to gain python 3.13 support.
+    # Also set a maximum version as we had seen hangs with v25.
+    "gevent>=24.10.1,<25",
     "httplib2",
     "humanfriendly",
     "lupa",
