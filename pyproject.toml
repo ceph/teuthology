@@ -1,10 +1,136 @@
+[project]
+name = "teuthology"
+authors = [
+    {name = "Tommi Virtanen"},
+    {name = "Zack Cerza", email = "zack@redhat.com"},
+    {name = "Josh Durgin", email = "jdurgin@redhat.com"},
+    {name = "Sage Weil", email = "sage@newdream.net"},
+    {name = "Loic Dachary", email = "loic@dachary.org"},
+]
+dynamic = ["version"]
+description = "Ceph test framework"
+readme = "README.rst"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+dependencies = [
+    "ansible-core==2.17.7",
+    "apache-libcloud",
+    "backports.ssl-match-hostname",
+    "beanstalkc3>=0.4.0",
+    "configobj",
+    "configparser",
+    "docopt",
+    "gevent",
+    "httplib2",
+    "humanfriendly",
+    "lupa",
+    "lxml",
+    "ndg-httpsclient",
+    "netaddr",
+    "paramiko",
+    "pexpect",
+    "pip-tools",
+    "prettytable",
+    "prometheus_client>=0.16.0",
+    "psutil>=2.1.0",
+    "pyasn1",
+    "pynacl>=1.5.0",
+    "pyopenssl>=0.13",
+    "python-dateutil",
+    "PyYAML",
+    "requests>2.13.0",
+    "sentry-sdk",
+    "types-psutil",
+    "urllib3>=1.25.4,<1.27",
+    "build>=1.2.1",
+]
+keywords = ["teuthology", "test", "ceph", "cluster"]
+classifiers = [
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+    "Topic :: System :: Distributed Computing",
+    "Topic :: System :: Filesystems",
+]
+
+[project.urls]
+Repository = "https://github.com/ceph/teuthology"
+
+[project.optional-dependencies]
+manhole = ["manhole"]
+rocketchat = ["rocket-python>=1.2.15"]
+docs = [
+    "sphinx",
+    "sphinxcontrib-programoutput",
+]
+test = [
+    "boto>=2.0b4",
+    "boto3",
+    "coverage",
+    "flake8",
+    "ipy",
+    "mock",
+    "PyJWT",
+    "pynose",
+    "pytest",
+    "pytest-cov",
+    "toml",
+    "tox",
+    "xmltodict",
+]
+openstack = [
+    "python-novaclient",
+    "python-openstackclient",
+]
+
+[project.scripts]
+teuthology = "scripts.run:main"
+teuthology-openstack = "scripts.openstack:main"
+teuthology-suite = "scripts.suite:main"
+teuthology-ls = "scripts.ls:main"
+teuthology-worker = "scripts.worker:main"
+teuthology-lock = "scripts.lock:main"
+teuthology-schedule = "scripts.schedule:main"
+teuthology-updatekeys = "scripts.updatekeys:main"
+teuthology-update-inventory = "scripts.update_inventory:main"
+teuthology-results = "scripts.results:main"
+teuthology-report = "scripts.report:main"
+teuthology-kill = "scripts.kill:main"
+teuthology-queue = "scripts.queue:main"
+teuthology-prune-logs = "scripts.prune_logs:main"
+teuthology-describe = "scripts.describe:main"
+teuthology-reimage = "scripts.reimage:main"
+teuthology-dispatcher = "scripts.dispatcher:main"
+teuthology-wait = "scripts.wait:main"
+teuthology-exporter = "scripts.exporter:main"
+teuthology-node-cleanup = "scripts.node_cleanup:main"
+teuthology-supervisor = "scripts.supervisor:main"
+
+
 [build-system]
 build-backend = "setuptools.build_meta"
 requires = [
     "setuptools>=45",
     "wheel",
     "setuptools_scm>=6.2",
+    "setuptools_scm[toml]>=7",
 ]
+
+[tool.setuptools.packages.find]
+exclude = [
+    "*test*",
+]
+
+[tool.setuptools.exclude-package-data]
+"*" = ["test*"]
 
 [tool.setuptools_scm]
 version_scheme = "python-simplified-semver"

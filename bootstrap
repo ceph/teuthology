@@ -19,7 +19,7 @@ fi
 # Use the newest version we find
 if [ -z "$PYTHON" ]; then
   for i in 12 11 10; do
-    command -v "python3.$i" && PYTHON="python3.$i" &>/dev/null && break
+    command -v "python3.$i" > /dev/null && PYTHON="python3.$i" && break
   done
 fi
 if [ -z "$PYTHON" ]; then
@@ -110,39 +110,41 @@ fi
 export LANG=${LANG:-C.UTF-8}
 (echo $LANG | grep -qi utf-8) || export LC_ALL=$LANG.UTF-8
 
+# If the venv but exists but has the wrong python version, recreate it
 if [ -z "$NO_CLOBBER" ] && \
-  [ ! -e "$VENV/bin/pip" -o ! -e "$VENV/bin/$PYTHON" ] || \
-  [ "${PYTHON_VER_OUT}" != "$($VENV/bin/$PYTHON --version)" ] \
-  ; then
+  [ ! -e "${VENV}/bin/${PYTHON}" ] || \
+  [ "${PYTHON_VER_OUT}" != "$(${VENV}/bin/${PYTHON} --version)" ]; then
     rm -rf virtualenv
 fi
 
-if [ -z "$NO_CLOBBER" ] || [ ! -e $VENV ]; then
+# if we do not have uv, make venv, then use pip to install it
+if ! UV=$(command -v uv); then
     $PYTHON_BIN -m venv $VENV
+    $VENV/bin/python3 -m pip install uv
+    UV=$VENV/bin/uv
 fi
-
-$VENV/bin/pip install packaging
+UV_PROJECT_ENVIRONMENT=$VENV
+if [ ! -e $VENV ]; then
+    uv venv $VENV
+fi
+# Use uv for pip operations
+PIP="${UV} pip"
 
 # It is impossible to upgrade ansible from 2.9 to 2.10 via pip.
 # See https://docs.ansible.com/ansible/devel/porting_guides/porting_guide_2.10.html#known-issues
 if [ -f "$VENV/bin/ansible" ]; then
     uninstall_ansible=$($VENV/bin/python3 -c "import ansible; from packaging.version import parse; print(parse(ansible.__version__) < parse('2.10.0'))")
     if [ "$uninstall_ansible" = "True" ]; then
-        $VENV/bin/pip uninstall -y ansible
+        $PIP uninstall -y ansible
     fi
 fi
 
-# First, upgrade pip
-$VENV/bin/pip install --upgrade pip
-
-# See https://github.com/pypa/pip/issues/8559
-$VENV/bin/pip install -r requirements.txt --use-pep517
-
+$PIP install -r requirements.txt
 # By default, install teuthology in editable mode
-$VENV/bin/pip install ${PIP_INSTALL_FLAGS:---editable '.[test]'}
+$PIP install --python $VENV/bin/python ${PIP_INSTALL_FLAGS:---editable '.[test]'}
 
 # Check to make sure requirements are met
-$VENV/bin/pip check
+$PIP check
 
 # Install ansible collections
 $VENV/bin/ansible-galaxy install -r requirements.yml
