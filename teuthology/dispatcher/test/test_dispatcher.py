@@ -71,7 +71,7 @@ class TestDispatcher(object):
         )
         assert got_config['teuthology_branch'] == 'main'
         m_fetch_teuthology.assert_called_once_with(branch='main', commit='teuth_hash')
-        assert teuth_bin_path == '/teuth/path/virtualenv/bin'
+        assert teuth_bin_path == '/teuth/path/.venv/bin'
         m_fetch_qa_suite.assert_called_once_with('main', 'suite_hash')
         assert got_config['suite_path'] == '/suite/path'
 
