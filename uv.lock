@@ -1923,7 +1923,7 @@ requires-dist = [
     { name = "coverage", marker = "extra == 'test'" },
     { name = "docopt" },
     { name = "flake8", marker = "extra == 'test'" },
-    { name = "gevent" },
+    { name = "gevent", specifier = ">=24.10.1" },
     { name = "httplib2" },
     { name = "humanfriendly" },
     { name = "ipy", marker = "extra == 'test'" },
