@@ -85,6 +85,8 @@ fi
 command -v uv > /dev/null || pipx ensurepath
 PATH=$PATH:$HOME/.local/bin
 uv sync --frozen --all-extras
+# To avoid crashing older dispatchers
+ln -sf .venv virtualenv
 
 # Install ansible collections
 uv run ansible-galaxy install -r requirements.yml
