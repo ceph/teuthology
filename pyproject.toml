@@ -20,7 +20,7 @@ dependencies = [
     "configobj",
     "configparser",
     "docopt",
-    "gevent",
+    "gevent>=24.10.1",  # for python 3.13 support
     "httplib2",
     "humanfriendly",
     "lupa",
