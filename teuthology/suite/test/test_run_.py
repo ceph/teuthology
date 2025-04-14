@@ -430,3 +430,52 @@ class TestScheduleSuite(object):
         m_find_git_parents.assert_has_calls(
             [call('ceph', 'ceph_sha1', 10)]
         )
+
+    def test_dupa(
+        self
+    ):
+        X = run.descr_to_yamls(
+            "rados/objectstore/{backends/objectstore-bluestore-b supported-random-distro$/{ubuntu_latest}}",
+            "/cephfs/github.com_ceph_build/qa/suites"
+        )
+        assert(X ==
+            [
+               ('rados/objectstore/{backends/objectstore-bluestore-b supported-random-distro$/{ubuntu_latest}}',
+                ['/cephfs/github.com_ceph_build/qa/suites/rados/objectstore/backends/objectstore-bluestore-b.yaml',
+                 '/cephfs/github.com_ceph_build/qa/suites/rados/objectstore/supported-random-distro$/ubuntu_latest.yaml'])
+            ]
+        )
+
+        X = run.descr_to_yamls(
+            "rados/singleton-nomsgr/{all/health-warnings mon_election/connectivity rados supported-random-distro$/{ubuntu_latest}}",
+            "/cephfs/home/akupczyk/src/git.ceph.com_ceph-c_aclamk-testing/qa/suites"
+        )
+        print(str(X))
+        assert(X ==
+            [
+                ("rados/singleton-nomsgr/{all/health-warnings mon_election/connectivity rados supported-random-distro$/{ubuntu_latest}}",
+                 ['/cephfs/home/akupczyk/src/git.ceph.com_ceph-c_aclamk-testing/qa/suites/rados/singleton-nomsgr/all/health-warnings.yaml',
+                  '/cephfs/home/akupczyk/src/git.ceph.com_ceph-c_aclamk-testing/qa/suites/rados/singleton-nomsgr/mon_election/connectivity.yaml',
+                  '/cephfs/home/akupczyk/src/git.ceph.com_ceph-c_aclamk-testing/qa/suites/rados/singleton-nomsgr/rados.yaml',
+                  '/cephfs/home/akupczyk/src/git.ceph.com_ceph-c_aclamk-testing/qa/suites/rados/singleton-nomsgr/supported-random-distro$/ubuntu_latest.yaml'])
+            ]
+        )
+
+        X = run.descr_to_yamls(
+            "rados/cephadm/osds/{0-distro/centos_9.stream_runc 0-nvme-loop 1-start 2-ops/rm-zap-flag},"
+            "rados/standalone/{supported-random-distro$/{ubuntu_latest} workloads/scrub}",
+            "/cephfs/home/akupczyk/src/git.ceph.com_ceph-c_squid/qa/suites"
+        )
+        assert(X ==
+            [
+                ("rados/cephadm/osds/{0-distro/centos_9.stream_runc 0-nvme-loop 1-start 2-ops/rm-zap-flag}",
+                 ['/cephfs/home/akupczyk/src/git.ceph.com_ceph-c_squid/qa/suites/rados/cephadm/osds/0-distro/centos_9.stream_runc.yaml',
+                  '/cephfs/home/akupczyk/src/git.ceph.com_ceph-c_squid/qa/suites/rados/cephadm/osds/0-nvme-loop.yaml',
+                  '/cephfs/home/akupczyk/src/git.ceph.com_ceph-c_squid/qa/suites/rados/cephadm/osds/1-start.yaml',
+                  '/cephfs/home/akupczyk/src/git.ceph.com_ceph-c_squid/qa/suites/rados/cephadm/osds/2-ops/rm-zap-flag.yaml'])
+                ,
+                ("rados/standalone/{supported-random-distro$/{ubuntu_latest} workloads/scrub}",
+                 ['/cephfs/home/akupczyk/src/git.ceph.com_ceph-c_squid/qa/suites/rados/standalone/supported-random-distro$/ubuntu_latest.yaml',
+                  '/cephfs/home/akupczyk/src/git.ceph.com_ceph-c_squid/qa/suites/rados/standalone/workloads/scrub.yaml'])
+            ]
+        )
