@@ -180,16 +180,7 @@ def _update_package_list_and_install(ctx, remote, rpm, config):
         for copr in enable_coprs:
             remote.run(args=['sudo', 'dnf', '-y', 'copr', 'enable', copr])
 
-    # rpm does not force installation of a particular version of the project
-    # packages, so we can put extra_system_packages together with the rest
-    system_pkglist = config.get('extra_system_packages')
-    if system_pkglist:
-        if isinstance(system_pkglist, dict):
-            rpm += system_pkglist.get('rpm')
-        else:
-            rpm += system_pkglist
     remote_os = remote.os
-
     dist_release = remote_os.name
     log.debug("_update_package_list_and_install: config is {}".format(config))
     repos = config.get('repos')
@@ -214,25 +205,26 @@ def _update_package_list_and_install(ctx, remote, rpm, config):
         log.info("repos_only was specified: not installing any packages")
         return None
 
+    packages = list(rpm)
     if not install_ceph_packages:
         log.info("install_ceph_packages set to False: not installing Ceph packages")
         # Although "librados2" is an indirect dependency of ceph-test, we
         # install it separately because, otherwise, ceph-test cannot be
         # installed (even with --force) when there are several conflicting
         # repos from different vendors.
-        rpm = ["librados2", "ceph-test"]
+        packages = ["librados2", "ceph-test"]
 
     # rpm does not force installation of a particular version of the project
     # packages, so we can put extra_system_packages together with the rest
     system_pkglist = config.get('extra_system_packages', [])
     if system_pkglist:
         if isinstance(system_pkglist, dict):
-            rpm += system_pkglist.get('rpm')
+            packages += system_pkglist.get('rpm')
         else:
-            rpm += system_pkglist
+            packages += system_pkglist
 
     log.info("Installing packages: {pkglist} on remote rpm {arch}".format(
-        pkglist=", ".join(rpm), arch=remote.arch))
+        pkglist=", ".join(packages), arch=remote.arch))
 
     if dist_release not in ['opensuse', 'sle']:
         project = builder.project
@@ -257,15 +249,15 @@ def _update_package_list_and_install(ctx, remote, rpm, config):
         install_cmd = 'sudo yum -y install'
         # to compose version string like "0.94.10-87.g116a558.el7"
         pkg_version = '.'.join([builder.version, builder.dist_release])
-        rpm = _downgrade_packages(ctx, remote, rpm, pkg_version, config)
+        packages = _downgrade_packages(ctx, remote, packages, pkg_version, config)
 
     if system_pkglist:
         _retry_if_failures_are_recoverable(remote,
             args='{install_cmd} {rpms}'
-                 .format(install_cmd=install_cmd, rpms=' '.join(rpm))
+                 .format(install_cmd=install_cmd, rpms=' '.join(packages))
             )
     else:
-        for cpack in rpm:
+        for cpack in packages:
             if ldir:
                 _retry_if_failures_are_recoverable(remote,
                   args='''
