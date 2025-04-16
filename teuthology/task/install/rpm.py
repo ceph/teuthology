@@ -179,17 +179,8 @@ def _update_package_list_and_install(ctx, remote, rpm, config):
         remote.run(args=['sudo', 'dnf', '-y', 'install', 'dnf-command(copr)'])
         for copr in enable_coprs:
             remote.run(args=['sudo', 'dnf', '-y', 'copr', 'enable', copr])
-    packages = list(rpm)
-    # rpm does not force installation of a particular version of the project
-    # packages, so we can put extra_system_packages together with the rest
-    system_pkglist = config.get('extra_system_packages')
-    if system_pkglist:
-        if isinstance(system_pkglist, dict):
-            packages += system_pkglist.get('rpm')
-        else:
-            packages += system_pkglist
-    remote_os = remote.os
 
+    remote_os = remote.os
     dist_release = remote_os.name
     log.debug("_update_package_list_and_install: config is {}".format(config))
     repos = config.get('repos')
@@ -214,6 +205,7 @@ def _update_package_list_and_install(ctx, remote, rpm, config):
         log.info("repos_only was specified: not installing any packages")
         return None
 
+    packages = list(rpm)
     if not install_ceph_packages:
         log.info("install_ceph_packages set to False: not installing Ceph packages")
         # Although "librados2" is an indirect dependency of ceph-test, we
