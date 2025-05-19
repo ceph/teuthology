@@ -120,11 +120,13 @@ teuthology-supervisor = "scripts.supervisor:main"
 [build-system]
 build-backend = "setuptools.build_meta"
 requires = [
-    "setuptools>=45",
+    "setuptools>=64",
     "wheel",
-    "setuptools_scm>=6.2",
-    "setuptools_scm[toml]>=7",
+    "setuptools-scm>=8",
 ]
+
+[tool.uv]
+cache-keys = [{ file = "pyproject.toml" }, { git = { commit = true, tags = true } }]
 
 [tool.setuptools.packages.find]
 exclude = [
