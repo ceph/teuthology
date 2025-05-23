@@ -27,6 +27,45 @@ from teuthology.util.time import parse_offset, parse_timestamp, TIMESTAMP_FMT
 
 log = logging.getLogger(__name__)
 
+def descr_to_yamls(descriptions, suites_path):
+    """
+    Function converts description of a job into sequence of .yaml files.
+    Input "descriptions" is a string containing comma-separated list of job descriptions.
+    Input "suites_path" is a posix path to dir containing all suites.
+    """
+    def expand_descr(test_yamls, source, prefix, base_pos):
+        """
+        Expand description using production rules (explanation, not Chomsky context-free formalism):
+        rule 1: (simplification)
+        "A{BX}" => AB A{X}
+        rule 2: (termination)
+        "A" => "suites_pathA.yaml"
+        """
+        pos = base_pos
+        while (pos < len(source)):
+            if source[pos] == '{':
+                more_prefix=source[base_pos:pos]
+                pos = expand_descr(test_yamls, source, prefix + more_prefix, pos + 1)
+                base_pos = pos
+            elif source[pos] == '}':
+                if base_pos != pos:
+                    test_yamls.append(suites_path + "/" + prefix + source[base_pos:pos] + ".yaml")
+                return pos + 1
+            elif source[pos] == ' ':
+                if base_pos != pos:
+                    test_yamls.append(suites_path + "/" + prefix + source[base_pos:pos] + ".yaml")
+                pos = pos + 1
+                base_pos = pos
+            else:
+                pos = pos + 1
+    result = []
+    desc_tab = descriptions.split(',')
+    for d in desc_tab:
+        dd = d.strip()
+        test_yamls = []
+        expand_descr(test_yamls, dd, "", 0)
+        result.append((dd, test_yamls))
+    return result
 
 class Run(object):
     WAIT_MAX_JOB_TIME = 30 * 60
@@ -68,7 +107,7 @@ class Run(object):
             [
                 self.user,
                 str(self.timestamp),
-                self.args.suite,
+                self.args.suite or "rerun",
                 self.args.ceph_branch,
                 self.args.kernel_branch or '-',
                 self.args.flavor, worker
@@ -400,8 +439,14 @@ class Run(object):
         job_config.timestamp = self.timestamp
         job_config.priority = self.args.priority
         job_config.seed = self.args.seed
+        if self.args.subset and self.args.descr:
+            util.schedule_fail("--subset is not compatible with --descr")
+        if self.args.suite and self.args.descr:
+            util.schedule_fail("--suite is not compatible with --descr")
         if self.args.subset:
             job_config.subset = '/'.join(str(i) for i in self.args.subset)
+        if self.args.descr:
+            job_config.suite = "rerun"
         if self.args.email:
             job_config.email = self.args.email
         if self.args.owner:
@@ -604,6 +649,44 @@ Note: If you still want to go ahead, use --job-threshold 0'''
         if threshold and jobs_to_schedule > threshold:
             util.schedule_fail(msg, dry_run=self.args.dry_run)
 
+    def prepare_configs(self):
+        suite_name = self.base_config.suite or "rerun"
+        suites_path = os.path.normpath(os.path.join(
+            self.suite_repo_path,
+            self.args.suite_relpath,
+            'suites'
+        ))
+        suite_path = os.path.normpath(os.path.join(
+            suites_path,
+            suite_name.replace(':', '/'),
+        ))
+        log.debug('Suites in %s' % (suites_path))
+        if self.args.descr:
+            log.debug(f'Rerun by description in {suites_path} in %s')
+            configs = descr_to_yamls(self.args.descr, suites_path)
+            use_suite_name = None
+            generated = len(configs)
+            log.info(f'Rerun from description in {suite_path} generated {generated} jobs')
+        else:
+            log.debug('Suite %s in %s' % (suite_name, suites_path))
+            log.debug(f"subset = {self.args.subset}")
+            log.debug(f"no_nested_subset = {self.args.no_nested_subset}")
+            configs = build_matrix(suite_path,
+                               subset=self.args.subset,
+                               no_nested_subset=self.args.no_nested_subset,
+                               seed=self.args.seed)
+            use_suite_name = self.base_config.suite
+            generated = len(configs)
+            log.info(f'Suite {suite_name} in {suites_path} generated {generated} jobs (not yet filtered or merged)')
+        configs = list(config_merge(configs,
+            filter_in=self.args.filter_in,
+            filter_out=self.args.filter_out,
+            filter_all=self.args.filter_all,
+            filter_fragments=self.args.filter_fragments,
+            seed=self.args.seed,
+            suite_name=use_suite_name))
+        return configs
+
     def schedule_suite(self):
         """
         Schedule the suite-run. Returns the number of jobs scheduled.
@@ -614,33 +697,14 @@ Note: If you still want to go ahead, use --job-threshold 0'''
             log.debug("Using '%s' as an arch" % arch)
         else:
             arch = util.get_arch(self.base_config.machine_type)
-        suite_name = self.base_config.suite
-        suite_path = os.path.normpath(os.path.join(
+        suite_name = self.base_config.suite or "rerun"
+        suites_path = os.path.normpath(os.path.join(
             self.suite_repo_path,
             self.args.suite_relpath,
-            'suites',
-            self.base_config.suite.replace(':', '/'),
+            'suites'
         ))
-        log.debug('Suite %s in %s' % (suite_name, suite_path))
-        log.debug(f"subset = {self.args.subset}")
-        log.debug(f"no_nested_subset = {self.args.no_nested_subset}")
-        if self.args.dry_run:
-            log.debug("Base job config:\n%s" % self.base_config)
-
-        configs = build_matrix(suite_path,
-                               subset=self.args.subset,
-                               no_nested_subset=self.args.no_nested_subset,
-                               seed=self.args.seed)
+        configs = self.prepare_configs()
         generated = len(configs)
-        log.info(f'Suite {suite_name} in {suite_path} generated {generated} jobs (not yet filtered or merged)')
-        configs = list(config_merge(configs,
-            filter_in=self.args.filter_in,
-            filter_out=self.args.filter_out,
-            filter_all=self.args.filter_all,
-            filter_fragments=self.args.filter_fragments,
-            base_config=self.base_config,
-            seed=self.args.seed,
-            suite_name=suite_name))
 
         # compute job limit in respect of --sleep-before-teardown
         job_limit = self.args.limit or 0
@@ -724,7 +788,7 @@ Note: If you still want to go ahead, use --job-threshold 0'''
             total_count *= self.args.num
         log.info(
             'Suite %s in %s scheduled %d jobs.' %
-            (suite_name, suite_path, count)
+            (suite_name, suites_path, count)
         )
         log.info('%d/%d jobs were filtered out.',
                  (generated - count),
