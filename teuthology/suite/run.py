@@ -305,7 +305,7 @@ class Run(object):
             if not teuthology_branch:
                 teuthology_branch = actual_branch
             teuthology_sha1 = util.git_ls_remote(
-                f"file://{config.teuthology_path}",
+                f"file://$(realpath {config.teuthology_path})",
                 teuthology_branch
             )
         else:
