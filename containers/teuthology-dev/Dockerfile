@@ -8,8 +8,7 @@ RUN apt-get update && \
     python3-dev \
     libssl-dev \
     ipmitool \
-    python3-pip \
-    python3-venv \
+    pipx \
     vim \
     libev-dev \
     libvirt-dev \
@@ -20,13 +19,13 @@ RUN apt-get update && \
     apt-get clean all && \
     locale-gen $LC_ALL
 WORKDIR /teuthology
-COPY requirements.txt requirements.yml ansible.cfg bootstrap /teuthology/
+COPY pyproject.toml requirements.txt requirements.yml uv.lock ansible.cfg bootstrap /teuthology/
 RUN \
     cd /teuthology && \
     mkdir ../archive_dir && \
     mkdir log && \
     chmod +x /teuthology/bootstrap && \
-    PIP_INSTALL_FLAGS="-r requirements.txt" ./bootstrap
+    ./bootstrap
 COPY . /teuthology
 RUN \
     git config -f ./.git/config --unset 'http.https://github.com/.extraheader' && \

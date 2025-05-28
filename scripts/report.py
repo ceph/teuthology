@@ -1,6 +1,7 @@
 import docopt
 
-import teuthology.report
+import teuthology.config
+
 
 doc = """
 usage:
@@ -39,4 +40,5 @@ optional arguments:
 
 def main():
     args = docopt.docopt(doc)
+    import teuthology.report
     teuthology.report.main(args)
