@@ -1,6 +1,7 @@
 FROM ubuntu:24.04
 ARG SSH_PRIVKEY_FILE=id_ed25519
 ENV DEBIAN_FRONTEND=noninteractive
+ENV SETUPTOOLS_SCM_PRETEND_VERSION_FOR_TEUTHOLOGY=0.0.0
 ENV LANG=C.UTF-8
 RUN apt-get update && \
     apt-get install -y \
