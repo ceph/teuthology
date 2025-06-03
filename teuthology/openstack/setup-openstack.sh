@@ -117,13 +117,17 @@ function apt_get_update() {
 }
 
 function setup_docker() {
-    local codename=$(lsb_release -sc)
+    source /etc/os-release
+    if ! $VERSION_CODENAME; then
+        echo "ERROR: VERSION_CODENAME is not set. Cannot proceed with Docker installation."
+        return
+    fi
     if !command -v docker &> /dev/null; then
         curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
             sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
         echo \
           "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] \
-          https://download.docker.com/linux/ubuntu $codename stable" | \
+          https://download.docker.com/linux/ubuntu $VERSION_CODENAME stable" | \
           sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
         sudo apt-get update
         sudo apt-get install -y docker-ce docker-ce-cli containerd.io
@@ -510,7 +514,12 @@ function remove_images() {
 }
 
 function install_packages() {
-    local codename=$(lsb_release -sc)
+    source /etc/os-release
+    if ! $VERSION_CODENAME; then
+        echo "ERROR: VERSION_CODENAME is not set. Cannot proceed with Docker installation."
+        return
+    fi
+    local codename=$VERSION_CODENAME
     local backports_file="/etc/apt/sources.list.d/${codename}-backports.list"
     if [ ! -f "$backports_file" ]; then
         echo "Adding backports repo for $codename..."
