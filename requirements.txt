@@ -170,7 +170,7 @@ resolvelib==0.8.1
     # via ansible-core
 s3transfer==0.10.0
     # via boto3
-sentry-sdk==1.39.1
+sentry-sdk==1.45.1
     # via teuthology (pyproject.toml)
 six==1.16.0
     # via
