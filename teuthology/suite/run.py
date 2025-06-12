@@ -493,6 +493,7 @@ class Run(object):
                         limit=limit))
                 break
 
+            parsed_yaml["sha1"] = self.base_config.sha1
             os_type = parsed_yaml.get('os_type') or self.base_config.os_type
             os_version = parsed_yaml.get('os_version') or self.base_config.os_version
             exclude_arch = parsed_yaml.get('exclude_arch')
