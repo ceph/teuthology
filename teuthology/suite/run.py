@@ -167,16 +167,13 @@ class Run(object):
         # Put together a stanza specifying the kernel hash
         if self.args.kernel_branch == 'distro':
             kernel_hash = 'distro'
-            kernel_branch = 'distro'
         # Skip the stanza if '-k none' is given
         elif self.args.kernel_branch is None or \
              self.args.kernel_branch.lower() == 'none':
             kernel_hash = None
-            kernel_branch = None
         else:
-            kernel_branch = self.args.kernel_branch
             kernel_hash = util.get_gitbuilder_hash(
-                'kernel', kernel_branch, 'default',
+                'kernel', self.args.kernel_branch, 'default',
                 self.args.machine_type, self.args.distro,
                 self.args.distro_version,
             )
@@ -192,7 +189,7 @@ class Run(object):
 
         if kernel_hash:
             log.info("kernel sha1: {hash}".format(hash=kernel_hash))
-            kernel_dict = dict(kernel=dict(branch=kernel_branch, kdb=kdb, sha1=kernel_hash))
+            kernel_dict = dict(kernel=dict(kdb=kdb, sha1=kernel_hash))
             if kernel_hash != 'distro':
                 kernel_dict['kernel']['flavor'] = 'default'
         else:
