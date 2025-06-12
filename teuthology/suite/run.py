@@ -609,9 +609,6 @@ Note: If you still want to go ahead, use --job-threshold 0'''
         log.debug('Suite %s in %s' % (suite_name, suite_path))
         log.debug(f"subset = {self.args.subset}")
         log.debug(f"no_nested_subset = {self.args.no_nested_subset}")
-        if self.args.dry_run:
-            log.debug("Base job config:\n%s" % self.base_config)
-
         configs = build_matrix(suite_path,
                                subset=self.args.subset,
                                no_nested_subset=self.args.no_nested_subset,
@@ -625,6 +622,9 @@ Note: If you still want to go ahead, use --job-threshold 0'''
             filter_fragments=self.args.filter_fragments,
             seed=self.args.seed,
             suite_name=suite_name))
+
+        if self.args.dry_run:
+            log.debug("Base job config:\n%s" % self.base_config)
 
         # create, but do not write, the temp file here, so it can be
         # added to the args in collect_jobs, but not filled until
