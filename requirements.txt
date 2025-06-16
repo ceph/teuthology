@@ -200,7 +200,9 @@ zope-event==5.0
     # via gevent
 zope-interface==6.1
     # via gevent
-
+openstacksdk==4.5.0
+    # via teuthology (pyproject.toml)
+python-openstackclient>=6.0.0
 # The following packages are considered to be unsafe in a requirements file:
 # pip
 # setuptools

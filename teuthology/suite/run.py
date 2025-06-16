@@ -7,6 +7,8 @@ import yaml
 import re
 import time
 
+from pathlib import Path
+
 from humanfriendly import format_timespan
 
 from teuthology import repo_utils
@@ -305,7 +307,7 @@ class Run(object):
             if not teuthology_branch:
                 teuthology_branch = actual_branch
             teuthology_sha1 = util.git_ls_remote(
-                f"file://{config.teuthology_path}",
+                f"file://{Path(config.teuthology_path).resolve()}",
                 teuthology_branch
             )
         else:

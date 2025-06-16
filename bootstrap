@@ -26,6 +26,7 @@ if [ -z "$PYTHON" ]; then
   # This would be bizarre, but I suppose possible
   PYTHON=${PYTHON:-"python3"}
 fi
+echo "Using python: $PYTHON"
 
 case "$(uname -s)" in
 Linux)
@@ -40,8 +41,8 @@ Linux)
     install_pkg="sudo dnf install -y"
     case "$OS" in
     Ubuntu|Debian|LinuxMint)
-        deps=(qemu-utils python3-dev libssl-dev python3-pip python3-wheel $PYTHON-venv libev-dev libvirt-dev libffi-dev libyaml-dev)
-        has_pkg="dpkg -C"
+        deps=(qemu-utils python3-dev libssl-dev python3-pip python3-wheel python3-venv libev-dev libvirt-dev libffi-dev libyaml-dev build-essential jq curl)
+        has_pkg="dpkg -s"
         install_pkg="sudo apt install -y"
         ;;
     RedHatEnterpriseWorkstation|RedHatEnterpriseServer|RedHatEnterprise|CentOS)
@@ -114,17 +115,26 @@ if [ -z "$NO_CLOBBER" ] && \
   [ ! -e "$VENV/bin/pip" -o ! -e "$VENV/bin/$PYTHON" ] || \
   [ "${PYTHON_VER_OUT}" != "$($VENV/bin/$PYTHON --version)" ] \
   ; then
+   echo "Deleting existing virtual environment"
     rm -rf virtualenv
 fi
 
 if [ -z "$NO_CLOBBER" ] || [ ! -e $VENV ]; then
+    echo "Creating new venv at $VENV"
     $PYTHON_BIN -m venv $VENV
+fi
+
+PY_MAJOR=$($VENV/bin/python -c "import sys; print(sys.version_info[0])")
+PY_MINOR=$($VENV/bin/python -c "import sys; print(sys.version_info[1])")
+
+# Downgrade pip for older python versions
+if [ "$PY_MAJOR" -eq 3 ] && [ "$PY_MINOR" -lt 6 ]; then
+    $VENV/bin/python -m ensurepip
+    $VENV/bin/pip install pip==20.3.4 --force-reinstall
 fi
 
 $VENV/bin/pip install packaging
 
-# It is impossible to upgrade ansible from 2.9 to 2.10 via pip.
-# See https://docs.ansible.com/ansible/devel/porting_guides/porting_guide_2.10.html#known-issues
 if [ -f "$VENV/bin/ansible" ]; then
     uninstall_ansible=$($VENV/bin/python3 -c "import ansible; from packaging.version import parse; print(parse(ansible.__version__) < parse('2.10.0'))")
     if [ "$uninstall_ansible" = "True" ]; then
@@ -146,3 +156,5 @@ $VENV/bin/pip check
 
 # Install ansible collections
 $VENV/bin/ansible-galaxy install -r requirements.yml
+
+echo "Bootstrap completed successfully!!!"
