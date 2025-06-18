@@ -182,7 +182,7 @@ tox==4.11.4
     # via teuthology (pyproject.toml)
 types-psutil==6.0.0.20240621
     # via teuthology (pyproject.toml)
-urllib3==1.26.18
+urllib3==2.5.0
     # via
     #   botocore
     #   requests
