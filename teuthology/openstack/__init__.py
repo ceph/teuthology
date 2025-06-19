@@ -46,6 +46,7 @@ from teuthology.config import config as teuth_config
 from teuthology.config import set_config_attr
 from teuthology.orchestra import connection
 from teuthology import misc
+from openstack import connection as openstack_connection
 
 from yaml.representer import SafeRepresenter
 
@@ -78,6 +79,8 @@ class OpenStackInstance(object):
         self.name_or_id = name_or_id
         self.private_or_floating_ip = None
         self.private_ip = None
+        self.info = info
+        self.conn = self._create_connection()
         if info is None:
             self.set_info()
         else:
@@ -88,11 +91,14 @@ class OpenStackInstance(object):
                 errmsg = '{}: {}'.format(errmsg, self.info['message'])
             raise Exception(errmsg)
 
+    def _create_connection(self):
+        return openstack_connection.from_config(cloud=None)
+
     def set_info(self):
         try:
-            self.info = json.loads(
-                OpenStack().run("server show -f json " + self.name_or_id))
-            enforce_json_dictionary(self.info)
+            server = self.conn.compute.find_server(self.name_or_id)
+            if server:
+                self.info = {k.lower(): v for k, v in server.to_dict().items()}
         except CalledProcessError:
             self.info = None
 
@@ -129,32 +135,17 @@ class OpenStackInstance(object):
                 self.set_info()
 
     def get_ip_neutron(self):
-        subnets = json.loads(misc.sh("unset OS_AUTH_TYPE OS_TOKEN ; "
-                                     "neutron subnet-list -f json -c id -c ip_version"))
-        subnet_ids = []
-        for subnet in subnets:
-            if subnet['ip_version'] == 4:
-                subnet_ids.append(subnet['id'])
-        if not subnet_ids:
-            raise Exception("no subnet with ip_version == 4")
-        ports = json.loads(misc.sh("unset OS_AUTH_TYPE OS_TOKEN ; "
-                                   "neutron port-list -f json -c fixed_ips -c device_id"))
-        fixed_ips = None
+        conn = OpenStack().conn
+        subnets = [subnet.id for subnet in conn.network.subnets() if subnet.ip_version == 4]
+        if not subnets:
+            raise Exception("No subnet with ip_version == 4 found")
+        ports = conn.network.ports(device_id=self['id'])
         for port in ports:
-            if port['device_id'] == self['id']:
-                fixed_ips = port['fixed_ips'].split("\n")
-                break
-        if not fixed_ips:
-            raise Exception("no fixed ip record found")
-        ip = None
-        for fixed_ip in fixed_ips:
-            record = json.loads(fixed_ip)
-            if record['subnet_id'] in subnet_ids:
-                ip = record['ip_address']
-                break
-        if not ip:
-            raise Exception("no ip")
-        return ip
+            for fixed_ip in port.fixed_ips:
+                if fixed_ip.get('subnet_id') in subnets:
+                    return fixed_ip['ip_address']
+
+        raise Exception("No IP found for instance")
 
     def get_ip(self, network):
         """
@@ -221,6 +212,14 @@ class OpenStack(object):
         'ubuntu-16.04-x86_64': 'https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img',
         'ubuntu-16.04-aarch64': 'https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-arm64-disk1.img',
         'ubuntu-16.04-i686': 'https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-i386-disk1.img',
+        'ubuntu-18.04-x86_64': 'https://cloud-images.ubuntu.com/bionic/current/bionic-server-cloudimg-amd64.img',
+        'ubuntu-18.04-aarch64': 'https://cloud-images.ubuntu.com/bionic/current/bionic-server-cloudimg-arm64.img',
+        'ubuntu-18.04-i686': 'https://cloud-images.ubuntu.com/bionic/current/bionic-server-cloudimg-i386.img',
+        'ubuntu-20.04-x86_64': 'https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img',
+        'ubuntu-20.04-aarch64': 'https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-arm64.img',
+        'ubuntu-22.04-x86_64': 'https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img',
+        'ubuntu-22.04-aarch64': 'https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-arm64.img',
+        'ubuntu-24.04-x86_64': 'https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img',
         'debian-8.0-x86_64': 'http://cdimage.debian.org/cdimage/openstack/current/debian-8.7.1-20170215-openstack-amd64.qcow2',
     }
 
@@ -230,10 +229,14 @@ class OpenStack(object):
         self.username = 'ubuntu'
         self.up_string = "UNKNOWN"
         self.teuthology_suite = 'teuthology-suite'
+        self.conn = self._create_connection()
 
     token = None
     token_expires = None
     token_cache_duration = 3600
+
+    def _create_connection(self):
+        return openstack_connection.from_config(cloud=None)
 
     def cache_token(self):
         if self.provider != 'ovh':
@@ -348,9 +351,10 @@ class OpenStack(object):
         """
         Return the uuid of the network in OpenStack.
         """
-        r = json.loads(self.run("network show -f json " +
-                               network))
-        return self.get_value(r, 'id')
+        conn = self.conn
+        network = conn.network.find_network(network)
+        if network:
+            return network.id
 
     def type_version_arch(self, os_type, os_version, arch):
         """
@@ -409,11 +413,10 @@ class OpenStack(object):
 
     @staticmethod
     def sort_flavors(flavors):
-        def sort_flavor(a, b):
-            return (a['VCPUs'] - b['VCPUs'] or
-                    a['RAM'] - b['RAM'] or
-                    a['Disk'] - b['Disk'])
-        return sorted(flavors, cmp=sort_flavor)
+        def sort_key(flavor):
+            # Create a tuple for sorting: (VCPUs, RAM, Disk)
+            return (flavor['VCPUs'], flavor['RAM'], flavor['Disk'])
+        return sorted(flavors, key=sort_key)
 
     def get_os_flavors(self):
         flavors = json.loads(self.run("flavor list -f json"))
@@ -533,19 +536,21 @@ class OpenStack(object):
 
     @staticmethod
     def list_instances():
+        conn = OpenStack().conn
         ownedby = "ownedby='" + teuth_config.openstack['ip'] + "'"
-        all = json.loads(OpenStack().run(
-            "server list -f json --long --name 'target'"))
-        return filter(lambda instance: ownedby in instance['Properties'], all)
+        instances = conn.compute.servers(all_projects=True)
+        return [inst for inst in instances if ownedby in (getattr(inst, 'metadata', {}) or {}).get('Properties', '')]
 
     @staticmethod
     def list_volumes():
+        conn = OpenStack().conn
         ownedby = "ownedby='" + teuth_config.openstack['ip'] + "'"
-        all = json.loads(OpenStack().run("volume list -f json --long"))
+        volumes = conn.block_storage.volumes()
         def select(volume):
-            return (ownedby in volume['Properties'] and
-                    volume['Display Name'].startswith('target'))
-        return filter(select, all)
+            props = volume.metadata or {}
+            return (ownedby in props.get('Properties', '') and
+                    props.get('display_name', '').startswith('target'))
+        return filter(select, volumes)
 
     def cloud_init_wait(self, instance):
         """
@@ -564,12 +569,11 @@ class OpenStack(object):
         with safe_while(sleep=30, tries=30,
                         action="cloud_init_wait " + ip) as proceed:
             success = False
-            # CentOS 6.6 logs in /var/log/clout-init-output.log
-            # CentOS 7.0 logs in /var/log/clout-init.log
             tail = ("tail --follow=name --retry"
                         " /var/log/cloud-init*.log /tmp/init.out")
             while proceed():
                 try:
+                    log.debug("Attempting to connect to instance at IP: " + ip)
                     client = connection.connect(**client_args)
                 except paramiko.PasswordRequiredException:
                     raise Exception(
@@ -611,15 +615,17 @@ class OpenStack(object):
                             break
                 except socket.timeout:
                     client.close()
-                    log.debug('cloud_init_wait socket.timeout ' + tail)
                     continue
-                except socket.error as e:
+                except socket.error:
                     client.close()
-                    log.debug('cloud_init_wait socket.error ' + str(e) + ' ' + tail)
                     continue
-                client.close()
+                finally:
+                    client.close()
                 if success:
+                    log.debug('Cloud-init completed successfully for IP: ' + ip)
                     break
+            if not success:
+                log.debug('Cloud-init did not complete successfully within the given retries.')
             return success
 
     def get_ip(self, instance_id, network):
@@ -899,7 +905,7 @@ class TeuthologyOpenStack(OpenStack):
         if ceph_repo:
             command = (
                 "perl -pi -e 's|.*{opt}.*|{opt}: {value}|'"
-                " ~/.teuthology.yaml"
+                " ~/.teuthology.yaml || true"
             ).format(opt='ceph_git_url', value=ceph_repo)
             self.ssh(command)
         user_home = '/home/' + self.username
@@ -914,6 +920,7 @@ class TeuthologyOpenStack(OpenStack):
             " --machine-type openstack " +
             " ".join(map(lambda x: "'" + x + "'", argv))
         )
+        log.info("Running teuthology-suite: " + command)
         return self.ssh(command)
 
     def reminders(self):
@@ -951,7 +958,7 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
             logging.getLogger("paramiko.transport").setLevel(logging.DEBUG)
         teuthology.log.setLevel(loglevel)
 
-    def ssh(self, command):
+    def ssh(self, command, timeout=300):
         """
         Run a command in the OpenStack instance of the teuthology cluster.
         Return the stdout / stderr of the command.
@@ -969,14 +976,27 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
         # get the I/O channel to iterate line by line
         transport = client.get_transport()
         channel = transport.open_session()
-        channel.get_pty()
-        channel.settimeout(900)
-        output = channel.makefile('r', 1)
-        log.debug(":ssh@" + ip + ":" + command)
+        channel.settimeout(timeout)
+        log.debug(f"ssh {self.instance.get_floating_ip_or_ip()}: {command}")
         channel.exec_command(command)
-        for line in iter(output.readline, b''):
-            log.info(line.strip())
-        return channel.recv_exit_status()
+        stdout, stderr = [], []
+        start_time = time.time()
+        while True:
+            if channel.recv_ready():
+                stdout.append(channel.recv(4096).decode())
+            if channel.recv_stderr_ready():
+                stderr.append(channel.recv_stderr(4096).decode())
+            if channel.exit_status_ready():
+                break
+            if time.time() - start_time > timeout:
+                raise TimeoutError("SSH command timed out!")
+            time.sleep(0.1)  # Small sleep to avoid busy waiting
+        exit_status = channel.recv_exit_status()
+        stdout_txt, stderr_txt = ''.join(stdout), ''.join(stderr)
+        if exit_status != 0:
+            log.warning(f"SSH command failed with exit status {exit_status}")
+        return exit_status, stdout_txt, stderr_txt
+
 
     def verify_openstack(self):
         """
@@ -1029,32 +1049,48 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
         fd, path = tempfile.mkstemp()
         os.close(fd)
 
-        with open(os.path.dirname(__file__) + '/bootstrap-teuthology.sh', 'rb') as f:
+        bootstrap_path = os.getcwd() + "/teuthology/openstack" + '/bootstrap-teuthology.sh'
+        with open(bootstrap_path, 'rb') as f:
             b64_bootstrap = base64.b64encode(f.read())
             bootstrap_content = str(b64_bootstrap.decode())
 
         openrc_sh = ''
         cacert_cmd = None
-        for (var, value) in os.environ.items():
-            if var in ('OS_TOKEN_VALUE', 'OS_TOKEN_EXPIRES'):
-                continue
-            if var == 'OS_CACERT':
-                cacert_path = '/home/%s/.openstack.crt' % self.username
-                cacert_file = value
-                openrc_sh += 'export %s=%s\n' % (var, cacert_path)
-                cacert_cmd = (
-                    "su - -c 'cat > {path}' {user} <<EOF\n"
-                    "{data}\n"
-                    "EOF\n").format(
-                        path=cacert_path,
-                        user=self.username,
-                        data=open(cacert_file).read())
-            elif var.startswith('OS_'):
-                openrc_sh += 'export %s=%s\n' % (var, value)
+        clouds_yaml_path = os.path.expanduser('~/.config/openstack/clouds.yaml')
+        if os.path.exists(clouds_yaml_path):
+            log.debug(f"clouds.yaml found at {clouds_yaml_path}, processing for openrc.sh")
+            with open(clouds_yaml_path, 'r') as f:
+                clouds_data = yaml.safe_load(f)
+            cloud_name = os.environ.get('OS_CLOUD', 'default')
+            cloud_config = clouds_data.get('clouds', {}).get(cloud_name, {})
+            if not cloud_config:
+                raise Exception(f"Cloud '{cloud_name}' not found in clouds.yaml")
+            auth = cloud_config.get('auth', {})
+            for key, value in {**auth, **cloud_config}.items():
+                if isinstance(value, str):
+                    openrc_sh += f"export OS_{key.upper()}={value}\n"
+        else:
+            for (var, value) in os.environ.items():
+                if var in ('OS_TOKEN_VALUE', 'OS_TOKEN_EXPIRES'):
+                    continue
+                if var == 'OS_CACERT':
+                    cacert_path = '/home/%s/.openstack.crt' % self.username
+                    cacert_file = value
+                    openrc_sh += 'export %s=%s\n' % (var, cacert_path)
+                    cacert_cmd = (
+                        "su - -c 'cat > {path}' {user} <<EOF\n"
+                        "{data}\n"
+                        "EOF\n").format(
+                            path=cacert_path,
+                            user=self.username,
+                            data=open(cacert_file).read())
+                elif var.startswith('OS_'):
+                    openrc_sh += 'export %s=%s\n' % (var, value)
         b64_openrc_sh = base64.b64encode(openrc_sh.encode())
         openrc_sh_content = str(b64_openrc_sh.decode())
 
         network = OpenStack().get_network()
+        log.debug(f"Network to be used: {network}")
         ceph_workbench = ''
         if self.args.ceph_workbench_git_url:
             ceph_workbench += (" --ceph-workbench-branch " +
@@ -1069,21 +1105,19 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
             '--server-group %s' % self.server_group(),
             '--worker-group %s' % self.worker_group(),
             '--package-repo %s' % self.packages_repository(),
-            #'--setup-all',
         ]
+        log.debug(f"Setup options: {setup_options}")
+
         all_options = [
-            '--install',                #do_install_packages=true
-            #'--setup-ceph-workbench',   #do_ceph_workbench=true
-            '--config',                 #do_create_config=true
-            '--setup-keypair',          #do_setup_keypair=true
-            #'',           #do_apt_get_update=true
-            '--setup-docker',           #do_setup_docker=true
-            '--setup-salt-master',      #do_setup_salt_master=true
-            '--setup-dnsmasq',          #do_setup_dnsmasq=true
-            '--setup-fail2ban',         #do_setup_fail2ban=true
-            '--setup-paddles',          #do_setup_paddles=true
-            '--setup-pulpito',          #do_setup_pulpito=true
-            '--populate-paddles',       #do_populate_paddles=true
+            '--install',
+            '--config',
+            '--setup-docker',
+            '--setup-salt-master',
+            '--setup-dnsmasq',
+            '--setup-fail2ban',
+            '--setup-paddles',
+            '--setup-pulpito',
+            '--populate-paddles',
         ]
 
         if self.args.ceph_workbench_git_url:
@@ -1122,8 +1156,6 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
                 "{user} >> /tmp/init.out "
                 "2>&1".format(user=self.username,
                               opts=' '.join(setup_options + all_options))),
-            # wa: we want to stop paddles and pulpito started by
-            # setup-openstack before starting teuthology service
             "pkill -f 'pecan serve'",
             "pkill -f 'python run.py'",
             "systemctl enable teuthology",
@@ -1143,11 +1175,6 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
                     'name': self.username
                 }
             },
-            'packages': [
-                'python-virtualenv',
-                'git',
-                'rsync',
-            ],
             'write_files': [
                 {
                     'path': '/tmp/bootstrap-teuthology.sh',
@@ -1163,7 +1190,9 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
                     'permissions': '0644',
                 }
             ],
-            'runcmd': cmds,
+            'runcmd': [
+                'apt-get update && apt-get install -y python3-virtualenv git rsync >> /tmp/init.out 2>&1'
+            ] + cmds,
             'final_message': 'teuthology is up and running after $UPTIME seconds'
         }
         user_data = "#cloud-config\n%s" % \
@@ -1186,36 +1215,41 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
         return "teuth-%s-worker" % self.args.name
 
     def create_security_group(self):
-        """
-        Create a security group that will be used by all teuthology
-        created instances. This should not be necessary in most cases
-        but some OpenStack providers enforce firewall restrictions even
-        among instances created within the same tenant.
-        """
-        groups = misc.sh('openstack security group list -c Name -f value').split('\n')
-        if all(g in groups for g in [self.server_group(), self.worker_group()]):
-            return
-        misc.sh("""
-openstack security group delete {server} || true
-openstack security group delete {worker} || true
-openstack security group create {server}
-openstack security group create {worker}
-# access to teuthology VM from the outside
-openstack security group rule create --proto tcp --dst-port 22 {server} # ssh
-openstack security group rule create --proto tcp --dst-port 80 {server} # for log access
-openstack security group rule create --proto tcp --dst-port 8080 {server} # pulpito
-openstack security group rule create --proto tcp --dst-port 8081 {server} # paddles
-# access between teuthology and workers
-openstack security group rule create --src-group {worker} --dst-port 1:65535 {server}
-openstack security group rule create --protocol udp --src-group {worker} --dst-port 1:65535 {server}
-openstack security group rule create --src-group {server} --dst-port 1:65535 {worker}
-openstack security group rule create --protocol udp --src-group {server} --dst-port 1:65535 {worker}
-# access between members of one group
-openstack security group rule create --src-group {worker} --dst-port 1:65535 {worker}
-openstack security group rule create --protocol udp --src-group {worker} --dst-port 1:65535 {worker}
-openstack security group rule create --src-group {server} --dst-port 1:65535 {server}
-openstack security group rule create --protocol udp --src-group {server} --dst-port 1:65535 {server}
-        """.format(server=self.server_group(), worker=self.worker_group()))
+        conn = OpenStack().conn
+        server_sg = conn.network.find_security_group(self.server_group())
+        worker_sg = conn.network.find_security_group(self.worker_group())
+        if not server_sg:
+            server_sg = conn.network.create_security_group(name=self.server_group())
+        if not worker_sg:
+            worker_sg = conn.network.create_security_group(name=self.worker_group())
+        def add_rule(sg_id, protocol, port, remote_group_id=None):
+            rule_args = {
+                'security_group_id': sg_id,
+                'direction': 'ingress',
+                'protocol': protocol,
+                'port_range_min': port,
+                'port_range_max': port,
+                'ethertype': 'IPv4',
+            }
+            if remote_group_id:
+                rule_args['remote_group_id'] = remote_group_id
+            else:
+                rule_args['remote_ip_prefix'] = '0.0.0.0/0'
+            try:
+                conn.network.create_security_group_rule(**rule_args)
+            except Exception as e:
+                log.warning(f"Security group rule creation skipped or failed: {e}")
+        # Rules for SSH, log, pulpito and paddles
+        for port in (22, 80, 8080, 8081):
+            add_rule(server_sg.id, 'tcp', port)
+        # access between teuthology and workers
+        for port in (65535,):
+            add_rule(worker_sg.id, 'udp', port, remote_group_id=server_sg.id)
+            add_rule(server_sg.id, 'udp', port, remote_group_id=worker_sg.id)
+        # access between members of one group
+        add_rule(server_sg.id, 'udp', 65535, remote_group_id=server_sg.id)
+        # access within worker group
+        add_rule(worker_sg.id, 'udp', 65535, remote_group_id=worker_sg.id)
 
     @staticmethod
     def get_unassociated_floating_ip():
@@ -1230,32 +1264,14 @@ openstack security group rule create --protocol udp --src-group {server} --dst-p
 
     @staticmethod
     def create_floating_ip():
-        try:
-            pools = json.loads(OpenStack().run("ip floating pool list -f json"))
-        except subprocess.CalledProcessError as e:
-            if 'Floating ip pool operations are only available for Compute v2 network.' \
-                    in e.output:
-                log.debug(e.output)
-                log.debug('Trying newer API than Compute v2')
-                try:
-                    network = 'floating'
-                    ip = json.loads(misc.sh("openstack --quiet floating ip create -f json '%s'" % network))
-                    return ip['floating_ip_address']
-                except subprocess.CalledProcessError:
-                    log.debug("Can't create floating ip for network '%s'" % network)
-
-            log.debug("create_floating_ip: ip floating pool list failed")
+        conn = OpenStack().conn
+        network_name = 'floating'
+        network = conn.network.find_network(network_name)
+        if not network:
+            log.debug(f"Floating network {network_name} not found.")
             return None
-        if not pools:
-            return None
-        pool = pools[0]['Name']
-        try:
-            ip = json.loads(OpenStack().run(
-                "ip floating create -f json '" + pool + "'"))
-            return ip['ip']
-        except subprocess.CalledProcessError:
-            log.debug("create_floating_ip: not creating a floating ip")
-        return None
+        floating_ip = conn.network.create_ip(floating_network_id=network.id)
+        return floating_ip.floating_ip_address
 
     @staticmethod
     def associate_floating_ip(name_or_id):
@@ -1263,23 +1279,18 @@ openstack security group rule create --protocol udp --src-group {server} --dst-p
         Associate a floating IP to the OpenStack instance
         or do nothing if no floating ip can be created.
         """
-        ip = TeuthologyOpenStack.get_unassociated_floating_ip()
-        if not ip:
-            ip = TeuthologyOpenStack.create_floating_ip()
-        if ip:
-            OpenStack().run("ip floating add " + ip + " " + name_or_id)
+        conn = OpenStack().conn
+        server = conn.compute.find_server(name_or_id)
+        ip_address = TeuthologyOpenStack.get_unassociated_floating_ip()
+        if not ip_address:
+            ip_address = TeuthologyOpenStack.create_floating_ip()
+        if ip_address:
+            conn.compute.add_floating_ip_to_server(server, ip_address)
 
     @staticmethod
     def get_os_floating_ips():
-        try:
-            ips = json.loads(OpenStack().run("ip floating list -f json"))
-        except subprocess.CalledProcessError as e:
-            log.warning(e)
-            if e.returncode == 1:
-                return []
-            else:
-                raise e
-        return ips
+        conn = OpenStack().conn
+        return list(conn.network.ips())
 
     @staticmethod
     def get_floating_ip_id(ip):
@@ -1307,12 +1318,17 @@ openstack security group rule create --protocol udp --src-group {server} --dst-p
         """
         Remove the floating ip from instance_id and delete it.
         """
-        ip = OpenStackInstance(instance_id).get_floating_ip()
-        if not ip:
+        conn = OpenStack().conn
+        server = conn.compute.find_server(instance_id)
+        if not server:
             return
-        OpenStack().run("ip floating remove " + ip + " " + instance_id)
-        ip_id = TeuthologyOpenStack.get_floating_ip_id(ip)
-        OpenStack().run("ip floating delete " + ip_id)
+        ip_address = OpenStackInstance(instance_id).get_floating_ip()
+        if not ip_address:
+            return
+        conn.compute.remove_floating_ip_from_server(server, ip_address)
+        floating_ip_obj = conn.network.find_ip(ip_address)
+        if floating_ip_obj:
+            conn.network.delete_ip(floating_ip_obj)
 
     def create_cluster(self):
         user_data = self.get_user_data()
@@ -1329,19 +1345,29 @@ openstack security group rule create --protocol udp --src-group {server} --dst-p
         if not key_name:
             raise Exception('No key name provided, use --key-name option')
         log.debug('Using key name: %s' % self.args.key_name)
-        self.run(
+        image_name = self.image('ubuntu', '22.04', arch)
+        log.debug("Using image: %s" % image_name)
+        net_config = self.net()
+        try:
+            self.run(
             "server create " +
-            " --image '" + self.image('ubuntu', '16.04', arch) + "' " +
+            " --image '" + image_name + "' " +
             " --flavor '" + flavor + "' " +
-            " " + self.net() +
+            " " + net_config +
             " --key-name " + key_name +
             " --user-data " + user_data +
             security_group +
             " --wait " + self.server_name() +
             " -f json")
-        os.unlink(user_data)
+        except Exception as e:
+            log.error("Error during server creation: %s" % str(e))
+            raise
+        finally:
+            os.unlink(user_data)
         self.instance = OpenStackInstance(self.server_name())
+        log.debug("OpenStackInstance created for server: %s" % self.server_name())
         self.associate_floating_ip(self.instance['id'])
+        log.debug("Floating IP associated for instance ID: %s" % self.instance.get('id'))
         return self.cloud_init_wait(self.instance)
 
     def packages_repository(self):
