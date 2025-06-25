@@ -449,7 +449,8 @@ class GitbuilderProject(object):
     rpm_release = "1-0"
 
     def __init__(self, project, job_config, ctx=None, remote=None):
-        self.project = project
+        # self.project = project
+        self.project = "ceph-power"
         self.job_config = job_config
         #TODO: we could get around the need for ctx by using a list
         # of roles instead, ctx is only used in _get_config_value_for_remote.
@@ -467,7 +468,8 @@ class GitbuilderProject(object):
         """
         Initializes the class from a teuthology.orchestra.remote.Remote object
         """
-        self.arch = self.remote.arch
+        # self.arch = self.remote.arch
+        self.arch = "ppc64le"
         self.os_type = self.remote.os.name
         self.os_version = self.remote.os.version
         self.codename = self.remote.os.codename
@@ -486,7 +488,8 @@ class GitbuilderProject(object):
         """
         Initializes the class from a teuthology job config
         """
-        self.arch = self.job_config.get('arch', 'x86_64')
+        # self.arch = self.job_config.get('arch', 'x86_64')
+        self.arch = "ppc64le"
         self.os_type = self.job_config.get("os_type")
         self.flavor = self.job_config.get("flavor")
         self.codename = self.job_config.get("codename")
@@ -847,7 +850,7 @@ class GitbuilderProject(object):
 class ShamanProject(GitbuilderProject):
     def __init__(self, project, job_config, ctx=None, remote=None):
         super(ShamanProject, self).__init__(project, job_config, ctx, remote)
-        self.query_url = 'https://%s/api/' % config.shaman_host
+        self.query_url = 'http://%s/api/' % config.shaman_host
 
         # Force to use the "noarch" instead to build the uri.
         self.force_noarch = self.job_config.get("shaman", {}).get("force_noarch", False)
@@ -879,7 +882,8 @@ class ShamanProject(GitbuilderProject):
         req_obj['status'] = 'ready'
         req_obj['project'] = self.project
         req_obj['flavor'] = flavor
-        arch = "noarch" if self.force_noarch else self.arch
+        # arch = "noarch" if self.force_noarch else self.arch
+        arch = "ppc64le"
         req_obj['distros'] = '%s/%s' % (self.distro, arch)
         ref_name, ref_val = list(self._choose_reference().items())[0]
         if ref_name == 'tag':
