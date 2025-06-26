@@ -127,10 +127,10 @@ fi
 PY_MAJOR=$($VENV/bin/python -c "import sys; print(sys.version_info[0])")
 PY_MINOR=$($VENV/bin/python -c "import sys; print(sys.version_info[1])")
 
-# Downgrade pip for older python versions
-if [ "$PY_MAJOR" -eq 3 ] && [ "$PY_MINOR" -lt 6 ]; then
-    $VENV/bin/python -m ensurepip
-    $VENV/bin/pip install pip==20.3.4 --force-reinstall
+# Python version check
+if [ "$PY_MAJOR" -ne 3 || "$PY_MINOR" -lt 10 ]; then
+    echo "Python version should be 3.10 or higher, found $PY_MAJOR.$PY_MINOR"
+    exit 1
 fi
 
 $VENV/bin/pip install packaging
