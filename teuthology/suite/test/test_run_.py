@@ -197,6 +197,20 @@ class TestRun(object):
             self.klass(self.args)
         m_smtp.assert_not_called()
 
+    @patch('teuthology.suite.run.util.fetch_repos')
+    @patch('teuthology.suite.util.git_ls_remote')
+    @patch('teuthology.suite.run.util.package_version_for_hash')
+    def test_os_type(self, m_pvfh, m_git_ls_remote, m_fetch_repos):
+        m_git_ls_remote.return_value = "sha1"
+        del self.args['distro']
+        run_ = run.Run(self.args)
+        run_.base_args = run_.build_base_args()
+        configs = [
+            ["desc", [], {"os_type": "debian", "os_version": "8.0"}],
+        ]
+        missing, to_schedule = run_.collect_jobs('x86_64', configs, False, False)
+        assert to_schedule[0]['yaml']['os_type'] == "debian"
+        assert to_schedule[0]['yaml']['os_version'] == "8.0"
 
 class TestScheduleSuite(object):
     klass = run.Run
