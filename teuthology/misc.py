@@ -1009,6 +1009,17 @@ def deep_merge(a: DeepMerge, b: DeepMerge) -> DeepMerge:
         return a
     return b
 
+def update_key(key_to_update, a: dict, b: dict):
+    """
+    Update key (`key_to_update`) of dict `a` on all levels
+    to the values of same key in `b` dict.
+    """
+    for key, value in b.items():
+        if key == key_to_update:
+            a[key] = value
+        elif isinstance(value, dict):
+            if key in a and isinstance(a[key], dict):
+                update_key(key_to_update, a[key], value)
 
 def ssh_keyscan(hostnames, _raise=True):
     """

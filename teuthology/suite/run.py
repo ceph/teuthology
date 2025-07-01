@@ -15,7 +15,7 @@ from teuthology.config import config, JobConfig
 from teuthology.exceptions import (
     BranchMismatchError, BranchNotFoundError, CommitNotFoundError,
 )
-from teuthology.misc import deep_merge, get_results_url
+from teuthology.misc import deep_merge, get_results_url, update_key
 from teuthology.orchestra.opsys import OS
 from teuthology.repo_utils import build_git_url
 
@@ -506,6 +506,8 @@ class Run(object):
                 log.info('Skipping due to excluded_os_type: %s facets %s',
                          exclude_os_type, description)
                 continue
+            update_key('sha1', parsed_yaml, self.base_config) 
+            update_key('suite_sha1', parsed_yaml, self.base_config) 
 
             arg = copy.deepcopy(self.base_args)
             arg.extend([
