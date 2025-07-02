@@ -1,7 +1,5 @@
 import docopt
 
-import teuthology.exporter
-
 doc = """
 usage: teuthology-exporter --help
        teuthology-exporter [--interval INTERVAL]
@@ -15,4 +13,5 @@ optional arguments:
 
 def main():
     args = docopt.docopt(doc)
+    import teuthology.exporter
     teuthology.exporter.main(args)

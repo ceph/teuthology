@@ -1,7 +1,6 @@
 import docopt
 
 import teuthology.config
-import teuthology.prune
 
 doc = """
 usage:
@@ -35,4 +34,5 @@ optional arguments:
 
 def main():
     args = docopt.docopt(doc)
+    import teuthology.prune
     teuthology.prune.main(args)

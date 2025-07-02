@@ -1,8 +1,6 @@
 import argparse
 import sys
 
-import teuthology.dispatcher.supervisor
-
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(
@@ -37,7 +35,9 @@ def parse_args(argv):
 
 
 def main():
-    sys.exit(teuthology.dispatcher.supervisor.main(parse_args(sys.argv[1:])))
+    args = parse_args(sys.argv[1:])
+    import teuthology.dispatcher.supervisor
+    sys.exit(teuthology.dispatcher.supervisor.main(args))
 
 
 if __name__ == "__main__":

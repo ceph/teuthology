@@ -11,9 +11,8 @@ optional arguments:
   -v, --verbose  show reasons tests failed
 """
 import docopt
-import teuthology.ls
-
 
 def main():
     args = docopt.docopt(__doc__)
+    import teuthology.ls
     teuthology.ls.main(args)

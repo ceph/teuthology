@@ -1,6 +1,7 @@
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 ARG SSH_PRIVKEY_FILE=id_ed25519
 ENV DEBIAN_FRONTEND=noninteractive
+ENV SETUPTOOLS_SCM_PRETEND_VERSION_FOR_TEUTHOLOGY=0.0.0
 ENV LANG=C.UTF-8
 RUN apt-get update && \
     apt-get install -y \
@@ -9,8 +10,7 @@ RUN apt-get update && \
     python3-dev \
     libssl-dev \
     ipmitool \
-    python3-pip \
-    python3-venv \
+    pipx \
     vim \
     locales-all \
     libev-dev \
@@ -22,13 +22,13 @@ RUN apt-get update && \
     apt-get clean all && \
     locale-gen $LC_ALL
 WORKDIR /teuthology
-COPY requirements.txt requirements.yml ansible.cfg bootstrap /teuthology/
+COPY pyproject.toml requirements.txt requirements.yml uv.lock ansible.cfg bootstrap /teuthology/
 RUN \
     cd /teuthology && \
     mkdir ../archive_dir && \
     mkdir log && \
     chmod +x /teuthology/bootstrap && \
-    PIP_INSTALL_FLAGS="-r requirements.txt" ./bootstrap
+    ./bootstrap
 COPY . /teuthology
 RUN \
     ./bootstrap
