@@ -41,6 +41,8 @@ function create_config() {
     local server_group="${11}"
     local worker_group="${12}"
     local package_repo="${13}"
+    local teuthology_branch="${14}"
+    local teuthology_git_url="${15}"
 
     if test "$network" ; then
         network="network: $network"
@@ -65,6 +67,8 @@ queue_host: localhost
 lab_domain: $labdomain
 max_job_time: 32400 # 9 hours
 teuthology_path: .
+teuthology_branch: $teuthology_branch
+teuthology_git_url: $teuthology_git_url
 canonical_tags: $canonical_tags
 openstack:
   clone: git clone http://github.com/ceph/teuthology
@@ -113,13 +117,23 @@ function apt_get_update() {
 }
 
 function setup_docker() {
-    if test -f /etc/apt/sources.list.d/docker.list ; then
-        echo "OK docker is installed"
-    else
-        sudo apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
-        echo deb https://apt.dockerproject.org/repo ubuntu-trusty main | sudo tee -a /etc/apt/sources.list.d/docker.list
-        sudo apt-get -qq install -y docker-engine
+    source /etc/os-release
+    if ! $VERSION_CODENAME; then
+        echo "ERROR: VERSION_CODENAME is not set. Cannot proceed with Docker installation."
+        return
+    fi
+    if !command -v docker &> /dev/null; then
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
+            sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+        echo \
+          "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] \
+          https://download.docker.com/linux/ubuntu $VERSION_CODENAME stable" | \
+          sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+        sudo apt-get update
+        sudo apt-get install -y docker-ce docker-ce-cli containerd.io
         echo "INSTALLED docker"
+    else
+        echo "OK docker is installed"
     fi
 }
 
@@ -163,7 +177,7 @@ function setup_paddles() {
         git clone https://github.com/ceph/paddles.git $paddles_dir || return 1
     fi
 
-    sudo apt-get -qq install -y --force-yes beanstalkd postgresql postgresql-contrib postgresql-server-dev-all supervisor
+    sudo apt-get -qq install -y beanstalkd postgresql postgresql-contrib postgresql-server-dev-all supervisor
 
     if ! sudo /etc/init.d/postgresql status ; then
         sudo mkdir -p /etc/postgresql
@@ -179,10 +193,10 @@ function setup_paddles() {
         cd $paddles_dir || return 1
         git pull --rebase
         git clean -ffqdx
-        sed -e "s|^address.*|address = 'http://localhost'|" \
-            -e "s|^job_log_href_templ = 'http://qa-proxy.ceph.com/teuthology|job_log_href_templ = 'http://$public_ip|" \
+        sed -e "/^address = os.environ.get(/,/^)/c\address = os.environ.get('PADDLES_ADDRESS', 'http://localhost')" \
+            -e "s|^job_log_href_templ = os.environ.get(.*)|job_log_href_templ = os.environ.get('PADDLES_JOB_LOG_HREF_TEMPL', 'http://$public_ip')|" \
             -e "/sqlite/d" \
-            -e "s|.*'postgresql+psycop.*'|'url': 'postgresql://paddles:paddles@localhost/paddles'|" \
+            -e "s|^ *'url':.*|'url': 'postgresql://paddles:paddles@localhost/paddles',|" \
             -e "s/'host': '127.0.0.1'/'host': '0.0.0.0'/" \
             < config.py.in > config.py
         virtualenv ./virtualenv
@@ -258,7 +272,7 @@ function setup_pulpito() {
         git clone https://github.com/ceph/pulpito.git $pulpito_dir || return 1
     fi
 
-    sudo apt-get -qq install -y --force-yes nginx
+    sudo apt-get -qq install -y nginx
     local nginx_conf=/etc/nginx/sites-available/default
     sudo sed -i '/text\/plain/a\    text\/plain                            log;' \
         /etc/nginx/mime.types
@@ -278,7 +292,7 @@ function setup_pulpito() {
         virtualenv ./virtualenv
         source ./virtualenv/bin/activate
         pip install --upgrade pip
-        pip install 'setuptools==18.2.0'
+        pip install 'setuptools>=58.0.0'
         pip install -r requirements.txt
         python run.py &
     )
@@ -408,7 +422,7 @@ function setup_dnsmasq() {
 
     if ! test -f /etc/dnsmasq.d/resolv ; then
         resolver=$(grep nameserver /etc/resolv.conf | head -1 | perl -ne 'print $1 if(/\s*nameserver\s+([\d\.]+)/)')
-        sudo apt-get -qq install -y --force-yes dnsmasq resolvconf
+        sudo apt-get -qq install -y dnsmasq resolvconf
         # FIXME: this opens up dnsmasq to DNS reflection/amplification attacks, and can be reverted
         # FIXME: once we figure out how to configure dnsmasq to accept DNS queries from all subnets
         sudo perl -pi -e 's/--local-service//' /etc/init.d/dnsmasq
@@ -500,22 +514,27 @@ function remove_images() {
 }
 
 function install_packages() {
-
-    if ! test -f /etc/apt/sources.list.d/trusty-backports.list ; then
-        echo deb http://archive.ubuntu.com/ubuntu trusty-backports main universe | sudo tee /etc/apt/sources.list.d/trusty-backports.list
+    source /etc/os-release
+    if ! $VERSION_CODENAME; then
+        echo "ERROR: VERSION_CODENAME is not set. Cannot proceed with Docker installation."
+        return
+    fi
+    local codename=$VERSION_CODENAME
+    local backports_file="/etc/apt/sources.list.d/${codename}-backports.list"
+    if [ ! -f "$backports_file" ]; then
+        echo "Adding backports repo for $codename..."
+        echo "deb http://archive.ubuntu.com/ubuntu ${codename}-backports main universe" | sudo tee "$backports_file"
         sudo apt-get update
     fi
-
-    local packages="jq realpath curl"
-    sudo apt-get -qq install -y --force-yes $packages
-
+    local packages="jq curl"
+    sudo apt-get -qq install -y $packages
     echo "INSTALL required packages $packages"
 }
 
 CAT=${CAT:-cat}
 
 function verify_openstack() {
-    if ! openstack server list > /dev/null ; then
+    if ! openstack server list --format json > /dev/null ; then
         echo ERROR: the credentials from ~/openrc.sh are not working >&2
         return 1
     fi
@@ -701,13 +720,14 @@ function main() {
     # assume the first available IPv4 subnet is going to be used to assign IP to the instance
     #
     [ -z "$network" ] && {
-        local default_subnets=$(openstack subnet list --ip-version 4 -f json | jq -r '.[] | .Subnet' | sort | uniq)
+        local default_subnets=$(openstack subnet list --ip-version 4 -f json | jq -r '.[] | select(.Name != null) | .Subnet' | sort | uniq)
     } || {
         local network_id=$(openstack network list -f json | jq -r ".[] | select(.Name == \"$network\") | .ID")
         local default_subnets=$(openstack subnet list --ip-version 4 -f json \
             | jq -r ".[] | select(.Network == \"$network_id\") | .Subnet" | sort | uniq)
     }
     subnets=$(echo $subnets $default_subnets)
+    echo "subnets: $subnets"
 
     case $provider in
         entercloudsuite)
@@ -720,16 +740,21 @@ function main() {
     esac
 
     local ip
-    for dev in eth0 ens3 ; do
-        ip=$(ip a show dev $dev 2>/dev/null | sed -n "s:.*inet \(.*\)/.*:\1:p")
-        test "$ip" && break
+    for dev in $(ip -o link show | awk -F': ' '{print $2}' | grep -v '^lo$'); do
+        ip=$(ip -4 addr show dev "$dev" | awk '/inet / {print $2}' | cut -d/ -f1)
+        if [ -n "$ip" ]; then
+            nameserver="$ip"
+            break
+        fi
     done
-    : ${nameserver:=$ip}
+
+    local teuthology_branch="$(git -C $(dirname $0)/../../../teuthology rev-parse --abbrev-ref HEAD)"
+    local teuthology_git_url="$(git -C $(dirname $0)/../../../teuthology config --get remote.origin.url)"
 
     if $do_create_config ; then
         create_config "$network" "$subnets" "$nameserver" "$labdomain" "$ip" \
             "$archive_upload" "$canonical_tags" "$selfname" "$keypair" \
-            "$server_name" "$server_group" "$worker_group" "$package_repo" || return 1
+            "$server_name" "$server_group" "$worker_group" "$package_repo" "$teuthology_branch" "$teuthology_git_url" || return 1
         setup_ansible "$subnets" $labdomain || return 1
         setup_ssh_config || return 1
         setup_authorized_keys || return 1
