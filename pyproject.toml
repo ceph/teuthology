@@ -123,9 +123,6 @@ requires = [
     "setuptools-scm>=8",
 ]
 
-[tool.setuptools_scm]
-# intentionally left empty
-
 [tool.uv]
 cache-keys = [{ file = "pyproject.toml" }, { git = { commit = true, tags = true } }]
 
