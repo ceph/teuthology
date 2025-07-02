@@ -242,6 +242,13 @@ def test_split_role():
         actual_split = misc.split_role(role)
         assert actual_split == expected_split
 
+def test_update_key():
+    a = { "sha": "foo", "workunit": { "sha": "foo" }, "tasks": [{"task1": "ceph"}], "overrides": [{"sha": "foo"}] }
+    b = { "sha": "blah", "workunit": { "sha": "bar" }, "tasks": [] }
+
+    misc.update_key("sha", a, b)
+    assert a == { "sha": "blah", "workunit": { "sha": "bar" }, "tasks": [{"task1": "ceph"}], "overrides": [{"sha": "foo"}] } 
+
 class TestHostnames(object):
     def setup_method(self):
         config._conf = dict()

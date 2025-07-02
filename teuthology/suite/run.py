@@ -17,7 +17,7 @@ from teuthology.config import config, JobConfig
 from teuthology.exceptions import (
     BranchMismatchError, BranchNotFoundError, CommitNotFoundError,
 )
-from teuthology.misc import deep_merge, get_results_url
+from teuthology.misc import deep_merge, get_results_url, update_key
 from teuthology.orchestra.opsys import OS
 from teuthology.repo_utils import build_git_url
 
@@ -508,6 +508,8 @@ class Run(object):
                 log.info('Skipping due to excluded_os_type: %s facets %s',
                          exclude_os_type, description)
                 continue
+            update_key('sha1', parsed_yaml, self.base_config) 
+            update_key('suite_sha1', parsed_yaml, self.base_config) 
 
             arg = copy.deepcopy(self.base_args)
             arg.extend([
@@ -516,8 +518,6 @@ class Run(object):
                 '--',
             ])
             arg.extend(self.base_yaml_paths)
-            full_job_config = copy.deepcopy(self.base_config.to_dict())
-            deep_merge(parsed_yaml, full_job_config)
 
             parsed_yaml_txt = yaml.dump(parsed_yaml)
             arg.append('-')
@@ -533,7 +533,9 @@ class Run(object):
             sha1 = self.base_config.sha1
             if parsed_yaml.get('verify_ceph_hash',
                                config.suite_verify_ceph_hash):
-                flavor = util.get_install_task_flavor(parsed_yaml)
+                full_job_config = copy.deepcopy(self.base_config.to_dict())
+                deep_merge(full_job_config, parsed_yaml)
+                flavor = util.get_install_task_flavor(full_job_config)
                 version = util.package_version_for_hash(sha1, flavor, os_type,
                     os_version, self.args.machine_type)
                 if not version:

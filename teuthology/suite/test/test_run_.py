@@ -197,6 +197,48 @@ class TestRun(object):
             self.klass(self.args)
         m_smtp.assert_not_called()
 
+    @patch('teuthology.suite.run.util.fetch_repos')
+    @patch('teuthology.suite.util.git_ls_remote')
+    @patch('teuthology.suite.run.util.package_version_for_hash')
+    def test_os_type(self, m_pvfh, m_git_ls_remote, m_fetch_repos):
+        m_git_ls_remote.return_value = "sha1"
+        del self.args['distro']
+        run_ = run.Run(self.args)
+        run_.base_args = run_.build_base_args()
+        run_.base_config = run_.build_base_config()
+        configs = [
+            ["desc", [], {"os_type": "debian", "os_version": "8.0"}],
+            ["desc", [], {"os_type": "ubuntu", "os_version": "24.0"}],
+        ]
+        missing, to_schedule = run_.collect_jobs('x86_64', configs, False, False)
+        assert to_schedule[0]['yaml']['os_type'] == "debian"
+        assert to_schedule[0]['yaml']['os_version'] == "8.0"
+        assert to_schedule[1]['yaml']['os_type'] == "ubuntu"
+        assert to_schedule[1]['yaml']['os_version'] == "24.0"
+
+    @patch('teuthology.suite.run.util.fetch_repos')
+    @patch('teuthology.suite.util.git_ls_remote')
+    @patch('teuthology.suite.run.util.package_version_for_hash')
+    def test_sha1(self, m_pvfh, m_git_ls_remote, m_fetch_repos):
+        m_git_ls_remote.return_value = "sha1"
+        del self.args['distro']
+        run_ = run.Run(self.args)
+        run_.base_args = run_.build_base_args()
+        for i in range(5): # mock backtracking
+            run_.config_input['ceph_hash'] = f"boo{i}"
+            run_.config_input['suite_hash'] = f"bar{i}"
+            run_.base_config = run_.build_base_config()
+        configs = [
+            ["desc", [], {"os_type": "debian", "os_version": "8.0", 
+                          "sha1": "old_sha", "suite_sha1": "old_sha",
+                          "overrides": { "workunit": {"sha1": "old_sha"}, "ceph": {"sha1": "old_sha"} }
+                          }],
+        ]
+        missing, to_schedule = run_.collect_jobs('x86_64', configs, False, False)
+        assert to_schedule[0]['yaml']['sha1'] == "boo4"
+        assert to_schedule[0]['yaml']['suite_sha1'] == "bar4"
+        assert to_schedule[0]['yaml']['overrides']['workunit']["sha1"] == "bar4"
+        assert to_schedule[0]['yaml']['overrides']['ceph']["sha1"] == "boo4"
 
 class TestScheduleSuite(object):
     klass = run.Run
