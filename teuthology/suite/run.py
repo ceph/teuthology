@@ -680,7 +680,11 @@ Note: If you still want to go ahead, use --job-threshold 0'''
                 self.collect_jobs(arch, configs, self.args.newest, job_limit)
             if jobs_missing_packages and self.args.newest:
                 if not sha1s:
-                    sha1s = util.find_git_parents('ceph', str(self.base_config.sha1), self.args.newest)
+                    sha1s = util.find_git_parents(
+                        self.ceph_repo_name,
+                        str(self.base_config.sha1),
+                        self.args.newest
+                    )
                 if not sha1s:
                     util.schedule_fail('Backtrack for --newest failed', name, dry_run=self.args.dry_run)
                 cur_sha1 = sha1s.pop(0)
