@@ -511,6 +511,12 @@ class Run(object):
             update_key('sha1', parsed_yaml, self.base_config) 
             update_key('suite_sha1', parsed_yaml, self.base_config) 
 
+            full_job_config = copy.deepcopy(self.base_config.to_dict())
+            deep_merge(full_job_config, parsed_yaml)
+            flavor = util.get_install_task_flavor(full_job_config)
+
+            parsed_yaml['flavor'] = flavor
+
             arg = copy.deepcopy(self.base_args)
             arg.extend([
                 '--num', str(self.args.num),
@@ -533,9 +539,6 @@ class Run(object):
             sha1 = self.base_config.sha1
             if parsed_yaml.get('verify_ceph_hash',
                                config.suite_verify_ceph_hash):
-                full_job_config = copy.deepcopy(self.base_config.to_dict())
-                deep_merge(full_job_config, parsed_yaml)
-                flavor = util.get_install_task_flavor(full_job_config)
                 version = util.package_version_for_hash(sha1, flavor, os_type,
                     os_version, self.args.machine_type)
                 if not version:
