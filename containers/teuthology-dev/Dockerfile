@@ -11,6 +11,8 @@ RUN apt-get update && \
     python3-pip \
     python3-venv \
     vim \
+    jq \
+    curl \
     libev-dev \
     libvirt-dev \
     libffi-dev \
