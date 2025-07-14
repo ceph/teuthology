@@ -342,6 +342,7 @@ class TestScheduleSuite(object):
           'timestamp',
           'user',
           'teuthology',
+          'flavor',
         ]
         for t in teuthology_keys:
             y[t] = ANY
