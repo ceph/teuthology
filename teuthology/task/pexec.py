@@ -51,7 +51,7 @@ def _exec_host(barrier, barrier_queue, remote, sudo, testdir, ls):
         if l == "barrier":
             _do_barrier(barrier, barrier_queue, remote)
             continue
-
+        log.debug(f"{remote.name}< {l}")
         r.stdin.writelines([l, '\n'])
         r.stdin.flush()
     r.stdin.writelines(['\n'])
