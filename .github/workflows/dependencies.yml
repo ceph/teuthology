@@ -34,6 +34,10 @@ jobs:
           cd ./virtualenv/lib/python*
           touch no-global-site-packages.txt
         working-directory: ./teuthology
+      - name: Refresh system repos
+        run: |
+          sudo apt update -y
+          sudo apt upgrade -y
       - name: Initial bootstrap
         run: ./bootstrap install
         working-directory: ./teuthology
