@@ -181,11 +181,11 @@ def syslog(ctx, config):
             )
         )
 
-        log.info('Gathering journactl -b0...')
+        log.info('Gathering journactl ...')
         run.wait(
             cluster.run(
                 args=[
-                    'sudo', 'journalctl', '-b0',
+                    'sudo', 'journalctl',
                     run.Raw('|'),
                     'gzip', '-9',
                     run.Raw('>'),
