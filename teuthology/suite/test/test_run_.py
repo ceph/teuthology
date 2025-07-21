@@ -39,13 +39,11 @@ class TestRun(object):
 
     @patch('teuthology.suite.run.util.fetch_repos')
     @patch('teuthology.suite.run.util.git_ls_remote')
-    @patch('teuthology.suite.run.Run.choose_ceph_version')
     @patch('teuthology.suite.run.util.git_validate_sha1')
-    def test_email_addr(self, m_git_validate_sha1, m_choose_ceph_version,
-                        m_git_ls_remote, m_fetch_repos):
+    def test_email_addr(self, m_git_validate_sha1,
+                        m_git_ls_remote, _):
         # neuter choose_X_branch
         m_git_validate_sha1.return_value = self.args_dict['ceph_sha1']
-        m_choose_ceph_version.return_value = self.args_dict['ceph_sha1']
         self.args_dict['teuthology_branch'] = 'main'
         self.args_dict['suite_branch'] = 'main'
         m_git_ls_remote.return_value = 'suite_sha1'
@@ -249,8 +247,8 @@ class TestScheduleSuite(object):
             suite_relpath='',
             suite_dir='suite_dir',
             suite_branch='main',
-            suite_repo='main',
-            ceph_repo='main',
+            suite_repo='ceph',
+            ceph_repo='ceph',
             ceph_branch='main',
             ceph_sha1='ceph_sha1',
             teuthology_branch='main',
