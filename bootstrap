@@ -128,7 +128,7 @@ PY_MAJOR=$($VENV/bin/python -c "import sys; print(sys.version_info[0])")
 PY_MINOR=$($VENV/bin/python -c "import sys; print(sys.version_info[1])")
 
 # Python version check
-if [ "$PY_MAJOR" -ne 3 || "$PY_MINOR" -lt 10 ]; then
+if [[ "$PY_MAJOR" -ne 3 || "$PY_MINOR" -lt 10 ]]; then
     echo "Python version should be 3.10 or higher, found $PY_MAJOR.$PY_MINOR"
     exit 1
 fi
