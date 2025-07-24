@@ -1222,15 +1222,15 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
             server_sg = conn.network.create_security_group(name=self.server_group())
         if not worker_sg:
             worker_sg = conn.network.create_security_group(name=self.worker_group())
-        def add_rule(sg_id, protocol, port, remote_group_id=None):
+        def add_rule(sg_id, protocol, port=None, remote_group_id=None):
             rule_args = {
                 'security_group_id': sg_id,
                 'direction': 'ingress',
                 'protocol': protocol,
-                'port_range_min': port,
-                'port_range_max': port,
                 'ethertype': 'IPv4',
             }
+            if port is not None:
+                rule_args['port_range_min'] = rule_args['port_range_max'] = port
             if remote_group_id:
                 rule_args['remote_group_id'] = remote_group_id
             else:
@@ -1239,17 +1239,17 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
                 conn.network.create_security_group_rule(**rule_args)
             except Exception as e:
                 log.warning(f"Security group rule creation skipped or failed: {e}")
-        # Rules for SSH, log, pulpito and paddles
-        for port in (22, 80, 8080, 8081):
-            add_rule(server_sg.id, 'tcp', port)
+        # tcp access to enable reliable inter-node communication
+        for sg in (server_sg, worker_sg):
+            add_rule(sg.id, 'tcp')
         # access between teuthology and workers
         for port in (65535,):
-            add_rule(worker_sg.id, 'udp', port, remote_group_id=server_sg.id)
-            add_rule(server_sg.id, 'udp', port, remote_group_id=worker_sg.id)
+            add_rule(worker_sg.id, 'udp', port=port, remote_group_id=server_sg.id)
+            add_rule(server_sg.id, 'udp', port=port, remote_group_id=worker_sg.id)
         # access between members of one group
-        add_rule(server_sg.id, 'udp', 65535, remote_group_id=server_sg.id)
+        add_rule(server_sg.id, 'udp', port=65535, remote_group_id=server_sg.id)
         # access within worker group
-        add_rule(worker_sg.id, 'udp', 65535, remote_group_id=worker_sg.id)
+        add_rule(worker_sg.id, 'udp', port=65535, remote_group_id=worker_sg.id)
 
     @staticmethod
     def get_unassociated_floating_ip():
