@@ -35,7 +35,6 @@ import subprocess
 import tempfile
 import teuthology
 import time
-import types
 import yaml
 import base64
 
@@ -203,6 +202,7 @@ class OpenStack(object):
     image2url = {
         'centos-7.2-x86_64': 'http://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud-1511.qcow2',
         'centos-7.3-x86_64': 'http://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud-1701.qcow2',
+        'centos-9.stream-x86_64': 'https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-20240703.1.x86_64.qcow2',
         'opensuse-42.1-x86_64': 'http://download.opensuse.org/repositories/Cloud:/Images:/Leap_42.1/images/openSUSE-Leap-42.1-OpenStack.x86_64.qcow2',
         'opensuse-42.2-x86_64': 'http://download.opensuse.org/repositories/Cloud:/Images:/Leap_42.2/images/openSUSE-Leap-42.2-OpenStack.x86_64.qcow2',
         'opensuse-42.3-x86_64': 'http://download.opensuse.org/repositories/Cloud:/Images:/Leap_42.3/images/openSUSE-Leap-42.3-OpenStack.x86_64.qcow2',
@@ -522,7 +522,7 @@ class OpenStack(object):
         result = copy.deepcopy(defaults)
         if not hints:
             return result
-        if type(hints) is types.DictType:
+        if isinstance(hints, dict):
             raise TypeError("openstack: " + str(hints) +
                             " must be an array, not a dict")
         for hint in hints:

@@ -1,0 +1,16 @@
+#cloud-config
+bootcmd:
+ - hostnamectl set-hostname $(cat /etc/hostname)
+ - ( echo ; echo "MaxSessions 1000" ) >> /etc/ssh/sshd_config
+# See https://github.com/ceph/ceph-cm-ansible/blob/main/roles/cobbler/templates/snippets/cephlab_user
+ - ( echo 'Defaults !requiretty' ; echo 'Defaults visiblepw' ) | tee /etc/sudoers.d/cephlab_sudo ; chmod 0440 /etc/sudoers.d/cephlab_sudo
+preserve_hostname: true
+system_info:
+  default_user:
+    name: {username}
+packages:
+ - python3
+ - wget
+ - git
+ - ntp
+final_message: "{up}, after $UPTIME seconds"
