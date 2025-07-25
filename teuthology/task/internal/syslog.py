@@ -159,6 +159,18 @@ def syslog(ctx, config):
                     ctx.summary['failure_reason'] = \
                         "'{error}' in syslog".format(error=stdout)
 
+        log.info('Gathering journactl...')
+        run.wait(
+            cluster.run(
+                args=[
+                    'sudo', 'journalctl',
+                    run.Raw('>'),
+                    f'{archive_dir}/syslog/journalctl.log',
+                ],
+                wait=False,
+            )
+        )
+
         log.info('Compressing syslogs...')
         run.wait(
             cluster.run(
@@ -172,25 +184,17 @@ def syslog(ctx, config):
                     'sudo',
                     'xargs',
                     '-0',
+                    '--max-args=1',
+                    '--max-procs=0',
+                    '--verbose',
                     '--no-run-if-empty',
                     '--',
                     'gzip',
+                    '-5',
+                    '--verbose',
                     '--',
                 ],
                 wait=False,
             )
         )
 
-        log.info('Gathering journactl -b0...')
-        run.wait(
-            cluster.run(
-                args=[
-                    'sudo', 'journalctl', '-b0',
-                    run.Raw('|'),
-                    'gzip', '-9',
-                    run.Raw('>'),
-                    f'{archive_dir}/syslog/journalctl-b0.gz',
-                ],
-                wait=False,
-            )
-        )
