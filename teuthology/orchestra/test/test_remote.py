@@ -221,6 +221,31 @@ class TestRemote(object):
         rem2._runner = m_run
         assert not rem2.is_container
 
+    @patch("teuthology.orchestra.remote.Remote.sh")
+    def test_resolve_ip(self, m_sh):
+        r = remote.Remote(name="jdoe@xyzzy.example.com", ssh=self.m_ssh)
+        m_sh.return_value = "smithi001.front.sepia.ceph.com has address 172.21.15.1\n"
+        ip4 = remote.Remote.resolve_ip(r, 'smithi001')
+        assert ip4 == "172.21.15.1"
+        m_sh.return_value = "\n"
+        try:
+            ip4 = remote.Remote.resolve_ip(r, 'smithi001')
+        except Exception as e:
+            assert 'Cannot get IPv4 address' in str(e)
+        try:
+            ip4 = remote.Remote.resolve_ip(r, 'smithi001', 5)
+        except Exception as e:
+            assert 'Unknown IP version' in str(e)
+        
+        m_sh.return_value = ("google.com has address 142.251.37.14\n"
+                             "google.com has IPv6 address 2a00:1450:4016:80b::200e\n"
+                             "google.com mail is handled by 10 smtp.google.com.\n")
+        ip4 = remote.Remote.resolve_ip(r, 'google.com')
+        assert ip4 == "142.251.37.14"
+        ip6 = remote.Remote.resolve_ip(r, 'google.com', '6')
+        assert ip6 == "2a00:1450:4016:80b::200e"
+
+
     @patch("teuthology.orchestra.remote.Remote.run")
     def test_write_file(self, m_run):
         file = "fakefile"
