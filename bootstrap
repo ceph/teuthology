@@ -57,7 +57,6 @@ Linux)
         deps=($PYTHON-pip $PYTHON-devel libev-devel libvirt-devel libffi-devel)
         ;;
     Fedora|FedoraLinux)
-        PYTHON=python3.12
         deps=($PYTHON-pip $PYTHON-devel libev-devel libvirt-devel libffi-devel)
         ;;
     "openSUSE project"|"SUSE LINUX"|"openSUSE"|"openSUSELeap"|"openSUSETumbleweed")
