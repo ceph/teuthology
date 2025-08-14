@@ -37,7 +37,7 @@ Linux)
         OS=$(echo $NAME | tr -d ' ')
     fi
     # rpm/dnf is the default, to reduce repetition in the case statement
-    has_pkg="rpm --whatprovides"
+    has_pkg="rpm -q --whatprovides"
     install_pkg="sudo dnf install -y"
     case "$OS" in
     Ubuntu|Debian|LinuxMint)
