@@ -63,7 +63,7 @@ filelock==3.13.1
     # via
     #   tox
     #   virtualenv
-gevent==23.9.1
+gevent==24.2.1
     # via teuthology (pyproject.toml)
 greenlet==3.0.3
     # via gevent
