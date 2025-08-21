@@ -338,6 +338,7 @@ class TestScheduleSuite(object):
           'suite_sha1',
           'tasks',
           'teuthology_branch',
+          'teuthology_repo',
           'teuthology_sha1',
           'timestamp',
           'user',
