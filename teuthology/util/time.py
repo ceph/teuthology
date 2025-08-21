@@ -4,18 +4,23 @@ from datetime import datetime, timedelta, timezone
 
 # When we're not using ISO format, we're using this
 TIMESTAMP_FMT = "%Y-%m-%d_%H:%M:%S"
+# Or this, in the case of paddles timestamps
+TIMESTAMP_FMT_ALT = "%Y-%m-%d %H:%M:%S.%f"
 
 def parse_timestamp(timestamp: str) -> datetime:
     """
-    timestamp: A string either in ISO 8601 format or TIMESTAMP_FMT.
-               If no timezone is specified, UTC is assumed.
+    timestamp: A string either in ISO 8601 format, TIMESTAMP_FMT or
+               TIMESTAMP_FMT_ALT. If no timezone is specified, UTC is assumed.
 
     :returns: a datetime object
     """
     try:
         dt = datetime.fromisoformat(timestamp)
     except ValueError:
-        dt = datetime.strptime(timestamp, TIMESTAMP_FMT)
+        try:
+            dt = datetime.strptime(timestamp, TIMESTAMP_FMT)
+        except ValueError:
+            dt = datetime.strptime(timestamp, TIMESTAMP_FMT_ALT)
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt
