@@ -74,6 +74,9 @@ Here is a sample configuration with many of the options set and documented::
     # Where teuthology and ceph-qa-suite repos should be stored locally
     src_base_path: /home/foo/src
 
+    # Where the teuthology git repo is considered to reside.
+    teuthology_git_url: https://github.com/ceph/teuthology.git
+
     # Where teuthology path is located: do not clone if present
     #teuthology_path: .
 
