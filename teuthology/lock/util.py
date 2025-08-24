@@ -18,7 +18,7 @@ def vps_version_or_type_valid(machine_type, os_type, os_version):
     is skipped (so that this code should behave as it did before this
     check was added).
     """
-    if not machine_type == 'vps':
+    if not (machine_type in teuthology.provision.downburst.get_types()):
         return True
     if os_type is None or os_version is None:
         # we'll use the defaults provided by provision.create_if_vm
