@@ -14,6 +14,15 @@ from teuthology.lock import query
 log = logging.getLogger(__name__)
 
 
+def get_types():
+    types = ['vps']
+    if 'downburst' in config and 'machine' in config.downburst:
+        machine = config.downburst.get('machine')
+        if isinstance(machine, list):
+            types = list(m.get('type') for m in machine)
+    return types
+
+
 def downburst_executable():
     """
     First check for downburst in the user's path.
@@ -186,24 +195,32 @@ class Downburst(object):
         os_version = self.os_version.lower()
 
         mac_address = self.status['mac_address']
-        defaults = dict(
-            downburst=dict(
-                machine=dict(
-                    disk=os.environ.get('DOWNBURST_DISK_SIZE', '100G'),
-                    ram=os.environ.get('DOWNBURST_RAM_SIZE', '3.8G'),
-                    cpus=int(os.environ.get('DOWNBURST_CPUS', 1)),
-                    volumes=dict(
-                        count=int(os.environ.get('DOWNBURST_EXTRA_DISK_NUMBER', 4)),
-                        size=os.environ.get('DOWNBURST_EXTRA_DISK_SIZE', '100G'),
-                    ),
-                ),
-            )
+        machine = dict(
+            disk=os.environ.get('DOWNBURST_DISK_SIZE', '100G'),
+            ram=os.environ.get('DOWNBURST_RAM_SIZE', '3.8G'),
+            cpus=int(os.environ.get('DOWNBURST_CPUS', 1)),
+            volumes=dict(
+                count=int(os.environ.get('DOWNBURST_EXTRA_DISK_NUMBER', 4)),
+                size=os.environ.get('DOWNBURST_EXTRA_DISK_SIZE', '100G'),
+            ),
         )
-        downburst_config = defaults['downburst']
-        if config.downburst and isinstance(config.downburst, dict):
-            deep_merge(downburst_config, config.downburst)
-        log.debug('downburst_config: %s', downburst_config)
-        machine = downburst_config['machine']
+        def belongs_machine_type(machine_config: dict, machine_type: str) -> bool:
+            if isinstance(machine_config, dict):
+                t = machine_config.get('type', None)
+                if isinstance(t, str):
+                    return machine_type == t
+                elif isinstance(t, list):
+                    return machine_type in t
+            return False
+        if isinstance(config.downburst, dict) and isinstance(config.downburst.get('machine'), list):
+            machine_type = self.status['machine_type']
+            machine_config = next((m for m in config.downburst.get('machine')
+                        if belongs_machine_type(m, machine_type)), None)
+            if machine_config is None:
+                raise RuntimeError(f"Cannot find config for machine type {machine_type}.")
+        elif isinstance(config.downburst, dict) and isinstance(config.downburst.get('machine'), dict):
+            machine_config = config.downburst.get('machine')
+        deep_merge(machine, machine_config)
         log.debug('Using machine config: %s', machine)
         file_info = {
             'disk-size': machine['disk'],

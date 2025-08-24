@@ -76,18 +76,20 @@ def lock_many(ctx, num, machine_type, user=None, description=None,
     # all in one shot. If we are passed 'plana,mira,burnupi,vps', do one query
     # for 'plana,mira,burnupi' and one for 'vps'
     machine_types_list = misc.get_multi_machine_types(machine_type)
-    if machine_types_list == ['vps']:
+    downburst_types = teuthology.provision.downburst.get_types()
+    if all(t in downburst_types for t in machine_types_list):
         machine_types = machine_types_list
     elif machine_types_list == ['openstack']:
         return lock_many_openstack(ctx, num, machine_type,
                                    user=user,
                                    description=description,
                                    arch=arch)
-    elif 'vps' in machine_types_list:
-        machine_types_non_vps = list(machine_types_list)
-        machine_types_non_vps.remove('vps')
-        machine_types_non_vps = '|'.join(machine_types_non_vps)
-        machine_types = [machine_types_non_vps, 'vps']
+    elif any(t in downburst_types for t in machine_types_list):
+        the_vps = list(t for t in machine_types_list
+                                        if t in downburst_types)
+        non_vps = list(t for t in machine_types_list
+                                        if not t in downburst_types)
+        machine_types = ['|'.join(non_vps), '|'.join(the_vps)]
     else:
         machine_types_str = '|'.join(machine_types_list)
         machine_types = [machine_types_str, ]
@@ -102,9 +104,9 @@ def lock_many(ctx, num, machine_type, user=None, description=None,
         )
         # Only query for os_type/os_version if non-vps and non-libcloud, since
         # in that case we just create them.
-        vm_types = ['vps'] + teuthology.provision.cloud.get_types()
+        vm_types = downburst_types + teuthology.provision.cloud.get_types()
         reimage_types = teuthology.provision.get_reimage_types()
-        if machine_type not in vm_types + reimage_types:
+        if machine_type not in (vm_types + reimage_types):
             if os_type:
                 data['os_type'] = os_type
             if os_version:
