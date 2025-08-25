@@ -2,8 +2,6 @@
 Support for paramiko remote objects.
 """
 
-import teuthology.lock.query
-import teuthology.lock.util
 from teuthology.contextutil import safe_while
 from teuthology.orchestra import run
 from teuthology.orchestra import connection
@@ -153,7 +151,7 @@ class RemoteShell(object):
         if self.os.package_type != 'rpm' or \
                 self.os.name in ['opensuse', 'sle']:
             return
-        if teuthology.lock.query.is_vm(self.shortname):
+        if teuthology.machines.is_vm(self.shortname):
             return
         self.run(args="sudo chcon {con} {path}".format(
             con=context, path=file_path))
@@ -510,7 +508,7 @@ class Remote(RemoteShell):
     @property
     def machine_type(self):
         if not getattr(self, '_machine_type', None):
-            remote_info = teuthology.lock.query.get_status(self.hostname)
+            remote_info = teuthology.machines.machine_status(self.hostname)
             if not remote_info:
                 return None
             self._machine_type = remote_info.get("machine_type", None)
@@ -758,7 +756,7 @@ class Remote(RemoteShell):
     @property
     def is_vm(self):
         if not hasattr(self, '_is_vm'):
-            self._is_vm = teuthology.lock.query.is_vm(self.name)
+            self._is_vm = teuthology.machines.is_vm(self.name)
         return self._is_vm
 
     @property
@@ -797,7 +795,7 @@ def getRemoteConsole(name, ipmiuser=None, ipmipass=None, ipmidomain=None,
     """
     Return either VirtualConsole or PhysicalConsole depending on name.
     """
-    if teuthology.lock.query.is_vm(name):
+    if teuthology.machines.is_vm(name):
         try:
             return console.VirtualConsole(name)
         except Exception:

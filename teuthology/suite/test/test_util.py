@@ -99,17 +99,17 @@ Branch 'no-branch' not found in repo: https://github.com/ceph/ceph-ci.git!"
         )
         assert result == "some json"
 
-    @patch('teuthology.lock.query')
-    def test_get_arch_fail(self, m_query):
-        m_query.list_locks.return_value = False
+    @patch('teuthology.lock.query.list_locks')
+    def test_get_arch_fail(self, m_list_locks):
+        m_list_locks.return_value = False
         util.get_arch('magna')
-        m_query.list_locks.assert_called_with(machine_type="magna", count=1, tries=1)
+        m_list_locks.assert_called_with(machine_type="magna", count=1, tries=1)
 
-    @patch('teuthology.lock.query')
-    def test_get_arch_success(self, m_query):
-        m_query.list_locks.return_value = [{"arch": "arch"}]
+    @patch('teuthology.lock.query.list_locks')
+    def test_get_arch_success(self, m_list_locks):
+        m_list_locks.return_value = [{"arch": "arch"}]
         result = util.get_arch('magna')
-        m_query.list_locks.assert_called_with(
+        m_list_locks.assert_called_with(
             machine_type="magna",
             count=1, tries=1
         )
