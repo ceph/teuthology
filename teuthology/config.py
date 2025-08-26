@@ -155,6 +155,7 @@ class TeuthologyConfig(YamlConfig):
         'ceph_git_url': None,
         'ceph_qa_suite_git_url': None,
         'ceph_cm_ansible_git_url': None,
+        'teuthology_git_url': None,
         'use_conserver': False,
         'conserver_master': 'conserver.front.sepia.ceph.com',
         'conserver_port': 3109,
@@ -219,6 +220,10 @@ class TeuthologyConfig(YamlConfig):
     def get_ceph_git_url(self):
         return (self.ceph_git_url or
                 self.ceph_git_base_url + 'ceph-ci.git')
+
+    def get_teuthology_git_url(self):
+        return (self.teuthology_git_url or
+                self.ceph_git_base_url + 'teuthology.git')
 
 
 class JobConfig(YamlConfig):
