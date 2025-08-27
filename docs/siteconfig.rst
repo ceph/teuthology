@@ -258,6 +258,17 @@ Here is a sample configuration with many of the options set and documented::
       endpoint: http://head.ses.suse.de:5000/
       machine_types: ['type1', 'type2', 'type3']
 
+    # Define a list of ssh tunnels for a various group of test nodes.
+    # Notice: provided domain names for the nodes must be resolvable
+    # in your network and jump host (bastion) must be accessible.
+    tunnel:
+      - hosts: ['example1.domain', 'example2.domain', 'example3.domain']
+        bastion:
+          host: ssh_host_name         # must be resolvable and reachable
+          user: ssh_user_name         # (optional)
+          port: ssh_port              # (optional)
+          identity: ~/.ssh/id_ed25519 # (optional)
+
     # Do not allow more than that many jobs in a single run by default.
     # To disable this check use 0.
     job_threshold: 500
