@@ -182,12 +182,7 @@ def main(args):
             log.exception(error_message)
             if 'targets' in job_config:
                 node_names = job_config["targets"].keys()
-                lock_ops.unlock_safe(
-                    node_names,
-                    job_config["owner"],
-                    job_config["name"],
-                    job_config["job_id"]
-                )
+                lock_ops.unlock_safe(node_names, job_config["owner"])
             report.try_push_job_info(job_config, dict(
                 status='fail',
                 failure_reason=error_message))
