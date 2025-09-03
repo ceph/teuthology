@@ -50,6 +50,8 @@ def _remove(ctx, config, remote, rpm):
     if repos:
         if dist_release in ['opensuse', 'sle']:
             _zypper_removerepo(remote, repos)
+        if dist_release in ['centos', 'rocky', 'alma']:
+            _yum_removerepo(remote, repos)
         else:
             raise Exception('Custom repos were specified for %s ' % remote_os +
                             'but these are currently not supported')
@@ -113,6 +115,54 @@ def _zypper_wipe_all_repos(remote):
     remote.sh('sudo zypper repos -upEP && '
               'sudo rm -f /etc/zypp/repos.d/* || '
               'true')
+
+
+def _yum_addrepo(remote, repo_list):
+    """
+    Add dnf repos to the remote system.
+
+    :param remote: remote node where to add packages
+    :param repo_list: list of dictionaries with keys 'name', 'url'
+    :return:
+    """
+    for repo in repo_list:
+        repo_lines = [f"[{repo['name']}]"]
+        repo_lines += [
+            f"name={repo['name']}",
+            f"baseurl={repo['url']}",
+            "enabled=1",
+            "gpgcheck=0",
+        ]
+        if 'priority' in repo:
+            repo_lines += [f"priority={repo['priority']}"]
+        repo_path=f"/etc/yum.repos.d/{repo['name']}.repo"
+        remote.sudo_write_file(repo_path, "\n".join(repo_lines))
+
+
+def _yum_removerepo(remote, repo_list):
+    """
+    Remove yum repos on the remote system.
+
+    :param remote: remote node where to remove packages from
+    :param repo_list: list of dictionaries with keys 'name', 'url'
+    :return:
+    """
+    for repo in repo_list:
+        repo_path=f"/etc/yum.repos.d/{repo['name']}.repo"
+        remote.run(args=['sudo', 'rm', repo_path])
+
+
+def _yum_wipe_all_repos(remote):
+    """
+    Completely "wipe" (remove) all yum repos
+
+    :param remote: remote node where to wipe zypper repos
+    :return:
+    """
+    log.info("Wiping yum repos (if any)")
+    remote.sh('sudo rm -f /etc/yum.repos.d/* || '
+              'true')
+
 
 def _downgrade_packages(ctx, remote, pkgs, pkg_version, config):
     """
@@ -192,6 +242,8 @@ def _update_package_list_and_install(ctx, remote, rpm, config):
         if dist_release in ['opensuse', 'sle']:
             _zypper_wipe_all_repos(remote)
             _zypper_addrepo(remote, repos)
+        if dist_release in ['centos', 'rocky', 'alma']:
+            _yum_addrepo(remote, repos)
         else:
             raise Exception('Custom repos were specified for %s ' % remote_os +
                             'but these are currently not supported')
