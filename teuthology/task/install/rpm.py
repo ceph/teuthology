@@ -235,6 +235,7 @@ def _update_package_list_and_install(ctx, remote, rpm, config):
     log.debug("_update_package_list_and_install: config is {}".format(config))
     repos = config.get('repos')
     install_ceph_packages = config.get('install_ceph_packages')
+    builder = _get_builder_project(ctx, remote, config)
     repos_only = config.get('repos_only')
 
     if repos:
@@ -248,7 +249,6 @@ def _update_package_list_and_install(ctx, remote, rpm, config):
             raise Exception('Custom repos were specified for %s ' % remote_os +
                             'but these are currently not supported')
     else:
-        builder = _get_builder_project(ctx, remote, config)
         log.info('Pulling from %s', builder.base_url)
         log.info('Package version is %s', builder.version)
         builder.install_repo()
@@ -278,7 +278,7 @@ def _update_package_list_and_install(ctx, remote, rpm, config):
     log.info("Installing packages: {pkglist} on remote rpm {arch}".format(
         pkglist=", ".join(packages), arch=remote.arch))
 
-    if dist_release not in ['opensuse', 'sle']:
+    if dist_release not in ['opensuse', 'sle'] and not repos:
         project = builder.project
         uri = builder.uri_reference
         _yum_fix_repo_priority(remote, project, uri)
@@ -299,6 +299,8 @@ def _update_package_list_and_install(ctx, remote, rpm, config):
     else:
         remove_cmd = 'sudo yum -y remove'
         install_cmd = 'sudo yum -y install'
+
+    if dist_release not in ['opensuse', 'sle'] and not repos:
         # to compose version string like "0.94.10-87.g116a558.el7"
         pkg_version = '.'.join([builder.version, builder.dist_release])
         packages = _downgrade_packages(ctx, remote, packages, pkg_version, config)
