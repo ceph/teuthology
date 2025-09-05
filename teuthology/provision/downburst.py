@@ -311,43 +311,54 @@ class Downburst(object):
         self.remove_config()
 
 
+_known_downburst_distros = {
+    'rhel_minimal': ['6.4', '6.5'],
+    'centos': ['9.stream', '10.stream'],
+    'centos_minimal': ['6.4', '6.5'],
+    'debian': ['6.0', '7.0', '7.9', '8.0'],
+    'fedora': ['41', '42'],
+    'opensuse': ['1.0(tumbleweed)',
+                 '15.5(leap)', '15.6(leap)',
+                 '16.0(leap)',
+        ],
+    'sles': ['12-sp3', '15-sp1', '15-sp2'],
+    'alma': ['10.0', '8.10', '9.6'],
+    'rocky': ['10.0', '8.10', '9.6'],
+    'ubuntu': ['20.04(focal)', '20.10(groovy)',
+               '21.04(hirsute)', '21.10(impish)',
+               '22.04(jammy)', '22.10(kinetic)',
+               '23.04(lunar)', '23.10(mantic)',
+               '24.04(noble)', '24.10(oracular)',
+               '25.04(plucky)',
+        ],
+}
+
 def get_distro_from_downburst():
     """
     Return a table of valid distros.
 
     If downburst is in path use it.  If either downburst is unavailable,
     or if downburst is unable to produce a json list, then use a default
-    table.
+    table or a table from previous successful call.
     """
-    default_table = {'rhel_minimal': ['6.4', '6.5'],
-                     'fedora': ['17', '18', '19', '20', '22'],
-                     'centos': ['6.3', '6.4', '6.5', '7.0',
-				 '7.2', '7.4', '8.2'],
-                     'centos_minimal': ['6.4', '6.5'],
-                     'ubuntu': ['8.04(hardy)', '9.10(karmic)',
-                                 '10.04(lucid)', '10.10(maverick)',
-                                 '11.04(natty)', '11.10(oneiric)',
-                                 '12.04(precise)', '12.10(quantal)',
-                                 '13.04(raring)', '13.10(saucy)',
-                                 '14.04(trusty)', 'utopic(utopic)',
-                                 '16.04(xenial)', '18.04(bionic)',
-                                 '20.04(focal)'],
-                     'sles': ['12-sp3', '15-sp1', '15-sp2'],
-                     'opensuse': ['12.3', '15.1', '15.2'],
-                     'debian': ['6.0', '7.0', '8.0']}
+    # because sometimes downburst fails to complete list-json
+    # due to temporary issues with vendor site accessibility
+    # we cache known downburst distros from previous call
+    # to be reused in such cases of outage
+    global _known_downburst_distros
     executable_cmd = downburst_executable()
     environment_dict = downburst_environment()
     if not executable_cmd:
         log.warning("Downburst not found!")
         log.info('Using default values for supported os_type/os_version')
-        return default_table
+        return _known_downburst_distros
     try:
         log.debug(executable_cmd)
         output = subprocess.check_output([executable_cmd, 'list-json'],
                                                         env=environment_dict)
-        downburst_data = json.loads(output)
-        return downburst_data
+        _known_downburst_distros = json.loads(output)
+        return _known_downburst_distros
     except (subprocess.CalledProcessError, OSError):
         log.exception("Error calling downburst!")
-        log.info('Using default values for supported os_type/os_version')
-        return default_table
+        log.info('Using default values for supported os_type/os_version or values from previous call...')
+        return _known_downburst_distros
