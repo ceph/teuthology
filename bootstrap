@@ -17,7 +17,7 @@ Linux)
         OS=$(lsb_release --id --short)
     else
         . /etc/os-release
-        OS=$(echo $NAME | tr -d ' ')
+        OS=$(echo "$NAME" | tr -d ' ')
     fi
     case "$OS" in
     Ubuntu|Debian|LinuxMint)
@@ -39,7 +39,7 @@ Linux)
         # rpm/dnf is the default, to reduce repetition in the case statement
         has_pkg="rpm -q --whatprovides"
         install_pkg="sudo dnf install -y"
-        deps=(libev-devel libffi-devel libvirt-devel $PYTHON-devel pipx)
+        deps=(libev-devel libffi-devel libvirt-devel "$PYTHON-devel" pipx)
         ;;
     "openSUSE project"|"SUSE LINUX"|"openSUSE"|"openSUSELeap"|"openSUSETumbleweed")
         deps=(python python-devel libev-devel libffi-devel libvirt-devel python-pipx)
@@ -50,16 +50,15 @@ Linux)
     ;;
 
 Darwin)
-    deps="python libvirt libev libffi pipx uv"
+    deps=(python libvirt libev libffi pipx uv)
     has_pkg="brew list"
     install_pkg="brew install"
     ;;
 esac
-for package in ${deps[@]}; do
-    if ! $has_pkg $package &>/dev/null; then
+for package in "${deps[@]}"; do
+    if ! $has_pkg "$package" &>/dev/null; then
         # add a space after old values
         missing="${missing:+$missing }$package"
-        echo missing=${missing}
     fi
 done
 if [ -n "$missing" ]; then
@@ -67,7 +66,7 @@ if [ -n "$missing" ]; then
     echo "$missing"
     if [ "$install" = true ]; then
         echo "Installing missing packages..."
-        $install_pkg $missing
+        $install_pkg "$missing"
     else
         echo "Please install missing packages or run './bootstrap install'"
         echo "$install_pkg $missing"
@@ -77,14 +76,13 @@ fi
 
 # Attempt to force a UTF-8 locale without being specific to English
 export LANG=${LANG:-C.UTF-8}
-(echo $LANG | grep -qi utf-8) || export LC_ALL=$LANG.UTF-8
+(echo "$LANG" | grep -qi utf-8) || export LC_ALL=$LANG.UTF-8
 
 [ -z "$NO_CLOBBER" ] && rm -rf virtualenv
-if ! UV=$(command -v uv); then
-    pipx install uv
-fi
+command -v uv > /dev/null || pipx install uv
 command -v uv > /dev/null || pipx ensurepath
 PATH=$PATH:$HOME/.local/bin
+# Create the venv if it does not exist, and install teuthology and dependencies
 uv sync --frozen --all-extras
 # To avoid crashing older dispatchers
 ln -sf .venv virtualenv
