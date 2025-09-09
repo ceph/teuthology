@@ -139,7 +139,6 @@ class TestDescribeTests(object):
              'teuthology.describe_tests.open': open,
              'builtins.open': open,
              'os.path.exists': exists,
-             'os.listdir': listdir,
              'os.path.isfile': isfile,
          }.items():
             mockobj = MagicMock()
