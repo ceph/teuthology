@@ -42,8 +42,9 @@ Linux)
         deps=(libev-devel libffi-devel libvirt-devel "$PYTHON-devel" pipx)
         ;;
     "openSUSE project"|"SUSE LINUX"|"openSUSE"|"openSUSELeap"|"openSUSETumbleweed")
-        deps=(python python-devel libev-devel libffi-devel libvirt-devel python-pipx)
-        has_pkg="rpm --whatprovides"
+        PYTHON=${PYTHON:-"python3"}
+        deps=("$PYTHON" "$PYTHON-devel" "$PYTHON-pipx" libev-devel libffi-devel libvirt-devel)
+        has_pkg="rpm -q --whatprovides"
         install_pkg="sudo zypper install"
         ;;
     esac
