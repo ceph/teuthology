@@ -17,9 +17,9 @@ class TestVpsOsVersionParamCheck(object):
 
         self.fake_downburst_executable = fake_downburst_executable
 
-    def test_ubuntu_precise(self):
+    def test_ubuntu_noble(self):
         self.fake_ctx.os_type = 'ubuntu'
-        self.fake_ctx.os_version = 'precise'
+        self.fake_ctx.os_version = 'noble'
         with patch.multiple(
             provision.downburst,
             downburst_executable=self.fake_downburst_executable,
@@ -33,7 +33,7 @@ class TestVpsOsVersionParamCheck(object):
 
     def test_ubuntu_number(self):
         self.fake_ctx.os_type = 'ubuntu'
-        self.fake_ctx.os_version = '12.04'
+        self.fake_ctx.os_version = '24.04'
         with patch.multiple(
             provision.downburst,
             downburst_executable=self.fake_downburst_executable,
@@ -71,7 +71,7 @@ class TestVpsOsVersionParamCheck(object):
         assert not check_value
 
     def test_bad_version(self):
-        self.fake_ctx.os_type = 'rhel'
+        self.fake_ctx.os_type = 'ubuntu'
         self.fake_ctx.os_version = 'vampire_bat'
         with patch.multiple(
             provision.downburst,

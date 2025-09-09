@@ -408,7 +408,7 @@ class Remote(RemoteShell):
             self.ssh.close()
         if not timeout:
             return self._reconnect(timeout=socket_timeout)
-        action = "reconnect to {self.shortname}"
+        action = f"reconnect to {self.shortname}"
         with safe_while(action=action, timeout=timeout, increment=3, _raise=False) as proceed:
             success = False
             while proceed():
