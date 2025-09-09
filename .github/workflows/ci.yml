@@ -25,10 +25,15 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      - name: Install tox
-        run: pip install tox
-      - name: Run flake8
-        run: tox -e flake8
+      - name: Install pipx
+        run: pip install pipx
+      - name: Install uv
+        run: pipx install uv
+      - name: Run pipx ensurepath
+        run: pipx ensurepath
+      - name: Lint
+        run: uv tool run ruff check
+
       - name: Run unit tests
         run: tox -e py3
       - name: Run docs build
