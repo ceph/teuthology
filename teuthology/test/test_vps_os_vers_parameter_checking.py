@@ -71,7 +71,7 @@ class TestVpsOsVersionParamCheck(object):
         assert not check_value
 
     def test_bad_version(self):
-        self.fake_ctx.os_type = 'rhel'
+        self.fake_ctx.os_type = 'ubuntu'
         self.fake_ctx.os_version = 'vampire_bat'
         with patch.multiple(
             provision.downburst,
