@@ -33,8 +33,7 @@ jobs:
         run: pipx ensurepath
       - name: Lint
         run: uv tool run ruff check
-
-      - name: Run unit tests
-        run: tox -e py3
+      - name: Run tests
+        run: uv run --all-extras pytest teuthology scripts
       - name: Run docs build
-        run: tox -e docs
+        run: uv run tox -e docs
