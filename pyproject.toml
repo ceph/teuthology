@@ -76,7 +76,6 @@ test = [
     "boto>=2.0b4",
     "boto3",
     "coverage",
-    "flake8",
     "ipy",
     "mock",
     "PyJWT",
@@ -137,3 +136,6 @@ exclude = [
 
 [tool.setuptools_scm]
 version_scheme = "python-simplified-semver"
+
+[tool.ruff]
+lint.select = ["F", "E9"]
