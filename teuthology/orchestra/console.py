@@ -9,8 +9,8 @@ import time
 
 from typing import Union, Literal, Optional
 
-import teuthology.lock.query
-import teuthology.lock.util
+import teuthology.machines
+
 from teuthology.config import config
 from teuthology.contextutil import safe_while
 from teuthology.exceptions import ConsoleError
@@ -384,9 +384,9 @@ class VirtualConsole(RemoteConsole):
 
         self.shortname = self.getShortName(name)
         self.log = log.getChild(self.shortname)
-        status_info = teuthology.lock.query.get_status(self.shortname)
+        status_info = teuthology.machines.get_status(self.shortname)
         try:
-            if teuthology.lock.query.is_vm(status=status_info):
+            if teuthology.machines.is_vm(status=status_info):
                 phys_host = status_info['vm_host']['name'].split('.')[0]
         except TypeError:
             raise RuntimeError("Cannot create a virtual console for %s", name)

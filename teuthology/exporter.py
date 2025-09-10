@@ -9,8 +9,8 @@ from pathlib import Path
 
 import teuthology.beanstalk as beanstalk
 import teuthology.dispatcher
+import teuthology.machines
 from teuthology.config import config
-from teuthology.lock.query import list_locks
 
 log = logging.getLogger(__name__)
 
@@ -215,7 +215,7 @@ class Nodes(TeuthologyMetric):
 
     def _update(self):
         for machine_type in MACHINE_TYPES:
-            nodes = list_locks(machine_type=machine_type)
+            nodes = teuthology.machines.machine_list(machine_type=machine_type)
             for up, locked in itertools.product([True, False], [True, False]):
                 self.metric.labels(machine_type=machine_type, up=up, locked=locked).set(
                     len([n for n in nodes if n["up"] is up and n["locked"] is locked])
