@@ -62,6 +62,7 @@ dict_templ = {
             'conf': {
                 'mon': {
                     'debug mon': 20,
+                    'osd pool default crimson': true,
                     'debug ms': 1,
                     'debug paxos': 20},
                 'mgr': {
