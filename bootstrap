@@ -13,12 +13,8 @@ fi
 
 case "$(uname -s)" in
 Linux)
-    if command -v lsb_release > /dev/null; then
-        OS=$(lsb_release --id --short)
-    else
-        . /etc/os-release
-        OS=$(echo "$NAME" | tr -d ' ')
-    fi
+    . /etc/os-release
+    OS="${NAME// /}"
     case "$OS" in
     Ubuntu|Debian|LinuxMint)
         deps=(qemu-utils python3-dev libssl-dev libev-dev libvirt-dev libffi-dev libyaml-dev pipx build-essential jq curl)
