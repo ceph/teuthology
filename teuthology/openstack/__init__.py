@@ -31,6 +31,7 @@ import os
 import paramiko
 import re
 import socket
+import sys
 import subprocess
 import tempfile
 import teuthology
@@ -45,9 +46,13 @@ from teuthology.config import config as teuth_config
 from teuthology.config import set_config_attr
 from teuthology.orchestra import connection
 from teuthology import misc
-from openstack import connection as openstack_connection
 
 from yaml.representer import SafeRepresenter
+
+try:
+    from openstack import connection as openstack_connection
+except ImportError:
+    openstack_connection = None
 
 class cmd_str(str): pass
 
@@ -72,14 +77,22 @@ def enforce_json_dictionary(something):
             ' you are encouraged to add a comment if you want it to be'
             ' fixed.')
 
-class OpenStackInstance(object):
+def create_connection():
+    if openstack_connection is None:
+        raise RuntimeError(
+            "Did not find required openstack dependencies. "
+            f"Try: {sys.executable} -m pip install -e .[openstack]"
+        )
+    return openstack_connection.from_config(cloud=None)
 
+
+class OpenStackInstance(object):
     def __init__(self, name_or_id, info=None):
         self.name_or_id = name_or_id
         self.private_or_floating_ip = None
         self.private_ip = None
         self.info = info
-        self.conn = self._create_connection()
+        self.conn = create_connection()
         if info is None:
             self.set_info()
         else:
@@ -89,9 +102,6 @@ class OpenStackInstance(object):
             if 'message' in self.info:
                 errmsg = '{}: {}'.format(errmsg, self.info['message'])
             raise Exception(errmsg)
-
-    def _create_connection(self):
-        return openstack_connection.from_config(cloud=None)
 
     def set_info(self):
         try:
@@ -229,14 +239,11 @@ class OpenStack(object):
         self.username = 'ubuntu'
         self.up_string = "UNKNOWN"
         self.teuthology_suite = 'teuthology-suite'
-        self.conn = self._create_connection()
+        self.conn = create_connection()
 
     token = None
     token_expires = None
     token_cache_duration = 3600
-
-    def _create_connection(self):
-        return openstack_connection.from_config(cloud=None)
 
     def cache_token(self):
         if self.provider != 'ovh':

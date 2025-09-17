@@ -31,6 +31,7 @@ class TestConnection(object):
     def clear_config(self):
         config.config.teuthology_yaml = ''
         config.config.load()
+        config.config.ssh_key = None
 
     def test_split_user_just_host(self):
         got = connection.split_user('somehost.example.com')
