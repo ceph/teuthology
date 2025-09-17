@@ -128,8 +128,13 @@ class OpenStackInstance(object):
         Return the uuid of the volumes attached to the name_or_id
         OpenStack instance.
         """
-        volumes = self['os-extended-volumes:volumes_attached']
-        return [volume['id'] for volume in volumes ]
+        info = self.info or {}
+        #Some clouds use attached_volumes instead of os-extended-volumes:volumes_attached
+        vols = (info.get('os-extended-volumes:volumes_attached')
+                or info.get('attached_volumes') 
+                or [])
+        volumes = [v['id'] for v in vols if isinstance(v, dict) and 'id' in v]
+        return volumes
 
     def get_addresses(self):
         """
