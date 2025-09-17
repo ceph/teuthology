@@ -143,7 +143,12 @@ def lock_many(ctx, num, machine_type, user=None, description=None,
                 update_nodes(ok_machs)
                 return ok_machs
             elif reimage and machine_type in reimage_types:
-                return reimage_machines(ctx, machines, machine_type)
+                try:
+                    return reimage_machines(ctx, machines, machine_type)
+                except Exception:
+                    log.exception('Reimaging error. Unlocking machines...')
+                    unlock_many(machines, user)
+                    continue
             return machines
         elif response.status_code == 503:
             log.error('Insufficient nodes available to lock %d %s nodes.',
