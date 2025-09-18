@@ -95,12 +95,8 @@ class Run(object):
                     dry_run=self.args.dry_run,
                 )
 
-        self.os = self.choose_os()
         self.kernel_dict = self.choose_kernel()
         ceph_hash = self.choose_ceph_hash()
-        # We don't store ceph_version because we don't use it yet outside of
-        # logging.
-        self.choose_ceph_version(ceph_hash)
         suite_branch = self.choose_suite_branch()
         suite_hash = self.choose_suite_hash(suite_branch)
         if self.args.suite_dir:
@@ -111,9 +107,12 @@ class Run(object):
         teuthology_branch, teuthology_sha1 = self.choose_teuthology_branch()
 
 
-        if self.args.distro_version:
+        if self.args.distro and self.args.distro_version:
             self.args.distro_version, _ = \
-                OS.version_codename(self.args.distro, self.args.distro_version)
+                OS.version_codename(
+                    self.args.distro,
+                    self.args.distro_version,
+                )
         self.config_input = dict(
             suite=self.args.suite,
             suite_branch=suite_branch,
@@ -124,8 +123,6 @@ class Run(object):
             teuthology_branch=teuthology_branch,
             teuthology_sha1=teuthology_sha1,
             machine_type=self.args.machine_type,
-            distro=self.os.name,
-            distro_version=self.os.version,
             archive_upload=config.archive_upload,
             archive_upload_key=config.archive_upload_key,
             suite_repo=config.get_ceph_qa_suite_git_url(),
@@ -133,6 +130,10 @@ class Run(object):
             flavor=self.args.flavor,
             expire=expires.strftime(TIMESTAMP_FMT) if expires else None,
         )
+        if self.args.distro:
+            self.config_input['os_type'] = self.args.distro.lower()
+        if self.args.distro_version:
+            self.config_input['os_version'] = self.args.distro_version.lower()
         return self.build_base_config()
 
     def get_expiration(self, _base_time: datetime.datetime | None = None) -> datetime.datetime | None:
@@ -233,23 +234,6 @@ class Run(object):
 
         log.info("ceph sha1: {hash}".format(hash=ceph_hash))
         return ceph_hash
-
-    def choose_ceph_version(self, ceph_hash):
-        if config.suite_verify_ceph_hash and not self.args.newest:
-            # don't bother if newest; we'll search for an older one
-            # Get the ceph package version
-            ceph_version = util.package_version_for_hash(
-                ceph_hash, self.args.flavor, self.os.name,
-                self.os.version, self.args.machine_type,
-            )
-            if not ceph_version:
-                msg = f"Packages for os_type '{self.os.name}', flavor " \
-                    f"{self.args.flavor} and ceph hash '{ceph_hash}' not found"
-                util.schedule_fail(msg, self.name, dry_run=self.args.dry_run)
-            log.info("ceph version: {ver}".format(ver=ceph_version))
-            return ceph_version
-        else:
-            log.info('skipping ceph package verification')
 
     def choose_teuthology_branch(self):
         """Select teuthology branch, check if it is present in repo and return
@@ -640,14 +624,16 @@ Note: If you still want to go ahead, use --job-threshold 0'''
                                seed=self.args.seed)
         generated = len(configs)
         log.info(f'Suite {suite_name} in {suite_path} generated {generated} jobs (not yet filtered or merged)')
-        configs = list(config_merge(configs,
+        config_merge_kwargs = dict(
+            base_config=self.base_config,
             filter_in=self.args.filter_in,
             filter_out=self.args.filter_out,
             filter_all=self.args.filter_all,
             filter_fragments=self.args.filter_fragments,
-            base_config=self.base_config,
             seed=self.args.seed,
-            suite_name=suite_name))
+            suite_name=suite_name,
+        )
+        configs = list(config_merge(configs, **config_merge_kwargs))
 
         # compute job limit in respect of --sleep-before-teardown
         job_limit = self.args.limit or 0
@@ -694,7 +680,11 @@ Note: If you still want to go ahead, use --job-threshold 0'''
                 self.collect_jobs(arch, configs, self.args.newest, job_limit)
             if jobs_missing_packages and self.args.newest:
                 if not sha1s:
-                    sha1s = util.find_git_parents('ceph', str(self.base_config.sha1), self.args.newest)
+                    sha1s = util.find_git_parents(
+                        self.ceph_repo_name,
+                        str(self.base_config.sha1),
+                        self.args.newest
+                    )
                 if not sha1s:
                     util.schedule_fail('Backtrack for --newest failed', name, dry_run=self.args.dry_run)
                 cur_sha1 = sha1s.pop(0)
