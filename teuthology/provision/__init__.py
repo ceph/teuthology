@@ -64,7 +64,7 @@ def create_if_vm(ctx, machine_name, _downburst=None):
     if _downburst:
         status_info = _downburst.status
     else:
-        status_info = teuthology.lock.query.get_status(machine_name)
+        status_info = teuthology.machines.machine_status(machine_name)
     shortname = decanonicalize_hostname(machine_name)
     machine_type = status_info['machine_type']
     os_type = get_distro(ctx)

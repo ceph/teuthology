@@ -100,8 +100,8 @@ class TestDispatcher(object):
     @patch("beanstalkc.Job", autospec=True)
     @patch("teuthology.repo_utils.fetch_qa_suite")
     @patch("teuthology.repo_utils.fetch_teuthology")
-    @patch("teuthology.dispatcher.beanstalk.watch_tube")
-    @patch("teuthology.dispatcher.beanstalk.connect")
+    @patch("teuthology.jobqueue.beanstalk.beanstalk.watch_tube")
+    @patch("teuthology.jobqueue.beanstalk.beanstalk.connect")
     @patch("os.path.isdir", return_value=True)
     @patch("teuthology.dispatcher.setup_log_file")
     def test_main_loop(
@@ -141,8 +141,8 @@ class TestDispatcher(object):
     @patch("beanstalkc.Job", autospec=True)
     @patch("teuthology.repo_utils.fetch_qa_suite")
     @patch("teuthology.repo_utils.fetch_teuthology")
-    @patch("teuthology.dispatcher.beanstalk.watch_tube")
-    @patch("teuthology.dispatcher.beanstalk.connect")
+    @patch("teuthology.jobqueue.beanstalk.beanstalk.watch_tube")
+    @patch("teuthology.jobqueue.beanstalk.beanstalk.connect")
     @patch("os.path.isdir", return_value=True)
     @patch("teuthology.dispatcher.setup_log_file")
     def test_main_loop_13925(

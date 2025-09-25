@@ -10,8 +10,6 @@ import sys
 
 from email.mime.text import MIMEText
 
-import teuthology.lock.query
-import teuthology.lock.util
 from teuthology import repo_utils
 
 from teuthology.config import config
@@ -22,6 +20,7 @@ from teuthology.orchestra.opsys import OS, DEFAULT_OS_VERSION
 from teuthology.packaging import get_builder_project, VersionNotFoundError
 from teuthology.repo_utils import build_git_url
 from teuthology.task.install import get_flavor
+import teuthology.machines
 
 log = logging.getLogger(__name__)
 
@@ -263,7 +262,7 @@ def get_arch(machine_type):
 
     :returns: A string or None
     """
-    result = teuthology.lock.query.list_locks(machine_type=machine_type, count=1, tries=1)
+    result = teuthology.machines.machine_list(machine_type=machine_type, count=1, tries=1)
     if not result:
         log.warning("No machines found with machine_type %s!", machine_type)
     else:
