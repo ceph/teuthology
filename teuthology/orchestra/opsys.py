@@ -110,7 +110,7 @@ class OS(object):
     __slots__ = ['name', 'version', 'codename', 'package_type']
 
     _deb_distros = ('debian', 'ubuntu')
-    _rpm_distros = ('fedora', 'rhel', 'centos', 'opensuse', 'sle')
+    _rpm_distros = ('alma', 'rocky', 'fedora', 'rhel', 'centos', 'opensuse', 'sle')
 
     def __init__(self, name=None, version=None, codename=None):
         self.name = name
