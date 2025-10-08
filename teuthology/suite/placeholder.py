@@ -47,6 +47,7 @@ dict_templ = {
     'branch': Placeholder('ceph_branch'),
     'expire': Placeholder('expire'),
     'sha1': Placeholder('ceph_hash'),
+    'teuthology_repo': Placeholder('teuthology_repo'),
     'teuthology_branch': Placeholder('teuthology_branch'),
     'teuthology_sha1': Placeholder('teuthology_sha1'),
     'archive_upload': Placeholder('archive_upload'),
