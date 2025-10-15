@@ -143,10 +143,13 @@ def test_expand_short_repo_name(orig, shorthand, result):
 
 
 class TestSuiteMain(object):
-    def test_main(self):
+    @patch('teuthology.suite.run.Run.verify_sha_id')
+    def test_main(self, m_verify_sha_id):
         suite_name = 'SUITE'
         throttle = '3'
         machine_type = 'burnupi'
+
+        m_verify_sha_id.return_value = None
 
         def prepare_and_schedule(obj):
             assert obj.base_config.suite == suite_name
@@ -211,11 +214,14 @@ Maybe you want 'gibba,smithi,mira' or similar"
         assert str(exc.value) == "Scheduling failed: Must specify a machine_type"
         m_smtp.assert_not_called()
 
-    def test_schedule_suite_noverify(self):
+    @patch('teuthology.suite.run.Run.verify_sha_id')
+    def test_schedule_suite_noverify(self, m_verify_sha_id):
         suite_name = 'noop'
         suite_dir = os.path.dirname(__file__)
         throttle = '3'
         machine_type = 'burnupi'
+
+        m_verify_sha_id.return_value = None
 
         with patch.multiple(
             'teuthology.suite.util',
@@ -239,11 +245,14 @@ Maybe you want 'gibba,smithi,mira' or similar"
             m_sleep.assert_called_with(int(throttle))
             m['get_gitbuilder_hash'].assert_not_called()
 
-    def test_schedule_suite(self):
+    @patch('teuthology.suite.run.Run.verify_sha_id')
+    def test_schedule_suite(self, m_verify_sha_id):
         suite_name = 'noop'
         suite_dir = os.path.dirname(__file__)
         throttle = '3'
         machine_type = 'burnupi'
+
+        m_verify_sha_id.return_value = None
 
         with patch.multiple(
             'teuthology.suite.util',

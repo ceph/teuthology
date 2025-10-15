@@ -37,11 +37,14 @@ class TestRun(object):
         )
         self.args = YamlConfig.from_dict(self.args_dict)
 
+    @patch('teuthology.suite.run.Run.verify_sha_id')
     @patch('teuthology.suite.run.util.fetch_repos')
     @patch('teuthology.suite.run.util.git_ls_remote')
     @patch('teuthology.suite.run.util.git_validate_sha1')
     def test_email_addr(self, m_git_validate_sha1,
-                        m_git_ls_remote, _):
+                        m_git_ls_remote, _, m_verify_sha_id):
+        m_verify_sha_id.return_value = None
+
         # neuter choose_X_branch
         m_git_validate_sha1.return_value = self.args_dict['ceph_sha1']
         self.args_dict['teuthology_branch'] = 'main'
@@ -100,6 +103,7 @@ class TestRun(object):
             ["7d", timedelta(days=-14), False],
         ]
     )
+    @patch('teuthology.suite.run.Run.verify_sha_id')
     @patch('teuthology.repo_utils.fetch_repo')
     @patch('teuthology.suite.run.util.git_branch_exists')
     @patch('teuthology.suite.run.util.package_version_for_hash')
@@ -110,10 +114,13 @@ class TestRun(object):
         m_package_version_for_hash,
         m_git_branch_exists,
         m_fetch_repo,
+        m_verify_sha_id,
         expire,
         delta,
         result,
     ):
+        m_verify_sha_id.return_value = None
+
         m_git_ls_remote.side_effect = 'hash'
         m_package_version_for_hash.return_value = 'a_version'
         m_git_branch_exists.return_value = True
@@ -129,6 +136,7 @@ class TestRun(object):
             assert (now < expires_result) is result
             assert obj.base_config['expire']
 
+    @patch('teuthology.suite.run.Run.verify_sha_id')
     @patch('teuthology.suite.run.util.fetch_repos')
     @patch('requests.head')
     @patch('teuthology.suite.run.util.git_branch_exists')
@@ -141,7 +149,10 @@ class TestRun(object):
         m_git_branch_exists,
         m_requests_head,
         m_fetch_repos,
+        m_verify_sha_id,
     ):
+        m_verify_sha_id.return_value = None
+
         config.gitbuilder_host = 'example.com'
         m_package_version_for_hash.return_value = 'ceph_hash'
         m_git_branch_exists.return_value = True
@@ -195,10 +206,13 @@ class TestRun(object):
             self.klass(self.args)
         m_smtp.assert_not_called()
 
+    @patch('teuthology.suite.run.Run.verify_sha_id')
     @patch('teuthology.suite.run.util.fetch_repos')
     @patch('teuthology.suite.util.git_ls_remote')
     @patch('teuthology.suite.run.util.package_version_for_hash')
-    def test_os_type(self, m_pvfh, m_git_ls_remote, m_fetch_repos):
+    def test_os_type(self, m_pvfh, m_git_ls_remote, m_fetch_repos, m_verify_sha_id):
+        m_verify_sha_id.return_value = None
+
         m_git_ls_remote.return_value = "sha1"
         del self.args['distro']
         run_ = run.Run(self.args)
@@ -214,10 +228,13 @@ class TestRun(object):
         assert to_schedule[1]['yaml']['os_type'] == "ubuntu"
         assert to_schedule[1]['yaml']['os_version'] == "24.0"
 
+    @patch('teuthology.suite.run.Run.verify_sha_id')
     @patch('teuthology.suite.run.util.fetch_repos')
     @patch('teuthology.suite.util.git_ls_remote')
     @patch('teuthology.suite.run.util.package_version_for_hash')
-    def test_sha1(self, m_pvfh, m_git_ls_remote, m_fetch_repos):
+    def test_sha1(self, m_pvfh, m_git_ls_remote, m_fetch_repos, m_verify_sha_id):
+        m_verify_sha_id.return_value = None
+
         m_git_ls_remote.return_value = "sha1"
         del self.args['distro']
         run_ = run.Run(self.args)
@@ -261,6 +278,7 @@ class TestScheduleSuite(object):
         )
         self.args = YamlConfig.from_dict(self.args_dict)
 
+    @patch('teuthology.suite.run.Run.verify_sha_id')
     @patch('teuthology.suite.run.Run.schedule_jobs')
     @patch('teuthology.suite.run.Run.write_rerun_memo')
     @patch('teuthology.suite.util.get_install_task_flavor')
@@ -281,7 +299,10 @@ class TestScheduleSuite(object):
         m_get_install_task_flavor,
         m_write_rerun_memo,
         m_schedule_jobs,
+        m_verify_sha_id,
     ):
+        m_verify_sha_id.return_value = None
+
         m_get_arch.return_value = 'x86_64'
         m_git_validate_sha1.return_value = self.args.ceph_sha1
         m_package_version_for_hash.return_value = 'ceph_version'
@@ -372,6 +393,7 @@ class TestScheduleSuite(object):
             assert k in stdin_yaml
         m_write_rerun_memo.assert_called_once_with()
 
+    @patch('teuthology.suite.run.requests.get')
     @patch('teuthology.suite.util.find_git_parents')
     @patch('teuthology.suite.run.Run.schedule_jobs')
     @patch('teuthology.suite.util.get_install_task_flavor')
@@ -392,7 +414,20 @@ class TestScheduleSuite(object):
         m_get_install_task_flavor,
         m_schedule_jobs,
         m_find_git_parents,
+        m_requests_get,
     ):
+        def mock_get(url, **kwargs):
+            response = requests.Response()
+            response.status_code = 200
+            response.raise_for_status = lambda: None
+            if 'chacra' in url:
+                response.json = lambda: {self.args.ceph_sha1: {}}
+                response.headers['Content-Type'] = 'application/json'
+            elif 'shaman' in url:
+                raise requests.exceptions.RequestException("Mock Shaman failure")
+            return response
+        m_requests_get.side_effect = mock_get
+
         m_get_arch.return_value = 'x86_64'
         m_git_validate_sha1.return_value = self.args.ceph_sha1
         m_package_version_for_hash.return_value = None
@@ -418,6 +453,7 @@ class TestScheduleSuite(object):
             [call('ceph', 'ceph_sha1', 10)]
         )
 
+    @patch('teuthology.suite.run.requests.get')
     @patch('teuthology.suite.util.find_git_parents')
     @patch('teuthology.suite.run.Run.schedule_jobs')
     @patch('teuthology.suite.run.Run.write_rerun_memo')
@@ -440,6 +476,7 @@ class TestScheduleSuite(object):
         m_write_rerun_memo,
         m_schedule_jobs,
         m_find_git_parents,
+        m_requests_get,
     ):
         """
         Test that we can successfully schedule a job with newest
@@ -447,6 +484,22 @@ class TestScheduleSuite(object):
         and the ceph_sha1 is not supplied. We should expect that the
         ceph_hash and suite_hash will be updated to the working sha1
         """
+        def mock_get(url, **kwargs):
+            response = requests.Response()
+            response.status_code = 200
+            response.raise_for_status = lambda: None
+            if 'chacra' in url:
+                # Include both the original hash and all backtracked hashes
+                response.json = lambda: {
+                    self.args.ceph_sha1: {},
+                    **{f"ceph_sha1_{i}": {} for i in range(5)}
+                }
+                response.headers['Content-Type'] = 'application/json'
+            elif 'shaman' in url:
+                raise requests.exceptions.RequestException("Mock Shaman failure")
+            return response
+        m_requests_get.side_effect = mock_get
+
         m_get_arch.return_value = 'x86_64'
         # rig has_packages_for_distro to fail this many times, so
         # everything will run NUM_FAILS+1 times
@@ -526,6 +579,7 @@ class TestScheduleSuite(object):
                 assert job_yaml.get('sha1') == working_sha1
                 assert job_yaml.get('suite_sha1') == working_sha1
 
+    @patch('teuthology.suite.run.requests.get')
     @patch('teuthology.suite.util.find_git_parents')
     @patch('teuthology.suite.run.Run.schedule_jobs')
     @patch('teuthology.suite.run.Run.write_rerun_memo')
@@ -548,6 +602,7 @@ class TestScheduleSuite(object):
         m_write_rerun_memo,
         m_schedule_jobs,
         m_find_git_parents,
+        m_requests_get,
     ):
         """
         Test that we can successfully schedule a job with newest
@@ -556,6 +611,22 @@ class TestScheduleSuite(object):
         ceph_hash will be updated to the working sha1,
         but the suite_hash will remain the original suite_sha1.
         """
+        def mock_get(url, **kwargs):
+            response = requests.Response()
+            response.status_code = 200
+            response.raise_for_status = lambda: None
+            if 'chacra' in url:
+                # Include both the original hash and all backtracked hashes
+                response.json = lambda: {
+                    self.args.ceph_sha1: {},
+                    **{f"ceph_sha1_{i}": {} for i in range(5)}
+                }
+                response.headers['Content-Type'] = 'application/json'
+            elif 'shaman' in url:
+                raise requests.exceptions.RequestException("Mock Shaman failure")
+            return response
+        m_requests_get.side_effect = mock_get
+
         m_get_arch.return_value = 'x86_64'
         # Set different branches
         self.args.ceph_branch = 'ceph_different_branch'
