@@ -1,0 +1,43 @@
+#cloud-config
+bootcmd:
+  - fqdn=$(hostname)
+  - hostnamectl set-hostname "$fqdn"
+  - echo "MaxSessions 1000" >> /etc/ssh/sshd_config
+  - curl -s https://raw.githubusercontent.com/ceph/ceph-cm-ansible/blob/main/roles/cephlab_user/templates/snippets/cephlab_user | tee /etc/sudoers.d/cephlab_sudo
+  - chmod 0440 /etc/sudoers.d/cephlab_sudo
+
+preserve_hostname: true
+
+system_info:
+  default_user:
+    name: ubuntu
+
+packages:
+  - python3
+  - git
+  - chrony
+  - bzip2
+
+runcmd:
+  - systemctl stop ntpd || true
+  - systemctl disable ntpd || true
+
+  # Disable chrony logging (avoids permission denied errors)
+  - sed -i '/logdir/d' /etc/chrony.conf
+  - sed -i '/^log /d' /etc/chrony.conf
+
+  # Add a working NTP server if not already configured
+  - grep -q '^server time.google.com' /etc/chrony.conf || echo 'server time.google.com iburst' >> /etc/chrony.conf
+
+  # Enable and sync chrony
+  - systemctl enable chronyd
+  - systemctl restart chronyd
+  - chronyc -a makestep
+
+  # Set hostname using instance metadata IP
+  - ip=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
+  - name=$(echo "$ip" | tr . -)
+  - hostnamectl set-hostname "ip-$name"
+
+final_message: "UP, after $UPTIME seconds"
+

@@ -1,0 +1,45 @@
+#cloud-config
+bootcmd:
+ - fqdn=$(hostname -f)
+ - shortname=$(echo "$fqdn" | cut -d. -f1)
+ - hostnamectl set-hostname "$shortname"
+ - ( echo ; echo "MaxSessions 1000" ) >> /etc/ssh/sshd_config
+# See https://github.com/ceph/ceph-cm-ansible/blob/main/roles/cobbler/templates/snippets/cephlab_user
+ - ( echo 'Defaults !requiretty' ; echo 'Defaults visiblepw' ) | tee /etc/sudoers.d/cephlab_sudo ; chmod 0440 /etc/sudoers.d/cephlab_sudo
+preserve_hostname: true
+system_info:
+  default_user:
+    name: {username}
+packages:
+ - python3
+ - wget
+ - git
+ - chrony
+ - bzip2
+write_files:
+  - path: /etc/openstack-hosts.block
+    permissions: '0644'
+    encoding: gzip+base64
+    content: |
+      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
+
+runcmd:
+  - systemctl stop ntpd || true
+  - systemctl disable ntpd || true
+  # Disable chrony logging (avoids permission denied errors)
+  - sed -i '/^log /d' /etc/chrony/chrony.conf
+  - sed -i '/^logdir /d' /etc/chrony/chrony.conf
+  # Add a working NTP server if not already configured
+  - grep -q '^server ' /etc/chrony/chrony.conf || echo 'server time.google.com iburst' >> /etc/chrony/chrony.conf
+  # Ensure chrony runs and syncs time
+  - systemctl enable chronyd
+  - systemctl restart chronyd
+  - chronyc -a makestep
+
+  - ip=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4 || true)
+  - name=$(echo "$ip" | tr . -)
+  - '[ -n "$name" ] && hostnamectl set-hostname "ip-$name" || true'
+
+  - 'if [ -s /etc/openstack-hosts.block ]; then TAG_BEGIN="# >>> OPENSTACK HOSTS BEGIN"; TAG_END="# <<< OPENSTACK HOSTS END"; printf "%s\n" "$TAG_BEGIN" > /tmp/hosts.block; cat /etc/openstack-hosts.block >> /tmp/hosts.block; printf "%s\n" "$TAG_END" >> /tmp/hosts.block; sed -e "/^$TAG_BEGIN\$/,/^$TAG_END\$/d" /etc/hosts > /tmp/hosts.base || true; cat /tmp/hosts.base /tmp/hosts.block > /etc/hosts; fi'
+
+final_message: "{up}, after $UPTIME seconds"
