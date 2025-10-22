@@ -3,6 +3,7 @@ import pytest
 import yaml
 
 from mock import patch, Mock
+from pytest import mark
 
 from teuthology.task import install
 
@@ -335,3 +336,85 @@ class TestInstall(object):
         with pytest.raises(RuntimeError) as e:
             install.redhat.install_pkgs(ctx, remote, version, rh_ds_yaml)
         assert "Version check failed" in str(e)
+
+    @mark.parametrize(
+        'conf, expect',
+        [
+            [
+                {
+                    'tasks': [ { 'install': { 'clean': True, }, }, ],
+                    'overrides': {
+                        'install': {
+                            'ceph': {
+                                 'extra_system_packages': ['alpha'],
+                                 'flavor': 'default',
+                                 'sha1': '0123456789abcdef0123456789abcdef01234567',
+                             },
+                            'extra_system_packages': {
+                                'deb': [],
+                                'rpm': ['xerxes', 'yellow'],
+                            },
+                        },
+                    },
+                },
+                {
+                    'deb': ['alpha'],
+                    'rpm': ['alpha', 'xerxes', 'yellow'],
+                }
+            ],
+            [
+                {
+                    'tasks': [ { 'install': { 'clean': True, }, }, ],
+                    'overrides': {
+                        'install': {
+                            'ceph': {
+                                 'flavor': 'default',
+                                 'sha1': '0123456789abcdef0123456789abcdef01234567',
+                             },
+                            'extra_system_packages': {
+                                'deb': [],
+                                'rpm': ['xerxes', 'yellow'],
+                            },
+                        },
+                    },
+                },
+                {
+                    'deb': [],
+                    'rpm': ['xerxes', 'yellow'],
+                }
+            ],
+            [
+                {
+                    'tasks': [ { 'install': { 'clean': True, }, }, ],
+                    'overrides': { 'install': {
+                            'ceph': { 'flavor': 'default', 'sha1': '012345', },
+                            'extra_system_packages': { 'rpm': ['xerxes', 'yellow'], },
+                        },
+                    },
+                },
+                { 'deb': [], 'rpm': ['xerxes', 'yellow'], }
+
+            ],
+            [
+                {
+                    'tasks': [ { 'install': { 'clean': True,
+                                             'extra_system_packages': { 'deb': ['alpha'], 'rpm': ['bravo'] },
+                                             }, }, ],
+                    'overrides': { 'install': {
+                            'ceph': { 'flavor': 'default', 'sha1': '012345', },
+                            'extra_system_packages': { 'rpm': ['xerxes', 'yellow'], },
+                        },
+                    },
+                },
+                { 'deb': ['alpha'], 'rpm': ['bravo', 'xerxes', 'yellow'], }
+
+            ],
+
+        ]
+    )
+    def test_install_extra_system_packages(self, conf, expect):
+        install_task = conf.get('tasks')[0].get('install')
+        install_overrides = conf.get('overrides').get('install', {})
+        install._override_extra_system_packages(install_task, 'ceph', install_overrides)
+
+        assert install_task.get('extra_system_packages') == expect
