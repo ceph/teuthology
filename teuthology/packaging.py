@@ -571,7 +571,7 @@ class GitbuilderProject(object):
 
     def _get_dist_release(self):
         version = self._parse_version(self.os_version)
-        if self.os_type in ('centos', 'rhel'):
+        if self.os_type in ('centos', 'rhel', 'rocky'):
             return "el{0}".format(version)
         elif self.os_type == "fedora":
             return "fc{0}".format(version)
@@ -608,6 +608,8 @@ class GitbuilderProject(object):
             distro = "opensuse"
         elif distro == "sle":
             distro == "sle"
+        elif distro == "rocky":
+            distro = "rocky"
         else:
             # deb based systems use codename instead of a distro/version combo
             if not codename:
@@ -940,6 +942,9 @@ class ShamanProject(GitbuilderProject):
     def _get_distro(cls, distro=None, version=None, codename=None):
         if distro in ('centos', 'rhel'):
             distro = 'centos'
+            version = cls._parse_version(version)
+        if distro in ('rocky'):
+            distro = 'rocky'
             version = cls._parse_version(version)
         return "%s/%s" % (distro, version)
 
