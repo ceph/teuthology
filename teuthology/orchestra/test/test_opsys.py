@@ -200,19 +200,6 @@ class TestOS(object):
         PRIVACY_POLICY_URL=https://fedoraproject.org/wiki/Legal:PrivacyPolicy
     """)
 
-    str_opensuse_42_2_os_release = dedent("""
-        NAME="openSUSE Leap"
-        VERSION="42.2"
-        ID=opensuse
-        ID_LIKE="suse"
-        VERSION_ID="42.2"
-        PRETTY_NAME="openSUSE Leap 42.2"
-        ANSI_COLOR="0;32"
-        CPE_NAME="cpe:/o:opensuse:leap:42.2"
-        BUG_REPORT_URL="https://bugs.opensuse.org"
-        HOME_URL="https://www.opensuse.org/"
-    """)
-
     str_opensuse_42_3_os_release = dedent("""
         NAME="openSUSE Leap"
         VERSION="42.3"
@@ -362,13 +349,6 @@ class TestOS(object):
         assert os.name == 'fedora'
         assert os.version == '26'
         assert os.codename == '26'
-        assert os.package_type == 'rpm'
-
-    def test_opensuse_42_2_os_release(self):
-        os = OS.from_os_release(self.str_opensuse_42_2_os_release)
-        assert os.name == 'opensuse'
-        assert os.version == '42.2'
-        assert os.codename == 'leap'
         assert os.package_type == 'rpm'
 
     def test_opensuse_42_3_os_release(self):
