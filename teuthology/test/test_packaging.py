@@ -768,6 +768,9 @@ class TestShamanProject(TestBuilderProject):
 
     DISTRO_MATRIX = [
         ('rhel', '7.0', None, 'centos/7'),
+        ('alma', '9.6', None, 'alma/9'),
+        ('rocky', '9.6', None, 'rocky/9'),
+        ('rocky', '10.0', None, 'rocky/10'),
         ('centos', '6.5', None, 'centos/6'),
         ('centos', '7.0', None, 'centos/7'),
         ('centos', '7.1', None, 'centos/7'),
@@ -783,12 +786,27 @@ class TestShamanProject(TestBuilderProject):
         ('ubuntu', '16.04', None, 'ubuntu/16.04'),
         ('ubuntu', '18.04', None, 'ubuntu/18.04'),
         ('ubuntu', '20.04', None, 'ubuntu/20.04'),
+        ('opensuse', '15.6', None, 'opensuse/15.6'),
+        ('sle', '15.5', None, 'sle/15.5'),
     ]
+    @pytest.mark.parametrize(
+        "matrix_index",
+        range(len(DISTRO_MATRIX)),
+    )
+    def test_get_distro_remote(self, matrix_index):
+        super().test_get_distro_remote(matrix_index)
 
     DISTRO_MATRIX_NOVER = [
         ('rhel', None, None, 'centos/8'),
-        ('centos', None, None, 'centos/8'),
+        ('centos', None, None, 'centos/9'),
         ('fedora', None, None, 'fedora/25'),
-        ('ubuntu', None, None, 'ubuntu/20.04'),
-        ('debian', None, None, 'debian/8.0'),
+        ('ubuntu', None, None, 'ubuntu/22.04'),
+        ('alma', None, None, 'alma/9'),
+        ('rocky', None, None, 'rocky/9'),
     ]
+    @pytest.mark.parametrize(
+        "matrix_index",
+        range(len(DISTRO_MATRIX) + len(DISTRO_MATRIX_NOVER)),
+    )
+    def test_get_distro_config(self, matrix_index):
+        super().test_get_distro_config(matrix_index)
