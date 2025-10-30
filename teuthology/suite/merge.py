@@ -171,7 +171,15 @@ def config_merge(configs, suite_name=None, **kwargs):
         env['yaml'] = yaml_complete_obj
         for k,v in kwargs.items():
             env[k] = v
-        if not script():
-            log.debug("skipping config %s due to postmerge filter", desc)
+        try:
+            if not script():
+                log.debug("skipping config %s due to postmerge filter", desc)
+                continue
+        except Exception as e:
+            import traceback
+            log.error("Postmerge filter script failed with exception, please file an issue in tracker")
+            traceback.print_exception(e)
             continue
+
+
         yield desc, paths, yaml_complete_obj
