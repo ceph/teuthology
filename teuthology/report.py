@@ -566,7 +566,7 @@ def try_delete_jobs(run_name, job_ids, delete_empty_run=True):
         try_delete_job(job_id)
 
 
-def try_mark_run_dead(run_name):
+def try_mark_run_dead(run_name, reason=None):
     """
     Using the same error checking and retry mechanism as try_push_job_info(),
     mark any unfinished runs as dead.
@@ -578,18 +578,29 @@ def try_mark_run_dead(run_name):
     if not reporter.base_uri:
         return
 
-    log.debug("Marking run as dead: {name}".format(name=run_name))
+    log.debug("Marking run as dead: {name} reason={reason}".format(name=run_name, reason=reason))
     jobs = reporter.get_jobs(run_name, fields=['status'])
     for job in jobs:
         if job['status'] not in ['pass', 'fail', 'dead']:
             job_id = job['job_id']
             try:
                 log.info("Marking job {job_id} as dead".format(job_id=job_id))
-                reporter.report_job(run_name, job['job_id'], dead=True)
-                if "machine_type" in job:
+                # Load existing job_info from the archive, merge in our
+                # extra fields so the results server gets a useful
+                # failure_reason when a run is marked dead manually.
+                job_info = reporter.serializer.job_info(run_name, job_id)
+                # Ensure status is set to dead and include a reason if given
+                job_info.update({'status': 'dead'})
+                if reason:
+                    # Use the common 'failure_reason' field elsewhere in the
+                    # codebase so tooling can pick it up.
+                    job_info['failure_reason'] = reason
+
+                reporter.report_job(run_name, job_id, job_info=job_info)
+                if "machine_type" in job_info:
                     teuthology.exporter.JobResults().record(
-                        machine_type=job["machine_type"],
-                        status=job["status"],
+                        machine_type=job_info["machine_type"],
+                        status=job_info["status"],
                     )
             except report_exceptions:
                 log.exception("Could not mark job as dead: {job_id}".format(

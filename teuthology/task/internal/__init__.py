@@ -112,7 +112,9 @@ def check_packages(ctx, config):
             # set the failure message and update paddles with the status
             ctx.summary["failure_reason"] = msg
             set_status(ctx.summary, "dead")
-            report.try_push_job_info(ctx.config, dict(status='dead'))
+            # Include the failure_reason so the results server records why
+            # this job was marked dead (e.g. missing packages)
+            report.try_push_job_info(ctx.config, dict(status='dead', failure_reason=msg))
             raise VersionNotFoundError(package.base_url)
     else:
         log.info(

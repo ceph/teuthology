@@ -76,7 +76,8 @@ def kill_run(run_name, archive_base=None, owner=None, machine_type=None,
         targets = find_targets(run_name)
         names = list(targets.keys())
         lock_ops.unlock_safe(names, owner, run_name)
-    report.try_mark_run_dead(run_name)
+    # Provide a reason so individual jobs get a failure_reason when marked dead
+    report.try_mark_run_dead(run_name, reason="killed by user")
 
 
 def kill_job(run_name, job_id, archive_base=None, owner=None, skip_unlock=False):
@@ -93,7 +94,8 @@ def kill_job(run_name, job_id, archive_base=None, owner=None, skip_unlock=False)
         owner = job_info['owner']
     if kill_processes(run_name, [job_info.get('pid')]):
         return
-    report.try_push_job_info(job_info, dict(status="dead"))
+    # Indicate this was a manual kill so the results server can show a reason
+    report.try_push_job_info(job_info, dict(status="dead", failure_reason="killed by user"))
     if 'machine_type' in job_info:
         teuthology.exporter.JobResults().record(
             machine_type=job_info["machine_type"],
