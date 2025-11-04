@@ -427,6 +427,9 @@ def _override_extra_system_packages(config, project, install_overrides):
             e = dict(deb=copy.deepcopy(extra), rpm=copy.deepcopy(extra))
         elif isinstance(extra, dict):
             e = copy.deepcopy(extra)
+
+        if isinstance(extra_overrides, list):
+            extra_overrides = dict(deb=extra_overrides, rpm=extra_overrides)
         elif isinstance(extra, str):
             e = dict(deb=[extra], rpm=[extra])
 
