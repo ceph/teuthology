@@ -368,6 +368,28 @@ class TestInstall(object):
                     'overrides': {
                         'install': {
                             'ceph': {
+                                 'extra_system_packages': {
+                                     'deb': [],
+                                     'rpm': ['xerxes', 'yellow'],
+                                 },
+                                 'flavor': 'default',
+                                 'sha1': '0123456789abcdef0123456789abcdef01234567',
+                             },
+                            'extra_system_packages': ['alpha'],
+                        },
+                    },
+                },
+                {
+                    'deb': ['alpha'],
+                    'rpm': ['xerxes', 'yellow', 'alpha'],
+                }
+            ],
+            [
+                {
+                    'tasks': [ { 'install': { 'clean': True, }, }, ],
+                    'overrides': {
+                        'install': {
+                            'ceph': {
                                  'flavor': 'default',
                                  'sha1': '0123456789abcdef0123456789abcdef01234567',
                              },
@@ -380,6 +402,24 @@ class TestInstall(object):
                 },
                 {
                     'deb': [],
+                    'rpm': ['xerxes', 'yellow'],
+                }
+            ],
+            [
+                {
+                    'tasks': [ { 'install': { 'clean': True, }, }, ],
+                    'overrides': {
+                        'install': {
+                            'ceph': {
+                                 'flavor': 'default',
+                                 'sha1': '0123456789abcdef0123456789abcdef01234567',
+                             },
+                            'extra_system_packages': ['xerxes', 'yellow'],
+                        },
+                    },
+                },
+                {
+                    'deb': ['xerxes', 'yellow'],
                     'rpm': ['xerxes', 'yellow'],
                 }
             ],
