@@ -203,6 +203,11 @@ zope-interface==6.1
 openstacksdk==4.5.0
     # via teuthology (pyproject.toml)
 python-openstackclient>=6.0.0
+    # via teuthology (pyproject.toml)
+oauthlib==3.3.1
+    # via teuthology (pyproject.toml)
+requests-oauthlib==2.0.0
+    # via teuthology (pyproject.toml)
 # The following packages are considered to be unsafe in a requirements file:
 # pip
 # setuptools
