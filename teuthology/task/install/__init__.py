@@ -430,8 +430,6 @@ def _override_extra_system_packages(config, project, install_overrides):
 
         if isinstance(extra_overrides, list):
             extra_overrides = dict(deb=extra_overrides, rpm=extra_overrides)
-        elif isinstance(extra, str):
-            e = dict(deb=[extra], rpm=[extra])
 
         config['extra_system_packages'] = teuthology.deep_merge(e, extra_overrides)
 
