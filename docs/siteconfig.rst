@@ -258,6 +258,14 @@ Here is a sample configuration with many of the options set and documented::
       endpoint: http://head.ses.suse.de:5000/
       machine_types: ['type1', 'type2', 'type3']
 
+    # Settings for MaaS (https://maas.io)
+    maas:
+      api_url: http://maas.example.com:5240/MAAS/api/2.0/
+      api_key: <consumer_key>:<consumer_token>:<secret>
+      machine_types: ['typeA', 'typeB']
+      timeout: 900
+      user_data: teuthology/maas/user_data/maas-{os_type}-{os_version}-user-data.txt
+
     # Do not allow more than that many jobs in a single run by default.
     # To disable this check use 0.
     job_threshold: 500
