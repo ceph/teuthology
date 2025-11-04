@@ -427,8 +427,9 @@ def _override_extra_system_packages(config, project, install_overrides):
             e = dict(deb=copy.deepcopy(extra), rpm=copy.deepcopy(extra))
         elif isinstance(extra, dict):
             e = copy.deepcopy(extra)
-        elif isinstance(extra, str):
-            e = dict(deb=[extra], rpm=[extra])
+
+        if isinstance(extra_overrides, list):
+            extra_overrides = dict(deb=extra_overrides, rpm=extra_overrides)
 
         config['extra_system_packages'] = teuthology.deep_merge(e, extra_overrides)
 
