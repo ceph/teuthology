@@ -29,11 +29,27 @@ jobs:
           registry: quay.io
           username: ${{ secrets.QUAY_USERNAME }}
           password: ${{ secrets.QUAY_ROBOT_TOKEN }}
+      - name: Prepare image tag
+        id: tag
+        run: |
+          # Derive a safe tag: prefer head ref for PRs, otherwise ref name.
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            raw_tag="${{ github.head_ref }}"
+          else
+            raw_tag="${{ github.ref_name }}"
+          fi
+          # Replace any characters invalid in container tags with '-'
+          safe_tag=$(echo "$raw_tag" | sed -E 's#[^A-Za-z0-9_.-]#-#g')
+          # Avoid empty tag; fallback to short SHA
+          if [ -z "$safe_tag" ]; then
+            safe_tag=${GITHUB_SHA::7}
+          fi
+          echo "safe_tag=$safe_tag" >> $GITHUB_OUTPUT
       - name: Build and push
         uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4
         env:
           QUAY_URI: quay.io/ceph-infra/teuthology-dev
-          QUAY_TAG: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
+          QUAY_TAG: ${{ steps.tag.outputs.safe_tag }}
         with:
           context: .
           file: containers/teuthology-dev/Dockerfile
