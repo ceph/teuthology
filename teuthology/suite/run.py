@@ -25,6 +25,7 @@ from teuthology.suite import util
 from teuthology.suite.merge import config_merge
 from teuthology.suite.build_matrix import build_matrix
 from teuthology.suite.placeholder import substitute_placeholders, dict_templ
+from teuthology.util.containers import container_image_for_hash
 from teuthology.util.time import parse_offset, parse_timestamp, TIMESTAMP_FMT
 
 log = logging.getLogger(__name__)
@@ -549,6 +550,15 @@ class Run(object):
                     # no point in continuing the search
                     if newest:
                         return jobs_missing_packages, []
+                job_tasks = set()
+                for task_dict in parsed_yaml.get('tasks', []):
+                    for key in task_dict.keys():
+                        job_tasks.add(key)
+                if any(['cephadm' in name for name in job_tasks]):
+                    if not container_image_for_hash(sha1):
+                        jobs_missing_packages.append(job)
+                        if newest:
+                            return jobs_missing_packages, []
 
             jobs_to_schedule.append(job)
         return jobs_missing_packages, jobs_to_schedule
