@@ -589,11 +589,8 @@ def try_mark_run_dead(run_name, reason=None):
                 # extra fields so the results server gets a useful
                 # failure_reason when a run is marked dead manually.
                 job_info = reporter.serializer.job_info(run_name, job_id)
-                # Ensure status is set to dead and include a reason if given
                 job_info.update({'status': 'dead'})
                 if reason:
-                    # Use the common 'failure_reason' field elsewhere in the
-                    # codebase so tooling can pick it up.
                     job_info['failure_reason'] = reason
 
                 reporter.report_job(run_name, job_id, job_info=job_info)
