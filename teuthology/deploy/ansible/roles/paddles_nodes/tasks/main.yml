@@ -1,0 +1,19 @@
+- name: copy sql populate script if exists
+  copy:
+    src: "{{ pop_script }}"
+    dest: /tmp
+  when: pop_script is exists
+- name: Populate machines
+  shell: "psql paddles < /tmp/{{ pop_script | basename }}"
+  #  db: paddles
+  #  name: "{{ paddles_user }}"
+  #  password: "{{ db_pass }}"
+  become_user: postgres
+  when: pop_script is exists
+- name: copy targets psql
+  template:
+    src: "targets.psql"
+    dest: "/tmp/targets.psql"
+- name: Populate machines
+  shell: "psql paddles < /tmp/targets.psql"
+  become_user: postgres
