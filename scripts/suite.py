@@ -173,6 +173,14 @@ Scheduler arguments:
                               but can be overide if passed again.
                               This is important for tests involving random facet
                               (path ends with '$' operator).
+ --skip-known-failures <bool>
+                              Skip jobs with known failure patterns during rerun.
+                              To be used with --rerun only. Only rerun jobs with
+                              unknown failures by checking against known patterns
+                              file [default: false].
+ --known-patterns-file <path> Path to known failure patterns file (JSON or YAML).
+                              Defaults to bundled known-failures.json in teuthology
+                              package. To be used with --skip-known-failures.
  -R, --rerun-statuses <statuses>
                               A comma-separated list of statuses to be used
                               with --rerun. Supported statuses are: 'dead',
