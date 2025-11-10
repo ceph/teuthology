@@ -14,11 +14,10 @@ from teuthology.exceptions import SkipJob, MaxWhileTries
 from teuthology import setup_log_file, install_except_hook
 from teuthology.misc import get_user, archive_logs, compress_logs
 from teuthology.config import FakeNamespace
-from teuthology.lock import ops as lock_ops
 from teuthology.task import internal
 from teuthology.misc import decanonicalize_hostname as shortname
-from teuthology.lock import query
 from teuthology.util import sentry
+import teuthology.machines
 
 log = logging.getLogger(__name__)
 
@@ -205,7 +204,7 @@ def check_for_reimage_failures_and_mark_down(targets, count=10):
             continue
         # Mark machine down
         machine_name = shortname(k)
-        lock_ops.update_lock(
+        teuthology.machines.update_lock(
             machine_name,
             description='reimage failed {0} times'.format(count),
             status='down',
@@ -223,7 +222,7 @@ def reimage(job_config):
     report.try_push_job_info(ctx.config, dict(status='waiting'))
     targets = job_config['targets']
     try:
-        reimaged = lock_ops.reimage_machines(ctx, targets, job_config['machine_type'])
+        reimaged = teuthology.machines.reimage_machines(ctx, targets, job_config['machine_type'])
     except Exception as e:
         log.exception('Reimaging error. Unlocking machines...')
         unlock_targets(job_config)
@@ -251,7 +250,9 @@ def unlock_targets(job_config):
 
     :param job_config:      dict, job config data
     """
-    machine_statuses = query.get_statuses(job_config['targets'].keys())
+    machine_statuses = teuthology.machines.machine_statuses(
+        job_config['targets'].keys()
+    )
     locked = []
     for status in machine_statuses:
         name = shortname(status['name'])
@@ -269,7 +270,12 @@ def unlock_targets(job_config):
         return
     if job_config.get("unlock_on_failure", True):
         log.info('Unlocking machines...')
-        lock_ops.unlock_safe(locked, job_config["owner"], job_config["name"], job_config["job_id"])
+        teuthology.machines.unlock_safe(
+            locked,
+            job_config["owner"],
+            job_config["name"],
+            job_config["job_id"],
+        )
 
 
 def run_with_watchdog(process, job_config):

@@ -1,9 +1,7 @@
 import contextlib
 import logging
 
-import teuthology.lock.ops
-import teuthology.lock.query
-import teuthology.lock.util
+import teuthology.machines
 
 log = logging.getLogger(__name__)
 
@@ -19,11 +17,11 @@ def lock_machines(ctx, config):
     machine_type = config[1]
     total_requested = config[0]
     # We want to make sure there are always this many machines available
-    teuthology.lock.ops.block_and_lock_machines(ctx, total_requested, machine_type)
+    teuthology.machines.must_reserve_machines(ctx, total_requested, machine_type)
     try:
         yield
     finally:
         if ctx.config.get("unlock_on_failure", True):
             log.info('Unlocking machines...')
             for machine in ctx.config['targets'].keys():
-                teuthology.lock.ops.unlock_one(machine, ctx.owner, ctx.archive)
+                teuthology.machines.unlock_one(machine, ctx.owner, ctx.archive)

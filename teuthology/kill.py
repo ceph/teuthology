@@ -10,11 +10,11 @@ import getpass
 from typing import Union
 
 import teuthology.exporter
+import teuthology.machines
 
 from teuthology import beanstalk
 from teuthology import report
 from teuthology.config import config
-from teuthology.lock import ops as lock_ops
 
 log = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ def kill_run(run_name, archive_base=None, owner=None, machine_type=None,
     if owner is not None:
         targets = find_targets(run_name)
         names = list(targets.keys())
-        lock_ops.unlock_safe(names, owner, run_name)
+        teuthology.machines.unlock_safe(names, owner, run_name)
     report.try_mark_run_dead(run_name)
 
 
@@ -103,7 +103,7 @@ def kill_job(run_name, job_id, archive_base=None, owner=None, skip_unlock=False)
         log.warn(f"Job {job_id} has no machine_type; cannot report via Prometheus")
     if not skip_unlock:
         targets = find_targets(run_name, job_id)
-        lock_ops.unlock_safe(list(targets.keys()), owner, run_name, job_id)
+        teuthology.machines.unlock_safe(list(targets.keys()), owner, run_name, job_id)
 
 
 def find_run_info(serializer, run_name):
