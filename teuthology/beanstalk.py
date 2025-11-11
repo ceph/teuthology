@@ -161,7 +161,11 @@ class JobDeleter(JobProcessor):
 def pause_tube(connection, tube, duration):
     duration = int(duration)
     if not tube:
-        tubes = sorted(connection.tubes())
+        # connection.tubes() may include None values (or other non-string
+        # entries) which causes sorted() to raise TypeError when comparing
+        # None and str. Filter to keep only string-like tube names.
+        tubes = [t for t in connection.tubes() if isinstance(t, str) and t]
+        tubes = sorted(tubes)
     else:
         tubes = [tube]
 
