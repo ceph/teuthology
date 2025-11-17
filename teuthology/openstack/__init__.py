@@ -1233,10 +1233,10 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
             server_sg = conn.network.create_security_group(name=self.server_group())
         if not worker_sg:
             worker_sg = conn.network.create_security_group(name=self.worker_group())
-        def add_rule(sg_id, protocol, port=None, remote_group_id=None):
+        def add_rule(sg_id, protocol, port=None, remote_group_id=None, direction='ingress'):
             rule_args = {
                 'security_group_id': sg_id,
-                'direction': 'ingress',
+                'direction': direction,
                 'protocol': protocol,
                 'ethertype': 'IPv4',
             }
@@ -1261,6 +1261,12 @@ ssh access           : ssh {identity}{username}@{ip} # logs in /usr/share/nginx/
         add_rule(server_sg.id, 'udp', port=65535, remote_group_id=server_sg.id)
         # access within worker group
         add_rule(worker_sg.id, 'udp', port=65535, remote_group_id=worker_sg.id)
+
+        # NTP synchronization(UDP port 123)
+        add_rule(server_sg.id, 'udp', port=123, direction='egress')
+        add_rule(worker_sg.id, 'udp', port=123, direction='egress')
+        add_rule(server_sg.id, 'udp', port=123, direction='ingress')
+        add_rule(worker_sg.id, 'udp', port=123, direction='ingress')
 
     @staticmethod
     def get_unassociated_floating_ip():
