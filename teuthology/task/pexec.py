@@ -34,7 +34,6 @@ def _do_barrier(barrier, barrier_queue, remote):
 
 def _exec_host(barrier, barrier_queue, remote, sudo, testdir, ls):
     """Execute command remotely"""
-    log.info('Running commands on host %s', remote.name)
     args = [
         'TESTDIR={tdir}'.format(tdir=testdir),
         'bash',
@@ -57,6 +56,9 @@ def _exec_host(barrier, barrier_queue, remote, sudo, testdir, ls):
     r.stdin.writelines(['\n'])
     r.stdin.flush()
     r.stdin.close()
+    log.info('Running commands on host %s', remote.name)
+    for l in ls:
+        log.info('%s', l)
     tor.wait([r])
 
 def _generate_remotes(ctx, config):
