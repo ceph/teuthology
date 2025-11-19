@@ -265,3 +265,94 @@ Maybe you want 'gibba,smithi,mira' or similar"
                 '--machine-type', machine_type
             ])
             m_sleep.assert_called_with(int(throttle))
+
+
+class TestFilterOutKnownFailures(object):
+    """Tests for filter_out_known_failures function."""
+
+    def test_filter_out_known_failures_json(self, tmpdir):
+        """Test filtering with JSON patterns file."""
+        patterns_file = tmpdir.join('patterns.json')
+        patterns_file.write('{"patterns": ["Command failed", "timeout"]}')
+        
+        jobs = [
+            {'description': 'job1', 'failure_reason': 'Command failed on host'},
+            {'description': 'job2', 'failure_reason': 'Unknown error'},
+            {'description': 'job3', 'failure_reason': 'timeout occurred'},
+        ]
+        
+        result = suite.filter_out_known_failures(jobs, str(patterns_file))
+        assert len(result) == 1
+        assert result[0]['description'] == 'job2'
+
+    def test_filter_out_known_failures_yaml(self, tmpdir):
+        """Test filtering with YAML patterns file."""
+        patterns_file = tmpdir.join('patterns.yaml')
+        patterns_file.write('patterns:\n  - "Command failed"\n  - "timeout"')
+        
+        jobs = [
+            {'description': 'job1', 'failure_reason': 'Command failed on host'},
+            {'description': 'job2', 'failure_reason': 'Unknown error'},
+        ]
+        
+        result = suite.filter_out_known_failures(jobs, str(patterns_file))
+        assert len(result) == 1
+        assert result[0]['description'] == 'job2'
+
+    def test_filter_out_known_failures_missing_file(self, tmpdir):
+        """Test filtering when patterns file is missing."""
+        patterns_file = tmpdir.join('nonexistent.json')
+        
+        jobs = [
+            {'description': 'job1', 'failure_reason': 'Some error'},
+            {'description': 'job2', 'failure_reason': 'Another error'},
+        ]
+        
+        # Should treat all as unknown when file is missing
+        result = suite.filter_out_known_failures(jobs, str(patterns_file))
+        assert len(result) == 2
+
+    def test_filter_out_known_failures_no_patterns(self, tmpdir):
+        """Test filtering with empty patterns."""
+        patterns_file = tmpdir.join('patterns.json')
+        patterns_file.write('{"patterns": []}')
+        
+        jobs = [
+            {'description': 'job1', 'failure_reason': 'Some error'},
+            {'description': 'job2', 'failure_reason': 'Another error'},
+        ]
+        
+        # All should be unknown when patterns are empty
+        result = suite.filter_out_known_failures(jobs, str(patterns_file))
+        assert len(result) == 2
+
+    def test_filter_out_known_failures_no_description(self, tmpdir):
+        """Test filtering with jobs that have no description."""
+        patterns_file = tmpdir.join('patterns.json')
+        patterns_file.write('{"patterns": ["error"]}')
+        
+        jobs = [
+            {'description': 'job1', 'failure_reason': 'error occurred'},
+            {'failure_reason': 'error occurred'},  # No description
+            {'description': 'job2', 'failure_reason': 'unknown'},
+        ]
+        
+        result = suite.filter_out_known_failures(jobs, str(patterns_file))
+        # Job without description should be skipped
+        assert len(result) == 1
+        assert result[0]['description'] == 'job2'
+
+    def test_filter_out_known_failures_regex_pattern(self, tmpdir):
+        """Test filtering with regex patterns."""
+        patterns_file = tmpdir.join('patterns.json')
+        patterns_file.write('{"patterns": ["Command failed on .* with status"]}')
+        
+        jobs = [
+            {'description': 'job1', 'failure_reason': 'Command failed on host1 with status 1'},
+            {'description': 'job2', 'failure_reason': 'Command failed on host2 with status 2'},
+            {'description': 'job3', 'failure_reason': 'Different error'},
+        ]
+        
+        result = suite.filter_out_known_failures(jobs, str(patterns_file))
+        assert len(result) == 1
+        assert result[0]['description'] == 'job3'
