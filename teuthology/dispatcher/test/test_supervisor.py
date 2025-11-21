@@ -34,7 +34,8 @@ class TestSuperviser(object):
         m_p.returncode = 0
         m_popen.return_value = m_p
         m_t_config.results_server = True
-        supervisor.run_job(config, "teuth/bin/path", "archive/dir", verbose=False)
+        config_path = "archive/path/initial.config.yaml"
+        supervisor.run_job(config, config_path, "teuth/bin/path", "archive/dir", verbose=False)
         m_run_watchdog.assert_called_with(m_p, config)
         expected_args = [
             'teuth/bin/path/teuthology',
@@ -45,7 +46,7 @@ class TestSuperviser(object):
             '--description',
             'the_description',
             '--',
-            "archive/path/orig.config.yaml",
+            config_path,
         ]
         m_popen.assert_called_with(args=expected_args, stderr=DEVNULL, stdout=DEVNULL)
 
@@ -80,7 +81,8 @@ class TestSuperviser(object):
         m_p.returncode = 1
         m_popen.return_value = m_p
         m_t_config.results_server = False
-        supervisor.run_job(config, "teuth/bin/path", "archive/dir", verbose=False)
+        config_path = "archive/path/initial.config.yaml"
+        supervisor.run_job(config, config_path, "teuth/bin/path", "archive/dir", verbose=False)
 
     @patch("teuthology.dispatcher.supervisor.report.try_push_job_info")
     @patch("time.sleep")
