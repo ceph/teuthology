@@ -3,117 +3,45 @@
 Installation and setup
 ======================
 
-Ubuntu, Fedora & SUSE/openSUSE
-------------------------------
-First, clone the `git repository <https://github.com/ceph/teuthology/>`__::
+teuthology uses `uv <https://docs.astral.sh/uv/>`_ for project management.
+Because our CI systems often use older operating systems, we use `pipx
+<https://pipx.pypa.io/>`_ to install it in those contexts via our `bootstrap`
+script. The simplest way to install teuthology is in development mode:
 
-    git clone https://github.com/ceph/teuthology.git
+    git clone https://github.com/ceph/teuthology/
+	cd teuthology
+	./bootstrap
 
-Next, run the bootstrap script, which will do everything for you assuming
-you have ``sudo``::
+The `bootstrap` script also checks for the presence of a few system-level
+packages that are required to build dependencies. It can be instructed to
+install whatever is missing::
 
-    cd teuthology
-    ./bootstrap
+    ./bootstrap install
 
-Finally, activate the ``virtualenv``::
+After installation, there are a few options for running teuthology commands.
 
-    source virtualenv/bin/activate
+Using uv::
 
-Run a teuthology command to confirm that everything's working. For instance::
+    uv run teuthology --help
 
-    teuthology --help
+Activating the virtual environment::
 
-MacOS X
--------
+	source ./.venv/bin/activate
+	teuthology --help
 
-The ``bootstrap`` script was recently updated to support MacOS X using `homebrew <http://brew.sh/>`_::
+Running a shell within uv::
 
-    ./bootstrap
+	uv run bash
 
-**Note**: Certain features might not work properly on MacOS X. Patches are
+
+macOS
+-----
+
+**Note**: Certain features might not work properly on macOS. Patches are
 encouraged, but it has never been a goal of ours to run a full ``teuthology``
 setup on a Mac.
 
-Other operating systems
------------------------
+Windows
+-------
 
-Patches are welcomed to add ``bootstrap`` support for other operating systems. Until then, manual installs are possible
-
-First install the non-PyPI dependencies::
-
-    python-dev python-pip python-virtualenv libevent-dev python-libvirt
-
-Next, clone its `git repository <https://github.com/ceph/teuthology/>`__,
-create a `virtualenv <http://virtualenv.readthedocs.org/en/latest/>`__, and
-install dependencies. The instructions are given below::
-
-    git clone https://github.com/ceph/teuthology/
-    cd teuthology
-    virtualenv --python python3 ./virtualenv
-    source virtualenv/bin/activate
-    pip install --upgrade pip
-    pip install -r requirements.txt
-    python setup.py develop
-
-
-Teuthology in PyPI
-------------------
-
-However if you prefer, you may install ``teuthology`` from `PyPI <http://pypi.python.org>`__::
-
-    pip install teuthology
-
-
-**Note**: The version in PyPI can be (*far*) behind the development version.
-
-Or from GitHub::
-
-    pip install git+https://github.com/ceph/teuthology#egg=teuthology[orchestra]
-
-where the dependencies for orchestrating are installed. They are used for
-interacting with the services to schedule tests and to report the test results.
-
-
-Update Dependencies
--------------------
-
-We track the dependencies using ``requirements.txt``. These packages are
-tested, and should work with teuthology. But if you want to bump up the
-versions of them, please use the following command to update these files::
-
-  ./update-requirements.sh -P <package-name>
-
-Please upgrade pip-tool using following command ::
-
-  pip install pip-tools --upgrade
-
-if the command above fails like::
-
-  Traceback (most recent call last):
-  File "/home/kchai/teuthology/virtualenv/bin/pip-compile", line 5, in <module>
-    from piptools.scripts.compile import cli
-  File "/home/kchai/teuthology/virtualenv/local/lib/python2.7/site-packages/piptools/scripts/compile.py", line 11, in <module>
-    from pip.req import InstallRequirement, parse_requirements
-  ImportError: No module named req
-
-Add Dependencies
-----------------
-
-td,dr: please add the new dependencies in both ``setup.py`` and
-``requirements.in``.
-
-We also use ``pip install <URL>`` to install teuthology in some Ceph's unit
-tests. To cater their needs, some requirements are listed in ``setup.py`` as
-well, so that ``pip install`` can pick them up. We could just avoid duplicating
-the packages specifications in two places by putting::
-
-  -e .[orchestra,test]
-
-in ``requirements.in``. But dependabot includes::
-
-  -e file:///home/dependabot/dependabot-updater/tmp/dependabot_20200617-72-1n8af4b  # via -r requirements.in
-
-in the generated ``requirements.txt``. This renders the created pull request
-useless without human intervention. To appease dependabot, a full-blown
-``requirements.in`` collecting all direct dependencies listed by ``setup.py``
-is used instead.
+Windows is not directly supported, but patches are welcome.
