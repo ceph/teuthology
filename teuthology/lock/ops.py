@@ -503,6 +503,15 @@ def stop_node(name: str, status: Union[dict, None]):
     elif status['machine_type'] in provision.pelagos.get_types():
         provision.pelagos.park_node(name)
         return
+    elif status['machine_type'] in provision.maas.get_types():
+        log.info(f"Releasing MAAS machine {name}")
+        try:
+            obj = provision.maas.MAAS(name)
+        except RuntimeError:
+            log.info("MAAS machine is not in expected state, skipping release")
+            return
+        obj.unlock_machine(raise_on_error=False)
+        return
     elif remote_.is_container:
         remote_.run(
             args=['sudo', '/testnode_stop.sh'],
