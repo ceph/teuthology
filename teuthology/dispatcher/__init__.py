@@ -161,9 +161,9 @@ def main(args):
             log.info('Creating job\'s archive dir %s', job_archive_path)
             safepath.makedirs('/', job_archive_path)
 
-            orig_job_config_path = os.path.join(job_archive_path, 'orig.config.yaml')
+            initial_job_config_path = os.path.join(job_archive_path, 'initial.config.yaml')
             # Write initial job config in job archive dir
-            with open(orig_job_config_path, 'w') as f:
+            with open(initial_job_config_path, 'w') as f:
                 yaml.safe_dump(job_config, f, default_flow_style=False)
 
 
@@ -214,7 +214,7 @@ def main(args):
                     )
                     continue
             else:
-                run_args.extend(["--job-config", orig_job_config_path])
+                run_args.extend(["--job-config", initial_job_config_path])
 
             report.try_push_job_info(job_config, dict(status='running'))
             try:
