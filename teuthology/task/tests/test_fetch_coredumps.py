@@ -1,5 +1,5 @@
-from teuthology.task.internal import fetch_binaries_for_coredumps
-from unittest.mock import patch, Mock
+from teuthology.task.internal.fetch_coredumps import fetch_binaries_for_coredumps
+from mock import patch, Mock
 import gzip
 import os
 
@@ -58,8 +58,8 @@ class TestFetchCoreDumps(object):
         m_os.path.dirname.return_value = self.core_dump_path
         m_os.path.exists.return_value = True
         m_os.listdir.return_value = [self.core_dump_path]
-        self.the_function(None, self.m_remote)
-        assert self.m_remote.get_file.called
+        self.the_function(self.core_dump_path)
+        assert self.m_remote.get_file.called == False
 
     # Core is not compressed and file is in the wrong format
     @patch('teuthology.task.internal.subprocess.Popen')
@@ -75,7 +75,7 @@ class TestFetchCoreDumps(object):
         m_os.path.dirname.return_value = self.core_dump_path
         m_os.path.exists.return_value = True
         m_os.listdir.return_value = [self.core_dump_path]
-        self.the_function(None, self.m_remote)
+        self.the_function(self.core_dump_path)
         assert self.m_remote.get_file.called == False
 
     # Core is compressed and file is in the correct format
@@ -92,8 +92,8 @@ class TestFetchCoreDumps(object):
         m_os.path.dirname.return_value = self.core_dump_path
         m_os.path.exists.return_value = True
         m_os.listdir.return_value = [self.core_dump_path]
-        self.the_function(None, self.m_remote)
-        assert self.m_remote.get_file.called
+        self.the_function(self.core_dump_path)
+        assert self.m_remote.get_file.called == False
 
     # Core is compressed and file is in the wrong format
     @patch('teuthology.task.internal.subprocess.Popen')
@@ -109,8 +109,8 @@ class TestFetchCoreDumps(object):
         m_os.path.dirname.return_value = self.core_dump_path
         m_os.path.exists.return_value = True
         m_os.listdir.return_value = [self.core_dump_path]
-        self.the_function(None, self.m_remote)
+        self.the_function(self.core_dump_path)
         assert self.m_remote.get_file.called == False
 
-    def teardown(self):
+    def teardown_method(self):
         os.remove(self.core_dump_path)
