@@ -299,46 +299,138 @@ def check_conflict(ctx, config):
         raise RuntimeError('Stale jobs detected, aborting.')
 
 
+def get_backtraces_from_coredumps(coredump_path, dump_path, dump_program, dump):
+    """
+    Get backtraces from coredumps found in path
+    On a future iteration, we can expand this to inject gdb commands from the test plan yaml
+    """
+    gdb_output_path = os.path.join(coredump_path,
+                                   dump + '.gdb.txt')
+    log.info(f'Getting backtrace from core {dump} ...')
+    with open(gdb_output_path, 'w') as gdb_out:
+        gdb_proc = subprocess.Popen(
+            ['gdb', '--batch', '-ex', 'set pagination 0',
+             '-ex', 'thread apply all bt full',
+             dump_program, dump_path],
+            stdout=gdb_out,
+            stderr=subprocess.STDOUT
+        )
+        gdb_proc.wait()
+        log.info(f"core {dump} backtrace saved to {gdb_output_path}")
+
+
 def fetch_binaries_for_coredumps(path, remote):
     """
-    Pul ELFs (debug and stripped) for each coredump found
+    Pull ELFs (debug and stripped) for each coredump found
+
+    The coredumps might appear compressed, either by gzip or zstd (Centos9)
+    The following are examples from the output of the 'file' command:
+    # 1422917770.7450.core: ELF 64-bit LSB core file x86-64, version 1 (SYSV), SVR4-style, \
+    # from 'radosgw --rgw-socket-path /home/ubuntu/cephtest/apache/tmp.client.0/fastcgi_soc'
+    # Centos 9:
+    # core.ceph_test_neora.0.fb62b98.zst: Zstandard compressed data (v0.8+), Dictionary ID: None
+    #  ELF 64-bit LSB core file, x86-64, version 1 (SYSV), SVR4-style, \
+    # from 'bin/ceph_test_neorados_snapshots --gtest_break_on_failure', real uid: 0, \
+    # effective uid: 0, real gid: 0, effective gid: 0, execfn: 'bin/ceph_test_neorados_snapshots', platform: 'x86_64'
     """
+    def _is_core_gziped(dump_path):
+        with open(dump_path, 'rb') as f:
+            magic = f.read(2)
+            if magic == b'\x1f\x8b':
+                return True
+        return False
+
+    def _is_core_zstded(dump_path):
+        with open(dump_path, 'rb') as f:
+            magic = f.read(4)
+            if magic == b'\x28\xb5\x2f\xfd':
+                return True
+        return False
+
+    csdict = {
+        'gzip': {
+            'check': _is_core_gziped,
+            'uncompress': [ 'gzip',  '-d '],
+            'regex': r'.*gzip compressed data.*'
+        },
+        'zstd': {
+            'check': _is_core_zstded,
+            'uncompress': [ 'zstd',  '-d '],
+            'regex': r'.*Zstandard compressed data.*'
+        }
+    }
+
+    def _get_compressed_type(dump_path):
+        for ck, cs in csdict.items():
+            if cs['check'](dump_path):
+                return ck
+        return None
+
+    def _looks_compressed(dump_out):
+        for cs in csdict.values():
+            if re.match(cs['regex'], dump_out):
+                return True
+        return False
+
+    def _uncompress_file(dump_path, cs_type):
+        if cs_type is None:
+            return None
+        # Construct a bash cmd to uncompress the file based on its type
+        try:
+            cmd = csdict[cs_type]['uncompress'] + [dump_path]
+            log.info(f'Uncompressing via {cmd} ...')
+            unc_output_path = dump_path.rsplit('.', 1)[0] + '.unc.log'
+            with open(unc_output_path , 'w') as _out:
+                unc = subprocess.Popen( cmd, stdout=_out, stderr=subprocess.STDOUT)
+                unc.wait()
+            # After uncompressing, the new file path is the original path without the compression suffix
+            uncompressed_path = dump_path.rsplit('.', 1)[0]
+            log.info(f'Uncompressed file path: {uncompressed_path}')
+            return uncompressed_path
+        except Exception as e:
+            log.info('Something went wrong while attempting to uncompress the file')
+            log.error(e)
+            return None
+
+    def _get_file_info(dump_path):
+        dump_info = subprocess.Popen(['file', dump_path],
+                                     stdout=subprocess.PIPE)
+        dump_out = dump_info.communicate()[0].decode()
+        return dump_out
+
+
     # Check for Coredumps:
     coredump_path = os.path.join(path, 'coredump')
     if os.path.isdir(coredump_path):
         log.info('Transferring binaries for coredumps...')
         for dump in os.listdir(coredump_path):
-            # Pull program from core file
+            # Pull program (that dropped the core) from the core file info
             dump_path = os.path.join(coredump_path, dump)
-            dump_info = subprocess.Popen(['file', dump_path],
-                                         stdout=subprocess.PIPE)
-            dump_out = dump_info.communicate()[0].decode()
-
-            # Parse file output to get program, Example output:
-            # 1422917770.7450.core: ELF 64-bit LSB core file x86-64, version 1 (SYSV), SVR4-style, \
-            # from 'radosgw --rgw-socket-path /home/ubuntu/cephtest/apache/tmp.client.0/fastcgi_soc'
+            dump_out = _get_file_info(dump_path)
             log.info(f' core looks like: {dump_out}')
 
-            if 'gzip' in dump_out:
+            if _looks_compressed(dump_out):
+                # if the core is compressed, recognise the type and uncompress it
+                cs_type = _get_compressed_type(dump_path)
                 try:
-                    log.info("core is compressed, try accessing gzip file ...")
-                    with gzip.open(dump_path, 'rb') as f_in, \
-                         tempfile.NamedTemporaryFile(mode='w+b') as f_out:
-                         shutil.copyfileobj(f_in, f_out)
-                         dump_info = subprocess.Popen(['file', f_out.name],
-                                                        stdout=subprocess.PIPE)
-                         dump_out = dump_info.communicate()[0].decode()
-                         log.info(f' core looks like: {dump_out}')
+                    log.info(f"core is compressed, try accessing {cs_type} file ...")
+                    uncompressed_path = _uncompress_file(dump_path, cs_type)
+                    if uncompressed_path is None:
+                        log.info(f"Could not uncompress {dump}, moving on ...")
+                        continue
                 except Exception as e:
                     log.info('Something went wrong while opening the compressed file')
                     log.error(e)
                     continue
+                dump_path = uncompressed_path
+                dump_out = _get_file_info(dump_path)
+                log.info(f' after uncompressing core looks like: {dump_out}')
             try:
                 dump_command = re.findall("from '([^ ']+)", dump_out)[0]
                 dump_program = dump_command.split()[0]
                 log.info(f' dump_program: {dump_program}')
             except Exception as e:
-                log.info("core doesn't have the desired format, moving on ...")
+                log.info(f"core {dump} doesn't have the desired format, moving on ...")
                 log.error(e)
                 continue
 
@@ -362,7 +454,23 @@ def fetch_binaries_for_coredumps(path, remote):
                 debug_path = '{debug_path}.debug'.format(debug_path=debug_path)
 
             remote.get_file(debug_path, coredump_path)
+            # If debug symbols were found, rename them to match the binary
+            debug_filename = os.path.basename(debug_path)
+            local_debug_path = os.path.join(coredump_path, debug_filename)
+            if os.path.exists(local_debug_path):
+                new_debug_path = os.path.join(
+                    coredump_path,
+                    dump_program.lstrip(os.path.sep) + '.debug'
+                )
+                os.rename(local_debug_path, new_debug_path)
 
+            # Execute gdb to get the backtrace and locals
+            get_backtraces_from_coredumps(coredump_path, dump_path,
+                                          dump_program, dump)
+            # Compress the core file always to save space
+            with open(dump_path, 'rb') as f_in, \
+                 gzip.open(dump_path + '.gz', 'wb') as f_out:
+                 shutil.copyfileobj(f_in, f_out)
 
 def gzip_if_too_large(compress_min_size, src, tarinfo, local_path):
     if tarinfo.size >= compress_min_size:
@@ -521,6 +629,17 @@ def coredump(ctx, config):
             if 'failure_reason' not in ctx.summary:
                 ctx.summary['failure_reason'] = \
                     'Found coredumps on {rem}'.format(rem=rem)
+                # Add the backtraces of the coredumps to the failure reason
+                coredump_path = os.path.join(archive_dir, 'coredump')
+                for dump in os.listdir(coredump_path):
+                    if dump.endswith('.gdb.txt'):
+                        with open(os.path.join(coredump_path, dump), 'r') as f:
+                            backtrace = f.read()
+                        ctx.summary['failure_reason'] += \
+                            '\n\nBacktrace from core {dump}:\n{bt}'.format(
+                                dump=dump,
+                                bt=backtrace
+                            )
 
 
 @contextlib.contextmanager
