@@ -10,6 +10,7 @@ Content Index
    siteconfig.rst
    detailed_test_config.rst
    openstack_backend.rst
+   openshift_backend.rst
    libcloud_backend.rst
    downburst_vms.rst
    INSTALL.rst

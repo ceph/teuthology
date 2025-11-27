@@ -3,6 +3,7 @@ import logging
 from teuthology.config import config
 
 from teuthology.provision.cloud import openstack
+from teuthology.provision.cloud import openshift
 
 log = logging.getLogger(__name__)
 
@@ -11,6 +12,10 @@ supported_drivers = dict(
     openstack=dict(
         provider=openstack.OpenStackProvider,
         provisioner=openstack.OpenStackProvisioner,
+    ),
+    openshift=dict(
+        provider=openshift.OpenShiftProvider,
+        provisioner=openshift.OpenShiftProvisioner,
     ),
 )
 

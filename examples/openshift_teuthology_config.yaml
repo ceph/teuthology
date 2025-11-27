@@ -1,0 +1,56 @@
+# Example Teuthology configuration for OpenShift Virtualization
+# Place this in ~/.teuthology.yaml
+
+# OpenShift provider configuration
+libcloud:
+  providers:
+    openshift-vms:                    # Use this as --machine-type
+      driver: openshift               # Required
+      namespace: teuthology           # Required
+      kubeconfig: ~/.kube/config      # Optional (uses default)
+      ssh_service_type: NodePort      # NodePort|LoadBalancer|ClusterIP
+      
+      # Optional: Per-OS cloud-init
+      userdata:
+        ubuntu-22.04:
+          packages: [git, python3, python3-pip, ntp]
+          runcmd:
+            - apt-get update -y
+            - systemctl enable ntp
+        
+        centos-9:
+          packages: [git, python3, chrony]
+          runcmd:
+            - dnf update -y
+            - systemctl enable chronyd
+
+# Default VM resources
+openshift:
+  machine:
+    memory: 16Gi
+    cpus: 4
+    disk: 40Gi
+  volumes:
+    count: 2          # Additional volumes for OSD data
+    size: 50Gi
+
+# Teuthology settings
+lab_domain: example.com
+archive_base: /home/teuthworker/archive
+lock_server: http://paddles.example.com/
+ceph_git_base_url: https://github.com/ceph/
+verify_host_keys: false
+
+# Multiple clusters (optional)
+# libcloud:
+#   providers:
+#     openshift-prod:
+#       driver: openshift
+#       namespace: teuthology-prod
+#       kubeconfig: ~/.kube/prod-config
+#       ssh_service_type: LoadBalancer
+#     
+#     openshift-staging:
+#       driver: openshift
+#       namespace: teuthology-staging
+#       kubeconfig: ~/.kube/staging-config
