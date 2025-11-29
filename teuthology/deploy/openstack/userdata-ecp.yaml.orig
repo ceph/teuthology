@@ -1,0 +1,28 @@
+#cloud-config
+
+#chpasswd:
+#  list: |
+#    root:CHANGEME
+#  expire: False
+
+disable_root: false
+
+bootcmd:
+  - rm /etc/resolv.conf
+runcmd:
+  - [ sh, -c, echo "========= Teuthology setup started =========" ]
+  - |
+    netconfig update -f
+  - |
+    for i in $(seq 1 30) ; do
+        ping -q -c 1 download.suse.de && break
+        sleep 10
+    done
+  - |
+    source /etc/os-release
+    zypper -n --gpg-auto-import-keys addrepo http://download.suse.de/ibs/SUSE:/CA/openSUSE_Leap_${VERSION_ID}/ suse-ca
+  - zypper -n --gpg-auto-import-keys refresh
+  - zypper -n --gpg-auto-import-keys install -y python python-virtualenv python-xml ansible
+  - zypper -n --gpg-auto-import-keys install -y ca-certificates-suse
+
+final_message: "TEUTHOLOGYBOOT $UPTIME"
