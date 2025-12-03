@@ -52,6 +52,8 @@ class Run(object):
             config.ceph_git_url = self.args.ceph_repo
         if self.args.suite_repo:
             config.ceph_qa_suite_git_url = self.args.suite_repo
+        if self.args.teuthology_repo:
+            config.teuthology_git_url = self.args.teuthology_repo
 
         self.base_config = self.create_initial_config()
 
@@ -122,6 +124,7 @@ class Run(object):
             ceph_repo=config.get_ceph_git_url(),
             teuthology_branch=teuthology_branch,
             teuthology_sha1=teuthology_sha1,
+            teuthology_repo=config.get_teuthology_git_url(),
             machine_type=self.args.machine_type,
             archive_upload=config.archive_upload,
             archive_upload_key=config.archive_upload_key,
