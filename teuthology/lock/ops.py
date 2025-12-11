@@ -201,7 +201,7 @@ def unlock_one_safe(name: str, owner: str, run_name: str = "", job_id: str = "")
             log.info("Not unlocking {name} since it is running {maybe_job}, not {run_name}/{job_id}")
             return False
         elif not maybe_job.endswith(run_name):
-            log.info("Not unlocking {name} since it is running {maybe_job}, not {run_name}")
+            log.info(f"Not unlocking {name} since it is running {maybe_job}, not {run_name}")
             return False
         else:
             return unlock_one(name, owner, node_status["description"], node_status)
