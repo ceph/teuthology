@@ -104,17 +104,9 @@ class MAAS(object):
 
         self.log = log.getChild(self.shortname)
 
-        self.os_type, self.os_version, self.arch, self.system_id = self._get_system_info()
-        if (self.os_type, self.os_version, os_type, os_version).count(None) == 4:
-            raise RuntimeError(f"Unable to find OS details for machine {name}")
+        _, _, self.arch, self.system_id = self._get_system_info()
 
-        if ((os_type and os_version) and
-                (self.os_type, self.os_version) != (os_type, os_version)):
-            self.log.warning(
-                f"User provided '{os_type}', '{os_version}' and machine "
-                f"'{self.os_type}', '{self.os_version}' os details are not matching"
-            )
-            self.os_type, self.os_version = os_type, os_version
+        self.os_type, self.os_version = os_type, os_version
 
     def _get_system_info(self) -> Tuple[Optional[str], Optional[str], str, str]:
         """Get the system info for the deployed machine
