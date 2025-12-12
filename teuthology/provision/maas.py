@@ -245,7 +245,7 @@ class MAAS(object):
         elif data := resp.json():
             if data.get("locked"):
                 raise RuntimeError(
-                    f"Machine '{self.shortname}' locking failed, "
+                    f"Machine '{self.shortname}' unlocking failed, "
                     f"Current status: {data.get('locked')}"
                 )
 
