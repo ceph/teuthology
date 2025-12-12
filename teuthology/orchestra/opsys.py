@@ -46,7 +46,9 @@ DISTRO_CODENAME_MAP = {
     },
     "centos": {
         "10": "stream",
+        "centos10-stream": "stream",
         "9": "stream",
+        "centos9-stream": "stream",
         "8": "core",
         "7": "core",
         "6": "core",

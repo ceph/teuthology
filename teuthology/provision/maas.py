@@ -213,6 +213,18 @@ class MAAS(object):
             major_machine_arch = self.arch.split('/')[0]
             if image["name"] == name and major_image_arch == major_machine_arch:
                 return image
+        # hack: look for stream.  This is the same as fog, but there
+        # really should be a better way
+        if self.os_type == 'centos':
+            # self.os_version is '<n>.stream'.
+            os_version = self.os_version.split('.')[0]
+            name = f'centos/centos{os_version}-stream'
+            for image in resp:
+                major_image_arch = image["architecture"].split('/')[0]
+                major_machine_arch = self.arch.split('/')[0]
+                if image["name"] == name and major_image_arch == major_machine_arch:
+                    return image
+
         raise RuntimeError(f"MaaS has no {name} image for {major_machine_arch}. Available images: {self.suggest_image_names()}")
 
     def suggest_image_names(self):
