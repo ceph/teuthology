@@ -326,13 +326,6 @@ class MAAS(object):
                 f"Machine '{self.shortname}' is deployed with OS type "
                 f"'{os_type}' and version '{os_version}'"
             )
-            if (self.os_type, self.os_version) == (os_type, os_version):
-                self.log.info(
-                    f"Locking machine '{self.shortname}' as OS requirement "
-                    "are already met"
-                )
-                self.lock_machine()
-                return
 
             self.log.info(f"Releasing machine '{self.shortname}' for deployment")
             self.release_machine()
