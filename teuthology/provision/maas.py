@@ -104,7 +104,7 @@ class MAAS(object):
 
         self.log = log.getChild(self.shortname)
 
-        self.os_type, self.os_version, self.system_id = self._get_system_info()
+        self.os_type, self.os_version, self.arch, self.system_id = self._get_system_info()
         if (self.os_type, self.os_version, os_type, os_version).count(None) == 4:
             raise RuntimeError(f"Unable to find OS details for machine {name}")
 
@@ -116,7 +116,7 @@ class MAAS(object):
             )
             self.os_type, self.os_version = os_type, os_version
 
-    def _get_system_info(self) -> Tuple[Optional[str], Optional[str], str]:
+    def _get_system_info(self) -> Tuple[Optional[str], Optional[str], str, str]:
         """Get the system info for the deployed machine
 
         :returns: A tuple (os_type, os_version, system_id)
@@ -124,15 +124,16 @@ class MAAS(object):
         """
         machine = self.get_machines_data()
         status_name = machine.get("status_name", "").lower()
+        arch = machine.get("architecture")
         if status_name == "ready":
-            return None, None, machine.get("system_id")
+            return None, None, arch, machine.get("system_id")
 
         if status_name in ["deployed", "allocated"]:
             os_type = machine.get("osystem", "").lower()
             os_version = OS._codename_to_version(
                 os_type, machine.get("distro_series")
             )
-            return os_type, os_version, machine.get("system_id")
+            return os_type, os_version, arch, machine.get("system_id")
 
         raise RuntimeError(
             f"MaaS machine '{self.shortname}' is not 'Ready' or 'Deployed', "
@@ -216,9 +217,21 @@ class MAAS(object):
         os_version = OS._version_to_codename(self.os_type, self.os_version)
         name = f"{self.os_type}/{os_version}"
         for image in resp:
-            if image["name"] == name:
+            major_image_arch = image["architecture"].split('/')[0]
+            major_machine_arch = self.arch.split('/')[0]
+            if image["name"] == name and major_image_arch == major_machine_arch:
                 return image
-        raise RuntimeError(f"MaaS has no {name} image available")
+        raise RuntimeError(f"MaaS has no {name} image for {major_machine_arch}. Available images: {self.suggest_image_names()}")
+
+    def suggest_image_names(self):
+        """
+        Suggest available image names.
+
+        :returns: A list of image names.
+        """
+        resp = self.do_request('/boot-resources/')
+        images = resp.json()
+        return '\n'.join([' '.join((image['name'], image['architecture'])) for image in images])
 
     def lock_machine(self) -> None:
         """Lock the machine"""
