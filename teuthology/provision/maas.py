@@ -1,6 +1,7 @@
 import io
 import json
 import logging
+import operator
 
 from oauthlib.oauth1 import SIGNATURE_PLAINTEXT
 from requests import Response
@@ -248,6 +249,8 @@ class MAAS(object):
                     f"Machine '{self.shortname}' unlocking failed, "
                     f"Current status: {data.get('locked')}"
                 )
+        self.release_machine(erase=False)
+        self._wait_for_status(status="Deployed", is_not=True)
 
     def deploy_machine(self) -> None:
         """Deploy the machine"""
@@ -385,17 +388,28 @@ class MAAS(object):
         return open(user_data_template, "rb")
 
     def _wait_for_status(
-            self, status: str, interval: int = 60, timeout: int = 900
+            self, status: str, is_not: bool = False, interval: int = 60, timeout: int = 900
         ) -> None:
-        """Wait for the machine to reach a specific status
+        """Wait for the machine to reach a specific status, or to no longer
+        have a specific status
 
         :param status: The status to wait for
+        :param is_not: If True, wait for reported status *not* matching status
         :param interval: Time to wait between status checks, in seconds (default: 60)
         :param timeout: Maximum time to wait for the status, in seconds (default: 900)
         """
+        if is_not:
+            compare = operator.ne
+            success = "leave"
+            succeeded = "left"
+        else:
+            compare = operator.eq
+            success = "reach"
+            succeeded = "reached"
+
         self.log.info(
             f"Waiting for machine '{self.shortname}' with system_id '{self.system_id}' "
-            f"to reach status '{status}'"
+            f"to {success} status '{status}'"
         )
         with safe_while(
             sleep=interval, timeout=int(config.maas.get("timeout", timeout))
@@ -403,11 +417,14 @@ class MAAS(object):
             while proceed():
                 maas_machine: Dict[str, Any] = self.get_machines_data()
                 status_name = maas_machine["status_name"]
-                if status_name.lower() == status.lower():
+
+                if compare(status_name.lower(), status.lower()):
                     log.info(
                         f"MaaS machine system '{self.shortname}' with system_id "
-                        f"'{self.system_id}' reached status '{status_name}'"
+                        f"'{self.system_id}' {succeeded} status '{status_name}'"
                     )
+                    if is_not:
+                        log.info(f"New status: '{status_name}'")
                     return
 
                 self.log.debug(
