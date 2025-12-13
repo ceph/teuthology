@@ -1,7 +1,9 @@
 import io
 import json
 import logging
+import time
 import operator
+import random
 import re
 
 from oauthlib.oauth1 import SIGNATURE_PLAINTEXT
@@ -208,17 +210,45 @@ class MAAS(object):
 
         :returns: The machine data as a dictionary
         """
-        resp = self.do_request(
-            "/machines/", params={"hostname": self.shortname}
-        ).json()
-        if len(resp) == 0:
-            raise RuntimeError(f"Machine '{self.shortname}' not found!")
-        if len(resp) > 1:
-            hostnames = ", ".join([m.get("hostname", "") for m in resp])
-            raise RuntimeError(
-                f"More than one machine found for hostname '{self.shortname}': {hostnames}"
-            )
-        return resp[0]
+        tries = 3
+        base_sleep = 0.5
+
+        for attempt in range(tries):
+            resp_obj = self.do_request("/machines/", params={"hostname": self.shortname})
+            # Defensive: ensure we really got JSON list
+            try:
+                resp = resp_obj.json()
+            except Exception as e:
+                # definitely transient / bad gateway / overload etc.
+                if attempt == tries - 1:
+                    raise
+                time.sleep(base_sleep * (2 ** attempt) + random.random() * 0.2)
+                continue
+
+            if isinstance(resp, list) and len(resp) == 1:
+                return resp[0]
+
+            if isinstance(resp, list) and len(resp) > 1:
+                hostnames = ", ".join([m.get("hostname", "") for m in resp])
+                raise RuntimeError(
+                    f"More than one machine found for hostname '{self.shortname}': {hostnames}"
+                )
+
+            # Empty list: could be real “not found” OR MAAS is overloaded.
+            if isinstance(resp, list) and len(resp) == 0:
+                if attempt < tries - 1:
+                    time.sleep(base_sleep * (2 ** attempt) + random.random() * 0.2)
+                    continue
+                raise RuntimeError(
+                    f"Machine '{self.shortname}' not found after {tries} attempts "
+                    f"(MAAS may be overloaded)."
+                )
+
+            # Unexpected JSON type (dict/str/etc). Treat as transient-ish.
+            if attempt < tries - 1:
+                time.sleep(base_sleep * (2 ** attempt) + random.random() * 0.2)
+                continue
+            raise RuntimeError(f"Unexpected MAAS response for '{self.shortname}': {type(resp)} {resp}")
 
     def get_image_data(self) -> Dict[str, Any]:
         """Locate the image we want to use
