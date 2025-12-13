@@ -131,6 +131,12 @@ class OS(object):
 
     @staticmethod
     def _codename_to_version(name, codename):
+        # Handle MaaS-style CentOS Stream identifiers
+        if name == "centos":
+            m = re.match(r"^centos(\d+)-stream$", str(codename).lower())
+            if m:
+                return m.group(1)
+
         for (version, _codename) in DISTRO_CODENAME_MAP[name].items():
             if codename == _codename:
                 return version
