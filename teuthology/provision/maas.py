@@ -5,6 +5,7 @@ import time
 import operator
 import random
 import re
+from typing import Any, Dict
 
 from oauthlib.oauth1 import SIGNATURE_PLAINTEXT
 from requests import Response
@@ -347,21 +348,55 @@ class MAAS(object):
                 f"Current status: {data.get('status_name')}",
             )
 
-    def release_machine(self, erase: bool = True) -> None:
-        """Release the machine
-
-        :param erase: Optional parameter to indicate whether to erase disks
-                        (default: True)
+    def release_machine(
+        self,
+        erase: bool = True,
+        poll_interval: int = 10,
+        timeout: int = 1800,
+    ) -> None:
+        """
+        Release the machine and wait until it is no longer releasing.
+    
+        :param erase: Whether to erase disks (default: True)
+        :param poll_interval: Seconds between status checks
+        :param timeout: Max seconds to wait before failing
         """
         data: Dict[str, bool] = {"erase": erase}
+    
         resp: Dict[str, Any] = self.do_request(
-            f"/machines/{self.system_id}/op-release", method="POST", data=data
+            f"/machines/{self.system_id}/op-release",
+            method="POST",
+            data=data,
         ).json()
-        if resp.get("status_name", "").lower() not in ["disk erasing", "releasing"]:
+    
+        status = resp.get("status_name", "").lower()
+        if status not in {"disk erasing", "releasing"}:
             raise RuntimeError(
-                f"Machine '{self.shortname}' releasing failed, "
-                f"current status is {resp.get('status_name')}",
+                f"Machine '{self.shortname}' release failed, "
+                f"current status is {resp.get('status_name')}"
             )
+    
+        deadline = time.time() + timeout
+    
+        while True:
+            if time.time() > deadline:
+                raise TimeoutError(
+                    f"Timed out waiting for machine '{self.shortname}' "
+                    f"to finish releasing"
+                )
+    
+            time.sleep(poll_interval)
+    
+            machine: Dict[str, Any] = self.do_request(
+                f"/machines/{self.system_id}",
+                method="GET",
+            ).json()
+    
+            status = machine.get("status_name", "").lower()
+    
+            # MAAS transitions to "Ready", "New", or similar once done
+            if status not in {"disk erasing", "releasing"}:
+                return
 
     def abort_deploy(self) -> None:
         """Abort deployment of the machine"""
