@@ -299,27 +299,7 @@ def check_conflict(ctx, config):
         raise RuntimeError('Stale jobs detected, aborting.')
 
 
-def get_backtraces_from_coredumps(coredump_path, dump_path, dump_program, dump):
-    """
-    Get backtraces from coredumps found in path
-    On a future iteration, we can expand this to inject gdb commands from the test plan yaml
-    """
-    gdb_output_path = os.path.join(coredump_path,
-                                   dump + '.gdb.txt')
-    log.info(f'Getting backtrace from core {dump} ...')
-    with open(gdb_output_path, 'w') as gdb_out:
-        gdb_proc = subprocess.Popen(
-            ['gdb', '--batch', '-ex', 'set pagination 0',
-             '-ex', 'thread apply all bt full',
-             dump_program, dump_path],
-            stdout=gdb_out,
-            stderr=subprocess.STDOUT
-        )
-        gdb_proc.wait()
-        log.info(f"core {dump} backtrace saved to {gdb_output_path}")
-
-
-def fetch_binaries_for_coredumps(path, remote):
+def fetch_binaries_for_coredumps(path: str, remote: remote.Remote) -> None:
     """
     Pull ELFs (debug and stripped) for each coredump found
 
@@ -333,20 +313,28 @@ def fetch_binaries_for_coredumps(path, remote):
     # from 'bin/ceph_test_neorados_snapshots --gtest_break_on_failure', real uid: 0, \
     # effective uid: 0, real gid: 0, effective gid: 0, execfn: 'bin/ceph_test_neorados_snapshots', platform: 'x86_64'
     """
-    def _is_core_gziped(dump_path):
+    def _is_core_gziped(dump_path: str) -> bool:
+        """
+        Return True whether the core file is gzip compressed
+        """
         with open(dump_path, 'rb') as f:
             magic = f.read(2)
             if magic == b'\x1f\x8b':
                 return True
         return False
 
-    def _is_core_zstded(dump_path):
+    def _is_core_zstded(dump_path: str) -> bool:
+        """
+        Return True whether the core file is zstd compressed
+        """
         with open(dump_path, 'rb') as f:
             magic = f.read(4)
             if magic == b'\x28\xb5\x2f\xfd':
                 return True
         return False
 
+    # Auxiliary dict for compression types: call back to check compression type,
+    # and how to uncompress
     csdict = {
         'gzip': {
             'check': _is_core_gziped,
@@ -360,29 +348,35 @@ def fetch_binaries_for_coredumps(path, remote):
         }
     }
 
-    def _get_compressed_type(dump_path):
+    def _get_compressed_type(dump_path: str) -> str | None:
+        """
+        Identify the compression type of the core file
+        """
         for ck, cs in csdict.items():
             if cs['check'](dump_path):
                 return ck
         return None
 
-    def _looks_compressed(dump_out):
+    def _looks_compressed(dump_out: str) -> bool:
+        """
+        Identify whether the core file looks compressed from 'file' output
+        """
         for cs in csdict.values():
             if re.match(cs['regex'], dump_out):
                 return True
         return False
 
-    def _uncompress_file(dump_path, cs_type):
+    def _uncompress_file(dump_path: str, cs_type:str|None) -> str | None:
+        """
+        Uncompress the core file based on its compression type, in the remote machine
+        """
         if cs_type is None:
             return None
         # Construct a bash cmd to uncompress the file based on its type
         try:
             cmd = csdict[cs_type]['uncompress'] + [dump_path]
-            log.info(f'Uncompressing via {cmd} ...')
-            unc_output_path = dump_path.rsplit('.', 1)[0] + '.unc.log'
-            with open(unc_output_path , 'w') as _out:
-                unc = subprocess.Popen( cmd, stdout=_out, stderr=subprocess.STDOUT)
-                unc.wait()
+            log.info(f'Uncompressing via {cmd} on remote ...')
+            remote.sh(cmd)
             # After uncompressing, the new file path is the original path without the compression suffix
             uncompressed_path = dump_path.rsplit('.', 1)[0]
             log.info(f'Uncompressed file path: {uncompressed_path}')
@@ -393,10 +387,31 @@ def fetch_binaries_for_coredumps(path, remote):
             return None
 
     def _get_file_info(dump_path):
-        dump_info = subprocess.Popen(['file', dump_path],
-                                     stdout=subprocess.PIPE)
-        dump_out = dump_info.communicate()[0].decode()
-        return dump_out
+        """
+        Get the 'file' command output for the core file
+        """
+        dump_info = remote.sh(['file', dump_path]).rstrip()
+        return dump_info
+
+    def get_backtraces_from_coredumps( coredump_path: str,
+                                      dump_path: str, dump_program: str, dump: str) -> None:
+        """
+        Get backtraces from coredumps found in path
+        On a future iteration, we can expand this to inject gdb commands from the test plan yaml
+        An alternative would be to craft a bash script to run on the remote machine which wraps
+        the uncompression, pipe to gdb and get the backtraces. See for example: internal/vm_setup.py that
+        executes edit_sudoers.sh on the remote
+        """
+        gdb_output_path = os.path.join(coredump_path,
+                                       dump + '.gdb.txt')
+        log.info(f'Getting backtrace from core {dump} on remote ...')
+        cmd = ['gdb', '--batch', '-ex', 'set pagination 0',
+               '-ex', 'thread apply all bt full',
+               dump_program, dump_path]
+        gdb_out = remote.sh(cmd).rstrip()
+        with open(gdb_output_path, 'w') as gdb_out_file:
+            gdb_out_file.write(gdb_out)
+        log.info(f"core {dump} backtrace saved to {gdb_output_path}")
 
 
     # Check for Coredumps:
