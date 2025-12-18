@@ -922,6 +922,30 @@ def update_grub_rpm(remote, newversion):
         grub2_kernel_select_generic(remote, newversion, 'rpm')
 
 
+def _update_uefi_grub_config(remote, grubconfig):
+    """
+    Update UEFI GRUB config if UEFI is being used.
+    UEFI boots from /boot/efi/EFI/<vendor>/grub.cfg
+
+    We copy the generated grub.cfg to all EFI vendor directories to ensure
+    the correct one is updated, as different systems may use different
+    vendor directories (e.g., /boot/efi/EFI/BOOT, /boot/efi/EFI/centos).
+    """
+    try:
+        # Update all EFI vendor directories to ensure the correct one is updated
+        efi_vendors = remote.sh('find /boot/efi/EFI/ -mindepth 1 -maxdepth 1 -type d').strip()
+        if efi_vendors:
+            for efi_vendor in efi_vendors.split('\n'):
+                efi_vendor = efi_vendor.strip()
+                if efi_vendor:
+                    remote.run(args=['sudo', 'cp', grubconfig, '{}/grub.cfg'.format(efi_vendor)])
+                    log.info("Updated UEFI GRUB config at {}/grub.cfg".format(efi_vendor))
+        else:
+            log.warning("Could not find EFI vendor directory in /boot/efi/EFI/, skipping UEFI GRUB config update")
+    except Exception as e:
+        log.warning("Failed to update UEFI GRUB config: {error}".format(error=e))
+
+
 def grub2_kernel_select_generic(remote, newversion, ostype):
     """
     Can be used on DEB and RPM. Sets which entry should be boted by entrynum.
@@ -936,7 +960,32 @@ def grub2_kernel_select_generic(remote, newversion, ostype):
         grubset = 'grub-set-default'
         grubconfig = '/boot/grub/grub.cfg'
         mkconfig = 'grub-mkconfig'
+    
+    # check if BLS system - check if GRUB_ENABLE_BLSCFG is enabled
+    # The /boot/loader/entries directory may exist even when BLS is disabled
+    has_bls = False
+    try:
+        grub_default_file = '/etc/default/grub'
+        result = remote.run(args=['test', '-f', grub_default_file], check_status=False)
+        if result.exitstatus == 0:
+            content = remote.sh('sudo cat {file}'.format(file=grub_default_file)).strip()
+            if 'GRUB_ENABLE_BLSCFG=true' in content:
+                has_bls = True
+    except Exception as e:
+        log.warning("Failed to check /etc/default/grub: {error}".format(error=e))
+
     remote.run(args=['sudo', mkconfig, '-o', grubconfig, ])
+    # only update UEFI GRUB config if system is UEFI and not using BLS
+    result = remote.run(args=['test', '-d', '/sys/firmware/efi'], check_status=False)
+    is_uefi = (result.exitstatus == 0)
+    if is_uefi:
+        if not has_bls:
+            _update_uefi_grub_config(remote, grubconfig)
+        else:
+            log.debug("BLS system detected, skipping UEFI GRUB config update")
+    else:
+        log.debug("Not a UEFI system, skipping UEFI GRUB config update")
+    
     grub2conf = teuthology.get_file(remote, grubconfig, sudo=True).decode()
     entry_num = 0
     if '\nmenuentry ' not in grub2conf:
