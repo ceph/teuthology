@@ -922,6 +922,25 @@ def update_grub_rpm(remote, newversion):
         grub2_kernel_select_generic(remote, newversion, 'rpm')
 
 
+def _update_uefi_grub_config(remote, grubconfig):
+    """
+    Update UEFI GRUB config if UEFI is being used.
+    UEFI boots from /boot/efi/EFI/<vendor>/grub.cfg
+    Without this, UEFI systems will use the old GRUB config.
+    """
+    try:
+        result = remote.run(args=['test', '-d', '/sys/firmware/efi'], check_status=False)
+        if result.exitstatus == 0:
+            efi_vendor = remote.sh('ls -d /boot/efi/EFI/*/ 2>/dev/null | head -1 | xargs basename || echo ""').strip()
+            if efi_vendor:
+                result = remote.run(args=['test', '-f', '/boot/efi/EFI/{}/grub.cfg'.format(efi_vendor)], check_status=False)
+                if result.exitstatus == 0:
+                    remote.run(args=['sudo', 'cp', grubconfig, '/boot/efi/EFI/{}/grub.cfg'.format(efi_vendor)])
+                    log.info("Updated UEFI GRUB config at /boot/efi/EFI/{}/grub.cfg".format(efi_vendor))
+    except Exception as e:
+        log.warning("Failed to update UEFI GRUB config: {error}".format(error=e))
+
+
 def grub2_kernel_select_generic(remote, newversion, ostype):
     """
     Can be used on DEB and RPM. Sets which entry should be boted by entrynum.
@@ -937,6 +956,7 @@ def grub2_kernel_select_generic(remote, newversion, ostype):
         grubconfig = '/boot/grub/grub.cfg'
         mkconfig = 'grub-mkconfig'
     remote.run(args=['sudo', mkconfig, '-o', grubconfig, ])
+    _update_uefi_grub_config(remote, grubconfig)
     grub2conf = teuthology.get_file(remote, grubconfig, sudo=True).decode()
     entry_num = 0
     if '\nmenuentry ' not in grub2conf:
