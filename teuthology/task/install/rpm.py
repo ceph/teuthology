@@ -2,14 +2,13 @@ import logging
 import os.path
 from io import StringIO
 
-from distutils.version import LooseVersion
-
 from teuthology.config import config as teuth_config
 from teuthology.contextutil import safe_while
 from teuthology.orchestra import run
 from teuthology import packaging
 
 from teuthology.task.install.util import _get_builder_project, _get_local_dir
+from teuthology.util.version import LooseVersion
 
 log = logging.getLogger(__name__)
 

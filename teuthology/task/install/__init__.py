@@ -10,12 +10,12 @@ from teuthology import contextutil, packaging
 from teuthology.parallel import parallel
 from teuthology.task import ansible
 
-from distutils.version import LooseVersion
 from teuthology.task.install.util import (
     _get_builder_project, get_flavor, ship_utilities,
 )
 
 from teuthology.task.install import rpm, deb, redhat
+from teuthology.util.version import LooseVersion
 
 log = logging.getLogger(__name__)
 
