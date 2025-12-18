@@ -8,12 +8,11 @@ import sys
 import yaml
 
 import random
-from distutils.util import strtobool
-
 from teuthology.exceptions import ParseError
 from teuthology.suite.build_matrix import \
         build_matrix, generate_combinations, _get_matrix
 from teuthology.suite import util, merge
+from teuthology.util.strtobool import strtobool
 
 def main(args):
     try:
