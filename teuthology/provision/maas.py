@@ -3,6 +3,7 @@ import json
 import logging
 import time
 import operator
+import requests
 import random
 import re
 from typing import Any, Dict
@@ -307,21 +308,48 @@ class MAAS(object):
                 )
 
     def unlock_machine(self) -> None:
-        """Unlock the machine"""
-        resp = self.do_request(
-            f"/machines/{self.system_id}/op-unlock", method="POST"
-        )
+        """
+        Stop/cleanup a machine for teuthology:
+          - abort any in-progress deployment
+          - unlock if locked (ignore 'not locked')
+          - release the machine
+        """
 
-        if resp.text == "Cannot unlock an already-unlocked node":
-            self.log.info(f"Machine '{self.shortname}' is not locked")
-        elif data := resp.json():
-            if data.get("locked"):
-                raise RuntimeError(
-                    f"Machine '{self.shortname}' unlocking failed, "
-                    f"Current status: {data.get('locked')}"
+        machine = self.get_machines_data()
+        status_name = machine.get("status_name", "").lower()
+
+        # If MAAS is in the middle of deploying, abort before releasing
+        if status_name == "deploying":
+            self.log.info(
+                f"Machine '{self.shortname}' is deploying; aborting deploy"
+            )
+            self.abort_deploy()
+
+        # Unlock if needed. If MAAS says "not locked" (409), treat as OK.
+        if machine.get("locked"):
+            self.log.info(f"Unlocking machine '{self.shortname}'")
+            try:
+                resp = self.do_request(
+                    f"/machines/{self.system_id}/op-unlock",
+                    method="POST",
                 )
-        self.release_machine(erase=False)
-        self._wait_for_status(status="Deployed", is_not=True)
+                resp.raise_for_status()
+            except requests.exceptions.HTTPError as e:
+                r = getattr(e, "response", None)
+                if r is not None and r.status_code == 409:
+                    # MAAS: 'Machine is not locked' -> non-fatal
+                    self.log.info(
+                        f"Machine '{self.shortname}' not locked; skipping unlock"
+                    )
+                else:
+                    raise
+        else:
+            self.log.debug(f"Machine '{self.shortname}' not locked; skipping unlock")
+
+        # Always release after abort/unlock so the node returns to Ready
+        self.log.info(f"Releasing machine '{self.shortname}'")
+        self.release_machine()
+        self._wait_for_status("ready")
 
     def deploy_machine(self) -> None:
         """Deploy the machine"""
