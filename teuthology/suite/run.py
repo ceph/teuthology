@@ -5,6 +5,7 @@ import os
 import pwd
 import yaml
 import re
+import requests
 import time
 
 from pathlib import Path
@@ -99,6 +100,7 @@ class Run(object):
         ceph_hash = self.choose_ceph_hash()
         suite_branch = self.choose_suite_branch()
         suite_hash = self.choose_suite_hash(suite_branch)
+        self.verify_sha_id(ceph_hash, suite_branch)
         if self.args.suite_dir:
             self.suite_repo_path = self.args.suite_dir
         else:
@@ -234,6 +236,49 @@ class Run(object):
 
         log.info("ceph sha1: {hash}".format(hash=ceph_hash))
         return ceph_hash
+
+    def verify_sha_id(self, ceph_hash, ceph_branch):
+        """
+        Verify if a given Ceph version (SHA1) exists in either Chacra or Shaman
+        repositories for the specified branch.
+        """
+        def fetch_url(url, expect_json=False):
+            """Fetch content from a URL, optionally parse JSON."""
+            try:
+                response = requests.get(url, timeout=10)
+                response.raise_for_status()
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 404:
+                    log.debug(f"Branch not found in repository: {url}")
+                else:
+                    log.error(f"Failed to fetch {url}: {e}")
+                return None
+            except requests.exceptions.RequestException as e:
+                log.error(f"Failed to fetch {url}: {e}")
+                return None
+
+            if expect_json:
+                try:
+                    return response.json()
+                except ValueError:
+                    log.error(f"Invalid JSON from {url}")
+                    return None
+            return response.text
+
+        chacra_url = f"https://1.chacra.ceph.com/repos/ceph/{ceph_branch}/"
+        chacra_data = fetch_url(chacra_url, expect_json=True)
+        if chacra_data:
+            if ceph_hash not in chacra_data:
+                msg = f"Not found in Chacra for branch {ceph_branch}."
+                util.schedule_fail(msg, self.name, dry_run=self.args.dry_run)
+
+        shaman_url = f"https://shaman.ceph.com/builds/ceph/{ceph_branch}/"
+        shaman_html = fetch_url(shaman_url)
+        if shaman_html:
+            sha1s = set(re.findall(r"[0-9a-f]{40}", shaman_html))
+            if ceph_hash not in sha1s:
+                msg = f"Not found in Shaman for branch {ceph_branch}."
+                util.schedule_fail(msg, self.name, dry_run=self.args.dry_run)
 
     def choose_teuthology_branch(self):
         """Select teuthology branch, check if it is present in repo and return
