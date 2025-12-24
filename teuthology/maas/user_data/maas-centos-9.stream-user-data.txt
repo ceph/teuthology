@@ -1,0 +1,39 @@
+#cloud-config
+disable_root: false
+system_info:
+  default_user:
+    name: root
+packages:
+ - python3
+ - wget
+ - git
+ - chrony
+ - grubby
+ - bzip2
+runcmd:
+# cleanup of any user with UID 1000, Ansible will recreate
+# the ubuntu user with the correct configuration
+ - |
+   EXISTING_USER=$(getent passwd 1000 | cut -d: -f1 || true)
+   if [ -n "$EXISTING_USER" ]; then
+     echo "Removing existing user '$EXISTING_USER' with UID 1000 (runcmd) to allow Ansible to create ubuntu user" >> /var/log/cloud-init-output.log
+     # Kill any processes owned by this user
+     pkill -9 -u "$EXISTING_USER" || true
+     # Remove the user and home directory
+     userdel -r -f "$EXISTING_USER" || true
+     # Also check if there's a group with GID 1000 that might conflict (except sudo)
+     EXISTING_GROUP=$(getent group 1000 | cut -d: -f1 || true)
+     if [ -n "$EXISTING_GROUP" ] && [ "$EXISTING_GROUP" != "sudo" ]; then
+       groupdel "$EXISTING_GROUP" || true
+     fi
+     # Verify cleanup
+     if getent passwd 1000 >/dev/null 2>&1; then
+       echo "WARNING: User with UID 1000 still exists after cleanup attempt" >> /var/log/cloud-init-output.log
+     else
+       echo "Successfully removed user with UID 1000" >> /var/log/cloud-init-output.log
+     fi
+   else
+     echo "No user with UID 1000 found - cleanup not needed" >> /var/log/cloud-init-output.log
+   fi
+final_message: "{up}, after $UPTIME seconds"
+
