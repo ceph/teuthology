@@ -34,7 +34,6 @@ Standard arguments:
                               The suite to schedule
   --wait                      Block until the suite is finished
   -c <ceph>, --ceph <ceph>    The ceph branch to run against
-                              [default: {default_ceph_branch}]
   -S <sha1>, --sha1 <sha1>    The ceph sha1 to run against (overrides -c)
                               If both -S and -c are supplied, -S wins, and
                               there is no validation that sha1 is contained
@@ -222,11 +221,12 @@ Scheduler arguments:
                             config.get_ceph_git_url()),
     default_suite_repo=defaults('--suite-repo',
                             config.get_ceph_qa_suite_git_url()),
-    default_ceph_branch=defaults('--ceph-branch', 'main'),
     default_job_threshold=config.job_threshold,
 )
 
 
 def main(argv=sys.argv[1:]):
     args = docopt.docopt(doc, argv=argv)
+    if args.get('--ceph') is None and not args.get('--rerun'):
+        args['--ceph'] = defaults('--ceph-branch', 'main')
     return teuthology.suite.main(args)
