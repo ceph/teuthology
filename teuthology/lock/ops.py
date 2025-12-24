@@ -196,9 +196,11 @@ def unlock_one_safe(name: str, owner: str, run_name: str = "", job_id: str = "")
     maybe_job = query.node_active_job(name, node_status)
     if not maybe_job:
         return unlock_one(name, owner, node_status["description"], node_status)
+    # if the active job matches the current run id, allow unlock (same job cleaning up)
     if run_name and job_id and maybe_job.endswith(f"{run_name}/{job_id}"):
-            log.error(f"Refusing to unlock {name} since it has an active job: {run_name}/{job_id}")
-            return False
+        log.debug(f"Allowing unlock of {name} by same job: {run_name}/{job_id}")
+        return unlock_one(name, owner, node_status["description"], node_status)
+    # if there is  a different active job, refuse to unlock
     log.warning(f"Refusing to unlock {name} since it has an active job: {maybe_job}")
     return False
 
