@@ -783,13 +783,24 @@ def get_scratch_devices(remote):
         file_data = remote.read_file("/scratch_devs").decode()
         devs = file_data.split()
     except Exception:
-        devs = remote.sh('ls /dev/[sv]d?').strip().split('\n')
+        for pattern in ['/dev/[sv]d?', '/dev/nvme*n1']:
+            try:
+                output = remote.sh('ls {}'.format(pattern)).strip()
+                if output:
+                    devs.extend(output.split('\n'))
+            except Exception:
+                continue
 
-    # Remove root device (vm guests) from the disk list
+    # Remove empty strings and root device (vm guests) from the disk list
+    filtered_devs = []
     for dev in devs:
-        if 'vda' in dev:
-            devs.remove(dev)
+        if not dev:
+            continue
+        if 'vda' in dev or 'nvme0n1' in dev:
             log.warning("Removing root device: %s from device list" % dev)
+            continue
+        filtered_devs.append(dev)
+    devs = filtered_devs
 
     log.debug('devs={d}'.format(d=devs))
 
