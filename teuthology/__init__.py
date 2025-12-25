@@ -60,6 +60,11 @@ logging.getLogger('urllib3.connectionpool').setLevel(
 # We also don't need the "Converted retries value" messages
 logging.getLogger('urllib3.util.retry').setLevel(
     logging.WARN)
+# Avoid verbose logging for requests_oauthlib also
+logging.getLogger('requests_oauthlib.oauth1_session').setLevel(
+    logging.WARN)
+# Suppresses the underlying oauthlib library
+logging.getLogger('oauthlib.oauth1').setLevel(logging.WARN)
 
 logging.basicConfig(
     level=logging.INFO,
