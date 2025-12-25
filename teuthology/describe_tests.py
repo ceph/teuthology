@@ -37,8 +37,17 @@ def describe_tests(args):
             if not value:
                 value = []
             else:
-                value = [_ for _ in
-                            (x.strip() for x in value.split(',')) if _]
+                # Allow either a single comma-separated string or
+                # multiple occurrences (list/tuple) of the option.
+                vals = []
+                if isinstance(value, (list, tuple)):
+                    for v in value:
+                        if not v:
+                            continue
+                        vals.extend([x.strip() for x in str(v).split(',') if x.strip()])
+                else:
+                    vals = [x.strip() for x in str(value).split(',') if x.strip()]
+                value = vals
         elif key in ('limit'):
             value = int(value)
         elif key in ('seed'):
