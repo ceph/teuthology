@@ -398,6 +398,11 @@ class MAAS(object):
         ).json()
     
         status = resp.get("status_name", "").lower()
+        if status in {"ready", "new"}:
+            self.log.info(
+                f"'{self.shortname}' already released (state={status})"
+            )
+            return
         if status not in {"disk erasing", "releasing"}:
             raise RuntimeError(
                 f"Machine '{self.shortname}' release failed, "
