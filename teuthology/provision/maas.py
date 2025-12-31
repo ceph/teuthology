@@ -421,7 +421,7 @@ class MAAS(object):
             time.sleep(poll_interval)
     
             machine: Dict[str, Any] = self.do_request(
-                f"/machines/{self.system_id}",
+                f"/machines/{self.system_id}/",
                 method="GET",
             ).json()
     
