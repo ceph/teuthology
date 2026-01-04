@@ -156,6 +156,8 @@ def node_active_job(name: str, status: Union[dict, None] = None, grace_time: int
         return "node description does not contained scheduled job info"
     url = f"{config.results_server}/runs/{run_name}/jobs/{job_id}/"
     job_status = ""
+    # suppose results' server is in the same timezone as we are here
+    tzhere = datetime.datetime.now().astimezone().tzinfo
     active = True
     with safe_while(
             sleep=1, increment=0.5, action='node_is_active') as proceed:
@@ -171,7 +173,8 @@ def node_active_job(name: str, status: Union[dict, None] = None, grace_time: int
                 if not grace_time:
                     break
                 try:
-                    delta = datetime.datetime.now(datetime.timezone.utc) - parse_timestamp(job_updated)
+                    now = datetime.datetime.now(datetime.timezone.utc)
+                    delta = now - parse_timestamp(job_updated, tzhere)
                     active = active or delta < datetime.timedelta(minutes=grace_time)
                 except Exception:
                     log.exception(f"{run_name}/{job_id} updated={job_updated}")
