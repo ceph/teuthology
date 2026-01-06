@@ -431,24 +431,49 @@ class MAAS(object):
             if status not in {"disk erasing", "releasing"}:
                 return
 
-    def abort_deploy(self) -> None:
-        """Abort deployment of the machine"""
+    def abort_deploy(self, timeout: int = 300, interval: int = 5) -> None:
+        """Abort deployment of the machine and wait until it reaches 'allocated'"""
+    
         machine = self.get_machines_data()
         status_name = machine.get("status_name", "").lower()
+    
         if status_name != "deploying":
             self.log.info(
-                f"Cannot abort machine in '{status_name}' state;"
-                "skipping abort operation.")
-            return
-
-        resp: Dict[str, Any] = self.do_request(
-            f"/machines/{self.system_id}/op-abort", method="POST"
-        ).json()
-        if resp.get("status_name", "").lower() != "allocated":
-            raise RuntimeError(
-                f"Failed to abort deploy for machine '{self.shortname}' "
-                f"with system_id '{self.system_id}'"
+                f"Cannot abort machine in '{status_name}' state; "
+                "skipping abort operation."
             )
+            return
+    
+        # Trigger abort
+        self.do_request(
+            f"/machines/{self.system_id}/op-abort",
+            method="POST",
+        )
+    
+        # Wait for allocated state
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            machine = self.get_machines_data()
+            status_name = machine.get("status_name", "").lower()
+    
+            if status_name == "allocated":
+                self.log.info(
+                    f"Machine '{self.shortname}' successfully aborted and "
+                    "is now in 'allocated' state."
+                )
+                return
+    
+            self.log.debug(
+                f"Waiting for machine '{self.shortname}' to reach "
+                f"'allocated' state (current: '{status_name}')"
+            )
+            time.sleep(interval)
+    
+        raise RuntimeError(
+            f"Timed out waiting for machine '{self.shortname}' "
+            f"(system_id '{self.system_id}') to reach 'allocated' state "
+            f"after abort"
+        )
 
     def create(self) -> None:
         """Create the machine"""
