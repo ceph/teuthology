@@ -193,6 +193,16 @@ class MAAS(object):
             )
         return resp[0]
 
+    def get_image_name(self) -> str:
+        match self.os_type:
+            case 'ubuntu':
+                os_version = OS._version_to_codename(self.os_type, self.os_version)
+                return f"{self.os_type}/{os_version}"
+            case 'centos':
+                os_version = self.os_version.replace('.', '-')
+                return f"{self.os_type}/{self.os_type}{os_version}"
+        return f"{self.os_type}/{self.os_version}"
+
     def get_image_data(self) -> Dict[str, Any]:
         """Locate the image we want to use
 
@@ -202,7 +212,7 @@ class MAAS(object):
         if len(resp) == 0:
             raise RuntimeError("MaaS has no images available")
 
-        name = self._normalize_image_name()
+        name = self.get_image_name()
         for image in resp:
             if image["name"] == name and self.cpu_arch in image["architecture"]:
                 return image
@@ -361,22 +371,6 @@ class MAAS(object):
 
         self.log.info(f"Releasing machine '{self.shortname}'")
         self.release_machine()
-
-    def _normalize_image_name(self) -> str:
-        match self.os_type:
-            case "ubuntu":
-                os_version = OS._version_to_codename(self.os_type, self.os_version)
-                return f"{self.os_type}/{os_version}"
-
-            case "centos":
-                os_version = self.os_version.replace('.', '-')
-                return f"{self.os_type}/{self.os_type}{os_version}"
-
-            case "rocky":
-                _os_version = self.os_version.split('.')[0]
-                return f"rocky{_os_version}"
-
-        return f"{self.os_type}/{self.os_version}"
 
     def _get_user_data(self) -> Optional[io.BytesIO]:
         """Get user data for cloud-init
