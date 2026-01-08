@@ -193,6 +193,16 @@ class MAAS(object):
             )
         return resp[0]
 
+    def get_image_name(self) -> str:
+        match self.os_type:
+            case 'ubuntu':
+                os_version = OS._version_to_codename(self.os_type, self.os_version)
+                return f"{self.os_type}/{os_version}"
+            case 'centos':
+                os_version = self.os_version.replace('.', '-')
+                return f"{self.os_type}/{self.os_type}{os_version}"
+        return f"{self.os_type}/{self.os_version}"
+
     def get_image_data(self) -> Dict[str, Any]:
         """Locate the image we want to use
 
@@ -202,8 +212,7 @@ class MAAS(object):
         if len(resp) == 0:
             raise RuntimeError("MaaS has no images available")
 
-        os_version = OS._version_to_codename(self.os_type, self.os_version)
-        name = f"{self.os_type}/{os_version}"
+        name = self.get_image_name()
         for image in resp:
             if image["name"] == name and self.cpu_arch in image["architecture"]:
                 return image
