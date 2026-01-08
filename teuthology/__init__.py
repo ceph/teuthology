@@ -61,7 +61,7 @@ logging.getLogger('urllib3.connectionpool').setLevel(
 logging.getLogger('urllib3.util.retry').setLevel(
     logging.WARN)
 # Avoid verbose logging for requests_oauthlib also
-logging.getLogger('requests_oauthlib.oauth1_session').setLevel(
+logging.getLogger('requests_oauthlib').setLevel(
     logging.WARN)
 # Suppresses the underlying oauthlib library
 logging.getLogger('oauthlib.oauth1').setLevel(logging.WARN)
