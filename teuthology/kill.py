@@ -80,20 +80,25 @@ def kill_run(run_name, archive_base=None, owner=None, machine_type=None,
 
 
 def kill_job(run_name, job_id, archive_base=None, owner=None, skip_unlock=False):
-    serializer = report.ResultsSerializer(archive_base)
-    job_info = serializer.job_info(run_name, job_id)
-    # If we can't read the filesystem, job_info will be nearly empty. Ask paddles:
-    if 'name' not in job_info:
-        job_info = report.ResultsReporter().get_jobs(run_name, job_id)
+    job_info = report.ResultsReporter().get_jobs(run_name, job_id)
     if not owner:
         if 'owner' not in job_info:
             raise RuntimeError(
                 "I could not figure out the owner of the requested job. "
                 "Please pass --owner <owner>.")
         owner = job_info['owner']
-    if kill_processes(run_name, [job_info.get('pid')]):
+    if kill_processes(run_name, [int(job_info.get('pid'))], job_info.get('job_id')):
         return
-    report.try_push_job_info(job_info, dict(status="dead"))
+    report.try_push_job_info(
+        {
+            'name': run_name,
+            'job_id': job_id,
+        },
+        {
+            'status': 'dead',
+            'failure_reason': 'killed',
+        }
+    )
     if 'machine_type' in job_info:
         teuthology.exporter.JobResults().record(
             machine_type=job_info["machine_type"],
@@ -177,7 +182,7 @@ def remove_beanstalk_jobs(run_name, tube_name):
     beanstalk_conn.close()
 
 
-def kill_processes(run_name, pids=None):
+def kill_processes(run_name, pids=None, job_id=None):
     if pids:
         to_kill = set(pids).intersection(psutil.pids())
     else:
@@ -185,9 +190,15 @@ def kill_processes(run_name, pids=None):
 
     pids_need_sudo = set()
     for pid in set(to_kill):
-        if not process_matches_run(pid, run_name):
-            to_kill.remove(pid)
-        elif psutil.Process(int(pid)).username() != getpass.getuser():
+        if job_id:
+            if not process_matches_job(pid, run_name, job_id):
+                to_kill.remove(pid)
+                continue
+        else:
+            if not process_matches_run(pid, run_name):
+                to_kill.remove(pid)
+                continue
+        if psutil.Process(int(pid)).username() != getpass.getuser():
             pids_need_sudo.add(pid)
 
     survivors = []
@@ -227,6 +238,14 @@ def process_matches_run(pid, run_name):
         pass
     return False
 
+def process_matches_job(pid, run_name, job_id):
+    try:
+        return f"{run_name}/{job_id}" in ' '.join(psutil.Process(pid).cmdline())
+    except psutil.NoSuchProcess:
+        pass
+    except psutil.AccessDenied:
+        pass
+    return False
 
 def find_pids(run_name):
     run_pids = []

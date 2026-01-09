@@ -42,6 +42,12 @@ def main(args):
     except SkipJob:
         return 0
 
+    report.try_push_job_info({
+        'name': job_config['name'],
+        'job_id': job_config['job_id'],
+        'pid': os.getpid(),
+    })
+
     # reimage target machines before running the job
     if 'targets' in job_config:
         node_count = len(job_config["targets"])
