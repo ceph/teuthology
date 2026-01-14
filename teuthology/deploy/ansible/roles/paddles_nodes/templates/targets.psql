@@ -1,0 +1,7 @@
+begin transaction;
+insert into nodes (name,machine_type,is_vm,locked,up) values
+{% for i in range(1, targets + 1) %}
+('target-{{ teuthology_name }}-{{ "%03d" % i }}.{{ lab_domain }}', '{{ machine_type}}', TRUE, FALSE, TRUE){% if i == targets %};{% else %},{% endif %}
+{% endfor %}
+commit transaction
+
