@@ -922,9 +922,137 @@ def update_grub_rpm(remote, newversion):
         grub2_kernel_select_generic(remote, newversion, 'rpm')
 
 
+def _kernel_is_uefi(remote):
+    """Return True if the remote is booted in UEFI mode."""
+    try:
+        remote.run(args=['test', '-d', '/sys/firmware/efi'])
+        return True
+    except Exception:
+        return False
+
+
+def _kernel_has_bls(remote):
+    """Return True if BLS entries exist on the remote.
+
+    We use a conservative detection approach:
+      1) If /boot/loader/entries contains any *.conf files, treat as BLS.
+      2) Otherwise, best-effort parse GRUB_ENABLE_BLSCFG from /etc/default/grub.
+    """
+    try:
+        out = remote.sh(
+            'sudo find /boot/loader/entries -maxdepth 1 -name "*.conf" -type f -print -quit'
+        ).strip()
+        if out:
+            return True
+    except Exception:
+        pass
+
+    try:
+        val = remote.sh(
+            r"sudo grep -E '^GRUB_ENABLE_BLSCFG=' /etc/default/grub | "
+            r"cut -d'=' -f2 | sed \"s/^['\\\"]//; s/['\\\"]$//\" || echo ''"
+        ).strip().lower()
+        return val in ('1', 'y', 'yes', 'true')
+    except Exception:
+        return False
+
+
+def _kernel_select_bls_entry_id(remote, newversion):
+    """Return the BLS entry id (filename without .conf) for the requested kernel version."""
+    # Fast path: grep for the version string directly
+    try:
+        entry = remote.sh(
+            f'sudo find /boot/loader/entries -maxdepth 1 -name "*.conf" -type f | '
+            f'grep -F "{newversion}" | head -n 1'
+        ).strip()
+        if entry:
+            basename = os.path.basename(entry)
+            return basename[:-5] if basename.endswith('.conf') else None
+    except Exception:
+        pass
+    
+    # fallback - grep for the version string in the entry file
+    try:
+        escaped_version = re.escape(newversion)
+        entry = remote.sh(
+            f'sudo find /boot/loader/entries -maxdepth 1 -name "*.conf" -type f -exec grep -l '
+            f'-E "^(linux|version|options).*{escaped_version}" {{}} \\; | head -n 1'
+        ).strip()
+        if entry:
+            basename = os.path.basename(entry)
+            return basename[:-5] if basename.endswith('.conf') else None
+    except Exception:
+        pass
+
+    return None
+
+
+def _kernel_set_default_bls(remote, newversion, ostype):
+    """Set default kernel on a BLS system.
+
+    Prefer `grubby --set-default` when available.
+    Otherwise fall back to `grub2-set-default <BLS_ENTRY_ID>` using /boot/loader/entries.
+    """
+    has_grubby = remote.sh("sudo command -v grubby && echo yes || echo no").strip() == 'yes'
+
+    if has_grubby and ostype == 'rpm':
+        vmlinuz = remote.sh(
+            f"sudo find /boot -maxdepth 1 -name 'vmlinuz-*' -type f | "
+            f"grep -F '{newversion}' | head -n 1"
+        ).strip()
+        if vmlinuz:
+            remote.run(args=['sudo', 'grubby', '--set-default', vmlinuz])
+            return True
+
+    entry_id = _kernel_select_bls_entry_id(remote, newversion)
+    if not entry_id:
+        return False
+
+    grubset = 'grub2-set-default' if ostype == 'rpm' else 'grub-set-default'
+    remote.run(args=['sudo', grubset, entry_id])
+    return True
+
+
+def _kernel_sync_uefi_grubcfg(remote, grubconfig, ostype):
+    """Sync firmware-facing UEFI grub.cfg with the system grub.cfg (RPM only).
+
+    On many RPM UEFI installs, firmware boots from /boot/efi/EFI/<vendor>/grub.cfg.
+    Regenerating /boot/grub2/grub.cfg alone may not affect the file firmware reads.
+    We copy the generated grub.cfg into each vendor dir's grub.cfg if it exists.
+
+    For DEB (Ubuntu/Debian), EFI grub.cfg is frequently a small stub; overwriting it
+    can break boot. So we intentionally do nothing for ostype == 'deb'.
+    """
+    if ostype != 'rpm':
+        return
+    if not _kernel_is_uefi(remote):
+        return
+    efi_dirs = remote.sh(
+            "sudo find /boot/efi/EFI -mindepth 1 -maxdepth 1 -type d || true"
+        ).splitlines()
+    if not efi_dirs:
+        return
+
+    for dir in efi_dirs:
+        dir = dir.strip()
+        if not dir:
+            continue
+        target = f"{dir.rstrip('/')}/grub.cfg"
+        exists = remote.sh(
+            f"sudo test -f {target} && echo yes || echo no"
+        ).strip() == 'yes'
+        if exists:
+            remote.run(args=['sudo', 'cp', '-f', grubconfig, target])
+
+
 def grub2_kernel_select_generic(remote, newversion, ostype):
     """
-    Can be used on DEB and RPM. Sets which entry should be boted by entrynum.
+    Can be used on DEB and RPM.
+
+    Supports:
+      * Classic GRUB menuentry selection (non-BLS) by menuentry index
+      * BLS (Boot Loader Spec) systems (common on EL8+/Fedora) using grubby/BLS entry id
+      * UEFI RPM systems by syncing /boot/grub2/grub.cfg into /boot/efi/EFI/*/grub.cfg
     """
     log.info("Updating grub on {node} to boot {version}".format(
         node=remote.shortname, version=newversion))
@@ -932,33 +1060,43 @@ def grub2_kernel_select_generic(remote, newversion, ostype):
         grubset = 'grub2-set-default'
         mkconfig = 'grub2-mkconfig'
         grubconfig = '/boot/grub2/grub.cfg'
-    if ostype == 'deb':
+    elif ostype == 'deb':
         grubset = 'grub-set-default'
         grubconfig = '/boot/grub/grub.cfg'
         mkconfig = 'grub-mkconfig'
-    remote.run(args=['sudo', mkconfig, '-o', grubconfig, ])
-    grub2conf = teuthology.get_file(remote, grubconfig, sudo=True).decode()
-    entry_num = 0
-    if '\nmenuentry ' not in grub2conf:
-        # okay, do the newer (el8) grub2 thing
-        grub2conf = remote.sh('sudo /bin/ls /boot/loader/entries || true')
-        entry = None
-        for line in grub2conf.split('\n'):
-            if line.endswith('.conf') and newversion in line:
-                entry = line[:-5]  # drop .conf suffix
-                break
     else:
-        # do old menuitem counting thing
-        for line in grub2conf.split('\n'):
-            if line.startswith('menuentry '):
-                if newversion in line:
-                    break
-                entry_num += 1
-        entry = str(entry_num)
+        raise UnsupportedPackageTypeError(f"Unknown ostype: {ostype}")
+
+    if _kernel_has_bls(remote):
+        status_ok = _kernel_set_default_bls(remote, newversion, ostype)
+        if not status_ok:
+            log.warning('Unable to set default kernel on BLS system')
+            return
+        # Regenerate grub.cfg to reflect the new default, then sync to UEFI
+        remote.run(args=['sudo', mkconfig, '-o', grubconfig])
+        _kernel_sync_uefi_grubcfg(remote, grubconfig, ostype)
+        return
+
+    # Non-BLS path- regenerate grub.cfg then pick the matching menuentry index.
+    remote.run(args=['sudo', mkconfig, '-o', grubconfig])
+    grub2conf = teuthology.get_file(remote, grubconfig, sudo=True).decode()
+
+    entry_num = 0
+    entry = None
+    for line in grub2conf.split('\n'):
+        if line.startswith('menuentry '):
+            if newversion in line:
+                entry = str(entry_num)
+                break
+            entry_num += 1
+
     if entry is None:
         log.warning('Unable to update grub2 order')
-    else:
-        remote.run(args=['sudo', grubset, entry])
+        return
+
+    remote.run(args=['sudo', grubset, entry])
+    _kernel_sync_uefi_grubcfg(remote, grubconfig, ostype)
+
 
 
 def generate_legacy_grub_entry(remote, newversion):
