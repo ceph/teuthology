@@ -315,8 +315,10 @@ class MAAS(object):
         status_name = machine.get("status_name", "").lower()
         if status_name == "deployed":
             self.log.info(f"Machine '{self.shortname}' is already deployed; releasing")
-            self.release_machine()
-
+            self.release()
+        elif status_name == "failed deployment":
+            self.log.info("Previous deployment failed; releasing before continuing")
+            self.release()
         elif status_name not in ["ready", "allocated"]:
             raise RuntimeError(
                 f"MaaS machine '{self.shortname}' is not ready or allocated, "
@@ -336,7 +338,6 @@ class MAAS(object):
                 f"aborting deployment\n'{str(e)}'"
             )
             self.abort_deploy()
-            self._wait_for_status("Ready")
             raise RuntimeError(
                 f"Deployment of machine '{self.shortname}' failed"
             ) from e
@@ -364,7 +365,7 @@ class MAAS(object):
                 self.log.info(f"Unlocking machine '{self.shortname}' before release")
                 self.unlock_machine()
 
-        else:
+        elif status_name != "failed deployment":
             raise RuntimeError(
                 f"Cannot release machine '{self.shortname}' in status '{status_name}'"
             )
