@@ -79,6 +79,9 @@ class FOG(object):
         self.set_image(host_id)
         task_id = self.schedule_deploy_task(host_id)
         try:
+            # XXX this should use the same sensing task/kernel.py uses
+            # for efi mode
+            self.remote.console.set_bootdev('pxe', efi=True)
             # Use power_off/power_on because other methods call
             # _wait_for_login, which will not work here since the newly-imaged
             # host will have an incorrect hostname
