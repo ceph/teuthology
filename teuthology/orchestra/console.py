@@ -371,6 +371,12 @@ class PhysicalConsole(RemoteConsole):
             self.log.error("conserver failed to get the console; will try ipmitool")
             self.has_conserver = False
             proc = start()
+
+        if self.has_conserver:
+            # sometimes conserver's underlying ipmitool needs restarting
+            child.sendcontrol('e')
+            child.send('co')
+
         return proc
 
 
