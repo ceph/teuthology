@@ -3,6 +3,7 @@ import logging
 import os
 import pexpect
 import psutil
+import re
 import subprocess
 import sys
 import time
@@ -268,6 +269,55 @@ class PhysicalConsole(RemoteConsole):
         except Exception:
             self.log.exception('Failed to get ipmi console status')
             return False
+
+    def set_bootdev(self, bootdev, uefi=True, persistent=False, timeout=None):
+        """
+        Set next boot device via IPMI.
+
+        Examples:
+          - PXE (UEFI):  ipmitool chassis bootdev pxe options=efiboot
+          - Disk (UEFI): ipmitool chassis bootdev disk options=efiboot
+
+        :param bootdev: one of: pxe, disk, cdrom, bios, safe, diag, none
+        :param uefi: add 'options=efiboot' for UEFI systems
+        :param persistent: request persistent bootdev if supported
+                          (adds 'options=persistent' or combined with efiboot)
+        :param timeout: override console timeout for ipmitool invocation
+        """
+        bootdev = str(bootdev).strip().lower()
+        valid = {"pxe", "disk", "cdrom", "bios", "safe", "diag", "floppy", "none"}
+        if bootdev not in valid:
+            raise ValueError("Invalid bootdev '%s' (valid: %s)" %
+                             (bootdev, ", ".join(sorted(valid))))
+
+        options = []
+        if uefi:
+            options.append("efiboot")
+        if persistent:
+            # ipmitool supports 'options=persistent' on many BMCs.
+            # If your BMC doesn't, this is harmless to omit by caller.
+            options.append("persistent")
+
+        cmd = "chassis bootdev %s" % bootdev
+        if options:
+            cmd += " options=" + ",".join(options)
+
+        self.log.info("Setting bootdev: %s", cmd)
+        child = self._pexpect_spawn_ipmi(cmd)
+        # Some ipmitool builds return EOF quickly; accept EOF as success-ish.
+        child.expect([pexpect.EOF, pexpect.TIMEOUT], timeout=timeout or self.timeout)
+        out = child.logfile_read.getvalue().strip()
+        if out:
+            self.log.debug("bootdev output: %s", out)
+        return True
+
+    def boot_pxe_once(self, uefi=True, persistent=False):
+        """Convenience: set next boot to PXE."""
+        return self.set_bootdev("pxe", uefi=uefi, persistent=persistent)
+
+    def boot_disk_once(self, uefi=True, persistent=False):
+        """Convenience: set next boot to local disk."""
+        return self.set_bootdev("disk", uefi=uefi, persistent=persistent)
 
     def power_cycle(self, timeout=300):
         """

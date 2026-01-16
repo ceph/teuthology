@@ -83,11 +83,13 @@ class FOG(object):
             # _wait_for_login, which will not work here since the newly-imaged
             # host will have an incorrect hostname
             self.remote.console.power_off()
+            self.remote.console.boot_pxe_once()
             self.remote.console.power_on()
             self.wait_for_deploy_task(task_id)
         except Exception:
             self.cancel_deploy_task(task_id)
             raise
+        self.remote.console.boot_disk_once()
         self._wait_for_ready()
         self._fix_hostname()
         self._verify_installed_os()
