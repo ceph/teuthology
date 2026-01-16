@@ -31,6 +31,8 @@ from teuthology.packaging import (
 )
 from teuthology.task.install.deb import install_dep_packages
 
+from teuthology.util.efi import is_uefi
+
 log = logging.getLogger(__name__)
 
 CONFIG_DEFAULT = {'branch': 'distro', 'sha1': 'distro'}
@@ -922,15 +924,6 @@ def update_grub_rpm(remote, newversion):
         grub2_kernel_select_generic(remote, newversion, 'rpm')
 
 
-def _kernel_is_uefi(remote):
-    """Return True if the remote is booted in UEFI mode."""
-    try:
-        remote.run(args=['test', '-d', '/sys/firmware/efi'])
-        return True
-    except Exception:
-        return False
-
-
 def _kernel_has_bls(remote):
     """Return True if BLS entries exist on the remote.
 
@@ -1025,7 +1018,7 @@ def _kernel_sync_uefi_grubcfg(remote, grubconfig, ostype):
     """
     if ostype != 'rpm':
         return
-    if not _kernel_is_uefi(remote):
+    if not is_uefi(remote):
         return
     efi_dirs = remote.sh(
             "sudo find /boot/efi/EFI -mindepth 1 -maxdepth 1 -type d || true"
