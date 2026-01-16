@@ -42,11 +42,12 @@ def main(args):
     except SkipJob:
         return 0
 
-    report.try_push_job_info({
-        'name': job_config['name'],
-        'job_id': job_config['job_id'],
-        'pid': os.getpid(),
-    })
+    if not (job_config.get('first_in_suite') or job_config.get('last_in_suite')):
+        report.try_push_job_info({
+            'name': job_config['name'],
+            'job_id': job_config['job_id'],
+            'pid': os.getpid(),
+        })
 
     # reimage target machines before running the job
     if 'targets' in job_config:
