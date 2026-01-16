@@ -373,6 +373,27 @@ class PhysicalConsole(RemoteConsole):
             proc = start()
         return proc
 
+    def set_bootdev(self, bootdev, efi=True):
+        if bootdev not in ['pxe', 'disk']:
+            raise RuntimeError(f'set_bootdev: invalid bootdev {bootdev}')
+
+        bootdevcmd = f'chassis bootdev {bootdev}'
+        if efi:
+            bootdevcmd += ' options=efiboot'
+
+        child = self._pexpect_spawn_ipmi(bootdevcmd)
+        r = child.expect(
+            [
+                'Set Boot Device to {bootdev}',
+                pexpect.TIMEOUT,
+                pexpect.EOF,
+            ],
+            timeout=self.timeout)
+        if r != 0:
+            self.log.debug(f'chassis bootdev output: {child.logfile_read.getvalue().strip()}')
+            raise RuntimeError('set_bootdev failed')
+        self.log.info('bootdev set to {bootdev}')
+
 
 class VirtualConsole(RemoteConsole):
     """
