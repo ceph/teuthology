@@ -1,0 +1,7 @@
+{
+    "patterns": [
+        "Command failed on .* with status 1:",
+        "clocks not synchronized",
+        "cluster \\[WRN\\] Health check failed: 575/44578 objects unfound \\(1\\.290%\\) \\(OBJECT_UNFOUND\\)"
+    ]
+}
