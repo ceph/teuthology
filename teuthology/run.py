@@ -342,7 +342,13 @@ def main(args):
     set_up_logging(verbose, archive)
 
     write_initial_metadata(archive, config, name, description, owner)
-    report.try_push_job_info(config, dict(status='running'))
+    report.try_push_job_info(
+        config,
+        {
+            'status': 'running',
+            'pid': os.getpid(),
+        },
+    )
 
     machine_type = get_machine_type(machine_type, config)
     args["--machine-type"] = machine_type
