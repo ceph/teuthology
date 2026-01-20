@@ -30,9 +30,17 @@ def get_task(name):
 
     # First look for the tasks's module inside teuthology
     module = _import('teuthology.task', module_name, task_name)
+    log.debug("importing module_name: {} and task_name: {}".format(
+        module_name,
+        task_name,
+    ))
     # If it is not found, try qa/ directory (if it is in sys.path)
     if not module:
-        module = _import('tasks', module_name, task_name, fail_on_import_error=True)
+        try:
+            module = _import('tasks', module_name, task_name, fail_on_import_error=True)
+        except Exception as e:
+            log.exception(str(e))
+            raise
     try:
         # Attempt to locate the task object inside the module
         task = getattr(module, task_name)
