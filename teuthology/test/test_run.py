@@ -1,3 +1,4 @@
+import os
 import pytest
 import docopt
 
@@ -193,7 +194,7 @@ class TestRun(object):
             "the_description",
             "the_owner"
         )
-        m_try_push_job_info.assert_called_with(config, dict(status='running'))
+        m_try_push_job_info.assert_called_with(config, dict(status='running', pid=os.getpid()))
         m_get_machine_type.assert_called_with(None, config)
         m_get_summary.assert_called_with("the_owner", "the_description")
         m_get_initial_tasks.assert_called_with(True, config, "machine_type")
