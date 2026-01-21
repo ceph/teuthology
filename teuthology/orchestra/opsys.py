@@ -36,13 +36,13 @@ DISTRO_CODENAME_MAP = {
     },
     "alma": {
         "8.10": "alma",
-        "9.6": "alma",
-        "10.0": "alma",
+        "9.7": "alma",
+        "10.1": "alma",
     },
     "rocky": {
         "8.10": "rocky",
-        "9.6": "rocky",
-        "10.0": "rocky",
+        "9.7": "rocky",
+        "10.1": "rocky",
     },
     "centos": {
         "10": "stream",
@@ -96,8 +96,8 @@ DEFAULT_OS_VERSION = dict(
     opensuse="15.6",
     sle="15.2",
     rhel="8.6",
-    rocky="9.6",
-    alma="9.6",
+    rocky="9.7",
+    alma="9.7",
     debian='8.0'
 )
 
