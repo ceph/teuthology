@@ -1,0 +1,21 @@
+---
+packages:
+  ## misc tools
+  - vim
+  - wget
+  - mlocate
+  - git
+  - lsb
+  ## bind-specific packages
+  - bind
+  - bind-utils
+  ## firewall
+  - firewalld
+  ## monitoring
+  - nrpe
+  - nagios-plugins-all
+  ## for NTP
+  - ntp
+  #- ntpdate
+  # do we really need selinux on opensuse?
+  - python-selinux
