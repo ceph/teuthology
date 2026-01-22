@@ -192,7 +192,7 @@ virtualenv==20.26.6
     # via tox
 wcwidth==0.2.12
     # via prettytable
-wheel==0.42.0
+wheel==0.46.2
     # via pip-tools
 xmltodict==0.13.0
     # via teuthology (pyproject.toml)
