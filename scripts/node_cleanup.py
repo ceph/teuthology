@@ -19,6 +19,7 @@ def main():
         handler.setFormatter(
             logging.Formatter('%(message)s')
         )
+    log.info("Checking for stale locks...")
     try:
         stale = query.find_stale_locks(args.owner)
     except Exception:
@@ -35,17 +36,15 @@ def main():
             )
             continue
         by_owner.setdefault(node['locked_by'], []).append(node)
-    if args.dry_run:
-        log.info("Would attempt to unlock:")
-        for owner, nodes in by_owner.items():
-            for node in nodes:
-                node_job = node['description'].replace(
-                    config.archive_base, config.results_ui_server)
-                log.info(f"{node['name']}\t{node_job}")
-    else:
-        for owner, nodes in by_owner.items():
+    log.info(f"Unlocking {len(stale)} nodes...")
+    for owner, nodes in by_owner.items():
+        for node in nodes:
+            node_job = node['description'].replace(
+                config.archive_base, config.results_ui_server).replace('//', '/')
+            log.info(f"{node['name']}\t{node_job}")
+        if not args.dry_run:
             ops.unlock_safe([node["name"] for node in nodes], owner)
-    log.info(f"unlocked {len(stale)} nodes")
+    log.info(f"Unlocked {len(stale)} nodes")
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(
