@@ -768,9 +768,9 @@ class TestShamanProject(TestBuilderProject):
 
     DISTRO_MATRIX = [
         ('rhel', '7.0', None, 'centos/7'),
-        ('alma', '9.6', None, 'alma/9'),
-        ('rocky', '9.6', None, 'rocky/9'),
-        ('rocky', '10.0', None, 'rocky/10'),
+        ('alma', '9.7', None, 'alma/9'),
+        ('rocky', '9.7', None, 'rocky/9'),
+        ('rocky', '10.1', None, 'rocky/10'),
         ('centos', '6.5', None, 'centos/6'),
         ('centos', '7.0', None, 'centos/7'),
         ('centos', '7.1', None, 'centos/7'),
