@@ -106,7 +106,7 @@ def syslog(ctx, config):
             log.debug('Checking %s', rem.name)
             stdout = rem.sh(
                 [
-                    'egrep', '--binary-files=text',
+                    'grep', '-E', '--binary-files=text',
                     '\\bBUG\\b|\\bINFO\\b|\\bDEADLOCK\\b',
                     run.Raw(f'{archive_dir}/syslog/kern.log'),
                     run.Raw('|'),
@@ -143,11 +143,11 @@ def syslog(ctx, config):
                     run.Raw('|'),
                     'grep', '-v', 'container-storage-setup: INFO: Volume group backing root filesystem could not be determined',  # noqa
                     run.Raw('|'),
-                    'egrep', '-v', '\\bsalt-master\\b|\\bsalt-minion\\b|\\bsalt-api\\b',
+                    'grep', '-E', '-v', '\\bsalt-master\\b|\\bsalt-minion\\b|\\bsalt-api\\b',
                     run.Raw('|'),
                     'grep', '-v', 'ceph-crash',
                     run.Raw('|'),
-                    'egrep', '-v', '\\btcmu-runner\\b.*\\bINFO\\b',
+                    'grep', '-E', '-v', '\\btcmu-runner\\b.*\\bINFO\\b',
                     run.Raw('|'),
                     'head', '-n', '1',
                 ],

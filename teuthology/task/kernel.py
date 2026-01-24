@@ -560,7 +560,7 @@ def install_and_reboot(ctx, need_install, config):
         # complex this will totally break.
 
         kernel_entries = role_remote.sh([
-                'egrep',
+                'grep', '-E',
                 '(submenu|menuentry.*' + kernel_title + ').*{',
                 '/boot/grub/grub.cfg'
             ]).split('\n')
