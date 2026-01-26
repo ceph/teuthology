@@ -1065,6 +1065,11 @@ def _ssh_keyscan(hostname):
     :returns: The host key
     """
     args = ['ssh-keyscan', '-T', '1', hostname]
+    if config.tunnel:
+        for tunnel in config.tunnel:
+            if hostname in tunnel.get('hosts'):
+                bastion = tunnel.get('bastion')
+                args = ['ssh', bastion.get('host')] + args
     p = subprocess.Popen(
         args=args,
         stdout=subprocess.PIPE,
