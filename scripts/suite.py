@@ -2,7 +2,7 @@ import docopt
 import sys
 
 import teuthology.suite
-from teuthology.suite import override_arg_defaults as defaults
+from teuthology.suite import override_arg_defaults as defaults, _get_default_known_failure_patterns_file
 from teuthology.config import config
 
 doc = """
@@ -173,6 +173,14 @@ Scheduler arguments:
                               but can be overide if passed again.
                               This is important for tests involving random facet
                               (path ends with '$' operator).
+ --skip-known-failures <bool>
+                              Skip jobs with known failure patterns during rerun.
+                              To be used with --rerun only. Only rerun jobs with
+                              unknown failures by checking against known patterns
+                              file [default: false].
+ --known-failure-patterns <path> Path to known failure patterns file (JSON or YAML).
+                              To be used with --skip-known-failures.
+                              [default: {default_known_failure_patterns}]
  -R, --rerun-statuses <statuses>
                               A comma-separated list of statuses to be used
                               with --rerun. Supported statuses are: 'dead',
@@ -224,6 +232,7 @@ Scheduler arguments:
                             config.get_ceph_qa_suite_git_url()),
     default_ceph_branch=defaults('--ceph-branch', 'main'),
     default_job_threshold=config.job_threshold,
+    default_known_failure_patterns=_get_default_known_failure_patterns_file(),
 )
 
 
