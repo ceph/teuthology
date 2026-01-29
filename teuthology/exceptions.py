@@ -1,3 +1,5 @@
+from typing import Optional
+
 class BranchNotFoundError(ValueError):
     def __init__(self, branch, repo=None):
         self.branch = branch
@@ -200,7 +202,14 @@ class SkipJob(Exception):
 
 
 class MaxWhileTries(Exception):
-    pass
+    def __init__(self, message: str = '', last_exception: Optional[Exception] = None):
+        self.message = message
+        self.last_exception = last_exception
+
+    def __str__(self):
+        if self.last_exception:
+            return f"{self.message} (last exception: {self.last_exception})"
+        return self.message
 
 
 class ConsoleError(Exception):
