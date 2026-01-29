@@ -245,3 +245,15 @@ class UnitTestError(Exception):
             prefix=prefix,
             message=self.message,
         )
+
+class ReimageFailure(Exception):
+    def __init__(self, node_name: str, message: str, inner: Optional[Exception] = None):
+        self.node_name: str = node_name
+        self.message: str = message
+        self.inner: Exception = inner
+
+    def __str__(self):
+        return f"Reimage of {self.node_name} failed with message: '{self.message}' (Inner exception: {self.inner})"
+
+class ReimageFailureNeedsInvestigation(ReimageFailure):
+    pass

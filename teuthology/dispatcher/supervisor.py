@@ -10,7 +10,7 @@ from urllib.parse import urljoin
 
 from teuthology import exporter, dispatcher, kill, report, safepath
 from teuthology.config import config as teuth_config
-from teuthology.exceptions import SkipJob, MaxWhileTries
+from teuthology.exceptions import SkipJob, MaxWhileTries, ReimageFailureNeedsInvestigation
 from teuthology import setup_log_file, install_except_hook
 from teuthology.misc import get_user, archive_logs, compress_logs
 from teuthology.config import FakeNamespace
@@ -175,8 +175,14 @@ def run_job(job_config, teuth_bin_path, archive_dir, verbose):
         log.error('Child exited with code %d', p.returncode)
     else:
         log.info('Success!')
-    if 'targets' in job_config:
-        unlock_targets(job_config)
+    if 'targets' in job_config and job_config.get("unlock_on_failure", True):
+        unlock_targets(
+            job_config['targets'],
+            job_config['owner'],
+            job_config['name'],
+            job_config['job_id'],
+            job_config['archive_path'],
+        )
     return p.returncode
 
 def failure_is_reimage(failure_reason):
@@ -232,8 +238,28 @@ def reimage(job_config):
     try:
         reimaged = lock_ops.reimage_machines(ctx, targets, job_config['machine_type'])
     except Exception as e:
-        log.exception('Reimaging error. Unlocking machines...')
-        unlock_targets(job_config)
+        targets = job_config['targets'].copy()
+        log.exception('Reimaging error')
+        if isinstance(e, ReimageFailureNeedsInvestigation):
+            # This error requires further investigation. Mark the affected node
+            # down and leave it locked.
+            log.info(f"Marking {e.node_name} down for investigation")
+            lock_ops.update_lock(
+                e.node_name,
+                description=str(e.inner),
+                status='down',
+            )
+            targets = job_config['targets'].copy()
+            targets.pop(e.node_name)
+        if job_config.get("unlock_on_failure", True):
+            log.info('Unlocking machines...')
+            unlock_targets(
+                targets,
+                job_config['owner'],
+                job_config['name'],
+                job_config['job_id'],
+                job_config['archive_path'],
+            )
         # Reimage failures should map to the 'dead' status instead of 'fail'
         report.try_push_job_info(
             ctx.config,
@@ -252,20 +278,20 @@ def reimage(job_config):
     report.try_push_job_info(ctx.config, dict(status='running'))
 
 
-def unlock_targets(job_config):
+def unlock_targets(targets: dict, owner: str, run_name: str, job_id: str, archive_path: str):
     """
     Unlock machines only if locked and description matches.
 
     :param job_config:      dict, job config data
     """
-    machine_statuses = query.get_statuses(job_config['targets'].keys())
+    machine_statuses = query.get_statuses(targets.keys())
     locked = []
     for status in machine_statuses:
         name = shortname(status['name'])
         description = status['description']
         if not status['locked']:
             continue
-        if description != job_config['archive_path']:
+        if description != archive_path:
             log.warning(
                 "Was going to unlock %s but it was locked by another job: %s",
                 name, description
@@ -274,9 +300,8 @@ def unlock_targets(job_config):
         locked.append(name)
     if not locked:
         return
-    if job_config.get("unlock_on_failure", True):
-        log.info('Unlocking machines...')
-        lock_ops.unlock_safe(locked, job_config["owner"], job_config["name"], job_config["job_id"])
+    log.info('Unlocking machines...')
+    lock_ops.unlock_safe(locked, owner, run_name, job_id)
 
 
 def run_with_watchdog(process, job_config):
