@@ -1,3 +1,5 @@
+from typing import Optional
+
 class BranchNotFoundError(ValueError):
     def __init__(self, branch, repo=None):
         self.branch = branch
@@ -200,7 +202,14 @@ class SkipJob(Exception):
 
 
 class MaxWhileTries(Exception):
-    pass
+    def __init__(self, message: str = '', last_exception: Optional[Exception] = None):
+        self.message = message
+        self.last_exception = last_exception
+
+    def __str__(self):
+        if self.last_exception:
+            return f"{self.message} (last exception: {self.last_exception})"
+        return self.message
 
 
 class ConsoleError(Exception):
@@ -236,3 +245,15 @@ class UnitTestError(Exception):
             prefix=prefix,
             message=self.message,
         )
+
+class ReimageFailure(Exception):
+    def __init__(self, node_name: str, message: str, inner: Optional[Exception] = None):
+        self.node_name: str = node_name
+        self.message: str = message
+        self.inner: Exception = inner
+
+    def __str__(self):
+        return f"Reimage of {self.node_name} failed with message: '{self.message}' (Inner exception: {self.inner})"
+
+class ReimageFailureNeedsInvestigation(ReimageFailure):
+    pass
