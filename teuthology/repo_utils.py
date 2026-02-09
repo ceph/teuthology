@@ -97,7 +97,7 @@ def current_branch(path: str) -> str:
     return result
 
 
-def enforce_repo_state(repo_url, dest_path, branch, commit=None, remove_on_error=True):
+def enforce_repo_state(dest_clone, dest_path, repo_url, branch, commit=None, remove_on_error=True):
     """
     Use git to either clone or update a given repo, forcing it to switch to the
     specified branch.
@@ -116,24 +116,99 @@ def enforce_repo_state(repo_url, dest_path, branch, commit=None, remove_on_error
     # sentinel to track whether the repo has checked out the intended
     # version, in addition to being cloned
     repo_reset = os.path.join(dest_path, '.fetched_and_reset')
+    log.info("enforce_repo_state %s %s %s %s %s", dest_clone, dest_path, repo_url, branch, commit)
     try:
-        if not os.path.isdir(dest_path):
-            clone_repo(repo_url, dest_path, branch, shallow=commit is None)
+        if not os.path.isdir(dest_clone):
+            bare_repo(dest_clone)
         elif not commit and not is_fresh(sentinel):
-            set_remote(dest_path, repo_url)
-            fetch_branch(dest_path, branch)
+            #set_remote(dest_path, repo_url)
+            #fetch_branch(dest_path, branch)
             touch_file(sentinel)
 
-        if commit and os.path.exists(repo_reset):
-            return
+        #if commit and os.path.exists(repo_reset):
+            #return
 
-        reset_repo(repo_url, dest_path, branch, commit)
-        touch_file(repo_reset)
+        myfetch(dest_clone, repo_url, branch, commit)
+        myworkspace(dest_clone, dest_path)
+        #reset_repo(repo_url, dest_path, branch, commit)
+        #touch_file(repo_reset)
         # remove_pyc_files(dest_path)
     except (BranchNotFoundError, CommitNotFoundError):
         if remove_on_error:
             shutil.rmtree(dest_path, ignore_errors=True)
         raise
+
+def bare_repo(git_dir):
+    log.info("bare_repo %s", git_dir)
+    args = ['git', 'init', '--bare', git_dir]
+    proc = subprocess.Popen(args)
+        #args,
+        #stdout=subprocess.PIPE,
+        #stderr=subprocess.STDOUT)
+    if proc.wait() != 0:
+        raise RuntimeError("oops")
+
+def myworkspace(git_dir, workspace_dir):
+    log.info("myworkspace %s %s", git_dir, workspace_dir)
+
+    if os.path.exists(workspace_dir):
+        args = [
+            'git',
+            'log',
+            '-1',
+        ]
+        proc = subprocess.Popen(args,cwd=workspace_dir)
+        if proc.wait() != 0:
+            raise RuntimeError("oops")
+        return
+
+    args = [
+        'git',
+        'worktree',
+        'add',
+        #'--detach',
+        '-B', os.path.basename(workspace_dir),
+        '--no-track',
+        '--force',
+        workspace_dir,
+        'FETCH_HEAD'
+    ]
+    proc = subprocess.Popen(args,cwd=git_dir)
+        #args,
+        #stdout=subprocess.PIPE,
+        #stderr=subprocess.STDOUT)
+    if proc.wait() != 0:
+        raise RuntimeError("oops")
+
+
+def myfetch(git_dir, url, branch, commit=None):
+    log.info("myfetch %s %s %s %s", git_dir, url, branch, commit)
+    validate_branch(branch)
+    if commit is not None:
+        args = ['git', 'log', '-1', commit]
+        proc = subprocess.Popen(args, cwd=git_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if proc.wait() == 0:
+            return
+    args = ['git', 'fetch', url]
+    if commit is not None:
+        args.append(commit)
+    else:
+        args.append(branch)
+    proc = subprocess.Popen(args,cwd=git_dir)
+    #proc = subprocess.Popen(
+        #args,
+        #cwd=git_dir,
+        #)
+        #stdout=subprocess.PIPE,
+        #stderr=subprocess.STDOUT)
+    if proc.wait() != 0:
+        not_found_str = "fatal: couldn't find remote ref %s" % branch
+        out = proc.stdout.read().decode()
+        log.error(out)
+        if not_found_str in out.lower():
+            raise BranchNotFoundError(branch)
+        else:
+            raise GitError("git fetch failed!")
 
 
 def clone_repo(repo_url, dest_path, branch, shallow=True):
@@ -356,6 +431,7 @@ def fetch_repo(url, branch, commit=None, bootstrap=None, lock=True):
         os.mkdir(src_base_path)
     ref_dir = ref_to_dirname(commit or branch)
     dirname = '%s_%s' % (url_to_dirname(url), ref_dir)
+    dest_clone = os.path.join(src_base_path, url_to_dirname(url))
     dest_path = os.path.join(src_base_path, dirname)
     # only let one worker create/update the checkout at a time
     lock_path = dest_path.rstrip('/') + '.lock'
@@ -364,7 +440,8 @@ def fetch_repo(url, branch, commit=None, bootstrap=None, lock=True):
             try:
                 while proceed():
                     try:
-                        enforce_repo_state(url, dest_path, branch, commit)
+                        #enforce_repo_state(url, dest_path, branch, commit)
+                        enforce_repo_state(dest_clone, dest_path, url, branch, commit)
                         if bootstrap:
                             sentinel = os.path.join(dest_path, '.bootstrapped')
                             if commit and os.path.exists(sentinel) or is_fresh(sentinel):

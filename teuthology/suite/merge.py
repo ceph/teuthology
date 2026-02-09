@@ -132,13 +132,7 @@ def config_merge(configs, suite_name=None, **kwargs):
 
         yaml_complete_obj = copy.deepcopy(base_config.to_dict())
         deep_merge(yaml_complete_obj, dict(TEUTHOLOGY_TEMPLATE))
-        for path in paths:
-            if path not in yaml_cache:
-                with open(path) as f:
-                    txt = f.read()
-                    yaml_cache[path] = (txt, yaml.safe_load(txt))
-
-            yaml_fragment_txt, yaml_fragment_obj = yaml_cache[path]
+        for (path, yaml_fragment_obj) in paths:
             if yaml_fragment_obj is None:
                 continue
             yaml_fragment_obj = copy.deepcopy(yaml_fragment_obj)
@@ -146,9 +140,9 @@ def config_merge(configs, suite_name=None, **kwargs):
             if premerge:
                 log.debug("premerge script running:\n%s", premerge)
                 env, script = new_script(premerge, log, deep_merge, yaml.safe_load)
-                env['base_frag_paths'] = [strip_fragment_path(x) for x in paths]
+                env['base_frag_paths'] = [strip_fragment_path(path) for (path, yaml) in paths]
                 env['description'] = desc
-                env['frag_paths'] = paths
+                env['frag_paths'] = [path for (path, yaml) in paths]
                 env['suite_name'] = suite_name
                 env['yaml'] = yaml_complete_obj
                 env['yaml_fragment'] = yaml_fragment_obj
@@ -164,9 +158,9 @@ def config_merge(configs, suite_name=None, **kwargs):
         postmerge = "\n".join(postmerge)
         log.debug("postmerge script running:\n%s", postmerge)
         env, script = new_script(postmerge, log, deep_merge, yaml.safe_load)
-        env['base_frag_paths'] = [strip_fragment_path(x) for x in paths]
+        env['base_frag_paths'] = [strip_fragment_path(path) for (path, yaml) in paths]
         env['description'] = desc
-        env['frag_paths'] = paths
+        env['frag_paths'] = [path for (path, yaml) in paths]
         env['suite_name'] = suite_name
         env['yaml'] = yaml_complete_obj
         for k,v in kwargs.items():
