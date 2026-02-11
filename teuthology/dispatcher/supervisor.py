@@ -282,6 +282,9 @@ def unlock_targets(job_config):
 def run_with_watchdog(process, job_config):
     job_start_time = datetime.datetime.now(datetime.timezone.utc)
 
+    run_name = job_config['name']
+    job_id = job_config['job_id']
+    owner = job_config['owner']
     # Only push the information that's relevant to the watchdog, to save db
     # load
     job_info = dict(
@@ -292,37 +295,31 @@ def run_with_watchdog(process, job_config):
     # Sleep once outside of the loop to avoid double-posting jobs
     time.sleep(teuth_config.watchdog_interval)
     hit_max_timeout = False
+    max_seconds = teuth_config.max_job_time
     while process.poll() is None:
         # Kill jobs that have been running longer than the global max
         run_time = datetime.datetime.now(datetime.timezone.utc) - job_start_time
         total_seconds = run_time.days * 60 * 60 * 24 + run_time.seconds
-        if total_seconds > teuth_config.max_job_time:
+        if total_seconds > max_seconds:
             hit_max_timeout = True
-            log.warning("Job ran longer than {max}s. Killing...".format(
-                max=teuth_config.max_job_time))
+            log.warning(f"Job {run_name}/{job_id} ran longer than {max_seconds}s. "
+                        "Killing...")
             try:
                 # kill processes but do not unlock yet so we can save
                 # the logs, coredumps, etc.
-                kill.kill_job(
-                    job_info['name'], job_info['job_id'],
-                    teuth_config.archive_base, job_config['owner'],
-                    skip_unlock=True
-                )
+                kill.kill_job(run_name, job_id, owner, skip_unlock=True)
             except Exception:
                 log.exception('Failed to kill job')
 
             try:
-                transfer_archives(job_info['name'], job_info['job_id'],
+                transfer_archives(run_name, job_id,
                                   teuth_config.archive_base, job_config)
             except Exception:
                 log.exception('Could not save logs')
 
             try:
                 # this time remove everything and unlock the machines
-                kill.kill_job(
-                    job_info['name'], job_info['job_id'],
-                    teuth_config.archive_base, job_config['owner']
-                )
+                kill.kill_job(run_name, job_id, owner)
             except Exception:
                 log.exception('Failed to kill job and unlock machines')
 
