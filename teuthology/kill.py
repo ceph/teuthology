@@ -78,7 +78,9 @@ def kill_job(run_name, job_id, owner=None, skip_unlock=False):
                 "I could not figure out the owner of the requested job. "
                 "Please pass --owner <owner>.")
         owner = job_info['owner']
-    if kill_processes(run_name, [int(job_info.get('pid'))], job_info.get('job_id')):
+    pid = job_info.get('pid')
+    pids = pid and [int(pid)]
+    if kill_processes(run_name, pids, job_info.get('job_id')):
         return
     report.try_push_job_info(
         {
