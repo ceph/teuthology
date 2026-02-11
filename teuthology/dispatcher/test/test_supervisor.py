@@ -89,7 +89,8 @@ class TestSuperviser(object):
             "name": "the_name",
             "job_id": "1",
             "archive_path": "archive/path",
-            "teuthology_branch": "main"
+            "teuthology_branch": "main",
+            "owner": "the_owner",
         }
         process = Mock()
         process.poll.return_value = "not None"
@@ -107,7 +108,8 @@ class TestSuperviser(object):
             "name": "the_name",
             "job_id": "1",
             "archive_path": "archive/path",
-            "teuthology_branch": "jewel"
+            "teuthology_branch": "jewel",
+            "owner": "the_owner",
         }
         process = Mock()
         process.poll.return_value = "not None"
