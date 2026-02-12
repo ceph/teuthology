@@ -472,7 +472,7 @@ def safe_hard_reboot(remote):
     # We use a multi-command string to ensure they execute even if the connection drops
     args = [
         'sudo', 'bash', '-c',
-        'sync && echo s > /proc/sysrq-trigger && echo u > /proc/sysrq-trigger && sleep 2 && echo b > /proc/sysrq-trigger'
+        'echo pci > /proc/sys/kernel/reboot && sync && echo s > /proc/sysrq-trigger && echo u > /proc/sysrq-trigger && sleep 2 && echo b > /proc/sysrq-trigger'
     ]
     return remote.run(args=args, wait=False)
 
