@@ -427,6 +427,27 @@ class Remote(RemoteShell):
             log.debug(e)
             return False
 
+    def safe_hard_reboot(self):
+        """
+        Attempts to sync, remount RO, then trigger a hard reboot via SysRq.
+        This bypasses possible hangs during the standard 'shutdown -r now' process.
+        """
+        log.info(f"Triggering safe hard reboot via SysRq on {self.shortname}")
+        # s = sync, u = remount read-only, b = reboot
+        # We use a multi-command string to ensure they execute even if the connection drops
+        args = [
+            'sudo', 'bash', '-c',
+            """
+            echo pci > /sys/kernel/reboot/type && \
+            echo 1 > /sys/kernel/reboot/force && \
+            sync && echo s > /proc/sysrq-trigger && \
+            echo u > /proc/sysrq-trigger && \
+            sleep 2 && \
+            echo b > /proc/sysrq-trigger
+            """
+        ]
+        return self.run(args=args, wait=False)
+
     @property
     def ip_address(self):
         return self.ssh.get_transport().getpeername()[0]
