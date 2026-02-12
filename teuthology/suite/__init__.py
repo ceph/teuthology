@@ -4,9 +4,13 @@
 
 import logging
 import os
+import json
+import re
 import random
 import sys
 import time
+
+import yaml
 
 import teuthology
 from teuthology.config import config, YamlConfig
@@ -71,6 +75,8 @@ def process_args(args):
                 value = []
             else:
                 value = [x.strip() for x in value.split(',')]
+        elif key == 'skip_known_failures':
+            value = strtobool(value)
         elif key == 'ceph_repo':
             value = expand_short_repo_name(
                 value,
@@ -130,7 +136,9 @@ def main(args):
         log.info('Will upload archives to ' + conf.archive_upload)
 
     if conf.rerun:
-        get_rerun_conf_overrides(conf)
+        if get_rerun_conf_overrides(conf) is False:
+            log.info("Rerun cancelled due to no unknown failures")
+            return
     if conf.seed < 0:
         conf.seed = random.randint(0, 9999)
         log.info('Using random seed=%s', conf.seed)
@@ -154,7 +162,7 @@ def get_rerun_conf_overrides(conf):
     except IndexError:
         job0 = None
 
-    seed = None if job0 is None else job0.get('seed')
+    seed = None if job0 is None else int(job0.get('seed'))
     if conf.seed >= 0 and conf.seed != seed:
         log.error('--seed %s does not match with rerun seed: %s',
                   conf.seed, seed)
@@ -200,7 +208,103 @@ def get_rerun_conf_overrides(conf):
         )
         return
 
-    conf.filter_in.extend(rerun_filters['descriptions'])
+    if conf.skip_known_failures:
+        # Filter jobs by rerun statuses first
+        rerun_statuses_jobs = (job for job in run['jobs'] if job['status'] in conf.rerun_statuses)
+        # Filter out known failures
+        rerun_jobs = filter_out_known_failures(rerun_statuses_jobs, conf.known_failure_patterns)
+        if rerun_jobs:
+            conf.filter_in.extend(job['description'] for job in rerun_jobs if job.get('description'))
+            log.info("Using unknown failure filtering for rerun with %d unknown failures", len(rerun_jobs))
+        else:
+            log.info("No unknown failures found, skipping rerun")
+            return False
+    else:
+        original_descriptions = [job['description'] for job in run['jobs'] if job['status'] in conf.rerun_statuses and job['description']]
+        conf.filter_in.extend(original_descriptions)
+        log.info("Using backward-compatible job filtering for rerun with %d job descriptions", len(original_descriptions))
+
+
+def _get_default_known_failure_patterns_file():
+    """Return the path to the default known patterns file bundled with teuthology.
+    
+    The file format is documented in docs/known_failure_patterns.rst.
+    
+    :returns: Path to the default known-failures.json file
+    """
+    return os.path.join(os.path.dirname(__file__), 'patterns', 'known-failures.json')
+
+
+def _load_known_patterns(path):
+    """Load known failure patterns from a JSON or YAML file.
+    
+    :param path: Path to the patterns file. Default is set in docopt.
+                The file format should be:
+                JSON: {"patterns": ["pattern1", "pattern2", ...]}
+                YAML: patterns: ["pattern1", "pattern2", ...]
+    :returns: List of regex patterns (strings) to match against failure reasons.
+    """
+    if path is None:
+        path = _get_default_known_failure_patterns_file()
+    
+    try:
+        with open(path, 'r') as f:
+            try:
+                patterns_data = json.load(f)
+            except json.JSONDecodeError:
+                f.seek(0)
+                patterns_data = yaml.safe_load(f)
+        
+        known_patterns = patterns_data.get('patterns', [])
+        if isinstance(known_patterns, list):
+            return known_patterns
+        else:
+            log.warning(f"Patterns in {path} should be a list, treating as empty")
+            return []
+    except FileNotFoundError:
+        log.warning(f"Could not load known patterns from {path}, treating all as unknown")
+        return []
+    except (yaml.YAMLError, json.JSONDecodeError) as e:
+        log.warning(f"Could not parse known patterns from {path}: {e}, treating all as unknown")
+        return []
+
+
+def filter_out_known_failures(jobs, path=None):
+    """Filter out jobs with known failure patterns.
+    
+    The known patterns file format is documented in docs/known_failure_patterns.rst.
+    
+    :param jobs: Iterable of job dictionaries with 'failure_reason' and 'description' keys.
+                 Can be a list, generator, or any iterable.
+    :param path: Optional path to known patterns file. If None, uses
+                 the default bundled file.
+    :returns: List of job dictionaries for jobs with unknown failures (i.e., failures
+              that don't match any known pattern). Only includes jobs that were passed
+              in the input and have descriptions.
+    """
+    known_patterns = _load_known_patterns(path)
+    job_descriptions = []
+    for job in jobs:
+        if not job.get('description'):
+            continue
+        
+        failure_reason = job.get('failure_reason')
+        if not failure_reason:
+            job_descriptions.append(job)
+            log.debug(f"Job {job['description']} has no failure reason, treating as unknown")
+            continue
+        
+        is_known = False
+        for pattern in known_patterns:
+            if re.search(pattern, failure_reason):
+                is_known = True
+                log.debug(f"Job {job['description']} matches known pattern: {pattern}")
+                break
+        if not is_known:
+            job_descriptions.append(job)
+            log.debug(f"Job {job['description']} has unknown failure: {failure_reason}")
+    
+    return job_descriptions
 
 
 def get_rerun_filters(run, statuses):
