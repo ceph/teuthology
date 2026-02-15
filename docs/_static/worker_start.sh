@@ -9,7 +9,7 @@ function start_workers_for_tube {
     echo "Starting $2 workers for $1"
     for i in `seq 1 $2`
     do
-        teuthology-worker -v --archive-dir $ARCHIVE --tube $1 --log-dir $WORKER_LOGS &
+        teuthology-worker -v --archive-dir $ARCHIVE --tube $1 --log-dir $WORKER_LOGS 2>>/tmp/teuthology_worker_$1_$i.error &
     done
 }
  

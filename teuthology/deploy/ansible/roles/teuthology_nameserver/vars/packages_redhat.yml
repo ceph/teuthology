@@ -1,0 +1,19 @@
+---
+packages:
+  ## misc tools
+  - vim
+  - wget
+  - mlocate
+  - git
+  - redhat-lsb-core
+  ## bind-specific packages
+  - bind
+  - bind-utils
+  ## firewall
+  - firewalld
+  ## monitoring
+  - nrpe
+  - nagios-plugins-all
+  ## for NTP
+  - ntp
+  - ntpdate

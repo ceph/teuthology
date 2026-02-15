@@ -1,0 +1,25 @@
+use_shaman: true
+check_package_signatures: false
+suite_verify_ceph_hash: false
+# comment the next line to enable --teuthology-branch
+#teuthology_path: "/home/{{ teuthology_execution_user }}/src/teuthology_master"
+ceph_git_url: "{{ ceph_repo }}"
+nsupdate_url: "http://localhost:{{ nsupdate_web_port }}/update"
+libcloud:
+  providers:
+    nbg:  # This string is the 'machine type' value you will use when locking these nodes
+      allow_networks: 'fixed'
+      exclude_sizes: '^(c|d)[0-9]\.|manila.*'
+      ssh_interface: 'private_ips'
+      driver: openstack
+      driver_args:  # driver args are passed directly to the libcloud driver
+        username: 'CHANGE_USERNAME'
+        password: 'CHANGE_PASSWORD'
+        ex_tenant_name: 'ses'
+        #ex_domain_name: 'ldap_users'
+        ex_domain_name: 'Default'
+        ex_force_service_region: 'CustomRegion'
+        ex_force_auth_url: 'https://dashboardp3.cloud.suse.de:5000/v2.0/tokens'
+        ex_force_auth_version: '2.0_password'
+        #ex_force_auth_url: 'https://dashboardp3.cloud.suse.de:5000/v3/tokens'
+        #ex_force_auth_version: '3.x_password'

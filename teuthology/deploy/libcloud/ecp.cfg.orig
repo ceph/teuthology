@@ -1,0 +1,107 @@
+use_shaman: true
+check_package_signatures: false
+suite_verify_ceph_hash: false
+canonical_tags: true
+# comment the next line to enable --teuthology-branch
+#teuthology_path: "/home/{{ teuthology_execution_user }}/src/teuthology_master"
+ceph_git_url: "{{ ceph_repo }}"
+nsupdate_url: "http://localhost:{{ nsupdate_web_port }}/update"
+libcloud:
+  ovh_fix: &ovh_fix_ifcfg
+    |
+      cat > /tmp/ifcfg << EOF
+      BOOTPROTO=dhcp
+      MTU=
+      REMOTE_IPADDR=
+      STARTMODE=auto
+      ETHTOOL_OPTIONS=
+      USERCONTROL=no
+      EOF
+
+      cat > /tmp/fix-ifcfg << EOF
+      ETH=\$(ip route list | grep "scope link" | cut -f 3 -d ' ')
+      cp /etc/sysconfig/network/ifcfg-\$ETH /etc/sysconfig/network/ifcfg-\$ETH.backup
+      cp /tmp/ifcfg /etc/sysconfig/network/ifcfg-\$ETH
+      ifdown \$ETH
+      ifup \$ETH
+      EOF
+
+      bash /tmp/fix-ifcfg
+  common:
+    resolv_conf: &resolv_conf
+      |
+        cat > /etc/resolv.conf << EOF
+        search {{ lab_domain }}
+        nameserver {{ nameserver_addr }}
+        EOF
+        sed -Ei 's/(NETCONFIG_DNS_STATIC_SEARCHLIST)=""/\1="{{ lab_domain }}"/' /etc/sysconfig/network/config
+        sed -Ei 's/(NETCONFIG_DNS_STATIC_SERVERS)=""/\1="{{ nameserver_addr }}"/' /etc/sysconfig/network/config
+    sudoer_user: &sudoer_user
+      |
+        cat > /etc/sudoers.d/teuthology-user << EOF
+        # User rules for teuthology
+        ubuntu ALL=(ALL) NOPASSWD:ALL
+        EOF
+    manage_resolv_conf: &manage_resolv_conf
+        manage_resolv_conf: true
+        nameservers:
+          - "{{ nameserver_addr }}"
+        searchdomains:
+          - "{{ lab_domain }}"
+  providers:
+    ecp:  # This string is the 'machine type' value you will use when locking these nodes
+      userdata:
+        "sle-15.1": &sle15
+          runcmd:
+            - *resolv_conf
+            - zypper in -y git wget rsyslog || true
+            - zypper in -y lsb-release make gcc gcc-c++ chrony || true
+            - systemctl enable chronyd.service || true
+            - systemctl start chronyd.service || true
+        "sle-15.2": *sle15
+        "sle-15.3": *sle15
+        "opensuse-15.1": &leap15
+          runcmd:
+            - *resolv_conf
+            - zypper in -y git wget rsyslog || true
+            - zypper in -y lsb-release make gcc gcc-c++ chrony || true
+            - systemctl enable chronyd.service || true
+            - systemctl start chronyd.service || true
+        "opensuse-15.2": *leap15
+        "opensuse-15.3": *leap15
+        "sle-12.3":
+          bootcmd:
+            - SuSEfirewall2 stop
+            - |
+              sed -i '/127.0.0.1/i  127.0.0.1 {% raw %}{{fqdn}} {{hostname}}{% endraw %}' /etc/cloud/templates/hosts.suse.tmpl
+          runcmd:
+            - *resolv_conf
+            - *sudoer_user
+            - zypper in -y git wget rsyslog || true
+            - zypper in -y lsb-release make gcc gcc-c++ ntp || true
+            - |
+              if ! grep '^server' /etc/ntp.conf ; then
+                for i in 0 1 2 3 ; do
+                  echo "server $i.opensuse.pool.ntp.org iburst" >> /etc/ntp.conf
+                done
+              fi
+            - systemctl enable  ntpd.service
+            - systemctl restart ntpd.service
+
+      allow_networks: 'sesci'
+      exclude_sizes: 'caasp.*|cloud.*|win-.*'
+      exclude_image: '.*-TEST-.*'
+      ssh_interface: 'private_ips'
+      driver: openstack
+      driver_args:  # driver args are passed directly to the libcloud driver
+        ex_domain_name: 'Default'
+        ex_force_auth_url: 'https://engcloud.prv.suse.net:5000/v2.0/tokens'
+        ex_force_auth_version: '2.0_password'
+        #ex_domain_name: 'ldap_users'
+        #ex_force_auth_url: 'https://engcloud.prv.suse.net:5000/v3/auth/tokens'
+        #ex_force_auth_version: '3.x_password'
+        ex_force_service_region: 'CustomRegion'
+        #api_version: '2.1'
+        ex_tenant_name: 'ses'
+        username: 'CHANGE_USERNAME'
+        password: 'CHANGE_PASSWORD'
