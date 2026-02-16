@@ -70,6 +70,7 @@ def main(args):
         with exporter.JobTime().time(suite=suite):
             return run_job(
                 job_config,
+                args.job_config,
                 args.bin_path,
                 args.archive_dir,
                 args.verbose
@@ -77,13 +78,18 @@ def main(args):
     else:
         return run_job(
             job_config,
+            args.job_config,
             args.bin_path,
             args.archive_dir,
             args.verbose
         )
 
 
-def run_job(job_config, teuth_bin_path, archive_dir, verbose):
+def run_job(job_config: dict,
+            job_config_path: str,
+            teuth_bin_path: str,
+            archive_dir: str,
+            verbose: bool) -> int:
     safe_archive = safepath.munge(job_config['name'])
     if job_config.get('first_in_suite') or job_config.get('last_in_suite'):
         job_archive = os.path.join(archive_dir, safe_archive)
@@ -145,8 +151,7 @@ def run_job(job_config, teuth_bin_path, archive_dir, verbose):
     ])
     if job_config['description'] is not None:
         arg.extend(['--description', job_config['description']])
-    job_archive = os.path.join(job_config['archive_path'], 'orig.config.yaml')
-    arg.extend(['--', job_archive])
+    arg.extend(['--', job_config_path])
 
     log.debug("Running: %s" % ' '.join(arg))
     p = subprocess.Popen(
