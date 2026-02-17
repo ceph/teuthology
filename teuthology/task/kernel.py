@@ -462,7 +462,6 @@ def install_latest_rh_kernel(ctx, config):
         for remote in ctx.cluster.remotes.keys():
             p.spawn(update_rh_kernel, remote)
 
-
 def update_rh_kernel(remote):
     package_type = remote.os.package_type
     remote.run(args=['uname', '-a'])
@@ -473,7 +472,7 @@ def update_rh_kernel(remote):
         if not update_log.find("Installed") == -1:
             log.info("Kernel updated to latest z stream on %s", remote.shortname)
             log.info("Rebooting %s", remote.shortname)
-            remote.run(args=['sudo', 'shutdown', '-r', 'now'], wait=False)
+            remote.safe_hard_reboot()
             time.sleep(40)
             log.info("Reconnecting after reboot")
             remote.reconnect(timeout=300)
@@ -541,16 +540,7 @@ def install_and_reboot(ctx, need_install, config):
         if kernel_title.endswith("-highbank"):
             _no_grub_link('vmlinuz', role_remote, kernel_title)
             _no_grub_link('initrd.img', role_remote, kernel_title)
-            proc = role_remote.run(
-                args=[
-                    'sudo',
-                    'shutdown',
-                    '-r',
-                    'now',
-                    ],
-                wait=False,
-            )
-            procs[role_remote.name] = proc
+            procs[role_remote.name] = role_remote.safe_hard_reboot()
             continue
 
         # look for menuentry for our kernel, and collect any
@@ -579,7 +569,7 @@ def install_and_reboot(ctx, need_install, config):
         log.info('submenu_title:{}'.format(submenu_title))
         log.info('default_title:{}'.format(default_title))
 
-        proc = role_remote.run(
+        procs[role_remote.name] = role_remote.run(
             args=[
                 # use the title(s) to construct the content of
                 # the grub menu entry, so we can default to it.
@@ -615,27 +605,14 @@ def install_and_reboot(ctx, need_install, config):
                 run.Raw('&&'),
                 'rm',
                 remote_pkg_path(role_remote),
-                run.Raw('&&'),
-                # work around a systemd issue, where network gets shut down
-                # before ssh can close its session
-                run.Raw('('),
-                'sleep',
-                '1',
-                run.Raw('&&'),
-                'sudo',
-                'shutdown',
-                '-r',
-                'now',
-                run.Raw('&'),
-                run.Raw(')'),
                 ],
-            wait=False,
+                wait=False,
             )
-        procs[role_remote.name] = proc
 
     for name, proc in procs.items():
         log.debug('Waiting for install on %s to complete...', name)
         proc.wait()
+        proc.remote.safe_hard_reboot()
 
 
 def enable_disable_kdb(ctx, config):
@@ -855,7 +832,7 @@ def install_kernel(remote, role_config, path=None, version=None):
             elif not version or version == 'distro':
                 version = get_latest_image_version_rpm(remote)
             update_grub_rpm(remote, version)
-        remote.run( args=['sudo', 'shutdown', '-r', 'now'], wait=False )
+        remote.safe_hard_reboot()
         return
 
     if package_type == 'deb':
@@ -887,13 +864,13 @@ def install_kernel(remote, role_config, path=None, version=None):
             teuthology.sudo_write_file(remote, '/etc/grub.d/01_ceph_kernel', StringIO(grubfile), '755')
             log.info('Distro Kernel Version: {version}'.format(version=newversion))
             remote.run(args=['sudo', 'update-grub'])
-            remote.run(args=['sudo', 'shutdown', '-r', 'now'], wait=False )
+            remote.safe_hard_reboot()
             return
 
         if 'debian' in dist_release:
             grub2_kernel_select_generic(remote, newversion, 'deb')
             log.info('Distro Kernel Version: {version}'.format(version=newversion))
-            remote.run( args=['sudo', 'shutdown', '-r', 'now'], wait=False )
+            remote.safe_hard_reboot()
             return
 
 
