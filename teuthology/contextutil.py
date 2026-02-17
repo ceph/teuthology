@@ -3,6 +3,8 @@ import sys
 import logging
 import time
 
+from typing import Optional
+
 from teuthology.config import config
 from teuthology.exceptions import MaxWhileTries
 
@@ -120,7 +122,7 @@ class safe_while(object):
         )
         return msg
 
-    def __call__(self):
+    def __call__(self, last_exception: Optional[Exception] = None):
         self.counter += 1
         if self.counter == 1:
             return True
@@ -131,7 +133,7 @@ class safe_while(object):
             (self.timeout == 0 and must_stop())):
             error_msg = self._make_error_msg()
             if self._raise:
-                raise MaxWhileTries(error_msg)
+                raise MaxWhileTries(error_msg, last_exception)
             else:
                 log.warning(error_msg)
                 return False

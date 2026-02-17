@@ -12,7 +12,7 @@ import teuthology.orchestra
 
 from teuthology.config import config
 from teuthology.contextutil import safe_while
-from teuthology.exceptions import MaxWhileTries
+from teuthology.exceptions import MaxWhileTries, ReimageFailureNeedsInvestigation
 from teuthology.orchestra.opsys import OS
 from teuthology import misc
 
@@ -88,7 +88,19 @@ class FOG(object):
         except Exception:
             self.cancel_deploy_task(task_id)
             raise
-        self._wait_for_ready()
+        try:
+            self._wait_for_ready()
+        except MaxWhileTries as e:
+            # If the SSH port never opened, this requires investigation
+            if isinstance(e.last_exception, NoValidConnectionsError):
+                log.exception("Reimage failure")
+                raise ReimageFailureNeedsInvestigation(
+                    node_name=self.name,
+                    message=f"Reimage failed: {e.last_exception}",
+                    inner=e.last_exception,
+                )
+            else:
+                raise
         self._fix_hostname()
         self._verify_installed_os()
         self.log.info("Deploy complete!")
@@ -281,36 +293,10 @@ class FOG(object):
         resp.raise_for_status()
 
     def _wait_for_ready(self):
-        """
-        Attempt to connect to the machine via SSH (power cycle once at 50% of timeout).
-        """
-
-        total_timeout = config.fog_wait_for_ssh_timeout
-        ipmi_cycle_after_seconds = total_timeout * 0.5
-
-        start = datetime.datetime.now(datetime.timezone.utc)
-        ipmi_cycle_sent = False
-
-        with safe_while(sleep=6, timeout=total_timeout) as proceed:
-            while proceed():
-                now = datetime.datetime.now(datetime.timezone.utc)
-                elapsed = (now - start).total_seconds()
-
-                # ipmitool power cycle once at 50% of timeout
-                if not ipmi_cycle_sent and elapsed >= ipmi_cycle_after_seconds:
-                    ipmi_cycle_sent = True
-                    self.log.warning(
-                        f"{self.shortname}: SSH not up after {int(elapsed)}s "
-                        f"(~50% of timeout); power cycling and continuing to wait"
-                    )
-                    try:
-                        self.remote.console.power_off()
-                        self.remote.console.power_on()
-                    except Exception as e:
-                        self.log.error(
-                            f"{self.shortname}: power cycle failed but continuing: {e}"
-                        )
-
+        """ Attempt to connect to the machine via SSH """
+        with safe_while(sleep=6, timeout=config.fog_wait_for_ssh_timeout) as proceed:
+            last_exception = None
+            while proceed(last_exception):
                 try:
                     self.remote.connect()
                     break
@@ -326,6 +312,7 @@ class FOG(object):
                     # a mismatched host key in ~/.ssh/known_hosts, or
                     # something)
                     self.log.warning(e)
+                    last_exception = e
         sentinel_file = config.fog.get('sentinel_file', None)
         if sentinel_file:
             cmd = "while [ ! -e '%s' ]; do sleep 5; done" % sentinel_file
