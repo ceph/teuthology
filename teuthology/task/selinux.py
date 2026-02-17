@@ -138,6 +138,7 @@ class SELinux(Task):
             'comm="sss_cache"',
             'context=system_u:system_r:NetworkManager_dispatcher_t:s0',
             'context=system_u:system_r:getty_t:s0',
+            'comm="systemd".*denied.*\{ prog_run \}.*tclass=bpf.*permissive=1',
         ]
         se_allowlist = self.config.get('allowlist', [])
         if se_allowlist:
