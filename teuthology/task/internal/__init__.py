@@ -11,9 +11,6 @@ import os
 import shutil
 import time
 import yaml
-import subprocess
-import tempfile
-import re
 import humanfriendly
 
 import teuthology.lock.ops
@@ -299,77 +296,43 @@ def check_conflict(ctx, config):
         raise RuntimeError('Stale jobs detected, aborting.')
 
 
-def fetch_binaries_for_coredumps(path, remote):
-    """
-    Pul ELFs (debug and stripped) for each coredump found
-    """
-    # Check for Coredumps:
-    coredump_path = os.path.join(path, 'coredump')
-    if os.path.isdir(coredump_path):
-        log.info('Transferring binaries for coredumps...')
-        for dump in os.listdir(coredump_path):
-            # Pull program from core file
-            dump_path = os.path.join(coredump_path, dump)
-            dump_info = subprocess.Popen(['file', dump_path],
-                                         stdout=subprocess.PIPE)
-            dump_out = dump_info.communicate()[0].decode()
-
-            # Parse file output to get program, Example output:
-            # 1422917770.7450.core: ELF 64-bit LSB core file x86-64, version 1 (SYSV), SVR4-style, \
-            # from 'radosgw --rgw-socket-path /home/ubuntu/cephtest/apache/tmp.client.0/fastcgi_soc'
-            log.info(f' core looks like: {dump_out}')
-
-            if 'gzip' in dump_out:
-                try:
-                    log.info("core is compressed, try accessing gzip file ...")
-                    with gzip.open(dump_path, 'rb') as f_in, \
-                         tempfile.NamedTemporaryFile(mode='w+b') as f_out:
-                         shutil.copyfileobj(f_in, f_out)
-                         dump_info = subprocess.Popen(['file', f_out.name],
-                                                        stdout=subprocess.PIPE)
-                         dump_out = dump_info.communicate()[0].decode()
-                         log.info(f' core looks like: {dump_out}')
-                except Exception as e:
-                    log.info('Something went wrong while opening the compressed file')
-                    log.error(e)
-                    continue
-            try:
-                dump_command = re.findall("from '([^ ']+)", dump_out)[0]
-                dump_program = dump_command.split()[0]
-                log.info(f' dump_program: {dump_program}')
-            except Exception as e:
-                log.info("core doesn't have the desired format, moving on ...")
-                log.error(e)
-                continue
-
-            # Find path on remote server:
-            remote_path = remote.sh(['which', dump_program]).rstrip()
-
-            # Pull remote program into coredump folder:
-            local_path = os.path.join(coredump_path,
-                                      dump_program.lstrip(os.path.sep))
-            local_dir = os.path.dirname(local_path)
-            if not os.path.exists(local_dir):
-                os.makedirs(local_dir)
-            remote._sftp_get_file(remote_path, local_path)
-
-            # Pull Debug symbols:
-            debug_path = os.path.join('/usr/lib/debug', remote_path)
-
-            # RPM distro's append their non-stripped ELF's with .debug
-            # When deb based distro's do not.
-            if remote.system_type == 'rpm':
-                debug_path = '{debug_path}.debug'.format(debug_path=debug_path)
-
-            remote.get_file(debug_path, coredump_path)
-
-
 def gzip_if_too_large(compress_min_size, src, tarinfo, local_path):
     if tarinfo.size >= compress_min_size:
         with gzip.open(local_path + '.gz', 'wb') as dest:
             shutil.copyfileobj(src, dest)
     else:
         misc.copy_fileobj(src, tarinfo, local_path)
+
+
+def fetch_coredumps( remote: remote.Remote, remote_path: str) -> None:
+    """
+    Execute the script in the remote machine to fetch coredumps and binaries,
+    and compress the coredumps if needed, before pulling to local
+    """
+    # Prepare the path of the script:
+    script_path = os.path.join(os.path.dirname(__file__), 'fetch_coredumps.py')
+    try:
+        stdout = remote.sh_file( script=script_path,
+                                 args=[ f"--input={remote_path}", "--debug"] )
+        log.info(f"fetch_coredumps: {stdout}")
+    except Exception as e:
+        log.error( f"Something went wrong while fetching coredumps from {remote}: {e}")
+
+
+def check_coredumps_and_binaries(path: str) -> None:
+    """
+    Verify that the binaries from coredumps have been fetched and are in place in the local path
+    """
+    for dump in os.listdir(path):
+        # Check whether the backtrace of the coredump indicates missing binary or debug symbols
+        if dump.endswith('.gdb.txt'):
+            with open(os.path.join(path, dump), 'r') as f:
+                backtrace = f.read()
+                if 'No symbol table is loaded' in backtrace:
+                    log.warning(f"Backtrace from core {dump} indicates missing binary\
+                    or debug symbols for the coredump, please check the core fetching\
+                    logs for more details")
+                log.warning(f"Backtrace from core {dump}:\n{backtrace}")
 
 
 @contextlib.contextmanager
@@ -414,11 +377,13 @@ def archive(ctx, config):
                     msg = 'invalid "log-compress-min-size": {}'.format(min_size_option)
                     log.error(msg)
                     raise ConfigError(msg)
+                # Get the coredumps and their binaries in place
+                fetch_coredumps(rem, archive_dir)
                 maybe_compress = functools.partial(gzip_if_too_large,
                                                    compress_min_size_bytes)
                 misc.pull_directory(rem, archive_dir, path, maybe_compress)
-                # Check for coredumps and pull binaries
-                fetch_binaries_for_coredumps(path, rem)
+                # Check that coredumps, backtraces and their binaries are in place
+                check_coredumps_and_binaries(path)
 
         log.info('Removing archive directory...')
         run.wait(
@@ -521,6 +486,17 @@ def coredump(ctx, config):
             if 'failure_reason' not in ctx.summary:
                 ctx.summary['failure_reason'] = \
                     'Found coredumps on {rem}'.format(rem=rem)
+                # Add the backtraces of the coredumps to the failure reason
+                coredump_path = os.path.join(archive_dir, 'coredump')
+                for dump in os.listdir(coredump_path):
+                    if dump.endswith('.gdb.txt'):
+                        with open(os.path.join(coredump_path, dump), 'r') as f:
+                            backtrace = f.read()
+                        ctx.summary['failure_reason'] += \
+                            '\n\nBacktrace from core {dump}:\n{bt}'.format(
+                                dump=dump,
+                                bt=backtrace
+                            )
 
 
 @contextlib.contextmanager
