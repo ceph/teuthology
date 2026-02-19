@@ -332,7 +332,7 @@ def _update_package_list_and_install(ctx, remote, rpm, config):
 
 def _yum_fix_repo_priority(remote, project, uri):
     """
-    On the remote, 'priority=1' lines to each enabled repo in:
+    On the remote, add 'priority=1' lines to each enabled repo in:
 
         /etc/yum.repos.d/{project}.repo
 
@@ -345,8 +345,6 @@ def _yum_fix_repo_priority(remote, project, uri):
             'if', 'test', '-f', repo_path, run.Raw(';'), 'then',
             'sudo', 'sed', '-i', '-e',
             run.Raw('\':a;N;$!ba;s/enabled=1\\ngpg/enabled=1\\npriority=1\\ngpg/g\''),
-            '-e',
-            run.Raw("'s;ref/[a-zA-Z0-9_-]*/;{uri}/;g'".format(uri=uri)),
             repo_path, run.Raw(';'), 'fi'
         ]
     )
