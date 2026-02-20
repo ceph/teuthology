@@ -446,6 +446,21 @@ class ResultsReporter(object):
         for job_id in job_ids:
             self.delete_job(self, run_name, job_id)
 
+    def create_run(self, run_name, tag_list):
+        """
+        Create a new run in the results server with an optional tag.
+
+        :param run_name: The name of the run
+        :param tag_list: List of tags
+        """
+        uri = "{base}/runs/{name}".format(base=self.base_uri, name=run_name)
+        payload = {
+            "name": run_name,
+            "tag": tag_list
+        }
+        response = self.session.post(uri, json=payload)
+        response.raise_for_status()
+
     def delete_run(self, run_name):
         """
         Delete a run from the results server.
@@ -594,3 +609,19 @@ def try_mark_run_dead(run_name):
             except report_exceptions:
                 log.exception("Could not mark job as dead: {job_id}".format(
                     job_id=job_id))
+
+def try_create_run(run_name, tag_list):
+    """
+    Try to create a new run, add a tag if it is available
+    :param run_name:         The name of the run.
+    :param tag_list:         The list of tags.
+    """
+    log = init_logging()
+    reporter = ResultsReporter()
+    if not reporter.base_uri:
+        return
+    log.debug("Creating run: {name}".format(name=run_name))
+    try:
+        reporter.create_run(run_name, tag_list)
+    except report_exceptions:
+        log.exception("Could not create run: {run_name}".format(run_name=run_name))

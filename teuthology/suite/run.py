@@ -20,6 +20,7 @@ from teuthology.exceptions import (
 from teuthology.misc import deep_merge, get_results_url, update_key
 from teuthology.orchestra.opsys import OS
 from teuthology.repo_utils import build_git_url
+from teuthology.report import try_create_run
 
 from teuthology.suite import util
 from teuthology.suite.merge import config_merge
@@ -35,7 +36,7 @@ class Run(object):
     WAIT_PAUSE = 5 * 60
     __slots__ = (
         'args', 'name', 'base_config', 'suite_repo_path', 'base_yaml_paths',
-        'base_args', 'kernel_dict', 'config_input', 'timestamp', 'user', 'os',
+        'base_args', 'kernel_dict', 'config_input', 'timestamp', 'user', 'os', 'tag',
     )
 
     def __init__(self, args):
@@ -52,6 +53,7 @@ class Run(object):
             config.ceph_git_url = self.args.ceph_repo
         if self.args.suite_repo:
             config.ceph_qa_suite_git_url = self.args.suite_repo
+        self.tag = self.args.tag or []
 
         self.base_config = self.create_initial_config()
 
@@ -457,6 +459,10 @@ class Run(object):
         sends an email to the specified address (if one is configured).
         """
         self.base_args = self.build_base_args()
+
+        # Create a run explicitly if run tag is specified
+        if self.tag:
+            try_create_run(self.name, self.tag)
 
         # Make sure the yaml paths are actually valid
         for yaml_path in self.base_yaml_paths:
