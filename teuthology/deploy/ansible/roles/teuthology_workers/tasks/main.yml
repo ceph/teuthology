@@ -1,0 +1,58 @@
+- name: Enable and start beanstalkd
+  service:
+    name: beanstalkd
+    state: started
+    enabled: yes
+  tags:
+    - always
+
+- name: Start workers
+  shell: |
+    source virtualenv/bin/activate
+    {% if libcloud_ssl_cert_file %}
+    export SSL_CERT_FILE={{ libcloud_ssl_cert_file }}
+    {% endif %}
+    echo "I'm {{ teuthology_execution_user }}"
+    whoami
+    bash docs/_static/worker_start.sh {{ machine_type }} {{ workers }}
+  args:
+    executable: /bin/bash
+    chdir: /home/{{ teuthology_execution_user }}/src/teuthology_main
+  become_user: "{{ teuthology_execution_user }}"
+  when: workers > 0
+
+- name: Tweak ssh_config
+  blockinfile:
+    create: yes
+    block: |
+      Host *
+        StrictHostKeyChecking no
+        UserKnownHostsFile=/dev/null
+
+    path: "/home/{{ teuthology_execution_user }}/.ssh/config"
+  become_user: "{{ teuthology_execution_user }}"
+
+- name: Add SSL_CERT_FILE to .bashrc
+  blockinfile:
+    create: yes
+    block: |
+      export SSL_CERT_FILE={{ libcloud_ssl_cert_file }}
+
+    path: "/home/{{ teuthology_execution_user }}/.bashrc"
+  become_user: "{{ teuthology_execution_user }}"
+  when: libcloud_ssl_cert_file != ""
+
+- name: Start dispatcher
+  shell: |
+    source virtualenv/bin/activate
+    {% if libcloud_ssl_cert_file %}
+    export SSL_CERT_FILE={{ libcloud_ssl_cert_file }}
+    {% endif %}
+    mkdir -p /home/{{ teuthology_execution_user }}/logs
+    teuthology-dispatcher -v --tube {{ machine_type }} --log-dir /home/{{ teuthology_execution_user }}/logs >> /home/{{ teuthology_execution_user }}/teuthology-dispatcher.log 2>&1 &
+
+  args:
+    executable: /bin/bash
+    chdir: /home/{{ teuthology_execution_user }}/src/teuthology_main
+  become_user: "{{ teuthology_execution_user }}"
+  when: dispatcher > 0
