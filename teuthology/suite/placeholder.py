@@ -66,6 +66,9 @@ dict_templ = {
         'admin_socket': {
             'branch': Placeholder('ceph_branch'),
         },
+        'ansible.cephlab': {
+            'skip_tags': 'user,pubkeys,nagios,nrpe,cpan',
+        },
         'ceph': {
             'conf': {
                 'mon': {
