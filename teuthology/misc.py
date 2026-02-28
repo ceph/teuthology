@@ -51,7 +51,15 @@ def host_shortname(hostname):
     else:
         return hostname.split('.', 1)[0]
 
-def canonicalize_hostname(hostname, user: Optional[str] ='ubuntu'):
+# sentinel value to indicate the default user value is to be used.
+# None and the empty string are reserved for specifying no user value
+# to be backwards compatible with older code.
+_default_user = '.'
+
+def canonicalize_hostname(
+    hostname: str, user: Optional[str] = _default_user
+) -> str:
+    user = get_test_user() if user == _default_user else user
     hostname_expr = hostname_expr_templ.format(
         lab_domain=config.lab_domain.replace('.', r'\.'))
     match = re.match(hostname_expr, hostname)
