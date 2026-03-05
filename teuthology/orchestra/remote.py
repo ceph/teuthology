@@ -438,12 +438,14 @@ class Remote(RemoteShell):
         args = [
             'sudo', 'bash', '-c',
             """
-            echo pci > /sys/kernel/reboot/type && \
-            echo 1 > /sys/kernel/reboot/force && \
-            sync && echo s > /proc/sysrq-trigger && \
-            echo u > /proc/sysrq-trigger && \
-            sleep 2 && \
-            echo b > /proc/sysrq-trigger
+            # Be tolerant of /sys/kernel/reboot missing (Ubuntu 20.04).
+            echo pci | sudo tee /sys/kernel/reboot/type;
+            echo 1 | sudo tee /sys/kernel/reboot/force;
+            sync \
+              && echo s | sudo tee /proc/sysrq-trigger \
+              && echo u | sudo tee /proc/sysrq-trigger \
+              && sleep 2 \
+              && echo b | sudo tee /proc/sysrq-trigger
             """
         ]
         return self.run(args=args, wait=False)

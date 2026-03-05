@@ -598,6 +598,10 @@ def install_and_reboot(ctx, need_install, config):
                 '--',
                 '/etc/grub.d/01_ceph_kernel.tmp~',
                 '/etc/grub.d/01_ceph_kernel',
+                run.Raw('&&'),
+                'sudo', 'sed', '-i',
+                '/^GRUB_CMDLINE_LINUX_DEFAULT=/ {/reboot=pci/! s/"$/ reboot=pci,force"/}',
+                '/etc/default/grub',
                 # update grub again so it accepts our default
                 run.Raw('&&'),
                 'sudo',
@@ -863,6 +867,11 @@ def install_kernel(remote, role_config, path=None, version=None):
             teuthology.delete_file(remote, '/etc/grub.d/01_ceph_kernel', sudo=True, force=True)
             teuthology.sudo_write_file(remote, '/etc/grub.d/01_ceph_kernel', StringIO(grubfile), '755')
             log.info('Distro Kernel Version: {version}'.format(version=newversion))
+            remote.run(args=[
+                'sudo', 'sed', '-i',
+                '/^GRUB_CMDLINE_LINUX_DEFAULT=/ {/reboot=pci/! s/"$/ reboot=pci,force"/}',
+                '/etc/default/grub'
+            ])
             remote.run(args=['sudo', 'update-grub'])
             remote.safe_hard_reboot()
             return
@@ -1043,6 +1052,12 @@ def grub2_kernel_select_generic(remote, newversion, ostype):
         mkconfig = 'grub-mkconfig'
     else:
         raise UnsupportedPackageTypeError(f"Unknown ostype: {ostype}")
+
+    remote.run(args=[
+        'sudo', 'sed', '-i',
+        '/^GRUB_CMDLINE_LINUX_DEFAULT=/ {/reboot=pci/! s/"$/ reboot=pci,force"/}',
+        '/etc/default/grub'
+    ])
 
     if _kernel_has_bls(remote):
         status_ok = _kernel_set_default_bls(remote, newversion, ostype)
