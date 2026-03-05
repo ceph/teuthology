@@ -281,7 +281,15 @@ class TestScheduleSuite(object):
         m_get_install_task_flavor,
         m_write_rerun_memo,
         m_schedule_jobs,
+        tmp_path,
     ):
+        # Create the expected suite directory structure
+        suite_path = tmp_path / 'suites' / 'suite'
+        suite_path.mkdir(parents=True, exist_ok=True)
+        
+        # Update args to use the temporary directory
+        self.args.suite_dir = str(tmp_path)
+        
         m_get_arch.return_value = 'x86_64'
         m_git_validate_sha1.return_value = self.args.ceph_sha1
         m_package_version_for_hash.return_value = 'ceph_version'
@@ -392,7 +400,15 @@ class TestScheduleSuite(object):
         m_get_install_task_flavor,
         m_schedule_jobs,
         m_find_git_parents,
+        tmp_path,
     ):
+        # Create the expected suite directory structure
+        suite_path = tmp_path / 'suites' / 'suite'
+        suite_path.mkdir(parents=True, exist_ok=True)
+        
+        # Update args to use the temporary directory
+        self.args.suite_dir = str(tmp_path)
+        
         m_get_arch.return_value = 'x86_64'
         m_git_validate_sha1.return_value = self.args.ceph_sha1
         m_package_version_for_hash.return_value = None
@@ -440,6 +456,7 @@ class TestScheduleSuite(object):
         m_write_rerun_memo,
         m_schedule_jobs,
         m_find_git_parents,
+        tmp_path,
     ):
         """
         Test that we can successfully schedule a job with newest
@@ -447,6 +464,13 @@ class TestScheduleSuite(object):
         and the ceph_sha1 is not supplied. We should expect that the
         ceph_hash and suite_hash will be updated to the working sha1
         """
+        # Create the expected suite directory structure
+        suite_path = tmp_path / 'suites' / 'suite'
+        suite_path.mkdir(parents=True, exist_ok=True)
+        
+        # Update args to use the temporary directory
+        self.args.suite_dir = str(tmp_path)
+        
         m_get_arch.return_value = 'x86_64'
         # rig has_packages_for_distro to fail this many times, so
         # everything will run NUM_FAILS+1 times
@@ -548,6 +572,7 @@ class TestScheduleSuite(object):
         m_write_rerun_memo,
         m_schedule_jobs,
         m_find_git_parents,
+        tmp_path,
     ):
         """
         Test that we can successfully schedule a job with newest
@@ -556,6 +581,13 @@ class TestScheduleSuite(object):
         ceph_hash will be updated to the working sha1,
         but the suite_hash will remain the original suite_sha1.
         """
+        # Create the expected suite directory structure
+        suite_path = tmp_path / 'suites' / 'suite'
+        suite_path.mkdir(parents=True, exist_ok=True)
+        
+        # Update args to use the temporary directory
+        self.args.suite_dir = str(tmp_path)
+        
         m_get_arch.return_value = 'x86_64'
         # Set different branches
         self.args.ceph_branch = 'ceph_different_branch'
