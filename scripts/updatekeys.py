@@ -1,31 +1,41 @@
-import docopt
+import argparse
 import sys
 
 import teuthology.lock
 import teuthology.lock.cli
 
-doc = """
-usage: teuthology-updatekeys -h
-       teuthology-updatekeys [-v] -t <targets>
-       teuthology-updatekeys [-v] <machine> ...
-       teuthology-updatekeys [-v] -a
-
+desc = """
 Update any hostkeys that have changed. You can list specific machines to run
 on, or use -a to check all of them automatically.
-
-positional arguments:
-  MACHINES              hosts to check for updated keys
-
-optional arguments:
-  -h, --help            Show this help message and exit
-  -v, --verbose         Be more verbose
-  -t <targets>, --targets <targets>
-                        Input yaml containing targets to check
-  -a, --all             Update hostkeys of all machines in the db
 """
 
 
 def main():
-    args = docopt.docopt(doc)
-    status = teuthology.lock.cli.updatekeys(args)
+    parser = argparse.ArgumentParser(
+        description=desc,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        'machines',
+        nargs='*',
+        metavar='MACHINES',
+        help='hosts to check for updated keys'
+    )
+    parser.add_argument(
+        '-v', '--verbose',
+        action='store_true',
+        help='Be more verbose'
+    )
+    parser.add_argument(
+        '-t', '--targets',
+        metavar='<targets>',
+        help='Input yaml containing targets to check'
+    )
+    parser.add_argument(
+        '-a', '--all',
+        action='store_true',
+        help='Update hostkeys of all machines in the db'
+    )
+    args = parser.parse_args()
+    status = teuthology.lock.cli.updatekeys(args.__dict__)
     sys.exit(status)

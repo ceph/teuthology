@@ -28,19 +28,19 @@ def init_logging():
 
 
 def main(args):
-    run = args['--run']
-    job = args['--job']
-    dead = args['--dead']
-    refresh = dead or args['--refresh']
-    server = args['--server']
+    run = args['run']
+    job = args['job']
+    dead = args['dead']
+    refresh = dead or args['refresh']
+    server = args['server']
     if server:
         config.results_server = server
-    if args['--verbose']:
+    if args['verbose']:
         teuthology.log.setLevel(logging.DEBUG)
 
-    archive_base = os.path.abspath(os.path.expanduser(args['--archive'])) or \
+    archive_base = os.path.abspath(os.path.expanduser(args['archive'])) or \
         config.archive_base
-    save = not args['--no-save']
+    save = not args['no_save']
 
     log = init_logging()
     reporter = ResultsReporter(archive_base, save=save, refresh=refresh,
@@ -56,7 +56,7 @@ def main(args):
         reporter.report_runs(run)
     elif run:
         reporter.report_run(run[0])
-    elif args['--all-runs']:
+    elif args['all_runs']:
         reporter.report_all_runs()
 
 

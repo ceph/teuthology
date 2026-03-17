@@ -120,10 +120,10 @@ class TestFakeNamespace(TestYamlConfig):
     def setup_method(self):
         self.test_class = config.FakeNamespace
 
-    def test_docopt_dict(self):
+    def test_argparse_dict(self):
         """
-        Tests if a dict in the format that docopt returns can
-        be parsed correctly.
+        Tests if a dict in the format that argparse returns (converted from docopt format)
+        can be parsed correctly. This maintains backward compatibility.
         """
         d = {
             "--verbose": True,

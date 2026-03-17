@@ -1,4 +1,4 @@
-import docopt
+import argparse
 import sys
 
 import logging
@@ -7,25 +7,24 @@ import teuthology
 import teuthology.suite
 from teuthology.config import config
 
-doc = """
-usage: teuthology-wait --help
-       teuthology-wait [-v] --run <name>
-
-Wait until run is finished. Returns exit code 0 on success, otherwise 1.
-
-Miscellaneous arguments:
-  -h, --help                  Show this help message and exit
-  -v, --verbose               Be more verbose
-
-Standard arguments:
-  -r, --run <name>          Run name to watch.
-"""
-
-
 def main(argv=sys.argv[1:]):
-    args = docopt.docopt(doc, argv=argv)
-    if args.get('--verbose'):
+    parser = argparse.ArgumentParser(
+        description='Wait until run is finished. Returns exit code 0 on success, otherwise 1.',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        '-v', '--verbose',
+        action='store_true',
+        help='Be more verbose'
+    )
+    parser.add_argument(
+        '-r', '--run',
+        required=True,
+        metavar='<name>',
+        help='Run name to watch'
+    )
+    args = parser.parse_args(argv)
+    if args.verbose:
         teuthology.log.setLevel(logging.DEBUG)
-    name = args.get('--run')
-    return teuthology.suite.wait(name, config.max_job_time, None)
+    return teuthology.suite.wait(args.run, config.max_job_time, None)
 

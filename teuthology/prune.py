@@ -18,15 +18,15 @@ def main(args):
     """
     Main function; parses args and calls prune_archive()
     """
-    verbose = args['--verbose']
+    verbose = args['verbose']
     if verbose:
         teuthology.log.setLevel(logging.DEBUG)
-    archive_dir = args['--archive']
-    dry_run = args['--dry-run']
-    pass_days = int(args['--pass'])
-    fail_days = int(args['--fail'])
-    remotes_days = int(args['--remotes'])
-    compress_days = int(args['--compress'])
+    archive_dir = args['archive']
+    dry_run = args['dry_run']
+    pass_days = int(args['pass'])
+    fail_days = int(args['fail'])
+    remotes_days = int(args['remotes'])
+    compress_days = int(args['compress'])
 
     prune_archive(
         archive_dir, pass_days, fail_days, remotes_days, compress_days, dry_run
