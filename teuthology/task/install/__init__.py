@@ -32,14 +32,6 @@ def verify_package_version(ctx, config, remote):
     For most cases this is for ceph, but we also install samba
     for example.
     """
-    # Do not verify the version if the ceph-deploy task is being used to
-    # install ceph. Verifying the ceph installed by ceph-deploy should work,
-    # but the qa suites will need reorganized first to run ceph-deploy
-    # before the install task.
-    # see: http://tracker.ceph.com/issues/11248
-    if config.get("extras"):
-        log.info("Skipping version verification...")
-        return True
     if 'repos' in config and config.get('repos'):
         log.info("Skipping version verification because we have custom repos...")
         return True
@@ -203,17 +195,6 @@ def install(ctx, config):
         debs += extra_pkgs
         rpms += extra_pkgs
 
-    # When extras is in the config we want to purposely not install ceph.
-    # This is typically used on jobs that use ceph-deploy to install ceph
-    # or when we are testing ceph-deploy directly.  The packages being
-    # installed are needed to properly test ceph as ceph-deploy won't
-    # install these. 'extras' might not be the best name for this.
-    extras = config.get('extras')
-    if extras is not None:
-        debs = ['ceph-test', 'ceph-fuse',
-                'librados2', 'librbd1',
-                'python-ceph']
-        rpms = ['ceph-fuse', 'librbd1', 'librados2', 'ceph-test', 'python-ceph']
     package_list = dict(deb=debs, rpm=rpms)
     install_packages(ctx, package_list, config)
     try:
@@ -225,34 +206,12 @@ def install(ctx, config):
 
 def upgrade_old_style(ctx, node, remote, pkgs, system_type):
     """
-    Handle the upgrade using methods in use prior to ceph-deploy.
+    Handle the upgrade using methods in use prior to deploy.
     """
     if system_type == 'deb':
         deb._upgrade_packages(ctx, node, remote, pkgs)
     elif system_type == 'rpm':
         rpm._upgrade_packages(ctx, node, remote, pkgs)
-
-
-def upgrade_with_ceph_deploy(ctx, node, remote, pkgs, sys_type):
-    """
-    Upgrade using ceph-deploy
-    """
-    dev_table = ['branch', 'tag', 'dev']
-    ceph_dev_parm = ''
-    ceph_rel_parm = ''
-    for entry in node.keys():
-        if entry in dev_table:
-            ceph_dev_parm = node[entry]
-        if entry == 'release':
-            ceph_rel_parm = node[entry]
-    params = []
-    if ceph_dev_parm:
-        params += ['--dev', ceph_dev_parm]
-    if ceph_rel_parm:
-        params += ['--release', ceph_rel_parm]
-    params.append(remote.name)
-    subprocess.call(['ceph-deploy', 'install'] + params)
-    remote.run(args=['sudo', 'restart', 'ceph-all'])
 
 
 def upgrade_remote_to_config(ctx, config):
@@ -393,11 +352,8 @@ docstring_for_upgrade = """"
     :param config: the config dict
     """
 
-#
-# __doc__ strings for upgrade and ceph_deploy_upgrade are set from
-# the same string so that help(upgrade) and help(ceph_deploy_upgrade)
-# look the same.
-#
+# __doc__ strings for upgrade are set from the same string so that
+# help(upgrade) look the same.
 
 
 @contextlib.contextmanager
@@ -407,14 +363,6 @@ def upgrade(ctx, config):
 
 upgrade.__doc__ = docstring_for_upgrade.format(cmd_parameter='upgrade')
 
-
-@contextlib.contextmanager
-def ceph_deploy_upgrade(ctx, config):
-    upgrade_common(ctx, config, upgrade_with_ceph_deploy)
-    yield
-
-ceph_deploy_upgrade.__doc__ = docstring_for_upgrade.format(
-    cmd_parameter='ceph_deploy_upgrade')
 
 def _override_extra_system_packages(config, project, install_overrides):
     teuthology.deep_merge(config, install_overrides.get(project, {}))
@@ -541,7 +489,7 @@ def task(ctx, config):
     will be installed. The override of the sha1 has no effect.
 
     When passed 'rhbuild' as a key, it will attempt to install an rh ceph build
-    using ceph-deploy
+    using ceph
 
     Normally, the package management system will try to install or upgrade
     specified packages as instructed. But if newer versions of these packages

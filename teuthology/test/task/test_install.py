@@ -91,20 +91,6 @@ class TestInstall(object):
         with pytest.raises(RuntimeError):
             install.verify_package_version(Mock(), config, Mock())
 
-    @patch("teuthology.task.install._get_builder_project")
-    @patch("teuthology.task.install.packaging.get_package_version")
-    def test_skip_when_using_ceph_deploy(self, m_get_package_version,
-                                         m_gitbuilder_project):
-        gb = Mock()
-        gb.version = "0.89.0"
-        gb.project = "ceph"
-        m_gitbuilder_project.return_value = gb
-        # ceph isn't installed because ceph-deploy would install it
-        m_get_package_version.return_value = None
-        config = dict()
-        config['extras'] = True
-        install.verify_package_version(Mock(), config, Mock())
-
     def test_get_flavor_default(self):
         config = dict()
         assert install.get_flavor(config) == 'default'
