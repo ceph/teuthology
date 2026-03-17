@@ -160,7 +160,7 @@ psutil==5.9.7
     #   teuthology (pyproject.toml)
 ptyprocess==0.7.0
     # via pexpect
-pyasn1==0.5.1
+pyasn1==0.6.3
     # via
     #   ndg-httpsclient
     #   teuthology (pyproject.toml)
