@@ -9,7 +9,8 @@ from teuthology.job_status import get_status
 
 
 def main(args):
-    return ls(args["<archive_dir>"], args["--verbose"])
+    print(args)
+    return ls(args["archive_dir"], args["verbose"])
 
 
 def ls(archive_dir, verbose):

@@ -19,12 +19,12 @@ log = logging.getLogger(__name__)
 
 
 def main(args):
-    run_name = args['--run']
-    job = args['--job']
-    jobspec = args['--jobspec']
-    owner = args['--owner']
-    machine_type = args['--machine-type']
-    preserve_queue = args['--preserve-queue']
+    run_name = args['run']
+    job = args['job']
+    jobspec = args['jobspec']
+    owner = args['owner']
+    machine_type = args['machine_type']
+    preserve_queue = args['preserve_queue']
 
     if jobspec:
         split_spec = jobspec.split('/')

@@ -312,32 +312,32 @@ def get_teuthology_command(args):
 
 
 def main(args):
-    verbose = args["--verbose"]
-    archive = args["--archive"]
-    owner = args["--owner"]
-    config = args["<config>"]
-    name = args["--name"]
-    description = args["--description"]
-    machine_type = args["--machine-type"]
-    block = args["--block"]
-    lock = args["--lock"]
-    suite_path = args["--suite-path"]
-    os_type = args["--os-type"]
-    os_version = args["--os-version"]
-    interactive_on_error = args["--interactive-on-error"]
+    verbose = args["verbose"]
+    archive = args["archive"]
+    owner = args["owner"]
+    config = args["config"]
+    name = args["name"]
+    description = args["description"]
+    machine_type = args["machine_type"]
+    block = args["block"]
+    lock = args["lock"]
+    suite_path = args["suite_path"]
+    os_type = args["os_type"]
+    os_version = args["os_version"]
+    interactive_on_error = args["interactive_on_error"]
 
     # print the command being ran
     log.debug("Teuthology command: {0}".format(get_teuthology_command(args)))
 
     if owner is None:
-        args["--owner"] = owner = get_user()
+        args["owner"] = owner = get_user()
 
     config = setup_config(config)
 
     if archive is not None and 'archive_path' not in config:
         config['archive_path'] = archive
     elif archive is None and 'archive_path' in config:
-        archive = args['--archive'] = config['archive_path']
+        archive = args['archive'] = config['archive_path']
 
     set_up_logging(verbose, archive)
 
@@ -351,7 +351,7 @@ def main(args):
     )
 
     machine_type = get_machine_type(machine_type, config)
-    args["--machine-type"] = machine_type
+    args["machine_type"] = machine_type
 
     if block:
         assert lock, \
@@ -397,17 +397,17 @@ def main(args):
 
     #could be refactored for setting and unsetting in hackish way
     if interactive_on_error:
-       config['interactive-on-error'] = True
+       config['interactive_on_error'] = True
     # create a FakeNamespace instance that mimics the old argparse way of doing
     # things we do this so we can pass it to run_tasks without porting those
     # tasks to the new way of doing things right now
-    args["<config>"] = config
+    args["config"] = config
     fake_ctx = FakeNamespace(args)
 
     # store on global config if interactive-on-error, for contextutil.nested()
     # FIXME this should become more generic, and the keys should use
     # '_' uniformly
-    if fake_ctx.config.get('interactive-on-error'):
+    if fake_ctx.config.get('interactive_on_error'):
         teuth_config.ctx = fake_ctx
 
     try:

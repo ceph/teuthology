@@ -330,7 +330,7 @@ def main(args) -> int:
         if os.getpid() != pid:
             log.error(f"teuthology-exporter is already running as PID {pid}")
             return 2
-    exporter = TeuthologyExporter(interval=int(args["--interval"]))
+    exporter = TeuthologyExporter(interval=int(args.interval))
     try:
         exporter.start()
     except Exception:

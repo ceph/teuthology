@@ -7,38 +7,38 @@ from teuthology import report
 
 
 def main(args):
-    if not args['--first-in-suite']:
-        first_job_args = ['subset', 'no-nested-subset', 'seed']
+    if not args['first_in_suite']:
+        first_job_args = ['subset', 'no_nested_subset', 'seed']
         for arg in first_job_args:
-            opt = '--{arg}'.format(arg=arg)
+            opt = '--{arg}'.format(arg=arg).replace("_","-")
             msg_fmt = '{opt} is only applicable to the first job in a suite'
-            if args.get(opt):
+            if args[arg]:
                 raise ValueError(msg_fmt.format(opt=opt))
 
-    if not args['--last-in-suite']:
+    if not args['last_in_suite']:
         last_job_args = ['email', 'timeout']
         for arg in last_job_args:
             opt = '--{arg}'.format(arg=arg)
             msg_fmt = '{opt} is only applicable to the last job in a suite'
-            if args[opt]:
+            if args[arg]:
                 raise ValueError(msg_fmt.format(opt=opt))
 
-    if args['--first-in-suite'] or args['--last-in-suite']:
+    if args['first_in_suite'] or args['last_in_suite']:
         report_status = False
     else:
         report_status = True
 
-    name = args['--name']
+    name = args['name']
     if not name or name.isdigit():
         raise ValueError("Please use a more descriptive value for --name")
     job_config = build_config(args)
-    backend = args['--queue-backend']
-    if args['--dry-run']:
+    backend = args['queue_backend']
+    if args['dry_run']:
         print('---\n' + yaml.safe_dump(job_config))
     elif backend == 'beanstalk':
-        schedule_job(job_config, args['--num'], report_status)
+        schedule_job(job_config, args['num'], report_status)
     elif backend.startswith('@'):
-        dump_job_to_file(backend.lstrip('@'), job_config, args['--num'])
+        dump_job_to_file(backend.lstrip('@'), job_config, args['num'])
     else:
         raise ValueError("Provided schedule backend '%s' is not supported. "
                          "Try 'beanstalk' or '@path-to-a-file" % backend)
@@ -48,7 +48,7 @@ def build_config(args):
     """
     Given a dict of arguments, build a job config
     """
-    config_paths = args.get('<conf_file>', list())
+    config_paths = args.get('conf_file', list())
     conf_dict = merge_configs(config_paths)
     # strip out targets; the worker will allocate new ones when we run
     # the job with --lock.
@@ -56,30 +56,30 @@ def build_config(args):
         del conf_dict['targets']
     args['config'] = conf_dict
 
-    owner = args['--owner']
+    owner = args['owner']
     if owner is None:
         owner = 'scheduled_{user}'.format(user=get_user())
 
     job_config = dict(
-        name=args['--name'],
-        first_in_suite=args['--first-in-suite'],
-        last_in_suite=args['--last-in-suite'],
-        email=args['--email'],
-        description=args['--description'],
+        name=args['name'],
+        first_in_suite=args['first_in_suite'],
+        last_in_suite=args['last_in_suite'],
+        email=args['email'],
+        description=args['description'],
         owner=owner,
-        verbose=args['--verbose'],
-        machine_type=args['--worker'],
-        tube=args['--worker'],
-        priority=int(args['--priority']),
+        verbose=args['verbose'],
+        machine_type=args['worker'],
+        tube=args['worker'],
+        priority=int(args['priority']),
     )
     # Update the dict we just created, and not the other way around, to let
     # settings in the yaml override what's passed on the command line. This is
     # primarily to accommodate jobs with multiple machine types.
     job_config.update(conf_dict)
-    for arg,conf in {'--timeout':'results_timeout',
-                     '--seed': 'seed',
-                     '--subset': 'subset',
-                     '--no-nested-subset': 'no_nested_subset'}.items():
+    for arg,conf in {'timeout':'results_timeout',
+                     'seed': 'seed',
+                     'subset': 'subset',
+                     'no_nested_subset': 'no_nested_subset'}.items():
         val = args.get(arg, None)
         if val is not None:
             job_config[conf] = val

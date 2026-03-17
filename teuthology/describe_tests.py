@@ -22,16 +22,11 @@ def main(args):
 
 
 def describe_tests(args):
-    suite_dir = os.path.abspath(args["<suite_dir>"])
-    output_format = args['--format']
+    suite_dir = os.path.abspath(args["suite_dir"])
+    output_format = args['format']
 
     conf=dict()
-    rename_args = {
-        'filter': 'filter_in',
-    }
     for (key, value) in args.items():
-        key = key.lstrip('--').replace('-', '_')
-        key = rename_args.get(key) or key
         if key in ('filter_all', 'filter_in', 'filter_out', 'fields'):
             if not value:
                 value = []
@@ -51,7 +46,7 @@ def describe_tests(args):
             value = strtobool(value)
         conf[key] = value
 
-    if args['--combinations']:
+    if args['combinations']:
         headers, rows = get_combinations(suite_dir,
                                          limit=conf['limit'],
                                          seed=conf['seed'],
@@ -64,7 +59,7 @@ def describe_tests(args):
                                          filter_fragments=conf['filter_fragments'],
                                          include_facet=conf['show_facet'])
         hrule = ALL
-    elif args['--summary']:
+    elif args['summary']:
         output_summary(suite_dir,
                        limit=conf['limit'],
                        seed=conf['seed'],
