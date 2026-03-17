@@ -44,12 +44,12 @@ optional arguments:
                                        finish before emailing results. Only
                                        applies to the last job in a suite.
   --seed <seed>                        The random seed for rerunning the suite.
-                                       Only applies to the last job in a suite.
+                                       Only applies to the first job in a suite.
   --subset <subset>                    The subset option passed to teuthology-suite.
-                                       Only applies to the last job in a suite.
+                                       Only applies to the first job in a suite.
   --no-nested-subset                   The no-nested-subset option passed to
                                        teuthology-suite.
-                                       Only applies to the last job in a suite.
+                                       Only applies to the first job in a suite.
   --dry-run                            Instead of scheduling, just output the
                                        job config.
 
