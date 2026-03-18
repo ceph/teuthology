@@ -106,9 +106,11 @@ if [ -f "$VENV/pyvenv.cfg" ]; then
     sed -i'' -e 's/\(include-system-site-packages\s*=\s*\)true/\1false/g' $VENV/pyvenv.cfg
 fi
 
-# Attempt to force a UTF-8 locale without being specific to English
-export LANG=${LANG:-C.UTF-8}
-(echo $LANG | grep -qi utf-8) || export LC_ALL=$LANG.UTF-8
+# Attempt to force a UTF-8 locale without forcing English
+LANG=${LANG:=C}
+LC_ALL=${LC_ALL:=C}
+export LANG="${LANG/.*/}.utf-8"
+export LC_ALL="${LC_ALL/.*/}.utf-8"
 
 if [ -z "$NO_CLOBBER" ] && \
   [ ! -e "$VENV/bin/pip" -o ! -e "$VENV/bin/$PYTHON" ] || \
