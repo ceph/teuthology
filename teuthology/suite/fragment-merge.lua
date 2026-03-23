@@ -46,12 +46,14 @@ local function check_filters(_ENV)
   if filter_all then
     for i,f in py_enumerate(filter_all) do
       if not matches(_ENV, f) then
+        log:debug("dropping job due to not matching filter-all: %s", f)
         reject()
       end
     end
   end
   if os_type and yaml.os_type then
     if os_type ~= yaml.os_type then
+      log:debug("dropping job due to os_type mismatch with --os-type: %s", os_type)
       reject()
     end
   end
@@ -59,6 +61,7 @@ local function check_filters(_ENV)
     wanted_os_version = string.gsub(os_version, ".stream", "")
     this_os_version = string.gsub(yaml.os_version, ".stream", "")
     if wanted_os_version ~= this_os_version then
+      log:debug("dropping job due to os_version mismatch with --os-version: %s", os_version)
       reject()
     end
   end
@@ -72,12 +75,14 @@ local function check_filters(_ENV)
       end
     end
     if tried and not found then
+      log:debug("dropping job due to not matching any --filter: %s", filter_in)
       reject()
     end
   end
   if filter_out then
     for i,f in py_enumerate(filter_out) do
       if matches(_ENV, f) then
+        log:debug("dropping job due to matching --filter-out: %s", f)
         reject()
       end
     end
