@@ -296,14 +296,23 @@ specified in ``$HOME/.teuthology.yaml``::
 
     test_path: <directory>
 
-Shaman options
-==============
+Package source options
+======================
 
-Shaman is a helper class which could be used to build the uri for specified
-packages based the 'shaman_host': 'shaman.ceph.com'.
+Package source options can be specified in the top-level configuration, like::
 
-Options::
+package_source: shaman | pulp
 
-    use_shaman: True # Enable to use Shaman, False as default
-    shaman:
-      force_noarch: True # Force to use "noarch" to build the uri
+Options for shaman:
+
+shaman:
+  endpoint: "https://shaman.ceph.com/api/"
+  force_noarch: True
+
+Options for pulp:
+
+pulp:
+  endpoint: "https://pulp.front.sepia.ceph.com/pulp/api/v3/"
+  username: pulp-username
+  password: pulp-password
+  force_noarch: True

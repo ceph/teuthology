@@ -269,3 +269,18 @@ Here is a sample configuration with many of the options set and documented::
     # Do not allow more than that many jobs in a single run by default.
     # To disable this check use 0.
     job_threshold: 500
+
+    # Setting for artifacts manager (shaman or pulp)
+    package_source: shaman | pulp
+
+    # Settings for shaman package manager (https://shaman.ceph.com/)
+    shaman:
+      endpoint: "https://shaman.ceph.com/api/"
+      force_noarch: True
+
+    # Settings for pulp package manager (https://pulpproject.org/)
+    pulp:
+      endpoint: "https://pulp.example.com/pulp/api/v3/"
+      username: pulp-username
+      password: pulp-password
+      force_noarch: True
