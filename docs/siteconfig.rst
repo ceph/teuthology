@@ -269,3 +269,12 @@ Here is a sample configuration with many of the options set and documented::
     # Do not allow more than that many jobs in a single run by default.
     # To disable this check use 0.
     job_threshold: 500
+
+    # Setting for artifacts manager (shaman or pulp)
+    use_artifacts: 'pulp'
+    artifacts_host: 'pulp.example.com'
+
+    # Settings for pulp package manager (https://pulpproject.org/)
+    pulp:
+      username: '<username>'
+      password: '<password>'

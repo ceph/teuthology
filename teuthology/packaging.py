@@ -847,7 +847,7 @@ class GitbuilderProject(object):
 class ShamanProject(GitbuilderProject):
     def __init__(self, project, job_config, ctx=None, remote=None):
         super(ShamanProject, self).__init__(project, job_config, ctx, remote)
-        self.query_url = 'https://%s/api/' % config.shaman_host
+        self.query_url = 'https://%s/api/' % config.artifacts_host
 
         # Force to use the "noarch" instead to build the uri.
         self.force_noarch = self.job_config.get("shaman", {}).get("force_noarch", False)
@@ -1054,13 +1054,118 @@ class ShamanProject(GitbuilderProject):
         )
 
 
+class PulpProject(GitbuilderProject):
+    def __init__(self, project, job_config, ctx=None, remote=None):
+        super(PulpProject, self).__init__(project, job_config, ctx, remote)
+
+        # Set the url for the pulp server.
+        self.pulp_server_url = f'https://{config.artifacts_host}'
+        self.pulp_username = config.pulp.get("username")
+        self.pulp_password = config.pulp.get("password")
+
+        if not self.pulp_username or not self.pulp_password:
+            raise ValueError("Pulp username and password are required")
+
+        # Force to use the "noarch" instead to build the uri.
+        self.force_noarch = self.job_config.get('pulp', {}).get('force_noarch', False)
+
+    @property
+    def _search_uri(self):
+        """Build the search url"""
+        tail = 'rpm' if self.pkg_type == 'rpm' else 'apt'
+        path = f'pulp/api/v3/distributions/{self.pkg_type}/{tail}'
+        return urljoin(self.pulp_server_url, path)
+
+    @property
+    def _result(self):
+        """Get the results from the pulp api"""
+        if getattr(self, '_result_obj', None) is None:
+            # Get the results from the pulp api.
+            self._result_obj = self._search().get('results', [])
+
+            # Check if there is exactly one result.
+            if not len(self._result_obj):
+                log.error(f'No results found for {self._search_uri}')
+                raise VersionNotFoundError(f'No results found for {self._search_uri}')
+            elif len(self._result_obj) > 1:
+                log.error(f'Multiple results found for {self._search_uri}')
+                raise VersionNotFoundError(f'Multiple results found for {self._search_uri}')
+
+        return self._result_obj[0]
+
+    @property
+    def repo_url(self):
+        """Get the repo url from the pulp api"""
+        return urljoin(self.pulp_server_url, self._result.get('base_url', ''))
+
+    @property
+    def build_complete(self):
+        """Check if the build is complete"""
+        return self._result.get('build_complete', True)
+
+    def _get_base_url(self):
+        """Get the base url from the pulp api"""
+        return urljoin(
+            self.pulp_server_url,
+            "/".join(self._result.get('base_url', '').split('/')[:-2])
+        )
+
+    def _search(self):
+        """Search for the package in the pulp api"""
+        # Build the search parameters.
+        labels = f'project:{self.project},'
+        labels += f'flavor:{self.flavor},'
+        labels += f'distro:{self.os_type},'
+        labels += f'distro_version:{self.os_version},'
+
+        # Add the architecture to the search parameters.
+        arch = 'noarch' if self.force_noarch else self.arch
+        labels += f'arch:{arch},'
+
+        # Add the reference to the search parameters.
+        ref_name, ref_val = list(self._choose_reference().items())[0]
+        labels += f'{ref_name}:{ref_val}'
+
+        resp = requests.get(
+            self._search_uri,
+            params={'pulp_label_select': labels},
+            auth=(self.pulp_username, self.pulp_password)
+        )
+        if not resp.ok:
+            log.error(f'Failed to get packages with labels: {labels}')
+            raise VersionNotFoundError(f'Failed to get packages with labels: {labels}')
+
+        return resp.json()
+
+    @classmethod
+    def _get_distro(cls, distro=None, version=None, codename=None):
+        if distro in ('centos', 'rhel'):
+            distro = 'centos'
+            version = cls._parse_version(version)
+        if distro in ('alma', 'rocky'):
+            version = cls._parse_version(version)
+        if distro in ('ubuntu', 'debian'):
+            version = codename or version
+        return f'{distro}/{version}'
+
+    def _get_package_sha1(self):
+        """Get the package sha1 from the pulp api"""
+        return self._result.get('pulp_labels', {}).get('sha1', None)
+
+    def _get_package_version(self):
+        """Get the package version from the pulp api"""
+        return self._result.get('pulp_labels', {}).get('version', None)
+
+
 def get_builder_project():
     """
-    Depending on whether config.use_shaman is True or False, return
-    GitbuilderProject or ShamanProject (the class, not an instance).
+    Depending on whether config.use_artifacts is 'shaman' or 'pulp', return
+    GitbuilderProject, ShamanProject or PulpProject (the class, not an instance).
     """
-    if config.use_shaman is True:
+    if config.use_artifacts == 'shaman':
         builder_class = ShamanProject
+    elif config.use_artifacts == 'pulp':
+        builder_class = PulpProject
     else:
         builder_class = GitbuilderProject
     return builder_class
