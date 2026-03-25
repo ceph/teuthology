@@ -1,6 +1,6 @@
 import pytest
 
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, PropertyMock
 
 from teuthology import packaging
 from teuthology.exceptions import VersionNotFoundError
@@ -302,6 +302,11 @@ class TestPackaging(object):
         packaging._get_response("google.com", sleep=1, tries=2)
         assert m_get.call_count == 1
 
+    @patch('teuthology.packaging.config')
+    def test_get_builder_project_pulp(self, m_config):
+        m_config.package_source = 'pulp'
+        assert packaging.get_builder_project() is packaging.PulpProject
+
 
 class TestBuilderProject(object):
     klass = None
@@ -533,8 +538,8 @@ class TestShamanProject(TestBuilderProject):
     def setup_method(self):
         self.p_config = patch('teuthology.packaging.config')
         self.m_config = self.p_config.start()
-        self.m_config.use_shaman = True
-        self.m_config.shaman_host = 'shaman.ceph.com'
+        self.m_config.package_source = 'shaman'
+        self.m_config.shaman = {'endpoint': 'https://shaman.ceph.com/api/'}
         self.p_get_config_value = \
             patch('teuthology.packaging._get_config_value_for_remote')
         self.m_get_config_value = self.p_get_config_value.start()
@@ -810,3 +815,272 @@ class TestShamanProject(TestBuilderProject):
     )
     def test_get_distro_config(self, matrix_index):
         super().test_get_distro_config(matrix_index)
+
+
+class TestPulpProject(TestBuilderProject):
+    klass = packaging.PulpProject
+
+    def setup_method(self):
+        self.p_config = patch('teuthology.packaging.config')
+        self.m_config = self.p_config.start()
+        self.m_config.package_source = 'pulp'
+        self.m_config.pulp = {
+            'endpoint': 'https://pulp.example.com/pulp/api/v3/',
+            'username': 'u',
+            'password': 'p',
+        }
+        self.p_get_config_value = \
+            patch('teuthology.packaging._get_config_value_for_remote')
+        self.m_get_config_value = self.p_get_config_value.start()
+        self.m_get_config_value.return_value = None
+        self.p_get = patch('requests.get')
+        self.m_get = self.p_get.start()
+
+        resp = Mock()
+        resp.ok = True
+        resp.json.return_value = {
+            'results': [{
+                'base_url': 'dist/ceph/main/sha/centos/8/flavors/default/',
+                'pulp_labels': {
+                    'sha1': 'the_sha1',
+                    'version': '0.90.0',
+                },
+            }],
+        }
+        self.m_get.return_value = resp
+
+    def teardown_method(self):
+        self.p_config.stop()
+        self.p_get_config_value.stop()
+        self.p_get.stop()
+
+    def test_init_requires_pulp_credentials(self):
+        self.m_config.pulp = {'username': '', 'password': 'p'}
+        with pytest.raises(ValueError, match='Pulp username and password are required'):
+            packaging.PulpProject('ceph', {}, ctx=dict(foo='bar'),
+                                  remote=self._get_remote())
+
+        self.m_config.pulp = {'username': 'u', 'password': ''}
+        with pytest.raises(ValueError, match='Pulp username and password are required'):
+            packaging.PulpProject('ceph', {}, ctx=dict(foo='bar'),
+                                  remote=self._get_remote())
+
+    def test_init_from_remote_base_url(self):
+        def m_get_base_url(obj):
+            obj._search()
+            return self.m_get.call_args_list[0][0][0]
+        with patch(
+            'teuthology.packaging.PulpProject._get_base_url',
+            new=m_get_base_url,
+        ):
+            super(TestPulpProject, self).test_init_from_remote_base_url(
+                'https://pulp.example.com/pulp/api/v3/distributions/deb/apt',
+            )
+
+    def test_init_from_remote_base_url_debian(self):
+        def m_get_base_url(obj):
+            obj._search()
+            return self.m_get.call_args_list[0][0][0]
+        with patch(
+            'teuthology.packaging.PulpProject._get_base_url',
+            new=m_get_base_url,
+        ):
+            super(TestPulpProject, self).test_init_from_remote_base_url_debian(
+                'https://pulp.example.com/pulp/api/v3/distributions/deb/apt',
+            )
+
+    def test_init_from_config_base_url(self):
+        def m_get_base_url(obj):
+            obj._search()
+            return self.m_get.call_args_list[0][0][0]
+        with patch(
+            'teuthology.packaging.PulpProject._get_base_url',
+            new=m_get_base_url,
+        ):
+            super(TestPulpProject, self).test_init_from_config_base_url(
+                'https://pulp.example.com/pulp/api/v3/distributions/deb/apt',
+            )
+
+    @patch('teuthology.packaging.PulpProject._get_package_sha1')
+    def test_init_from_config_tag_ref(self, m_get_package_sha1):
+        m_get_package_sha1.return_value = 'the_sha1'
+        super(TestPulpProject, self).test_init_from_config_tag_ref()
+
+    def test_init_from_config_tag_overrides_branch_ref(self, caplog):
+        obj = super(TestPulpProject, self)\
+            .test_init_from_config_tag_overrides_branch_ref(caplog)
+        obj._search()
+        labels = self.m_get.call_args[1]['params']['pulp_label_select']
+        assert 'tag=v10.0.1' in labels
+        assert 'branch=jewel' not in labels
+
+    def test_init_from_config_branch_overrides_sha1(self, caplog):
+        obj = super(TestPulpProject, self)\
+            .test_init_from_config_branch_overrides_sha1(caplog)
+        obj._search()
+        labels = self.m_get.call_args[1]['params']['pulp_label_select']
+        assert 'branch=jewel' in labels
+        assert 'sha1=sha1' not in labels
+
+    def test_get_package_version_found(self):
+        resp = Mock()
+        resp.ok = True
+        resp.json.return_value = {
+            'results': [{
+                'base_url': 'a/b/c/d',
+                'pulp_labels': {'version': '0.90.0'},
+            }],
+        }
+        self.m_get.return_value = resp
+        super(TestPulpProject, self).test_get_package_version_found()
+
+    def test_get_package_version_not_found(self):
+        rem = self._get_remote()
+        ctx = dict(foo="bar")
+        resp = Mock()
+        resp.ok = False
+        self.m_get.return_value = resp
+        gp = self.klass("ceph", {}, ctx=ctx, remote=rem)
+        with pytest.raises(VersionNotFoundError):
+            gp.version
+
+    def test_get_package_sha1_fetched_found(self):
+        resp = Mock()
+        resp.ok = True
+        resp.json.return_value = {
+            'results': [{'base_url': 'a/b/c/d', 'pulp_labels': {'sha1': 'the_sha1'}}],
+        }
+        self.m_get.return_value = resp
+        super(TestPulpProject, self).test_get_package_sha1_fetched_found()
+
+    def test_get_package_sha1_fetched_not_found(self):
+        resp = Mock()
+        resp.ok = True
+        resp.json.return_value = {
+            'results': [{'base_url': 'a/b/c/d', 'pulp_labels': {}}],
+        }
+        self.m_get.return_value = resp
+        super(TestPulpProject, self).test_get_package_sha1_fetched_not_found()
+
+    DISTRO_MATRIX = [
+        ('rhel', '7.0', None, 'centos/7'),
+        ('alma', '9.7', None, 'alma/9'),
+        ('rocky', '10.1', None, 'rocky/10'),
+        ('centos', '8.1', None, 'centos/8'),
+        ('fedora', '20', None, 'fedora/20'),
+        ('ubuntu', '20.04', 'focal', 'ubuntu/focal'),
+    ]
+
+    @pytest.mark.parametrize(
+        "matrix_index",
+        range(len(DISTRO_MATRIX)),
+    )
+    def test_get_distro_remote(self, matrix_index):
+        super().test_get_distro_remote(matrix_index)
+
+    DISTRO_MATRIX_NOVER = [
+        ('rhel', None, None, 'centos/8'),
+        ('centos', None, None, 'centos/9'),
+        ('fedora', None, None, 'fedora/25'),
+        ('ubuntu', None, None, 'ubuntu/jammy'),
+        ('alma', None, None, 'alma/9'),
+        ('rocky', None, None, 'rocky/9'),
+    ]
+
+    DISTRO_MATRIX_CONFIG = [
+        ('rhel', '7.0', None, 'centos/7'),
+        ('alma', '9.7', None, 'alma/9'),
+        ('rocky', '10.1', None, 'rocky/10'),
+        ('centos', '8.1', None, 'centos/8'),
+        ('fedora', '20', None, 'fedora/20'),
+        ('ubuntu', '20.04', None, 'ubuntu/focal'),
+    ]
+
+    @pytest.mark.parametrize(
+        "matrix_index",
+        range(len(DISTRO_MATRIX_CONFIG) + len(DISTRO_MATRIX_NOVER)),
+    )
+    def test_get_distro_config(self, matrix_index):
+        (distro, version, _, expected) = (
+            self.DISTRO_MATRIX_CONFIG + self.DISTRO_MATRIX_NOVER
+        )[matrix_index]
+        config = dict(
+            os_type=distro,
+            os_version=version
+        )
+        gp = self.klass("ceph", config)
+        assert gp.distro == expected
+
+    def test_get_rpm_repo_content_uses_pulp_base_url(self):
+        pulp_base = (
+            'https://pulp.example.com/pulp/content/repos/ceph/tentacle/'
+            'abc123/rocky/10/flavors/default'
+        )
+        rem = self._get_remote()
+        with patch(
+            'teuthology.packaging.PulpProject.base_url',
+            new_callable=PropertyMock,
+            return_value=pulp_base,
+        ):
+            gp = self.klass('ceph', {}, ctx=dict(foo='bar'), remote=rem)
+            content = gp._get_rpm_repo_content()
+        assert f'baseurl={pulp_base}/$basearch' in content
+        assert f'baseurl={pulp_base}/noarch' in content
+        assert f'baseurl={pulp_base}/SRPMS' in content
+        assert 'chacra' not in content
+
+    @patch('teuthology.packaging.sudo_write_file')
+    def test_install_rpm_repo_writes_repo_file(self, m_sudo_write_file):
+        pulp_base = (
+            'https://pulp.example.com/pulp/content/repos/ceph/tentacle/'
+            'abc123/rocky/10/flavors/default'
+        )
+        rem = self._get_remote()
+        with patch(
+            'teuthology.packaging.PulpProject.base_url',
+            new_callable=PropertyMock,
+            return_value=pulp_base,
+        ):
+            gp = self.klass('ceph', {}, ctx=dict(foo='bar'), remote=rem)
+            gp._install_rpm_repo()
+        m_sudo_write_file.assert_called_once()
+        assert m_sudo_write_file.call_args[0][1] == '/etc/yum.repos.d/ceph.repo'
+        assert pulp_base in m_sudo_write_file.call_args[0][2]
+
+    def test_get_deb_repo_content_uses_pulp_distribution_url(self):
+        pulp_dist = (
+            'https://pulp.example.com/pulp/content/repos/ceph/tentacle/'
+            'ff309bba/ubuntu/jammy/flavors/default/x86_64/'
+        )
+        rem = self._get_remote(distro='ubuntu', version='22.04', codename='jammy')
+        with patch(
+            'teuthology.packaging.PulpProject.repo_url',
+            new_callable=PropertyMock,
+            return_value=pulp_dist,
+        ):
+            gp = self.klass('ceph', {}, ctx=dict(foo='bar'), remote=rem)
+            content = gp._get_deb_repo_content()
+        assert content == (
+            'deb [trusted=yes] '
+            'https://pulp.example.com/pulp/content/repos/ceph/tentacle/'
+            'ff309bba/ubuntu/jammy/flavors/default/x86_64/   default all\n'
+        )
+
+    @patch('teuthology.packaging.sudo_write_file')
+    def test_install_deb_repo_writes_sources_list(self, m_sudo_write_file):
+        pulp_dist = (
+            'https://pulp.example.com/pulp/content/repos/ceph/tentacle/'
+            'ff309bba/ubuntu/jammy/flavors/default/x86_64/'
+        )
+        rem = self._get_remote(distro='ubuntu', version='22.04', codename='jammy')
+        with patch(
+            'teuthology.packaging.PulpProject.repo_url',
+            new_callable=PropertyMock,
+            return_value=pulp_dist,
+        ):
+            gp = self.klass('ceph', {}, ctx=dict(foo='bar'), remote=rem)
+            gp._install_deb_repo()
+        m_sudo_write_file.assert_called_once()
+        assert m_sudo_write_file.call_args[0][1] == '/etc/apt/sources.list.d/ceph.list'
+        assert '[trusted=yes]' in m_sudo_write_file.call_args[0][2]
+        assert '/x86_64/   default all' in m_sudo_write_file.call_args[0][2]

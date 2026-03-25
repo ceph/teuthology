@@ -40,6 +40,37 @@ _SERVICE_MAP = {
     'httpd': {'deb': 'apache2', 'rpm': 'httpd'}
 }
 
+# Matches ceph-dev-pipeline ceph_release_repo_template (ceph.repo in ceph-release RPM).
+_PULP_RPM_REPO_TEMPLATE = '''\
+[Ceph]
+name=Ceph packages for $basearch
+baseurl={repo_base_url}/$basearch
+enabled=1
+gpgcheck=0
+type=rpm-md
+gpgkey=https://download.ceph.com/keys/autobuild.asc
+
+[Ceph-noarch]
+name=Ceph noarch packages
+baseurl={repo_base_url}/noarch
+enabled=1
+gpgcheck=0
+type=rpm-md
+gpgkey=https://download.ceph.com/keys/autobuild.asc
+
+[ceph-source]
+name=Ceph source packages
+baseurl={repo_base_url}/SRPMS
+enabled=1
+gpgcheck=0
+type=rpm-md
+gpgkey=https://download.ceph.com/keys/autobuild.asc
+'''
+
+# Apt sources line for Pulp deb distributions (unsigned repo metadata).
+# Suite/components are "default" / "all" at the distribution base URL.
+_PULP_DEB_REPO_TEMPLATE = 'deb [trusted=yes] {repo_base_url}/   default all\n'
+
 
 def get_package_name(pkg, rem):
     """
@@ -844,13 +875,27 @@ class GitbuilderProject(object):
         )
 
 
+def _package_source_config(job_config, source):
+    """
+    Merge site-wide package source settings from teuthology config with any
+    per-job overrides in job_config.
+    """
+    merged = dict(getattr(config, source, None) or {})
+    merged.update(job_config.get(source, {}))
+    return merged
+
+
 class ShamanProject(GitbuilderProject):
     def __init__(self, project, job_config, ctx=None, remote=None):
         super(ShamanProject, self).__init__(project, job_config, ctx, remote)
-        self.query_url = 'https://%s/api/' % config.shaman_host
+        shaman_cfg = _package_source_config(job_config, 'shaman')
+        self.query_url = shaman_cfg.get(
+            'endpoint', 'https://shaman.ceph.com/api/')
+        if not self.query_url.endswith('/'):
+            self.query_url += '/'
 
         # Force to use the "noarch" instead to build the uri.
-        self.force_noarch = self.job_config.get("shaman", {}).get("force_noarch", False)
+        self.force_noarch = shaman_cfg.get('force_noarch', False)
 
     def _get_base_url(self):
         self.assert_result()
@@ -1054,13 +1099,183 @@ class ShamanProject(GitbuilderProject):
         )
 
 
+class PulpProject(GitbuilderProject):
+    def __init__(self, project, job_config, ctx=None, remote=None):
+        super(PulpProject, self).__init__(project, job_config, ctx, remote)
+
+        pulp_cfg = _package_source_config(job_config, 'pulp')
+        self.pulp_server_url = pulp_cfg.get(
+            'endpoint', 'https://pulp.example.com/pulp/api/v3/')
+        if not self.pulp_server_url.endswith('/'):
+            self.pulp_server_url += '/'
+        self.pulp_username = pulp_cfg.get('username')
+        self.pulp_password = pulp_cfg.get('password')
+
+        if not self.pulp_username or not self.pulp_password:
+            raise ValueError("Pulp username and password are required")
+
+        # Force to use the "noarch" instead to build the uri.
+        self.force_noarch = pulp_cfg.get('force_noarch', False)
+
+    @property
+    def _search_uri(self):
+        """Build the search url"""
+        tail = 'rpm' if self.pkg_type == 'rpm' else 'apt'
+        path = f'distributions/{self.pkg_type}/{tail}'
+        return urljoin(self.pulp_server_url, path)
+
+    @property
+    def _result(self):
+        """Get the results from the pulp api"""
+        if getattr(self, '_result_obj', None) is None:
+            # Get the results from the pulp api.
+            self._result_obj = self._search().get('results', [])
+
+            # Check if there is exactly one result.
+            if not len(self._result_obj):
+                log.error(f'No results found for {self._search_uri}')
+                raise VersionNotFoundError(f'No results found for {self._search_uri}')
+            elif len(self._result_obj) > 1:
+                log.error(f'Multiple results found for {self._search_uri}')
+                raise VersionNotFoundError(f'Multiple results found for {self._search_uri}')
+
+        return self._result_obj[0]
+
+    @property
+    def repo_url(self):
+        """Get the repo url from the pulp api"""
+        return urljoin(self.pulp_server_url, self._result.get('base_url', ''))
+
+    @property
+    def build_complete(self):
+        """Check if the build is complete"""
+        return self._result.get('build_complete', True)
+
+    def _get_base_url(self):
+        """Get the base url from the pulp api"""
+        return urljoin(
+            self.pulp_server_url,
+            "/".join(self._result.get('base_url', '').split('/')[:-2])
+        )
+
+    def _search(self):
+        """Search for the package in the pulp api"""
+        # Build the search parameters.
+        labels = f'project={self.project},'
+        labels += f'flavors={self.flavor},'
+        labels += f'distro={self.os_type},'
+        labels += f'distro_version={self.os_version},'
+
+        # Add the architecture to the search parameters.
+        arch = 'noarch' if self.force_noarch else self.arch
+        labels += f'arch={arch},'
+
+        # Add the reference to the search parameters.
+        ref_name, ref_val = list(self._choose_reference().items())[0]
+        labels += f'{ref_name}={ref_val}'
+        resp = requests.get(
+            self._search_uri,
+            params={'pulp_label_select': labels},
+            auth=(self.pulp_username, self.pulp_password)
+        )
+        if not resp.ok:
+            log.error(f'Failed to get packages with labels: {labels}')
+            raise VersionNotFoundError(f'Failed to get packages with labels: {labels}')
+
+        return resp.json()
+
+    @classmethod
+    def _get_distro(cls, distro=None, version=None, codename=None):
+        if distro in ('centos', 'rhel'):
+            distro = 'centos'
+            version = cls._parse_version(version)
+        if distro in ('alma', 'rocky'):
+            version = cls._parse_version(version)
+        if distro in ('ubuntu', 'debian'):
+            version = codename or version
+        return f'{distro}/{version}'
+
+    def _get_package_sha1(self):
+        """Get the package sha1 from the pulp api"""
+        return self._result.get('pulp_labels', {}).get('sha1', None)
+
+    def _get_package_version(self):
+        """Get the package version from the pulp api"""
+        return self._result.get('pulp_labels', {}).get('version', None)
+
+    def _get_rpm_repo_content(self):
+        """
+        yum/dnf repo file for Pulp. Uses the flavor base URL so nodes do not rely on
+        ceph-release RPMs that may still point at Chacra.
+        """
+        repo_base = self.base_url.rstrip('/')
+        return _PULP_RPM_REPO_TEMPLATE.format(repo_base_url=repo_base)
+
+    def _install_rpm_repo(self):
+        dist_release = self.dist_release
+        if dist_release in ['opensuse', 'sle']:
+            return super()._install_rpm_repo()
+
+        repo = self._get_rpm_repo_content()
+        repo_path = '/etc/yum.repos.d/{proj}.repo'.format(proj=self.project)
+        log.info('Writing yum repo from Pulp base %s:\n%s', self.base_url, repo)
+        sudo_write_file(self.remote, repo_path, repo)
+
+    def _remove_rpm_repo(self):
+        if self.dist_release in ['opensuse', 'sle']:
+            return super()._remove_rpm_repo()
+        self.remote.run(
+            args=[
+                'sudo',
+                'rm', '-f',
+                '/etc/yum.repos.d/{proj}.repo'.format(proj=self.project),
+            ]
+        )
+
+    def _get_deb_repo_base_url(self):
+        """
+        Apt repository root from the Pulp deb distribution (includes arch, e.g.
+        .../flavors/default/x86_64). Unlike RPM, do not strip arch from base_url.
+        """
+        return self.repo_url.rstrip('/')
+
+    def _get_deb_repo_content(self):
+        """
+        Apt sources.list entry for Pulp using the distribution base URL.
+        """
+        repo_base = self._get_deb_repo_base_url()
+        return _PULP_DEB_REPO_TEMPLATE.format(repo_base_url=repo_base)
+
+    def _install_deb_repo(self):
+        repo = self._get_deb_repo_content()
+        repo_path = '/etc/apt/sources.list.d/{proj}.list'.format(proj=self.project)
+        log.info(
+            'Writing apt repo from Pulp base %s:\n%s',
+            self._get_deb_repo_base_url(),
+            repo,
+        )
+        sudo_write_file(self.remote, repo_path, repo)
+
+    def _remove_deb_repo(self):
+        self.remote.run(
+            args=[
+                'sudo',
+                'rm', '-f',
+                '/etc/apt/sources.list.d/{proj}.list'.format(proj=self.project),
+            ]
+        )
+
+
 def get_builder_project():
     """
-    Depending on whether config.use_shaman is True or False, return
-    GitbuilderProject or ShamanProject (the class, not an instance).
+    Depending on whether config.package_source is 'shaman' or 'pulp', return
+    GitbuilderProject, ShamanProject or PulpProject (the class, not an instance).
     """
-    if config.use_shaman is True:
+    if config.package_source == 'shaman':
         builder_class = ShamanProject
+    elif config.package_source == 'pulp':
+        builder_class = PulpProject
+        log.info(f'Using pulp project: {config.package_source}')
     else:
         builder_class = GitbuilderProject
     return builder_class
