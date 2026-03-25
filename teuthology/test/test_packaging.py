@@ -533,7 +533,7 @@ class TestShamanProject(TestBuilderProject):
     def setup_method(self):
         self.p_config = patch('teuthology.packaging.config')
         self.m_config = self.p_config.start()
-        self.m_config.use_shaman = True
+        self.m_config.use_artifacts = 'shaman'
         self.m_config.shaman_host = 'shaman.ceph.com'
         self.p_get_config_value = \
             patch('teuthology.packaging._get_config_value_for_remote')

@@ -304,6 +304,20 @@ packages based the 'shaman_host': 'shaman.ceph.com'.
 
 Options::
 
-    use_shaman: True # Enable to use Shaman, False as default
+    use_artifacts: 'shaman'
     shaman:
+      force_noarch: True # Force to use "noarch" to build the uri
+
+Pulp options
+============
+
+Pulp is a package manager (https://pulpproject.org/) that could be used to
+build the uri for specified packages based on the 'pulp_host' option. It is
+similar to Shaman, but uses a different API.
+
+Options::
+
+    use_artifacts: 'pulp'
+    pulp_host: 'pulp.example.com'
+    pulp:
       force_noarch: True # Force to use "noarch" to build the uri
