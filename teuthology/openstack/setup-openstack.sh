@@ -54,7 +54,7 @@ function create_config() {
 
     cat > ~/.teuthology.yaml <<EOF
 $archive_upload
-use_shaman: false
+use_artifacts: 'shaman'
 archive_upload_key: teuthology/openstack/archive-key
 lock_server: http://localhost:8080/
 results_server: http://localhost:8080/
