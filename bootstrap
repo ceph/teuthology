@@ -18,7 +18,7 @@ Linux)
     case "$OS" in
     Ubuntu|Debian|LinuxMint)
         deps=(qemu-utils python3-dev libssl-dev libev-dev libvirt-dev libffi-dev libyaml-dev pipx build-essential jq curl)
-        has_pkg="dpkg -C"
+        has_pkg="dpkg -s"
         install_pkg="sudo apt install -y"
         ;;
     RedHatEnterpriseWorkstation|RedHatEnterpriseServer|RedHatEnterprise|CentOS|CentOSStream|AlmaLinux|RockyLinux|Fedora|FedoraLinux)
