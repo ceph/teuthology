@@ -1,10 +1,4 @@
 import os, sys
-try:
-    import importlib.metadata as importlib_metadata
-except ImportError:
-    import importlib_metadata
-
-__version__ = importlib_metadata.version("teuthology")
 
 # Tell gevent not to patch os.waitpid() since it is susceptible to race
 # conditions. See:
@@ -41,6 +35,13 @@ sys.dont_write_bytecode = True
 
 from teuthology.orchestra import monkey
 monkey.patch_all()
+
+try:
+    import importlib.metadata as importlib_metadata
+except ImportError:
+    import importlib_metadata
+
+__version__ = importlib_metadata.version("teuthology")
 
 import logging
 
