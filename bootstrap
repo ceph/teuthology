@@ -41,7 +41,7 @@ Linux)
         PYTHON=${PYTHON:-"python3"}
         deps=("$PYTHON" "$PYTHON-devel" "$PYTHON-pipx" libev-devel libffi-devel libvirt-devel)
         has_pkg="rpm -q --whatprovides"
-        install_pkg="sudo zypper install"
+        install_pkg="sudo zypper install -y"
         ;;
     esac
     ;;
