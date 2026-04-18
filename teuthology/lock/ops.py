@@ -25,10 +25,32 @@ from teuthology.orchestra import remote
 log = logging.getLogger(__name__)
 
 
+def _get_username_for_os_type(os_type):
+    """Determine the default SSH username for a given OS type.
+    """
+    if not os_type:
+        return None
+    os_type_lower = os_type.lower()
+    if os_type_lower in ['centos', 'rhel', 'rocky', 'alma', 'fedora']:
+        return 'root'
+    elif os_type_lower in ['ubuntu', 'debian']:
+        return 'ubuntu'
+    return None
+
+
 def update_nodes(nodes, reset_os=False):
     for node in nodes:
+        # Try to get OS info from lock server first to determine correct username
+        username = None
+        if not reset_os:
+            try:
+                status = query.get_status(node)
+                if status:
+                    username = _get_username_for_os_type(status.get('os_type'))
+            except Exception:
+                pass
         remote = teuthology.orchestra.remote.Remote(
-            canonicalize_hostname(node))
+            canonicalize_hostname(node, user=username) if username else canonicalize_hostname(node))
         if reset_os:
             log.info("Updating [%s]: reset os type and version on server", node)
             inventory_info = dict()
@@ -37,7 +59,27 @@ def update_nodes(nodes, reset_os=False):
             inventory_info['name'] = remote.hostname
         else:
             log.info("Updating [%s]: set os type and version on server", node)
-            inventory_info = remote.inventory_info
+            try:
+                inventory_info = remote.inventory_info
+            except Exception as e:
+                if username == 'root':
+                    log.debug("Connection failed with 'root', trying 'ubuntu' for %s", node)
+                    try:
+                        remote = teuthology.orchestra.remote.Remote(
+                            canonicalize_hostname(node, user='ubuntu'))
+                        inventory_info = remote.inventory_info
+                    except Exception:
+                        raise e
+                elif username == 'ubuntu' or username is None:
+                    log.debug("Connection failed with default user, trying 'root' for %s", node)
+                    try:
+                        remote = teuthology.orchestra.remote.Remote(
+                            canonicalize_hostname(node, user='root'))
+                        inventory_info = remote.inventory_info
+                    except Exception:
+                        raise e
+                else:
+                    raise
         update_inventory(inventory_info)
 
 
