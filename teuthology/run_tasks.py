@@ -21,6 +21,32 @@ from teuthology.util import sentry
 log = logging.getLogger(__name__)
 
 
+def _first_nested_exception_message(exc, max_len=300):
+    """
+    Return the first nested exception message from '__cause__'/'__context__'.
+    """
+    if exc is None:
+        return None
+    seen = set()
+    outer_msg = str(exc).strip()
+    nested = exc.__cause__ or exc.__context__
+    while nested and id(nested) not in seen:
+        seen.add(id(nested))
+        msg = str(nested).strip()
+        if msg and msg != outer_msg:
+            return msg[:max_len]
+        nested = nested.__cause__ or nested.__context__
+    return None
+
+
+def _set_failure_reason_detail_if_missing(summary, exc):
+    if 'failure_reason_detail' in summary:
+        return
+    detail = _first_nested_exception_message(exc)
+    if detail:
+        summary['failure_reason_detail'] = detail
+
+
 def get_task(name):
     # todo: support of submodules
     if '.' in name:
@@ -120,6 +146,7 @@ def run_tasks(tasks, ctx):
                 set_status(ctx.summary, 'fail')
         if 'failure_reason' not in ctx.summary:
             ctx.summary['failure_reason'] = str(e)
+        _set_failure_reason_detail_if_missing(ctx.summary, e)
         log.exception('Saw exception from tasks.')
 
         ctx.summary['sentry_event'] = sentry.report_error(ctx.config, e, taskname)
@@ -166,6 +193,7 @@ def run_tasks(tasks, ctx):
                         set_status(ctx.summary, 'fail')
                     if 'failure_reason' not in ctx.summary:
                         ctx.summary['failure_reason'] = str(e)
+                    _set_failure_reason_detail_if_missing(ctx.summary, e)
                     log.exception('Manager failed: %s', taskname)
 
                     if exc_info == (None, None, None):
