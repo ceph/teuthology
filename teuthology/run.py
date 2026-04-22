@@ -390,10 +390,10 @@ def main(args):
     # fetches the tasks and returns a new suite_path if needed
     config["suite_path"] = fetch_tasks_if_needed(config)
 
-    # If the job has a 'use_shaman' key, use that value to override the global
-    # config's value.
-    if config.get('use_shaman') is not None:
-        teuth_config.use_shaman = config['use_shaman']
+    # If the job has a 'use_artifacts' key, use that value to override the global
+    # config's 'use_artifacts' value.
+    if config.get('use_artifacts') is not None:
+        teuth_config.use_artifacts = config['use_artifacts']
 
     #could be refactored for setting and unsetting in hackish way
     if interactive_on_error:
