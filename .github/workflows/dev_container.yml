@@ -54,9 +54,9 @@ jobs:
           context: .
           file: containers/teuthology-dev/Dockerfile
           push: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
-          tags: ${{ env.QUAY_URI }}:${{ env.QUAY_TAG }}
+          tags: ${{ env.QUAY_URI }}
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,name-canonical=true
+          outputs: type=image,name-canonical=true,push-by-digest=true
       - name: Export digest
         run: |
           mkdir -p ${{ runner.temp }}/digests
