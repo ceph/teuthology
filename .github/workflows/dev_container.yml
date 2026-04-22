@@ -33,6 +33,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Login to Quay.io
+        if: github.event_name == 'push' && github.ref_name == 'main'
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772
         with:
           registry: quay.io
@@ -52,10 +53,10 @@ jobs:
           platforms: ${{ matrix.platform }}
           context: .
           file: containers/teuthology-dev/Dockerfile
-          # tags: ${{ env.QUAY_URI }}:${{ env.QUAY_TAG }}
-          tags: ${{ env.QUAY_URI }}
+          push: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+          tags: ${{ env.QUAY_URI }}:${{ env.QUAY_TAG }}
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+          outputs: type=image,name-canonical=true
       - name: Export digest
         run: |
           mkdir -p ${{ runner.temp }}/digests
@@ -70,6 +71,7 @@ jobs:
           retention-days: 1
   merge:
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref_name == 'main'
     needs:
       - build
     steps:
