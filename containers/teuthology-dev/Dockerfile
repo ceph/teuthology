@@ -3,6 +3,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=C.UTF-8
 RUN apt-get update && \
     apt-get install -y \
+    build-essential \
     git \
     qemu-utils \
     python3-dev \
