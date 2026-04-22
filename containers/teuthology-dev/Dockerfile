@@ -43,4 +43,4 @@ RUN \
     chmod 600 $HOME/.ssh/id_rsa && \
     echo "StrictHostKeyChecking=no" > $HOME/.ssh/config && \
     echo "UserKnownHostsFile=/dev/null" >> $HOME/.ssh/config
-ENTRYPOINT /teuthology.sh
+ENTRYPOINT ["/teuthology.sh"]
