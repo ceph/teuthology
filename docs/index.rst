@@ -9,6 +9,7 @@ Content Index
    fragment_merging.rst
    siteconfig.rst
    detailed_test_config.rst
+   known_failure_patterns.rst
    openstack_backend.rst
    libcloud_backend.rst
    downburst_vms.rst
