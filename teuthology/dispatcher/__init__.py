@@ -2,6 +2,7 @@ import datetime
 import logging
 import os
 import psutil
+import signal
 import subprocess
 import sys
 import yaml
@@ -32,31 +33,12 @@ from teuthology.util.time import parse_timestamp
 from teuthology import safepath
 
 log = logging.getLogger(__name__)
-start_time = datetime.datetime.now(datetime.timezone.utc)
-restart_file_path = '/tmp/teuthology-restart-dispatcher'
-stop_file_path = '/tmp/teuthology-stop-dispatcher'
 
-
-def sentinel(path):
-    if not os.path.exists(path):
-        return False
-    file_mtime = datetime.datetime.fromtimestamp(
-        os.path.getmtime(path),
-        datetime.timezone.utc,
-    )
-    return file_mtime > start_time
-
-
-def restart(log=log):
-    log.info('Restarting...')
-    args = sys.argv[:]
-    args.insert(0, sys.executable)
-    os.execv(sys.executable, args)
-
-
-def stop():
+def stop(_sig, _frame) -> None:
     log.info('Stopping...')
     sys.exit(0)
+
+signal.signal(signal.SIGTERM, stop)
 
 
 def load_config(archive_dir=None):
@@ -116,11 +98,6 @@ def main(args):
                 log.debug("teuthology-results exited with code: %s",
                           result_proc.returncode)
                 result_proc = None
-
-            if sentinel(restart_file_path):
-                restart()
-            elif sentinel(stop_file_path):
-                stop()
 
             load_config()
             for proc in list(job_procs):
