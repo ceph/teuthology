@@ -16,3 +16,4 @@ ExecStart=/home/teuthworker/src/git.ceph.com_git_teuthology_main/virtualenv/bin/
 ExecStop=touch /tmp/teuthology-stop-dispatcher
 Restart=on-failure
 TimeoutStopSec=infinity
+KillMode=process
