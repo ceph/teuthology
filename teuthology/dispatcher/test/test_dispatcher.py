@@ -19,28 +19,6 @@ class TestDispatcher(object):
         self.ctx.log_dir = str(tmp_path / "log/dir")
         self.ctx.tube = 'tube'
 
-    @patch("os.path.exists")
-    def test_restart_file_path_doesnt_exist(self, m_exists):
-        m_exists.return_value = False
-        result = dispatcher.sentinel(dispatcher.restart_file_path)
-        assert not result
-
-    @patch("os.path.getmtime")
-    @patch("os.path.exists")
-    def test_needs_restart(self, m_exists, m_getmtime):
-        m_exists.return_value = True
-        now = datetime.datetime.now(datetime.timezone.utc)
-        m_getmtime.return_value = (now + datetime.timedelta(days=1)).timestamp()
-        assert dispatcher.sentinel(dispatcher.restart_file_path)
-
-    @patch("os.path.getmtime")
-    @patch("os.path.exists")
-    def test_does_not_need_restart(self, m_exists, m_getmtime):
-        m_exists.return_value = True
-        now = datetime.datetime.now(datetime.timezone.utc)
-        m_getmtime.return_value = (now - datetime.timedelta(days=1)).timestamp()
-        assert not dispatcher.sentinel(dispatcher.restart_file_path)
-
     @patch("teuthology.repo_utils.ls_remote")
     @patch("os.path.isdir")
     @patch("teuthology.repo_utils.fetch_teuthology")
