@@ -507,10 +507,11 @@ class Run(object):
                 '--description', description,
                 '--',
             ])
-            arg.extend(self.base_yaml_paths)
-
-            parsed_yaml_txt = yaml.dump(parsed_yaml)
+            # In order overriding with extra yaml paths could possibly work,
+            # order parsed yaml before base_yaml_paths
             arg.append('-')
+            parsed_yaml_txt = yaml.dump(parsed_yaml)
+            arg.extend(self.base_yaml_paths)
 
             job = dict(
                 yaml=parsed_yaml,
