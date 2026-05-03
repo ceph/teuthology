@@ -822,7 +822,7 @@ def wait_until_healthy(ctx, remote, ceph_cluster='ceph', use_sudo=False):
     Wait until a Ceph cluster is healthy. Give up after 15min.
     """
     testdir = get_testdir(ctx)
-    # when cluster is setup using ceph-deploy or ansible
+    # when cluster is setup using ansible
     # access to admin key is readonly for ceph user
     cmd = ['ceph', '--cluster', ceph_cluster, 'health']
     if use_sudo:
