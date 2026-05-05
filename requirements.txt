@@ -103,7 +103,7 @@ keystoneauth1==5.13.1
     # via openstacksdk
 lupa==2.6
     # via teuthology (pyproject.toml)
-lxml==5.4.0
+lxml==6.1.0
     # via teuthology (pyproject.toml)
 markupsafe==2.1.3
     # via jinja2
