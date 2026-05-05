@@ -184,7 +184,7 @@ pyproject-api==1.6.1
     # via tox
 pyproject-hooks==1.0.0
     # via build
-pytest==7.4.3
+pytest==9.0.3
     # via
     #   pytest-cov
     #   teuthology (pyproject.toml)
