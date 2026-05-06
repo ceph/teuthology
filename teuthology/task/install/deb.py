@@ -31,6 +31,40 @@ def _retry_if_eagain_in_output(remote, args):
 def install_dep_packages(remote, args):
     _retry_if_eagain_in_output(remote, args)
 
+
+def _deb_addrepo(remote, repo_list):
+    """
+    Add deb repos to the remote system. See Deb822.
+
+    :param remote:      remote node where to add packages
+    :param repo_list:   list of dictionaries with keys 'name',
+                        'url', 'suite', 'components', and
+                        optional 'type'
+    :return:
+    """
+    for repo in repo_list:
+        # repo type defaults to 'deb', allowed 'deb', 'deb-src'
+        repo_type = repo.get('type', 'deb')
+        url = repo.get('url')
+        suite = repo.get('suite')
+        components = repo.get('components')
+        repo_line = f"{repo_type} {url} {suite} {components}"
+        repo_path = f"/etc/apt/sources.list.d/{repo['name']}.list"
+        remote.sudo_write_file(repo_path, repo_line)
+
+def _deb_removerepo(remote, repo_list):
+    """
+    Remove deb repos on the remote system.
+
+    :param remote:      remote node where to remove packages from
+    :param repo_list:   list of dictionaries with keys 'name', 'url'
+                        'suite', 'components', and optional 'type'
+    :return:
+    """
+    for repo in repo_list:
+        repo_path = f"/etc/apt/sources.list.d/{repo['name']}.list"
+        remote.run(args=['sudo', 'rm', repo_path])
+
 def _update_package_list_and_install(ctx, remote, debs, config):
     """
     Runs ``apt-get update`` first, then runs ``apt-get install``, installing
@@ -43,6 +77,11 @@ def _update_package_list_and_install(ctx, remote, debs, config):
     :param debs: list of packages names to install
     :param config: the config dict
     """
+
+    remote_os = remote.os
+    dist_release = remote_os.name
+    log.debug("_update_package_list_and_install: config is {}".format(config))
+    repos = config.get('repos')
 
     # check for ceph release key
     r = remote.run(
@@ -66,22 +105,27 @@ def _update_package_list_and_install(ctx, remote, debs, config):
 
     builder = _get_builder_project(ctx, remote, config)
     log.info("Installing packages: {pkglist} on remote deb {arch}".format(
-        pkglist=", ".join(debs), arch=builder.arch)
+        pkglist=", ".join(debs), arch=remote.arch)
     )
     system_pkglist = config.get('extra_system_packages')
     if system_pkglist:
         if isinstance(system_pkglist, dict):
             system_pkglist = system_pkglist.get('deb')
         log.info("Installing system (non-project) packages: {pkglist} on remote deb {arch}".format(
-            pkglist=", ".join(system_pkglist), arch=builder.arch)
+            pkglist=", ".join(system_pkglist), arch=remote.arch)
         )
-    # get baseurl
-    log.info('Pulling from %s', builder.base_url)
 
-    version = builder.version
-    log.info('Package version is %s', version)
-
-    builder.install_repo()
+    if repos:
+        log.debug("Adding repos: %s" % repos)
+        if dist_release in ['ubuntu', 'debian']:
+            _deb_addrepo(remote, repos)
+        else:
+            raise Exception('Custom repos were specified for %s ' % remote_os +
+                            'but these are currently not supported')
+    else:
+        log.info('Pulling from %s', builder.base_url)
+        log.info('Package version is %s', builder.version)
+        builder.install_repo()
 
     remote.run(args=['sudo', 'apt-get', 'update'], check_status=False)
     install_cmd = [
@@ -92,7 +136,7 @@ def _update_package_list_and_install(ctx, remote, debs, config):
             'install',
         ]
     install_dep_packages(remote,
-        args=install_cmd + ['%s=%s' % (d, version) for d in debs],
+        args=install_cmd + ['%s=%s' % (d, builder.version) for d in debs],
     )
     if system_pkglist:
         install_dep_packages(remote,
@@ -116,6 +160,9 @@ def _remove(ctx, config, remote, debs):
     :param remote: the teuthology.orchestra.remote.Remote object
     :param debs: list of packages names to install
     """
+    remote_os = remote.os
+    dist_release = remote_os.name
+
     log.info("Removing packages: {pkglist} on Debian system.".format(
         pkglist=", ".join(debs)))
     # first ask nicely
@@ -160,6 +207,14 @@ def _remove(ctx, config, remote, debs):
             'autoremove',
         ],
     )
+
+    repos = config.get('repos')
+    if repos:
+        if dist_release in ['debian', 'ubuntu']:
+            _deb_removerepo(remote, repos)
+        else:
+            raise Exception('Custom repos were specified for %s ' % remote_os +
+                            'but these are currently not supported')
 
 
 def _remove_sources_list(ctx, config, remote):
