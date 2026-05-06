@@ -36,8 +36,10 @@ jobs:
         working-directory: ./teuthology
       - name: Refresh system repos
         run: |
-          sudo apt update -y
-          sudo apt upgrade -y
+          sudo apt-get update -y
+      - name: Install required packages
+        run: |
+          sudo apt-get install -y qemu-utils libev-dev libvirt-dev pipx
       - name: Initial bootstrap
         run: ./bootstrap install
         working-directory: ./teuthology
