@@ -3,6 +3,7 @@ import itertools
 import logging
 import os
 import psutil
+import sys
 import time
 
 from pathlib import Path
@@ -83,10 +84,12 @@ class TeuthologyExporter:
                 raise SystemExit
 
     def restart(self):
-        # Use the dispatcher's restart function - note that by using this here,
-        # it restarts the exporter, *not* the dispatcher.
-        if REGISTRY:
-            return teuthology.dispatcher.restart(log=log)
+        if not REGISTRY:
+            return
+        log.info('Restarting...')
+        args = sys.argv[:]
+        args.insert(0, sys.executable)
+        os.execv(sys.executable, args)
 
 
 class SingletonMeta(type):
