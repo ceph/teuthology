@@ -19,7 +19,8 @@ Linux)
     Ubuntu|Debian|LinuxMint)
         deps=(qemu-utils python3-dev libssl-dev libev-dev libvirt-dev libffi-dev libyaml-dev pipx build-essential jq curl)
         has_pkg="dpkg -s"
-        install_pkg="sudo apt install -y"
+        update_repos="sudo apt-get update"
+        install_pkg="sudo apt-get install -y"
         ;;
     RedHatEnterpriseWorkstation|RedHatEnterpriseServer|RedHatEnterprise|CentOS|CentOSStream|AlmaLinux|RockyLinux|Fedora|FedoraLinux)
         # Use the newest version we find
@@ -62,6 +63,10 @@ if [ -n "$missing" ]; then
     echo "$0: missing required packages:" 1>&2
     echo "$missing"
     if [ "$install" = true ]; then
+        if [ -n "$update_repos" ]; then
+            echo "Updating package repos..."
+            $update_repos
+        fi
         echo "Installing missing packages..."
         $install_pkg "$missing"
     else
