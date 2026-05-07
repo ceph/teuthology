@@ -129,10 +129,11 @@ class TestRun(object):
     @patch("teuthology.run.get_status")
     @patch("yaml.safe_dump")
     @patch("teuthology.report.try_push_job_info")
+    @patch("teuthology.util.redmine_suggest.log_redmine_suggestions_on_failure")
     @patch("teuthology.run.email_results")
     @patch("teuthology.run.open")
     @patch("sys.exit")
-    def test_report_outcome(self, m_sys_exit, m_open, m_email_results, m_try_push_job_info, m_safe_dump, m_get_status):
+    def test_report_outcome(self, m_sys_exit, m_open, m_email_results, m_log_redmine_suggestions_on_failure, m_try_push_job_info, m_safe_dump, m_get_status):
         m_get_status.return_value = "fail"
         summary = {"failure_reason": "reasons"}
         summary_dump = "failure_reason: reasons\n"
@@ -140,10 +141,43 @@ class TestRun(object):
         config_dump = "email-on-error: true\n"
         m_safe_dump.side_effect = [None, summary_dump, config_dump]
         run.report_outcome(config, "the/archive/path", summary)
+        assert m_log_redmine_suggestions_on_failure.called
         m_try_push_job_info.assert_called_with(config, summary)
         m_open.assert_called_with("the/archive/path/summary.yaml", "w")
         assert m_email_results.called
         assert m_open.called
+        assert m_sys_exit.called
+
+    @patch("teuthology.util.redmine_suggest.log_redmine_suggestions_on_failure")
+    @patch("teuthology.report.try_push_job_info")
+    @patch("teuthology.run.get_status")
+    @patch("yaml.safe_dump")
+    @patch("sys.exit")
+    def test_report_outcome_passes_failure_reason_detail(
+        self,
+        m_sys_exit,
+        m_safe_dump,
+        m_get_status,
+        m_try_push_job_info,
+        m_log_redmine_suggestions_on_failure,
+    ):
+        m_get_status.return_value = "fail"
+        m_safe_dump.return_value = ""
+        summary = {
+            "failure_reason": "reached maximum tries (50) after waiting for 300 seconds",
+            "failure_reason_detail": "Command failed on node with status 1",
+        }
+        cfg = {"redmine_base_url": "https://tracker.ceph.com"}
+        run.report_outcome(cfg, None, summary)
+
+        m_log_redmine_suggestions_on_failure.assert_called_once_with(
+            run.log,
+            summary["failure_reason"],
+            cfg,
+            failure_reason_detail=summary["failure_reason_detail"],
+            teuthology_log_path=None,
+        )
+        m_try_push_job_info.assert_called_with(cfg, summary)
         assert m_sys_exit.called
 
     @patch("teuthology.run.set_up_logging")
