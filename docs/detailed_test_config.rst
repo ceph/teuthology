@@ -300,10 +300,24 @@ Shaman options
 ==============
 
 Shaman is a helper class which could be used to build the uri for specified
-packages based the 'shaman_host': 'shaman.ceph.com'.
+packages based the 'artifacts_host' option.
 
 Options::
 
-    use_shaman: True # Enable to use Shaman, False as default
+    use_artifacts: 'shaman'
+    artifacts_host: 'shaman.ceph.com'
     shaman:
+      force_noarch: True # Force to use "noarch" to build the uri
+
+Pulp options
+============
+
+Pulp is a package manager (https://pulpproject.org/) that could be used to
+build the uri for specified packages based the 'artifacts_host' option.
+
+Options::
+
+    use_artifacts: 'pulp'
+    artifacts_host: 'pulp.example.com'
+    pulp:
       force_noarch: True # Force to use "noarch" to build the uri
