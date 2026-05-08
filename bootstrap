@@ -63,7 +63,7 @@ if [ -n "$missing" ]; then
     echo "$missing"
     if [ "$install" = true ]; then
         echo "Installing missing packages..."
-        $install_pkg "$missing"
+        $install_pkg $missing
     else
         echo "Please install missing packages or run './bootstrap install'"
         echo "$install_pkg $missing"
