@@ -32,6 +32,8 @@ jobs:
           path: teuthology
       - name: Refresh system repos
         run: sudo apt-get -qq update -y
+      - name: Work around previously-broken bootstrap
+        run: sudo apt-get -qq install -y qemu-utils libev-dev libvirt-dev pipx
       - name: Initial bootstrap
         run: ./bootstrap install
         working-directory: ./teuthology
