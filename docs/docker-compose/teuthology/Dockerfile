@@ -25,7 +25,7 @@ RUN apt-get update && \
     apt-get clean all && \
     locale-gen $LC_ALL
 WORKDIR /teuthology
-COPY pyproject.toml requirements.txt requirements.yml uv.lock ansible.cfg bootstrap /teuthology/
+COPY pyproject.toml requirements.yml uv.lock ansible.cfg bootstrap /teuthology/
 RUN \
     cd /teuthology && \
     mkdir ../archive_dir && \
