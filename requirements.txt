@@ -174,7 +174,7 @@ pynacl==1.5.0
     #   teuthology (pyproject.toml)
 pynose==1.5.1
     # via teuthology (pyproject.toml)
-pyopenssl==23.3.0
+pyopenssl==26.0.0
     # via
     #   ndg-httpsclient
     #   teuthology (pyproject.toml)
