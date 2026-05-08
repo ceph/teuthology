@@ -39,7 +39,7 @@ jobs:
         with:
           path: teuthology
       - name: Move virtualenv to new checkout
-        run: mv ./teuthology.orig/virtualenv ./teuthology/
+        run: mv ./teuthology.orig/.venv ./teuthology/
       - name: Re-run bootstrap
         run: ./bootstrap install
         working-directory: ./teuthology
