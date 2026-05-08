@@ -6,6 +6,9 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  DEBIAN_FRONTEND: noninteractive
+
 jobs:
   upgrade:
     name: Test dependencies
@@ -27,17 +30,10 @@ jobs:
         with:
           ref: main
           path: teuthology
-      - name: virtualenv
-        run: |
-          pip install --user virtualenv
-          virtualenv ./virtualenv
-          cd ./virtualenv/lib/python*
-          touch no-global-site-packages.txt
-        working-directory: ./teuthology
       - name: Refresh system repos
-        run: |
-          sudo apt update -y
-          sudo apt upgrade -y
+        run: sudo apt-get -qq update -y
+      - name: Work around previously-broken bootstrap
+        run: sudo apt-get -qq install -y qemu-utils libev-dev libvirt-dev pipx
       - name: Initial bootstrap
         run: ./bootstrap install
         working-directory: ./teuthology
@@ -48,7 +44,7 @@ jobs:
         with:
           path: teuthology
       - name: Move virtualenv to new checkout
-        run: mv ./teuthology.orig/virtualenv ./teuthology/
+        run: mv ./teuthology.orig/.venv ./teuthology/
       - name: Re-run bootstrap
         run: ./bootstrap install
         working-directory: ./teuthology
