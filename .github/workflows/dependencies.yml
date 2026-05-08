@@ -35,9 +35,7 @@ jobs:
           touch no-global-site-packages.txt
         working-directory: ./teuthology
       - name: Refresh system repos
-        run: |
-          sudo apt update -y
-          sudo apt upgrade -y
+        run: sudo apt-get update -y
       - name: Initial bootstrap
         run: ./bootstrap install
         working-directory: ./teuthology
