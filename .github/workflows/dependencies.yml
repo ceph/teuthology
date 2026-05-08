@@ -6,6 +6,9 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  DEBIAN_FRONTEND: noninteractive
+
 jobs:
   upgrade:
     name: Test dependencies
@@ -28,7 +31,7 @@ jobs:
           ref: main
           path: teuthology
       - name: Refresh system repos
-        run: sudo apt-get update -y
+        run: sudo apt-get -qq update -y
       - name: Initial bootstrap
         run: ./bootstrap install
         working-directory: ./teuthology
