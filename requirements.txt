@@ -199,7 +199,7 @@ pyyaml==6.0.1
     #   ansible-core
     #   openstacksdk
     #   teuthology (pyproject.toml)
-requests==2.31.0
+requests==2.33.0
     # via
     #   apache-libcloud
     #   keystoneauth1
