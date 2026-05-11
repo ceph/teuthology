@@ -282,7 +282,7 @@ class Downburst(object):
         # to install 'python' to get python2.7, which ansible needs
         if os_type in ('ubuntu', 'fedora'):
             user_info['packages'].append('python')
-        if os_type in ('centos'):
+        if os_type in ('centos', 'rocky'):
             user_info['packages'].extend([
                 'python3-pip',
                 'bind-utils',
