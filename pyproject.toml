@@ -40,7 +40,7 @@ dependencies = [
     "requests-oauthlib",
     "sentry-sdk",
     "types-psutil",
-    "urllib3>=1.25.4,<1.27",
+    "urllib3>=1.25.4,<2.8",
     "build>=1.2.1",
 ]
 keywords = ["teuthology", "test", "ceph", "cluster"]
