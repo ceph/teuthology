@@ -1,5 +1,4 @@
 import datetime
-import os
 import pytest
 
 from unittest.mock import patch, Mock, MagicMock
@@ -58,17 +57,7 @@ class TestDispatcher(object):
         m_ls_remote.return_value = 'teuth_hash'
         m_isdir.return_value = True
         m_teuth_config.teuthology_path = None
-        got_config, teuth_bin_path = dispatcher.prep_job(
-            config,
-            self.ctx.log_dir,
-            self.ctx.archive_dir,
-        )
-        assert got_config['worker_log'] == self.ctx.log_dir
-        assert got_config['archive_path'] == os.path.join(
-            self.ctx.archive_dir,
-            config['name'],
-            config['job_id'],
-        )
+        got_config, teuth_bin_path = dispatcher.prep_job(config)
         assert got_config['teuthology_branch'] == 'main'
         m_fetch_teuthology.assert_called_once_with(branch='main', commit='teuth_hash')
         assert teuth_bin_path == '/teuth/path/.venv/bin'
