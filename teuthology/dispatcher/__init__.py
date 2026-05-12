@@ -96,7 +96,6 @@ def main(args):
 
     connection = beanstalk.connect()
     beanstalk.watch_tube(connection, args.tube)
-    result_proc = None
 
     if teuth_config.teuthology_path is None:
         repo_utils.fetch_teuthology('main')
@@ -110,13 +109,6 @@ def main(args):
 
     while keep_running:
         try:
-            # Check to see if we have a teuthology-results process hanging around
-            # and if so, read its return code so that it can exit.
-            if result_proc is not None and result_proc.poll() is not None:
-                log.debug("teuthology-results exited with code: %s",
-                          result_proc.returncode)
-                result_proc = None
-
             if sentinel(restart_file_path):
                 restart()
             elif sentinel(stop_file_path):
