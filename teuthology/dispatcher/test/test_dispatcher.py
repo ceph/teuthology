@@ -163,7 +163,6 @@ class TestDispatcher(object):
         m_connection.reserve.side_effect = jobs
         m_connect.return_value = m_connection
         m_fetch_qa_suite.side_effect = [
-            '/suite/path',
             MaxWhileTries(),
             MaxWhileTries(),
         ]

@@ -97,10 +97,6 @@ def main(args):
     connection = beanstalk.connect()
     beanstalk.watch_tube(connection, args.tube)
 
-    if teuth_config.teuthology_path is None:
-        repo_utils.fetch_teuthology('main')
-    repo_utils.fetch_qa_suite('main')
-
     keep_running = True
     job_procs = set()
     worst_returncode = 0
