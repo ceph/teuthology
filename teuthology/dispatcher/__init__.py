@@ -137,6 +137,15 @@ def main(args):
             run_name = job_config['name']
             job_archive_path = os.path.join(
                 archive_dir, safepath.munge(run_name), str(job_id))
+            # Create job archive directory together with run directory
+            safepath.makedirs('/', job_archive_path)
+            default_config_path = os.path.join(job_archive_path,
+                                               'default.config.yaml')
+
+            # Write initial job config in job archive dir
+            with open(default_config_path, 'w') as f:
+                yaml.safe_dump(job_config, f, default_flow_style=False)
+
             job_config['archive_path'] = job_archive_path
             job_config['worker_log'] = log_file_path
 
@@ -145,8 +154,7 @@ def main(args):
             except SkipJob:
                 continue
 
-            # Create job archive directory together with run directory
-            safepath.makedirs('/', job_archive_path)
+            job_config_path = os.path.join(job_archive_path, 'init.config.yaml')
 
             # lock machines but do not reimage them
             if 'roles' in job_config:
@@ -187,7 +195,6 @@ def main(args):
                 '--archive-dir', archive_dir,
             ]
 
-            job_config_path = os.path.join(job_config['archive_path'], 'orig.config.yaml')
 
             # Write initial job config in job archive dir
             with open(job_config_path, 'w') as f:
