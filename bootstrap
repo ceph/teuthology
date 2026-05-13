@@ -79,11 +79,11 @@ export LANG="${LANG/.*/}.utf-8"
 export LC_ALL="${LC_ALL/.*/}.utf-8"
 
 [ -z "$NO_CLOBBER" ] && rm -rf virtualenv
-command -v uv > /dev/null || pipx install uv
-command -v uv > /dev/null || pipx ensurepath
+command -v uv > /dev/null || pipx install --quiet uv
+command -v uv > /dev/null || pipx ensurepath --quiet
 PATH=$PATH:$HOME/.local/bin
 # Create the venv if it does not exist, and install teuthology and dependencies
-uv sync --frozen --all-extras
+uv sync --quiet --frozen --all-extras
 # To avoid crashing older dispatchers
 ln -sf .venv virtualenv
 
