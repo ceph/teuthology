@@ -96,11 +96,6 @@ def main(args):
 
     connection = beanstalk.connect()
     beanstalk.watch_tube(connection, args.tube)
-    result_proc = None
-
-    if teuth_config.teuthology_path is None:
-        repo_utils.fetch_teuthology('main')
-    repo_utils.fetch_qa_suite('main')
 
     keep_running = True
     job_procs = set()
@@ -110,13 +105,6 @@ def main(args):
 
     while keep_running:
         try:
-            # Check to see if we have a teuthology-results process hanging around
-            # and if so, read its return code so that it can exit.
-            if result_proc is not None and result_proc.poll() is not None:
-                log.debug("teuthology-results exited with code: %s",
-                          result_proc.returncode)
-                result_proc = None
-
             if sentinel(restart_file_path):
                 restart()
             elif sentinel(stop_file_path):
@@ -141,17 +129,28 @@ def main(args):
             log.info('Reserved job %d', job_id)
             log.info('Config is: %s', job.body)
             job_config = yaml.safe_load(job.body)
+
+            # Create job archive directory together with run directory
+            run_name = job_config['name']
+            job_archive_path = os.path.join(
+                archive_dir, safepath.munge(run_name), str(job_id))
+            safepath.makedirs('/', job_archive_path)
+
+            # Save job body to archive dir
+            default_config_path = os.path.join(job_archive_path,
+                                               'default.config.yaml')
+            with open(default_config_path, 'w') as f:
+                yaml.safe_dump(job_config, f, default_flow_style=False)
+
+            job_config['archive_path'] = job_archive_path
+            job_config['worker_log'] = log_file_path
             job_config['job_id'] = str(job_id)
 
             if job_config.get('stop_worker'):
                 keep_running = False
 
             try:
-                job_config, teuth_bin_path = prep_job(
-                    job_config,
-                    log_file_path,
-                    archive_dir,
-                )
+                job_config, teuth_bin_path = prep_job(job_config)
             except SkipJob:
                 continue
 
@@ -194,14 +193,8 @@ def main(args):
                 '--archive-dir', archive_dir,
             ]
 
-            # Create run archive directory if not already created and
-            # job's archive directory
-            create_job_archive(job_config['name'],
-                               job_config['archive_path'],
-                               archive_dir)
-            job_config_path = os.path.join(job_config['archive_path'], 'orig.config.yaml')
-
             # Write initial job config in job archive dir
+            job_config_path = os.path.join(job_archive_path, 'orig.config.yaml')
             with open(job_config_path, 'w') as f:
                 yaml.safe_dump(job_config, f, default_flow_style=False)
 
@@ -316,15 +309,8 @@ def find_dispatcher_processes() -> Dict[str, List[psutil.Process]]:
     return procs
 
 
-def prep_job(job_config, log_file_path, archive_dir):
-    job_id = job_config['job_id']
+def prep_job(job_config):
     check_job_expiration(job_config)
-
-    safe_archive = safepath.munge(job_config['name'])
-    job_config['worker_log'] = log_file_path
-    archive_path_full = os.path.join(
-        archive_dir, safe_archive, str(job_id))
-    job_config['archive_path'] = archive_path_full
 
     # If the teuthology branch was not specified, default to main and
     # store that value.
@@ -437,12 +423,3 @@ def lock_machines(job_config):
         )
     job_config = fake_ctx.config
     return job_config
-
-
-def create_job_archive(job_name, job_archive_path, archive_dir):
-    log.info('Creating job\'s archive dir %s', job_archive_path)
-    safe_archive = safepath.munge(job_name)
-    run_archive = os.path.join(archive_dir, safe_archive)
-    if not os.path.exists(run_archive):
-        safepath.makedirs('/', run_archive)
-    safepath.makedirs('/', job_archive_path)
