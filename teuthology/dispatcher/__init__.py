@@ -129,32 +129,30 @@ def main(args):
             log.info('Reserved job %d', job_id)
             log.info('Config is: %s', job.body)
             job_config = yaml.safe_load(job.body)
-            job_config['job_id'] = str(job_id)
 
-            if job_config.get('stop_worker'):
-                keep_running = False
-
+            # Create job archive directory together with run directory
             run_name = job_config['name']
             job_archive_path = os.path.join(
                 archive_dir, safepath.munge(run_name), str(job_id))
-            # Create job archive directory together with run directory
             safepath.makedirs('/', job_archive_path)
+
+            # Save job body to archive dir
             default_config_path = os.path.join(job_archive_path,
                                                'default.config.yaml')
-
-            # Write initial job config in job archive dir
             with open(default_config_path, 'w') as f:
                 yaml.safe_dump(job_config, f, default_flow_style=False)
 
             job_config['archive_path'] = job_archive_path
             job_config['worker_log'] = log_file_path
+            job_config['job_id'] = str(job_id)
+
+            if job_config.get('stop_worker'):
+                keep_running = False
 
             try:
                 job_config, teuth_bin_path = prep_job(job_config)
             except SkipJob:
                 continue
-
-            job_config_path = os.path.join(job_archive_path, 'init.config.yaml')
 
             # lock machines but do not reimage them
             if 'roles' in job_config:
@@ -195,8 +193,8 @@ def main(args):
                 '--archive-dir', archive_dir,
             ]
 
-
             # Write initial job config in job archive dir
+            job_config_path = os.path.join(job_archive_path, 'orig.config.yaml')
             with open(job_config_path, 'w') as f:
                 yaml.safe_dump(job_config, f, default_flow_style=False)
 
