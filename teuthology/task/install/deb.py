@@ -20,10 +20,26 @@ def _retry_if_eagain_in_output(remote, args):
                 return remote.run(args=args, stderr=stderr)
             except run.CommandFailedError:
                 if "could not get lock" in stderr.getvalue().lower():
-                    stdout = StringIO()
-                    args = ['sudo', 'fuser', '-v', '/var/lib/dpkg/lock-frontend']
-                    remote.run(args=args, stdout=stdout)
-                    log.info("The processes holding 'lock-frontend':\n{}".format(stdout.getvalue()))
+                    # Get the PID(s) holding the lock. Set to empty list in case
+                    # apt lock is freed between original apt failure and `fuser` call
+                    try:
+                        pids = remote.sh('sudo fuser /var/lib/dpkg/lock-frontend').split()
+                    except run.CommandFailedError:
+                        pids = []
+                    log.info("The processes holding 'lock-frontend':\n{}".format(pids))
+
+                    # Get detailed info on each PID
+                    for pid in pids:
+                        try:
+                            ps_out = remote.sh(f'ps -p {pid} -o pid,ppid,user,stat,start,etime,cmd')
+                            log.info("Process info for PID %s:\n%s", pid, ps_out)
+
+                            cmdline = remote.sh(f'sudo cat /proc/{pid}/cmdline')
+                            cmdline = cmdline.replace('\x00', ' ').strip()
+                            log.info("Full cmdline for PID %s: %s", pid, cmdline)
+                        except run.CommandFailedError:
+                            log.info("PID %s exited before we could inspect it", pid)
+
                     continue
                 else:
                     raise
