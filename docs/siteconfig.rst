@@ -245,6 +245,29 @@ Here is a sample configuration with many of the options set and documented::
     # Used by the [libcloud](https://libcloud.apache.org/) backend
     nsupdate_url: http://nsupdate.front.sepia.ceph.com/update
 
+    # Settings for downburst https://github.com/ceph/downburst
+    downburst:
+      path: /home/teuthology/downburst/virtualenv/bin/downburst
+      discover_url: '' # Same as DOWNBURST_DISCOVER_URL
+      distro:
+        # for os_type=='rocky' and os_version=='9.7'
+        rocky-9.7:
+          repo:
+            rocky:
+              - id: baseos
+                name: Rocky Linux 9 - BaseOS
+                baseurl: "http://dl.rockylinux.org/$contentdir/$releasever/BaseOS/$basearch/os/"
+                enabled: True
+                gpgcheck: False
+      machine:
+      - type: vps
+        cpus: 2
+        disk: 40G
+        ram: 4G
+        volumes:
+          size: 20G
+          count: 4
+
     # Settings for https://fogproject.org/
     fog:
       endpoint: http://fog.example.com/fog
