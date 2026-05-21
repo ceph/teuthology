@@ -9,11 +9,12 @@ from teuthology.lock import query, ops
 
 def main():
     args = parse_args(sys.argv[1:])
+    log = logging.getLogger(__name__)
     if args.verbose:
+        log.setLevel(logging.DEBUG)
         teuthology.log.setLevel(logging.DEBUG)
     else:
         teuthology.log.setLevel(100)
-    log = logging.getLogger(__name__)
     logger = logging.getLogger()
     for handler in logger.handlers:
         handler.setFormatter(
@@ -25,6 +26,7 @@ def main():
         log.exception(f"Error while check for stale locks held by {args.owner}")
         return
     if not stale:
+        log.debug("No stale nodes found.")
         return
     by_owner = {}
     for node in stale:
