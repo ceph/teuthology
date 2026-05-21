@@ -21,7 +21,10 @@ def main():
             logging.Formatter('%(message)s')
         )
     try:
-        stale = query.find_stale_locks(args.owner)
+        stale = query.find_stale_locks(
+            args.owner,
+            machine_type=args.machine_type
+        )
     except Exception:
         log.exception(f"Error while check for stale locks held by {args.owner}")
         return
@@ -69,6 +72,10 @@ def parse_args(argv):
     parser.add_argument(
         '--owner',
         help='Optionally, find nodes locked by a specific user',
+    )
+    parser.add_argument(
+        '-m', '--machine-type',
+        help='Optionally, find nodes in a comma-separated list of machine types',
     )
     return parser.parse_args(argv)
 

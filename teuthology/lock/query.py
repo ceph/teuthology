@@ -64,8 +64,8 @@ def list_locks(keyed_by_name=False, tries=10, **kwargs):
         if kwargs[key] is True:
             kwargs[key] = '1'
     if kwargs:
-        if 'machine_type' in kwargs:
-            kwargs['machine_type'] = kwargs['machine_type'].replace(',','|')
+        if machine_type := kwargs.get("machine_type"):
+            kwargs['machine_type'] = machine_type.replace(',','|')
         uri += '?' + urlencode(kwargs)
     with safe_while(
             sleep=1,
@@ -89,14 +89,15 @@ def list_locks(keyed_by_name=False, tries=10, **kwargs):
     return dict()
 
 
-def find_stale_locks(owner=None) -> List[Dict]:
+def find_stale_locks(owner: str | None = None, machine_type: str | None = None) -> List[Dict]:
     """
     Return a list of node dicts corresponding to nodes that were locked to run
     a job, but the job is no longer running. The purpose of this is to enable
     us to find nodes that were left locked due to e.g. infrastructure failures
     and return them to the pool.
 
-    :param owner: If non-None, return nodes locked by owner. Default is None.
+    :param owner: Optionally filter nodes by owner
+    :param machine_type: Optionally filter nodes by comma-separated machine type(s)
     """
     def might_be_stale(node_dict):
         """
@@ -117,7 +118,7 @@ def find_stale_locks(owner=None) -> List[Dict]:
         return False
 
     # Which nodes are locked for jobs?
-    nodes = list_locks(locked=True)
+    nodes = list_locks(locked=True, machine_type=machine_type)
     if owner is not None:
         nodes = [node for node in nodes if node['locked_by'] == owner]
     nodes = filter(might_be_stale, nodes)

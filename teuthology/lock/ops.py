@@ -503,7 +503,7 @@ def block_and_lock_machines(ctx, total_requested, machine_type, reimage=True, tr
 
 def stop_node(name: str, status: Union[dict, None]):
     status = status or query.get_status(name)
-    remote_ = remote.Remote(name)
+    remote_ = remote.Remote(misc.canonicalize_hostname(name))
     if status['machine_type'] in provision.fog.get_types():
         remote_.console.power_off()
         return
