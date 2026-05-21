@@ -119,6 +119,7 @@ def find_stale_locks(owner: str | None = None, machine_type: str | None = None) 
 
     # Which nodes are locked for jobs?
     nodes = list_locks(locked=True, machine_type=machine_type)
+    log.debug(f"Total locked nodes: {len(nodes)}")
     if owner is not None:
         nodes = [node for node in nodes if node['locked_by'] == owner]
     nodes = filter(might_be_stale, nodes)
