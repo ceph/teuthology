@@ -1,6 +1,6 @@
 import copy
 import logging
-import lupa
+import lupa.lua54 as lupa
 import os
 from types import MappingProxyType
 import yaml
