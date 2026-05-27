@@ -1,6 +1,7 @@
 import logging
 
 from teuthology.orchestra.daemon.state import DaemonState
+from teuthology.exceptions import CommandFailedError
 
 log = logging.getLogger(__name__)
 
@@ -10,6 +11,7 @@ class CephadmUnit(DaemonState):
         super(CephadmUnit, self).__init__(
             remote, role, id_, *command_args, **command_kwargs)
         self._set_commands()
+        self._runtime = None
         self.log = command_kwargs.get('logger', log)
         self.use_cephadm = command_kwargs.get('use_cephadm')
         self.is_started = command_kwargs.get('started', False)
@@ -33,12 +35,26 @@ class CephadmUnit(DaemonState):
         self.show_cmd = self._get_systemd_cmd('show')
         self.status_cmd = self._get_systemd_cmd('status')
 
+    @property
+    def runtime(self):
+        if self._runtime is None:
+            try:
+                self.remote.sh('podman --version')
+                self._runtime = 'podman'
+            except CommandFailedError:
+                self.log.debug('Failed to find podman. Trying docker.')
+                try:
+                    self.remote.sh('docker --version')
+                    self._runtime = 'docker'
+                except CommandFailedError:
+                    self.log.error('Failed to find podman or docker.')
+                    raise RuntimeError("no container runtime found!")
+        return self._runtime
+
     def kill_cmd(self, sig):
-        return ' '.join([
-            'sudo', 'docker', 'kill',
-            '-s', str(int(sig)),
-            'ceph-%s-%s.%s' % (self.fsid, self.type_, self.id_),
-        ])
+        container = f"ceph-{self.fsid}-{self.type_}-{self.id_}"
+        cmd = f"sudo {self.runtime} kill -s {str(int(sig))} {container}"
+        self.remote.sh(cmd)
 
     def _start_logger(self):
         name = '%s.%s' % (self.type_, self.id_)
@@ -135,9 +151,9 @@ class CephadmUnit(DaemonState):
         # Ignore exception here because sending a singal via docker can be
         # quite slow and easily race with, say, the daemon shutting down.
         try:
-            self.remote.sh(self.kill_cmd(sig))
-        except Exception as e:
-            self.log.info(f'Ignoring exception while sending signal: {e}')
+            self.kill_cmd(sig)
+        except CommandFailedError as e:
+            self.log.warning(f'Ignoring exception while sending signal: {e}')
 
     def start(self, timeout=300):
         """
