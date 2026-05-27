@@ -9,22 +9,27 @@ from teuthology.lock import query, ops
 
 def main():
     args = parse_args(sys.argv[1:])
+    log = logging.getLogger(__name__)
     if args.verbose:
+        log.setLevel(logging.DEBUG)
         teuthology.log.setLevel(logging.DEBUG)
     else:
         teuthology.log.setLevel(100)
-    log = logging.getLogger(__name__)
     logger = logging.getLogger()
     for handler in logger.handlers:
         handler.setFormatter(
             logging.Formatter('%(message)s')
         )
     try:
-        stale = query.find_stale_locks(args.owner)
+        stale = query.find_stale_locks(
+            args.owner,
+            machine_type=args.machine_type
+        )
     except Exception:
         log.exception(f"Error while check for stale locks held by {args.owner}")
         return
     if not stale:
+        log.debug("No stale nodes found.")
         return
     by_owner = {}
     for node in stale:
@@ -67,6 +72,10 @@ def parse_args(argv):
     parser.add_argument(
         '--owner',
         help='Optionally, find nodes locked by a specific user',
+    )
+    parser.add_argument(
+        '-m', '--machine-type',
+        help='Optionally, find nodes in a comma-separated list of machine types',
     )
     return parser.parse_args(argv)
 
