@@ -405,9 +405,10 @@ def url_to_dirname(url):
         file:///my/dir/has/ceph.git -> my_dir_has_ceph
     """
     # Strip protocol from left-hand side
-    string = re.match('(?:.*://|.*@)(.*)', url).groups()[0]
+    string = re.match('(?:.*://|.*@)(.*)', url).group(1)
     # Strip '.git' from the right-hand side
-    string = string.rstrip('.git')
+    if string.endswith('.git'):
+        string = string[:-4]
     # Replace certain characters with underscores
     string = re.sub('[:/]', '_', string)
     # Remove duplicate underscores
