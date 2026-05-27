@@ -97,7 +97,7 @@ def current_branch(path: str) -> str:
     return result
 
 
-def enforce_repo_state(repo_url, dest_path, branch, commit=None, remove_on_error=True):
+def enforce_repo_state(repo_url, dest_path, branch, commit=None, remove_on_error=True, dest_clone=None, lock=True):
     """
     Use git to either clone or update a given repo, forcing it to switch to the
     specified branch.
@@ -107,6 +107,7 @@ def enforce_repo_state(repo_url, dest_path, branch, commit=None, remove_on_error
     :param branch:          The branch.
     :param commit:          The sha1 to checkout. Defaults to None, which uses HEAD of the branch.
     :param remove_on_error: Whether or not to remove dest_dir when an error occurs
+    :param dest_clone:      Optional path to a bare clone to use for worktrees
     :raises:                BranchNotFoundError if the branch is not found;
                             CommitNotFoundError if the commit is not found;
                             GitError for other errors
@@ -116,24 +117,140 @@ def enforce_repo_state(repo_url, dest_path, branch, commit=None, remove_on_error
     # sentinel to track whether the repo has checked out the intended
     # version, in addition to being cloned
     repo_reset = os.path.join(dest_path, '.fetched_and_reset')
+    log.info("enforce_repo_state dest_clone=%s dest_path=%s repo_url=%s branch=%s commit=%s", dest_clone, dest_path, repo_url, branch, commit)
+    
     try:
-        if not os.path.isdir(dest_path):
-            clone_repo(repo_url, dest_path, branch, shallow=commit is None)
-        elif not commit and not is_fresh(sentinel):
-            set_remote(dest_path, repo_url)
-            fetch_branch(dest_path, branch)
-            touch_file(sentinel)
+        if dest_clone:
+            log.debug("Using bare clone methodology at %s", dest_clone)
+            bare_lock_path = dest_clone.rstrip('/') + '.lock'
+            bare_sentinel = os.path.join(dest_clone, '.fetched')
+            with FileLock(bare_lock_path, noop=not lock):
+                if not os.path.isdir(dest_clone):
+                    log.info("Bare clone not found; initializing at %s", dest_clone)
+                    init_bare_repo(dest_clone)
+                elif not commit and not is_fresh(bare_sentinel):
+                    log.debug("Updating freshness sentinel for bare clone")
+                    touch_file(bare_sentinel)
 
-        if commit and os.path.exists(repo_reset):
-            return
+                fetch_bare_repo(dest_clone, repo_url, branch, commit)
+                prune_bare_repo(dest_clone)
+                create_worktree(dest_clone, dest_path, commit or 'FETCH_HEAD')
+                touch_file(repo_reset)
+        else:
+            log.debug("Using standard clone methodology")
+            if not os.path.isdir(dest_path):
+                log.info("Destination path not found; cloning %s", repo_url)
+                clone_repo(repo_url, dest_path, branch, shallow=commit is None)
+            elif not commit and not is_fresh(sentinel):
+                log.info("Refreshing existing clone at %s", dest_path)
+                set_remote(dest_path, repo_url)
+                fetch_branch(dest_path, branch)
+                touch_file(sentinel)
 
-        reset_repo(repo_url, dest_path, branch, commit)
-        touch_file(repo_reset)
-        # remove_pyc_files(dest_path)
+            if commit and os.path.exists(repo_reset):
+                log.debug("Commit %s already checked out, skipping reset", commit)
+                return
+
+            log.info("Resetting repo to target state")
+            reset_repo(repo_url, dest_path, branch, commit)
+            touch_file(repo_reset)
     except (BranchNotFoundError, CommitNotFoundError):
         if remove_on_error:
-            shutil.rmtree(dest_path, ignore_errors=True)
+            log.error("Removing destination path %s due to checkout error", dest_path)
+            if dest_clone:
+                try:
+                    log.info("Removing worktree registration for %s", dest_path)
+                    run_subprocess(['git', 'worktree', 'remove', '--force', dest_path], cwd=dest_clone, log_error=False)
+                except Exception:
+                    log.warning("Failed to cleanly remove worktree via git; falling back to rmtree")
+                    shutil.rmtree(dest_path, ignore_errors=True)
+            else:
+                shutil.rmtree(dest_path, ignore_errors=True)
         raise
+
+
+def run_subprocess(args, log_error=True, **kwargs):
+    kwargs.setdefault('stdout', subprocess.PIPE)
+    kwargs.setdefault('stderr', subprocess.STDOUT)
+    kwargs.setdefault('text', True)
+    log.debug("Executing command: %s", " ".join(args))
+    try:
+        return subprocess.run(args, check=True, **kwargs)
+    except subprocess.CalledProcessError as e:
+        if log_error:
+            log.error("Command failed: %s", " ".join(args))
+            log.error("Output:\n%s", e.stdout or e.stderr or "")
+        raise
+
+def init_bare_repo(bare_dir):
+    log.info("Initializing bare repo at %s", bare_dir)
+    args = ['git', 'init', '--bare', bare_dir]
+    run_subprocess(args)
+
+def create_worktree(bare_dir, workspace_dir, ref='FETCH_HEAD'):
+    log.info("Setting up worktree at %s from bare repo %s using ref %s", workspace_dir, bare_dir, ref)
+
+    if os.path.exists(workspace_dir):
+        log.debug("Workspace directory %s already exists, verifying", workspace_dir)
+        args = [
+            'git',
+            'log',
+            '-1',
+        ]
+        run_subprocess(args, cwd=workspace_dir)
+        return
+
+    log.debug("Adding new worktree at %s", workspace_dir)
+    args = [
+        'git',
+        'worktree',
+        'add',
+        '-B', os.path.basename(workspace_dir),
+        '--no-track',
+        '--force',
+        workspace_dir,
+        ref
+    ]
+    run_subprocess(args, cwd=bare_dir)
+
+
+def prune_bare_repo(bare_dir):
+    log.debug("Pruning stale worktrees in bare repo %s", bare_dir)
+    try:
+        run_subprocess(['git', 'worktree', 'prune'], cwd=bare_dir, log_error=False)
+    except Exception:
+        log.warning("Failed to prune stale worktrees in %s", bare_dir)
+    
+def fetch_bare_repo(bare_dir, url, branch, commit=None):
+    log.info("Fetching into bare repo %s from %s (branch: %s, commit: %s)", bare_dir, url, branch, commit)
+    validate_branch(branch)
+    
+    if commit is not None:
+        args = ['git', 'log', '-1', commit]
+        res = subprocess.run(args, cwd=bare_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if res.returncode == 0:
+            log.debug("Commit %s is already present in bare repo", commit)
+            return
+
+    log.debug("Commit not present or not specified; fetching from remote")
+    args = ['git', 'fetch', url]
+    if commit is not None:
+        args.append(commit)
+    else:
+        args.append(branch)
+        
+    try:
+        run_subprocess(args, cwd=bare_dir, log_error=False)
+        log.debug("Fetch successful")
+    except subprocess.CalledProcessError as e:
+        out = e.stdout or e.stderr or ""
+        if commit is not None:
+            raise CommitNotFoundError(commit, url)
+        not_found_str = "fatal: couldn't find remote ref %s" % branch
+        if not_found_str in out.lower():
+            raise BranchNotFoundError(branch)
+        else:
+            raise GitError("git fetch failed!")
 
 
 def clone_repo(repo_url, dest_path, branch, shallow=True):
@@ -356,6 +473,7 @@ def fetch_repo(url, branch, commit=None, bootstrap=None, lock=True):
         os.mkdir(src_base_path)
     ref_dir = ref_to_dirname(commit or branch)
     dirname = '%s_%s' % (url_to_dirname(url), ref_dir)
+    dest_clone = os.path.join(src_base_path, url_to_dirname(url))
     dest_path = os.path.join(src_base_path, dirname)
     # only let one worker create/update the checkout at a time
     lock_path = dest_path.rstrip('/') + '.lock'
@@ -364,7 +482,7 @@ def fetch_repo(url, branch, commit=None, bootstrap=None, lock=True):
             try:
                 while proceed():
                     try:
-                        enforce_repo_state(url, dest_path, branch, commit)
+                        enforce_repo_state(url, dest_path, branch, commit, dest_clone=dest_clone, lock=lock)
                         if bootstrap:
                             sentinel = os.path.join(dest_path, '.bootstrapped')
                             if commit and os.path.exists(sentinel) or is_fresh(sentinel):
@@ -405,9 +523,10 @@ def url_to_dirname(url):
         file:///my/dir/has/ceph.git -> my_dir_has_ceph
     """
     # Strip protocol from left-hand side
-    string = re.match('(?:.*://|.*@)(.*)', url).groups()[0]
+    string = re.match('(?:.*://|.*@)(.*)', url).group(1)
     # Strip '.git' from the right-hand side
-    string = string.rstrip('.git')
+    if string.endswith('.git'):
+        string = string[:-4]
     # Replace certain characters with underscores
     string = re.sub('[:/]', '_', string)
     # Remove duplicate underscores
