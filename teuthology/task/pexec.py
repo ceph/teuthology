@@ -2,6 +2,8 @@
 Handle parallel execution on remote hosts
 """
 import logging
+import queue
+import threading
 
 from teuthology import misc as teuthology
 from teuthology.parallel import parallel
@@ -9,8 +11,52 @@ from teuthology.orchestra import run as tor
 
 log = logging.getLogger(__name__)
 
-from gevent import queue as queue
-from gevent import event as event
+
+class _SyncQueue:
+    """
+    Thread-safe queue using standard library queue.Queue.
+    Compatible with gevent.queue.Queue API for barrier synchronization.
+    """
+    def __init__(self, maxsize: int = 0):
+        self._queue = queue.Queue(maxsize=maxsize)
+    
+    def put(self, item):
+        """Put an item into the queue (blocking)."""
+        self._queue.put(item)
+    
+    def get(self):
+        """Get an item from the queue (blocking)."""
+        return self._queue.get()
+    
+    def empty(self) -> bool:
+        """Return True if the queue is empty."""
+        return self._queue.empty()
+    
+    def full(self) -> bool:
+        """Return True if the queue is full."""
+        return self._queue.full()
+
+
+class _SyncEvent:
+    """
+    Thread-safe event using standard library threading.Event.
+    Compatible with gevent.event.Event API for barrier synchronization.
+    """
+    def __init__(self):
+        self._event = threading.Event()
+    
+    def set(self):
+        """Set the event."""
+        self._event.set()
+    
+    def clear(self):
+        """Clear the event."""
+        self._event.clear()
+    
+    def wait(self, timeout=None):
+        """Wait for the event to be set (blocking)."""
+        return self._event.wait(timeout=timeout)
+
 
 def _init_barrier(barrier_queue, remote):
     """current just queues a remote host""" 
@@ -141,11 +187,13 @@ def task(ctx, config):
 
     remotes = list(_generate_remotes(ctx, config))
     count = len(remotes)
-    barrier_queue = queue.Queue(count)
-    barrier = event.Event()
+    barrier_queue = _SyncQueue(count)
+    barrier = _SyncEvent()
 
     for remote in remotes:
         _init_barrier(barrier_queue, remote[0])
     with parallel() as p:
         for remote in remotes:
             p.spawn(_exec_host, barrier, barrier_queue, remote[0], sudo, testdir, remote[1])
+
+# Made with Bob
