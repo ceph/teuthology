@@ -21,6 +21,7 @@ RUN apt-get update && \
     locales \
     lsb-release && \
     apt-get clean all && \
+    rm -rf /var/lib/apt/lists && \
     locale-gen $LC_ALL
 WORKDIR /teuthology
 COPY pyproject.toml requirements.yml uv.lock ansible.cfg bootstrap /teuthology/
@@ -29,11 +30,13 @@ RUN \
     mkdir ../archive_dir && \
     mkdir log && \
     chmod +x /teuthology/bootstrap && \
-    ./bootstrap
+    ./bootstrap && \
+    rm -rf /root/.cache
 COPY . /teuthology
 RUN \
     (git config -f ./.git/config --unset 'http.https://github.com/.extraheader' || true ) && \
-    ./bootstrap
+    ./bootstrap && \
+    rm -rf /root/.cache
 COPY containers/teuthology-dev/containerized_node.yaml /teuthology
 COPY containers/teuthology-dev/.teuthology.yaml /root
 COPY containers/teuthology-dev/teuthology.sh /
