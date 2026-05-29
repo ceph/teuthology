@@ -1,3 +1,4 @@
+import pytest
 from teuthology.parallel import parallel
 
 
@@ -7,6 +8,10 @@ def identity(item, input_set=None, remove=False):
         if remove:
             input_set.remove(item)
     return item
+
+
+def raise_error(msg):
+    raise ValueError(msg)
 
 
 class TestParallel(object):
@@ -25,4 +30,12 @@ class TestParallel(object):
                 para.spawn(identity, i, in_set)
             for result in para:
                 in_set.remove(result)
+
+    def test_exception_propagation(self):
+        """Test that exceptions are properly propagated from spawned functions."""
+        with pytest.raises(ValueError, match="test error"):
+            with parallel() as para:
+                para.spawn(identity, 1)
+                para.spawn(raise_error, "test error")
+                para.spawn(identity, 2)
 
