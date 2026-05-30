@@ -144,13 +144,30 @@ class parallel(object):
 
     def _cleanup(self):
         """Clean up the event loop and thread."""
+        # Wait for all spawned futures to complete or timeout
+        for future in list(self._tasks):
+            try:
+                future.result(timeout=0.1)
+            except Exception:
+                pass  # Ignore timeout and other exceptions
+        
         self._tasks.clear()
+        
+        # Stop the event loop
         if self._loop and self._loop.is_running():
             self._loop.call_soon_threadsafe(self._loop.stop)
+        
+        # Wait for the loop thread to finish
         if getattr(self, "_loop_thread", None) and self._loop_thread.is_alive():
             self._loop_thread.join(timeout=1.0)
-        # Close the event loop to prevent resource warnings
+        
+        # Now cancel any remaining tasks in the loop before closing
         if self._loop and not self._loop.is_closed():
+            # Get all tasks and cancel them
+            pending = asyncio.all_tasks(self._loop)
+            for task in pending:
+                task.cancel()
+            # Close the event loop to prevent resource warnings
             self._loop.close()
 
     def __iter__(self):
