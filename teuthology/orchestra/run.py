@@ -2,12 +2,13 @@
 Paramiko run support
 """
 
+import asyncio
 import io
+import threading
+from typing import Optional
 
 from paramiko import ChannelFile
 
-import gevent
-import gevent.event
 import socket
 import shlex
 import logging
@@ -18,6 +19,154 @@ from teuthology.exceptions import (CommandCrashedError, CommandFailedError,
                                    ConnectionLostError)
 
 log = logging.getLogger(__name__)
+
+
+class _AsyncResult:
+    """
+    Asyncio-based result holder compatible with gevent.event.AsyncResult API.
+    """
+    def __init__(self):
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
+        self._future: Optional[asyncio.Future] = None
+        self._value = None
+        self._exception = None
+        self._ready = False
+        self._lock = threading.Lock()
+    
+    def set(self, value):
+        """Set the result value."""
+        with self._lock:
+            self._value = value
+            self._ready = True
+            if self._future and not self._future.done():
+                self._loop.call_soon_threadsafe(self._future.set_result, value)
+    
+    def set_exception(self, exception):
+        """Set an exception."""
+        with self._lock:
+            self._exception = exception
+            self._ready = True
+            if self._future and not self._future.done():
+                self._loop.call_soon_threadsafe(self._future.set_exception, exception)
+    
+    def get(self, block=True, timeout=None):
+        """Get the result, blocking if necessary."""
+        if not block:
+            with self._lock:
+                if not self._ready:
+                    raise RuntimeError("Result not ready")
+                if self._exception:
+                    raise self._exception
+                return self._value
+        
+        # For blocking get, we need to wait
+        if self._ready:
+            if self._exception:
+                raise self._exception
+            return self._value
+        
+        # Create a simple wait mechanism
+        import time
+        start = time.time()
+        while not self._ready:
+            if timeout and (time.time() - start) > timeout:
+                raise TimeoutError("Timeout waiting for result")
+            time.sleep(0.01)
+        
+        if self._exception:
+            raise self._exception
+        return self._value
+    
+    def ready(self):
+        """Check if result is ready."""
+        return self._ready
+
+
+class _TaskHandle:
+    """
+    Handle for managing an async task, compatible with gevent greenlet API.
+    """
+    def __init__(self, loop: asyncio.AbstractEventLoop, coro):
+        self._loop = loop
+        self._future = asyncio.run_coroutine_threadsafe(coro, loop)
+        self._killed = False
+    
+    def get(self, block=True, timeout=None):
+        """Wait for and return the task result (blocking)."""
+        try:
+            return self._future.result(timeout=timeout)
+        except Exception:
+            raise
+    
+    def kill(self, block=True):
+        """Kill the task."""
+        if not self._killed and not self._future.done():
+            self._killed = True
+            self._future.cancel()
+            if block:
+                try:
+                    self._future.result(timeout=1.0)
+                except Exception:
+                    pass
+
+
+class _EventLoopManager:
+    """
+    Singleton manager for a dedicated event loop in a background thread.
+    """
+    _instance: Optional['_EventLoopManager'] = None
+    _lock = threading.Lock()
+    
+    def __init__(self):
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
+        self._thread: Optional[threading.Thread] = None
+        self._started = False
+    
+    @classmethod
+    def get_instance(cls) -> '_EventLoopManager':
+        """Get or create the singleton instance."""
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = cls()
+        return cls._instance
+    
+    def start(self):
+        """Start the event loop in a background thread."""
+        if self._started:
+            return
+        
+        with _EventLoopManager._lock:
+            if self._started:
+                return
+            
+            self._started = True
+            self._loop = asyncio.new_event_loop()
+            
+            def run_loop():
+                assert self._loop is not None
+                asyncio.set_event_loop(self._loop)
+                self._loop.run_forever()
+            
+            self._thread = threading.Thread(target=run_loop, daemon=True)
+            self._thread.start()
+    
+    def get_loop(self) -> asyncio.AbstractEventLoop:
+        """Get the event loop, starting it if necessary."""
+        if not self._started:
+            self.start()
+        assert self._loop is not None
+        return self._loop
+
+
+def _spawn_task(coro):
+    """
+    Spawn an async task in the background event loop.
+    Returns a handle compatible with gevent greenlet API.
+    """
+    manager = _EventLoopManager.get_instance()
+    loop = manager.get_loop()
+    return _TaskHandle(loop, coro)
 
 
 class RemoteProcess(object):
@@ -107,7 +256,12 @@ class RemoteProcess(object):
     def setup_stdin(self, stream_obj):
         self.stdin = KludgeFile(wrapped=self.stdin)
         if stream_obj is not PIPE:
-            greenlet = gevent.spawn(copy_and_close, stream_obj, self.stdin)
+            stdin_to_copy = self.stdin
+            async def copy_stdin():
+                await asyncio.get_event_loop().run_in_executor(
+                    None, copy_and_close, stream_obj, stdin_to_copy
+                )
+            greenlet = _spawn_task(copy_stdin())
             self.add_greenlet(greenlet)
             self.stdin = None
         elif self._wait:
@@ -119,15 +273,19 @@ class RemoteProcess(object):
             # Log the stream
             host_log = self.logger.getChild(self.hostname)
             stream_log = host_log.getChild(stream_name)
-            self.add_greenlet(
-                gevent.spawn(
+            stream_to_copy = getattr(self, stream_name)
+            
+            async def copy_stream():
+                await asyncio.get_event_loop().run_in_executor(
+                    None,
                     copy_file_to,
-                    getattr(self, stream_name),
+                    stream_to_copy,
                     stream_log,
                     stream_obj,
                     quiet,
                 )
-            )
+            
+            self.add_greenlet(_spawn_task(copy_stream()))
             setattr(self, stream_name, stream_obj)
         elif self._wait:
             # FIXME: Is this actually true?
@@ -145,8 +303,8 @@ class RemoteProcess(object):
             log.debug("got remote process result: {}".format(status))
         for greenlet in self.greenlets:
             try:
-                greenlet.get(block=True,timeout=60)
-            except gevent.Timeout:
+                greenlet.get(block=True, timeout=60)
+            except TimeoutError:
                 log.debug("timed out waiting; will kill: {}".format(greenlet))
                 greenlet.kill(block=False)
         for stream in ('stdout', 'stderr'):
@@ -197,7 +355,12 @@ class RemoteProcess(object):
 
     @property
     def finished(self):
-        gevent.wait(self.greenlets, timeout=0.1)
+        # Wait for greenlets with timeout
+        for greenlet in self.greenlets:
+            try:
+                greenlet.get(block=True, timeout=0.1)
+            except (TimeoutError, Exception):
+                pass
         ready = self._stdout_buf.channel.exit_status_ready()
         if ready:
             self._get_exitstatus()
@@ -330,27 +493,30 @@ def copy_file_to(src, logger, stream=None, quiet=False):
 
 def spawn_asyncresult(fn, *args, **kwargs):
     """
-    Spawn a Greenlet and pass it's results to an AsyncResult.
+    Spawn a task and pass its results to an AsyncResult.
 
-    This function is useful to shuffle data from a Greenlet to
-    AsyncResult, which then again is useful because any Greenlets that
+    This function is useful to shuffle data from a task to
+    AsyncResult, which then again is useful because any tasks that
     raise exceptions will cause tracebacks to be shown on stderr by
-    gevent, even when ``.link_exception`` has been called. Using an
+    the event loop, even when exception handlers have been set. Using an
     AsyncResult avoids this.
     """
-    r = gevent.event.AsyncResult()
+    r = _AsyncResult()
 
-    def wrapper():
+    async def wrapper():
         """
         Internal wrapper.
         """
         try:
-            value = fn(*args, **kwargs)
+            # Run the sync function in an executor
+            loop = asyncio.get_event_loop()
+            value = await loop.run_in_executor(None, fn, *args, **kwargs)
         except Exception as e:
             r.set_exception(e)
         else:
             r.set(value)
-    gevent.spawn(wrapper)
+    
+    _spawn_task(wrapper())
 
     return r
 
