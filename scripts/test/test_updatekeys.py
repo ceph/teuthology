@@ -1,21 +1,24 @@
 from script import Script
-import subprocess
+import docopt
 from pytest import raises
 from pytest import skip
+from scripts import updatekeys
 
 
 class TestUpdatekeys(Script):
     script_name = 'teuthology-updatekeys'
+    script_module = 'scripts.updatekeys'
 
     def test_invalid(self):
         skip("teuthology.lock needs to be partially refactored to allow" +
              "teuthology-updatekeys to return nonzero in all erorr cases")
 
     def test_all_and_targets(self):
-        args = (self.script_name, '-a', '-t', 'foo')
-        with raises(subprocess.CalledProcessError):
-            subprocess.check_call(args)
+        # Test that using both -a and -t raises an error
+        with raises(docopt.DocoptExit):
+            docopt.docopt(updatekeys.doc, ['-a', '-t', 'foo'])
 
     def test_no_args(self):
-        with raises(subprocess.CalledProcessError):
-            subprocess.check_call(self.script_name)
+        # Test that no arguments raises an error
+        with raises(docopt.DocoptExit):
+            docopt.docopt(updatekeys.doc, [])
