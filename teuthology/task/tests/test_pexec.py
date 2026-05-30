@@ -189,7 +189,7 @@ class TestGenerateRemotes:
         
         ctx.cluster.only.side_effect = only_side_effect
         
-        with patch('teuthology.task.pexec.teuthology.all_roles_of_type') as mock_roles:
+        with patch('teuthology.task.pexec.misc.all_roles_of_type') as mock_roles:
             mock_roles.return_value = ['0', '1']
             
             config = {'clients': ['client_command']}
@@ -289,7 +289,7 @@ class TestPexecTask:
     """Test the main pexec task function."""
     
     @patch('teuthology.task.pexec.parallel')
-    @patch('teuthology.task.pexec.teuthology.get_testdir')
+    @patch('teuthology.task.pexec.misc.get_testdir')
     def test_task_basic(self, mock_get_testdir, mock_parallel_class):
         """Test basic task execution."""
         mock_get_testdir.return_value = '/test/dir'
@@ -317,7 +317,7 @@ class TestPexecTask:
         assert spawn_call[0][0] == pexec._exec_host
     
     @patch('teuthology.task.pexec.parallel')
-    @patch('teuthology.task.pexec.teuthology.get_testdir')
+    @patch('teuthology.task.pexec.misc.get_testdir')
     def test_task_with_sudo(self, mock_get_testdir, mock_parallel_class):
         """Test task with sudo option."""
         mock_get_testdir.return_value = '/test/dir'
