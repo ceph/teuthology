@@ -4,6 +4,7 @@ import os
 import re
 import shutil
 import subprocess
+import threading
 import time
 
 import teuthology.exporter as exporter
@@ -16,10 +17,27 @@ from teuthology.exceptions import BootstrapError, BranchNotFoundError, CommitNot
 
 log = logging.getLogger(__name__)
 
+# Thread-level locks for repository operations to prevent race conditions
+# when multiple threads in the same process try to access the same repo
+_repo_locks = {}
+_repo_locks_lock = threading.Lock()
+
 
 # Repos must not have been fetched in the last X seconds to get fetched again.
 # Similar for teuthology's bootstrap
 FRESHNESS_INTERVAL = 60
+
+
+def _get_thread_lock(path):
+    """
+    Get or create a threading lock for the given path.
+    This prevents race conditions when multiple threads in the same process
+    try to access the same repository.
+    """
+    with _repo_locks_lock:
+        if path not in _repo_locks:
+            _repo_locks[path] = threading.Lock()
+        return _repo_locks[path]
 
 
 def touch_file(path):
@@ -108,6 +126,7 @@ def enforce_repo_state(repo_url, dest_path, branch, commit=None, remove_on_error
     :param commit:          The sha1 to checkout. Defaults to None, which uses HEAD of the branch.
     :param remove_on_error: Whether or not to remove dest_dir when an error occurs
     :param dest_clone:      Optional path to a bare clone to use for worktrees
+    :param lock:            Whether to use file locking to prevent concurrent access
     :raises:                BranchNotFoundError if the branch is not found;
                             CommitNotFoundError if the commit is not found;
                             GitError for other errors
@@ -138,22 +157,29 @@ def enforce_repo_state(repo_url, dest_path, branch, commit=None, remove_on_error
                 touch_file(repo_reset)
         else:
             log.debug("Using standard clone methodology")
-            if not os.path.isdir(dest_path):
-                log.info("Destination path not found; cloning %s", repo_url)
-                clone_repo(repo_url, dest_path, branch, shallow=commit is None)
-            elif not commit and not is_fresh(sentinel):
-                log.info("Refreshing existing clone at %s", dest_path)
-                set_remote(dest_path, repo_url)
-                fetch_branch(dest_path, branch)
-                touch_file(sentinel)
+            # Use both thread-level and file-level locking to prevent race conditions
+            # Thread lock: prevents multiple threads in the same process from racing
+            # File lock: prevents multiple processes from racing
+            thread_lock = _get_thread_lock(dest_path)
+            lock_path = dest_path.rstrip('/') + '.lock'
+            with thread_lock:
+                with FileLock(lock_path, noop=not lock):
+                    if not os.path.isdir(dest_path):
+                        log.info("Destination path not found; cloning %s", repo_url)
+                        clone_repo(repo_url, dest_path, branch, shallow=commit is None)
+                    elif not commit and not is_fresh(sentinel):
+                        log.info("Refreshing existing clone at %s", dest_path)
+                        set_remote(dest_path, repo_url)
+                        fetch_branch(dest_path, branch)
+                        touch_file(sentinel)
 
-            if commit and os.path.exists(repo_reset):
-                log.debug("Commit %s already checked out, skipping reset", commit)
-                return
+                    if commit and os.path.exists(repo_reset):
+                        log.debug("Commit %s already checked out, skipping reset", commit)
+                        return
 
-            log.info("Resetting repo to target state")
-            reset_repo(repo_url, dest_path, branch, commit)
-            touch_file(repo_reset)
+                    log.info("Resetting repo to target state")
+                    reset_repo(repo_url, dest_path, branch, commit)
+                    touch_file(repo_reset)
     except (BranchNotFoundError, CommitNotFoundError):
         if remove_on_error:
             log.error("Removing destination path %s due to checkout error", dest_path)
