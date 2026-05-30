@@ -8,6 +8,7 @@ doc = run.__doc__
 
 class TestRun(Script):
     script_name = 'teuthology'
+    script_module = 'scripts.run'
 
     def test_all_args(self):
         args = docopt.docopt(doc, [
