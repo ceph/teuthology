@@ -115,26 +115,39 @@ def decanonicalize_hostname(hostname):
 
 def config_file(string):
     """
+    .. deprecated::
+        Use :func:`teuthology.config.config_file` instead.
+    
     Create a config file
 
     :param string: name of yaml file used for config.
     :returns: Dictionary of configuration information.
     """
-    config_dict = {}
-    try:
-        with open(string) as f:
-            g = yaml.safe_load_all(f)
-            for new in g:
-                config_dict.update(new)
-    except IOError as e:
-        raise argparse.ArgumentTypeError(str(e))
-    return config_dict
+    warnings.warn(
+        "teuthology.misc.config_file is deprecated. "
+        "Use teuthology.config.config_file instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    from teuthology.config import config_file as _config_file
+    return _config_file(string)
 
 
 def merge_configs(config_paths) -> dict:
-    """ Takes one or many paths to yaml config files and merges them
-        together, returning the result.
     """
+    .. deprecated::
+        Use :func:`teuthology.config.merge_configs` instead.
+    
+    Takes one or many paths to yaml config files and merges them
+    together, returning the result.
+    """
+    warnings.warn(
+        "teuthology.misc.merge_configs is deprecated. "
+        "Use teuthology.config.merge_configs instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    from teuthology.config import deep_merge as _deep_merge
     conf_dict = dict()
     for conf_path in config_paths:
         if conf_path == "-":
@@ -146,7 +159,7 @@ def merge_configs(config_paths) -> dict:
             with open(conf_path) as partial_file:
                 partial_dict: dict = yaml.safe_load(partial_file)
         try:
-            conf_dict = deep_merge(conf_dict, partial_dict)
+            conf_dict = _deep_merge(conf_dict, partial_dict)
         except Exception:
             # TODO: Should this log as well?
             pprint.pprint("failed to merge {0} into {1}".format(conf_dict, partial_dict))
@@ -1013,29 +1026,25 @@ def replace_all_with_clients(cluster, config):
     return norm_config
 
 
-DeepMerge = TypeVar('DeepMerge')
-def deep_merge(a: DeepMerge, b: DeepMerge) -> DeepMerge:
+def deep_merge(a, b):
     """
+    .. deprecated::
+        Use :func:`teuthology.config.deep_merge` instead.
+    
     Deep Merge.  If a and b are both lists, all elements in b are
     added into a.  If a and b are both dictionaries, elements in b are
     recursively added to a.
     :param a: object items will be merged into
     :param b: object items will be merged from
     """
-    if b is None:
-        return a
-    if a is None:
-        return deep_merge(b.__class__(), b)
-    if isinstance(a, list):
-        assert isinstance(b, list)
-        a.extend(b)
-        return a
-    if isinstance(a, dict):
-        assert isinstance(b, dict)
-        for (k, v) in b.items():
-            a[k] = deep_merge(a.get(k), v)
-        return a
-    return b
+    warnings.warn(
+        "teuthology.misc.deep_merge is deprecated. "
+        "Use teuthology.config.deep_merge instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    from teuthology.config import deep_merge as _deep_merge
+    return _deep_merge(a, b)
 
 def update_key(key_to_update, a: dict, b: dict):
     """

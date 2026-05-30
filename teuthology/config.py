@@ -1,6 +1,10 @@
 import os
 import yaml
 import logging
+import argparse
+import pprint
+from sys import stdin
+from typing import TypeVar
 try:
     from collections.abc import MutableMapping
 except ImportError:
@@ -310,6 +314,75 @@ def _get_config_path():
             return path
     log.warning(f"no teuthology config found, looked for: {paths}")
     return None
+
+
+DeepMerge = TypeVar('DeepMerge')
+
+
+def deep_merge(a: DeepMerge, b: DeepMerge) -> DeepMerge:
+    """
+    Deep Merge.  If a and b are both lists, all elements in b are
+    added into a.  If a and b are both dictionaries, elements in b are
+    recursively added to a.
+    :param a: object items will be merged into
+    :param b: object items will be merged from
+    """
+    if b is None:
+        return a
+    if a is None:
+        return deep_merge(b.__class__(), b)
+    if isinstance(a, list):
+        assert isinstance(b, list)
+        a.extend(b)
+        return a
+    if isinstance(a, dict):
+        assert isinstance(b, dict)
+        for (k, v) in b.items():
+            a[k] = deep_merge(a.get(k), v)
+        return a
+    return b
+
+
+def config_file(string):
+    """
+    Create a config file
+
+    :param string: name of yaml file used for config.
+    :returns: Dictionary of configuration information.
+    """
+    config_dict = {}
+    try:
+        with open(string) as f:
+            g = yaml.safe_load_all(f)
+            for new in g:
+                config_dict.update(new)
+    except IOError as e:
+        raise argparse.ArgumentTypeError(str(e))
+    return config_dict
+
+
+def merge_configs(config_paths) -> dict:
+    """ Takes one or many paths to yaml config files and merges them
+        together, returning the result.
+    """
+    conf_dict = dict()
+    for conf_path in config_paths:
+        if conf_path == "-":
+            partial_dict = yaml.safe_load(stdin)
+        elif not os.path.exists(conf_path):
+            log.debug("The config path {0} does not exist, skipping.".format(conf_path))
+            continue
+        else:
+            with open(conf_path) as partial_file:
+                partial_dict: dict = yaml.safe_load(partial_file)
+        try:
+            conf_dict = deep_merge(conf_dict, partial_dict)
+        except Exception:
+            # TODO: Should this log as well?
+            pprint.pprint("failed to merge {0} into {1}".format(conf_dict, partial_dict))
+            raise
+
+    return conf_dict
 
 
 config = TeuthologyConfig(yaml_path=_get_config_path())
