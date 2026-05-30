@@ -467,6 +467,7 @@ class GitbuilderProject(object):
         """
         Initializes the class from a teuthology.orchestra.remote.Remote object
         """
+        assert self.remote
         self.arch = self.remote.arch
         self.os_type = self.remote.os.name
         self.os_version = self.remote.os.version
@@ -590,7 +591,7 @@ class GitbuilderProject(object):
         return version.split(".")[0]
 
     @classmethod
-    def _get_distro(cls, distro=None, version=None, codename=None):
+    def _get_distro(cls, distro: str|None=None, version: str|None=None, codename: str|None=None):
         """
         Given a distro and a version, returned the combined string
         to use in a gitbuilder url.
@@ -602,7 +603,7 @@ class GitbuilderProject(object):
         """
         if distro in ('centos', 'rhel'):
             distro = "centos"
-        elif distro in ("fedora"):
+        elif distro == "fedora":
             pass
         elif distro in ("opensuse", "sle"):
             pass
@@ -611,6 +612,8 @@ class GitbuilderProject(object):
         else:
             # deb based systems use codename instead of a distro/version combo
             if not codename:
+                assert distro
+                assert version
                 # lookup codename based on distro string
                 codename = OS._version_to_codename(distro, version)
                 if not codename:
@@ -781,6 +784,7 @@ class GitbuilderProject(object):
             self._install_deb_repo()
 
     def _install_rpm_repo(self):
+        assert self.remote
         dist_release = self.dist_release
         project = self.project
         proj_release = \
@@ -802,6 +806,7 @@ class GitbuilderProject(object):
             self.remote.run(args=['sudo', 'yum', '-y', 'install', url])
 
     def _install_deb_repo(self):
+        assert self.remote
         self.remote.run(
             args=[
                 'echo', 'deb', self.base_url, self.codename, 'main',
@@ -826,6 +831,7 @@ class GitbuilderProject(object):
             self._remove_deb_repo()
 
     def _remove_rpm_repo(self):
+        assert self.remote
         if self.dist_release in ['opensuse', 'sle']:
             self.remote.run(args=[
                 'sudo', 'zypper', '-n', 'removerepo', 'ceph-rpm-under-test'
@@ -834,6 +840,7 @@ class GitbuilderProject(object):
             remove_package('%s-release' % self.project, self.remote)
 
     def _remove_deb_repo(self):
+        assert self.remote
         self.remote.run(
             args=[
                 'sudo',
@@ -993,7 +1000,7 @@ class ShamanProject(GitbuilderProject):
         try:
             resp = requests.get(build_url)
             resp.raise_for_status()
-        except requests.HttpError:
+        except requests.exceptions.HTTPError:
             return False
         log.debug(f'looking for {self.distro} {self.arch} {self.flavor}')
         for build in resp.json():
@@ -1045,6 +1052,7 @@ class ShamanProject(GitbuilderProject):
 
     def _remove_rpm_repo(self):
         # FIXME: zypper
+        assert self.remote
         self.remote.run(
             args=[
                 'sudo',

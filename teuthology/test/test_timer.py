@@ -56,7 +56,7 @@ class TestTimer(object):
                 self.timer = timer.Timer(path=_path)
                 assert self.timer.path == _path
                 self.timer.write()
-                _open.assert_called_once_with(_path, 'w')
+                _open.assert_called_once_with(_path, mode='w')
                 _safe_dump.assert_called_once_with(
                     dict(),
                     _open.return_value.__enter__.return_value,
@@ -72,7 +72,7 @@ class TestTimer(object):
                 assert self.timer.path == _path
                 assert self.timer.sync is True
                 self.timer.mark()
-                _open.assert_called_once_with(_path, 'w')
+                _open.assert_called_once_with(_path, mode='w')
                 _safe_dump.assert_called_once_with(
                     self.timer.data,
                     _open.return_value.__enter__.return_value,

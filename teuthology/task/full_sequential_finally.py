@@ -1,9 +1,10 @@
 """
 Task sequencer finally
 """
-import sys
-import logging
 import contextlib
+import logging
+import sys
+from typing import Generator
 
 from teuthology import run_tasks
 
@@ -11,7 +12,7 @@ log = logging.getLogger(__name__)
 
 
 @contextlib.contextmanager
-def task(ctx, config):
+def task(ctx, config: list) -> Generator[None, None, None]:
     """
     Sequentialize a group of tasks into one executable block, run on cleanup
 

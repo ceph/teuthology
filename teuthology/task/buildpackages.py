@@ -13,7 +13,8 @@ teuthology-openstack --verbose --key-name myself --key-filename ~/Downloads/myse
 import copy
 import logging
 import os
-import types
+from typing import Optional, Union
+
 from teuthology import packaging
 from teuthology import misc
 from teuthology.config import config as teuth_config
@@ -27,13 +28,13 @@ class LocalGitbuilderProject(packaging.GitbuilderProject):
         pass
 
 
-def get_pkg_type(os_type):
+def get_pkg_type(os_type: str) -> str:
     if os_type in ('centos', 'fedora', 'opensuse', 'rhel', 'sle'):
         return 'rpm'
     else:
         return 'deb'
 
-def apply_overrides(ctx, config):
+def apply_overrides(ctx, config: Optional[dict]) -> dict:
     if config is None:
         config = {}
     else:
@@ -50,7 +51,7 @@ def apply_overrides(ctx, config):
         misc.deep_merge(config, install_overrides.get(project, {}))
     return config
 
-def get_config_install(ctx, config):
+def get_config_install(ctx, config: Optional[dict]) -> list:
     config = apply_overrides(ctx, config)
     log.debug('install config %s' % config)
     return [(config.get('flavor', 'default'),
@@ -58,7 +59,7 @@ def get_config_install(ctx, config):
              config.get('branch', ''),
              config.get('sha1'))]
 
-def get_config_install_upgrade(ctx, config):
+def get_config_install_upgrade(ctx, config: dict) -> list:
     log.debug('install.upgrade config before override %s' % config)
     configs = []
     for (role, role_config) in config.items():
@@ -80,12 +81,12 @@ GET_CONFIG_FUNCTIONS = {
     'install.upgrade': get_config_install_upgrade,
 }
 
-def lookup_configs(ctx, node):
+def lookup_configs(ctx, node: Union[list, dict]) -> list:
     configs = []
-    if type(node) is types.ListType:
+    if isinstance(node, list):
         for leaf in node:
             configs.extend(lookup_configs(ctx, leaf))
-    elif type(node) is types.DictType:
+    elif isinstance(node, dict):
         for (key, value) in node.items():
             if key in ('install', 'install.upgrade'):
                 configs.extend(GET_CONFIG_FUNCTIONS[key](ctx, value))
@@ -95,12 +96,12 @@ def lookup_configs(ctx, node):
                 configs.extend(lookup_configs(ctx, value))
     return configs
 
-def get_sha1(ref):
+def get_sha1(ref: str) -> str:
     url = teuth_config.get_ceph_git_url()
     ls_remote = misc.sh("git ls-remote " + url + " " + ref)
     return ls_remote.split()[0]
 
-def task(ctx, config):
+def task(ctx, config: Optional[dict]) -> None:
     """
     Build Ceph packages. This task will automagically be run
     before the task that need to install packages (this is taken
@@ -241,5 +242,6 @@ def task(ctx, config):
                  "instance and start again from scratch.".format(pkg_type))
         log.info("buildpackages make command: " + cmd)
         misc.sh(cmd)
-    teuth_config.gitbuilder_host = openstack.get_ip(pkg_repo, '')
+        # Set gitbuilder_host after the loop completes
+        teuth_config.gitbuilder_host = openstack.get_ip(pkg_repo, '')
     log.info('Finished buildpackages')

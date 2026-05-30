@@ -8,6 +8,7 @@ import os
 import re
 import shlex
 from io import StringIO
+from typing import Generator, Optional
 
 from teuthology.util.compat import urljoin
 
@@ -1249,7 +1250,7 @@ def get_sha1_from_pkg_name(path):
 
 
 @contextlib.contextmanager
-def task(ctx, config):
+def task(ctx, config: Optional[dict]) -> Generator[None, None, None]:
     """
     Make sure the specified kernel is installed.
     This can be a branch, tag, or sha1 of ceph-client.git or a local

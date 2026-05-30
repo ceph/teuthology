@@ -2,10 +2,11 @@ import datetime
 import dateutil.parser
 import json
 import os
+from typing import Callable, List, Optional
 
 from teuthology.util.flock import FileLock
 
-def get_user_ssh_pubkey(path='~/.ssh/id_rsa.pub'):
+def get_user_ssh_pubkey(path: str = '~/.ssh/id_rsa.pub') -> Optional[str]:
     full_path = os.path.expanduser(path)
     if not os.path.exists(full_path):
         return
@@ -13,7 +14,7 @@ def get_user_ssh_pubkey(path='~/.ssh/id_rsa.pub'):
         return f.read().strip()
 
 
-def combine_dicts(list_of_dicts, func):
+def combine_dicts(list_of_dicts: List[dict], func: Callable) -> dict:
     """
     A useful function to merge a list of dicts. Most of the work is done by
     selective_update().
@@ -30,7 +31,7 @@ def combine_dicts(list_of_dicts, func):
     return new_dict
 
 
-def selective_update(a, b, func):
+def selective_update(a: dict, b: dict, func: Callable) -> None:
     """
     Given two dicts and a comparison function, recursively inspects key-value
     pairs in the second dict and merges them into the first dict if func()
@@ -62,7 +63,7 @@ def selective_update(a, b, func):
 class AuthToken(object):
     time_format = '%Y-%m-%d %H:%M:%S%z'
 
-    def __init__(self, name, directory=os.path.expanduser('~/.cache/')):
+    def __init__(self, name: str, directory: str = os.path.expanduser('~/.cache/')) -> None:
         self.name = name
         self.directory = directory
         self.path = os.path.join(directory, name)
@@ -71,7 +72,7 @@ class AuthToken(object):
         self.value = None
         self.endpoint = None
 
-    def read(self):
+    def read(self) -> None:
         if not os.path.exists(self.path):
             self.value = None
             self.expires = None
@@ -88,7 +89,7 @@ class AuthToken(object):
             self.value = obj['value']
             self.endpoint = obj['endpoint']
 
-    def write(self, value, expires, endpoint):
+    def write(self, value: str, expires: datetime.datetime, endpoint: str) -> None:
         obj = dict(
             value=value,
             expires=datetime.datetime.strftime(expires, self.time_format),
@@ -99,17 +100,17 @@ class AuthToken(object):
             obj.write(string)
 
     @property
-    def expired(self):
+    def expired(self) -> bool:
         if self.expires is None:
             return True
         utcnow = datetime.datetime.now(datetime.timezone.utc)
         offset = datetime.timedelta(minutes=30)
         return self.expires < (utcnow + offset)
 
-    def __enter__(self):
+    def __enter__(self) -> 'AuthToken':
         with FileLock(self.lock_path):
             self.read()
             return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         pass

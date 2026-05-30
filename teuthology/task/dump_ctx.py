@@ -4,10 +4,10 @@ import pprint
 log = logging.getLogger(__name__)
 pp = pprint.PrettyPrinter(indent=4)
 
-def _pprint_me(thing, prefix):
+def _pprint_me(thing, prefix: str) -> str:
     return prefix + "\n" + pp.pformat(thing)
 
-def task(ctx, config):
+def task(ctx, config) -> None:
     """
     Dump task context and config in teuthology log/output
 

@@ -3,7 +3,7 @@ import logging
 import os
 import requests
 
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 from teuthology import misc
 from teuthology.config import config
@@ -31,23 +31,20 @@ def get_status(name) -> dict:
     return dict()
 
 
-def get_statuses(machines):
-    if machines:
-        statuses = []
-        for machine in machines:
-            machine = misc.canonicalize_hostname(machine)
-            status = get_status(machine)
-            if status:
-                statuses.append(status)
-            else:
-                log.error("Lockserver doesn't know about machine: %s" %
-                          machine)
-    else:
-        statuses = list_locks()
+def get_statuses(machines: list[str]) -> list[dict]:
+    statuses: list[dict] = []
+    for machine in machines:
+        machine = misc.canonicalize_hostname(machine)
+        status = get_status(machine)
+        if status:
+            statuses.append(status)
+        else:
+            log.error("Lockserver doesn't know about machine: %s" %
+                      machine)
     return statuses
 
 
-def is_vm(name=None, status=None):
+def is_vm(name: Optional[str] = None, status: Optional[dict] = None) -> bool:
     if status is None:
         if name is None:
             raise ValueError("Must provide either name or status, or both")
@@ -56,12 +53,12 @@ def is_vm(name=None, status=None):
     return status.get('is_vm', False)
 
 
-def list_locks(keyed_by_name=False, tries=10, **kwargs):
+def list_locks(tries: int = 10, **kwargs) -> list[dict]:
     uri = os.path.join(config.lock_server, 'nodes', '')
     for key, value in kwargs.items():
-        if kwargs[key] is False:
+        if value is False:
             kwargs[key] = '0'
-        if kwargs[key] is True:
+        if value is True:
             kwargs[key] = '1'
     if kwargs:
         if machine_type := kwargs.get("machine_type"):
@@ -81,12 +78,8 @@ def list_locks(keyed_by_name=False, tries=10, **kwargs):
             except requests.ConnectionError:
                 log.exception("Could not contact lock server: %s, retrying...", config.lock_server)
     if response.ok:
-        if not keyed_by_name:
-            return response.json()
-        else:
-            return {node['name']: node
-                    for node in response.json()}
-    return dict()
+        return response.json()
+    return []
 
 
 def find_stale_locks(owner: str | None = None, machine_type: str | None = None) -> List[Dict]:
@@ -157,7 +150,6 @@ def node_active_job(name: str, status: Union[dict, None] = None, grace_time: int
         # We thought this node might have a stale job, but no.
         return "node description does not contained scheduled job info"
     url = f"{config.results_server}/runs/{run_name}/jobs/{job_id}/"
-    job_status = ""
     active = True
     with safe_while(
             sleep=1, increment=0.5, action='node_is_active') as proceed:

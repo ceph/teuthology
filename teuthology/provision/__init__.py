@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import List, Optional
 
 import teuthology.exporter
 import teuthology.lock.query
@@ -15,16 +16,16 @@ from teuthology.provision import pelagos
 log = logging.getLogger(__name__)
 
 
-def _logfile(shortname: str, archive_path: str = ""):
+def _logfile(shortname: str, archive_path: str = "") -> Optional[str]:
     if os.path.isfile(archive_path):
         return f"{archive_path}/{shortname}.downburst.log"
 
 
-def get_reimage_types():
+def get_reimage_types() -> List[str]:
     return pelagos.get_types() + fog.get_types() + maas.get_types()
 
 
-def reimage(ctx, machine_name, machine_type):
+def reimage(ctx, machine_name: str, machine_type: str):
     os_type = get_distro(ctx)
     os_version = get_distro_version(ctx)
 
@@ -61,7 +62,7 @@ def reimage(ctx, machine_name, machine_type):
     return result
 
 
-def create_if_vm(ctx, machine_name, _downburst=None):
+def create_if_vm(ctx, machine_name: str, _downburst: Optional = None) -> bool:
     """
     Use downburst to create a virtual machine
 
@@ -97,15 +98,16 @@ def create_if_vm(ctx, machine_name, _downburst=None):
         downburst.Downburst(name=machine_name, os_type=os_type,
                             os_version=os_version, status=status_info,
                             logfile=_logfile(ctx, shortname))
-    return dbrst.create()
+    result = dbrst.create()
+    return bool(result)
 
 
 def destroy_if_vm(
     machine_name: str,
     user: str = "",
     description: str = "",
-    _downburst=None
-):
+    _downburst: Optional = None
+) -> bool:
     """
     Use downburst to destroy a virtual machine
 

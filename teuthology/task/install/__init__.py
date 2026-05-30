@@ -3,28 +3,27 @@ import copy
 import logging
 import os
 import subprocess
+from typing import Dict, Generator, List, Optional
+
 import yaml
 
-from teuthology import misc as teuthology
-from teuthology import contextutil, packaging
+from teuthology import contextutil, misc as teuthology, packaging
 from teuthology.parallel import parallel
 from teuthology.task import ansible
-
+from teuthology.task.install import deb, redhat, rpm
 from teuthology.task.install.util import (
     _get_builder_project, get_flavor, ship_utilities,
 )
-
-from teuthology.task.install import rpm, deb, redhat
 from teuthology.util.version import LooseVersion
 
 log = logging.getLogger(__name__)
 
-def get_upgrade_version(ctx, config, remote):
+def get_upgrade_version(ctx, config: dict, remote) -> str:
     builder = _get_builder_project(ctx, remote, config)
     version = builder.version
     return version
 
-def verify_package_version(ctx, config, remote):
+def verify_package_version(ctx, config: dict, remote) -> None:
     """
     Ensures that the version of package installed is what
     was asked for in the config.
@@ -39,10 +38,10 @@ def verify_package_version(ctx, config, remote):
     # see: http://tracker.ceph.com/issues/11248
     if config.get("extras"):
         log.info("Skipping version verification...")
-        return True
+        return
     if 'repos' in config and config.get('repos'):
         log.info("Skipping version verification because we have custom repos...")
-        return True
+        return
     builder = _get_builder_project(ctx, remote, config)
     version = builder.version
     pkg_to_check = builder.project
@@ -63,7 +62,7 @@ def verify_package_version(ctx, config, remote):
         )
 
 
-def install_packages(ctx, pkgs, config):
+def install_packages(ctx, pkgs: Dict[str, List[str]], config: dict) -> None:
     """
     Installs packages on each remote in ctx.
 
@@ -87,7 +86,7 @@ def install_packages(ctx, pkgs, config):
         verify_package_version(ctx, config, remote)
 
 
-def remove_packages(ctx, config, pkgs):
+def remove_packages(ctx, config: dict, pkgs: Dict[str, List[str]]) -> None:
     """
     Removes packages from each remote in ctx.
 
@@ -108,7 +107,7 @@ def remove_packages(ctx, config, pkgs):
                         system_type], ctx, config, remote, pkgs[system_type])
 
 
-def remove_sources(ctx, config):
+def remove_sources(ctx, config: dict) -> None:
     """
     Removes repo source files from each remote in ctx.
 
@@ -130,7 +129,7 @@ def remove_sources(ctx, config):
                 p.spawn(remove_fn, ctx, config, remote)
 
 
-def get_package_list(ctx, config):
+def get_package_list(ctx, config: dict) -> Dict[str, List[str]]:
     debug = config.get('debuginfo', False)
     project = config.get('project', 'ceph')
     yaml_path = None
@@ -180,7 +179,7 @@ def get_package_list(ctx, config):
 
 
 @contextlib.contextmanager
-def install(ctx, config):
+def install(ctx, config: dict) -> Generator[None, None, None]:
     """
     The install task. Installs packages for a given project on all hosts in
     ctx. May work for projects besides ceph, but may not. Patches welcomed!
@@ -223,7 +222,7 @@ def install(ctx, config):
         remove_sources(ctx, config)
 
 
-def upgrade_old_style(ctx, node, remote, pkgs, system_type):
+def upgrade_old_style(ctx, node: dict, remote, pkgs: List[str], system_type: str) -> None:
     """
     Handle the upgrade using methods in use prior to ceph-deploy.
     """
@@ -233,7 +232,7 @@ def upgrade_old_style(ctx, node, remote, pkgs, system_type):
         rpm._upgrade_packages(ctx, node, remote, pkgs)
 
 
-def upgrade_with_ceph_deploy(ctx, node, remote, pkgs, sys_type):
+def upgrade_with_ceph_deploy(ctx, node: dict, remote, pkgs: List[str], sys_type: str) -> None:
     """
     Upgrade using ceph-deploy
     """
@@ -255,7 +254,7 @@ def upgrade_with_ceph_deploy(ctx, node, remote, pkgs, sys_type):
     remote.run(args=['sudo', 'restart', 'ceph-all'])
 
 
-def upgrade_remote_to_config(ctx, config):
+def upgrade_remote_to_config(ctx, config: dict) -> dict:
     assert config is None or isinstance(config, dict), \
         "install.upgrade only supports a dictionary for configuration"
 
@@ -306,12 +305,12 @@ def upgrade_remote_to_config(ctx, config):
 
     return result
 
-def _upgrade_is_downgrade(installed_version, upgrade_version):
+def _upgrade_is_downgrade(installed_version: str, upgrade_version: str) -> bool:
     assert installed_version, "installed_version is empty"
     assert upgrade_version, "upgrade_version is empty"
     return LooseVersion(installed_version) > LooseVersion(upgrade_version)
 
-def upgrade_common(ctx, config, deploy_style):
+def upgrade_common(ctx, config: dict, deploy_style) -> int:
     """
     Common code for upgrading
     """
@@ -401,7 +400,7 @@ docstring_for_upgrade = """"
 
 
 @contextlib.contextmanager
-def upgrade(ctx, config):
+def upgrade(ctx, config: dict) -> Generator[None, None, None]:
     upgrade_common(ctx, config, upgrade_old_style)
     yield
 
@@ -409,14 +408,14 @@ upgrade.__doc__ = docstring_for_upgrade.format(cmd_parameter='upgrade')
 
 
 @contextlib.contextmanager
-def ceph_deploy_upgrade(ctx, config):
+def ceph_deploy_upgrade(ctx, config: dict) -> Generator[None, None, None]:
     upgrade_common(ctx, config, upgrade_with_ceph_deploy)
     yield
 
 ceph_deploy_upgrade.__doc__ = docstring_for_upgrade.format(
     cmd_parameter='ceph_deploy_upgrade')
 
-def _override_extra_system_packages(config, project, install_overrides):
+def _override_extra_system_packages(config: dict, project: str, install_overrides: dict) -> None:
     teuthology.deep_merge(config, install_overrides.get(project, {}))
     extra_overrides = install_overrides.get('extra_system_packages')
     if extra_overrides:
@@ -434,7 +433,7 @@ def _override_extra_system_packages(config, project, install_overrides):
         config['extra_system_packages'] = teuthology.deep_merge(e, extra_overrides)
 
 @contextlib.contextmanager
-def task(ctx, config):
+def task(ctx, config: Optional[dict]) -> Generator[None, None, None]:
     """
     Install packages for a given project.
 

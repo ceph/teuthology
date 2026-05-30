@@ -6,7 +6,7 @@ import time
 import yaml
 import requests
 
-from typing import List, Union
+from typing import Dict, List, Optional, Union
 
 import teuthology.orchestra.remote
 import teuthology.parallel
@@ -25,7 +25,7 @@ from teuthology.orchestra import remote
 log = logging.getLogger(__name__)
 
 
-def update_nodes(nodes, reset_os=False):
+def update_nodes(nodes: List[str], reset_os: bool = False) -> None:
     for node in nodes:
         remote = teuthology.orchestra.remote.Remote(
             canonicalize_hostname(node))
@@ -41,8 +41,8 @@ def update_nodes(nodes, reset_os=False):
         update_inventory(inventory_info)
 
 
-def lock_many_openstack(ctx, num, machine_type, user=None, description=None,
-                        arch=None):
+def lock_many_openstack(ctx, num: int, user: Optional[str] = None,
+                        description: Optional[str] = None, arch: Optional[str] = None) -> Dict[str, None]:
     os_type = teuthology.provision.get_distro(ctx)
     os_version = teuthology.provision.get_distro_version(ctx)
     if hasattr(ctx, 'config'):
@@ -50,7 +50,7 @@ def lock_many_openstack(ctx, num, machine_type, user=None, description=None,
     else:
         resources_hint = None
     machines =  teuthology.provision.openstack.ProvisionOpenStack().create(
-        num, os_type, os_version, arch, resources_hint)
+        num, os_type, os_version, arch, resources_hint or {})
     result = {}
     for machine in machines:
         lock_one(machine, user, description)
@@ -58,8 +58,10 @@ def lock_many_openstack(ctx, num, machine_type, user=None, description=None,
     return result
 
 
-def lock_many(ctx, num, machine_type, user=None, description=None,
-              os_type=None, os_version=None, arch=None, reimage=True):
+def lock_many(ctx, num: int, machine_type: str, user: Optional[str] = None,
+              description: Optional[str] = None, os_type: Optional[str] = None,
+              os_version: Optional[str] = None, arch: Optional[str] = None,
+              reimage: bool = True) -> Union[Dict[str, str], Dict[str, None], list, None]:
     if user is None:
         user = misc.get_user()
 
@@ -80,10 +82,7 @@ def lock_many(ctx, num, machine_type, user=None, description=None,
     if all(t in downburst_types for t in machine_types_list):
         machine_types = machine_types_list
     elif machine_types_list == ['openstack']:
-        return lock_many_openstack(ctx, num, machine_type,
-                                   user=user,
-                                   description=description,
-                                   arch=arch)
+        return lock_many_openstack(ctx, num, user=user, description=description, arch=arch)
     elif any(t in downburst_types for t in machine_types_list):
         the_vps = list(t for t in machine_types_list
                                         if t in downburst_types)
@@ -131,7 +130,7 @@ def lock_many(ctx, num, machine_type, user=None, description=None,
                 machines=', '.join(machines.keys())))
             if machine_type in vm_types:
                 ok_machs = {}
-                update_nodes(machines, True)
+                update_nodes(list(machines.keys()), True)
                 for machine in machines:
                     if teuthology.provision.create_if_vm(ctx, machine):
                         ok_machs[machine] = machines[machine]
@@ -140,14 +139,14 @@ def lock_many(ctx, num, machine_type, user=None, description=None,
                                   machine)
                         unlock_one(machine, user)
                     ok_machs = do_update_keys(list(ok_machs.keys()))[1]
-                update_nodes(ok_machs)
+                update_nodes(list(ok_machs.keys()))
                 return ok_machs
             elif reimage and machine_type in reimage_types:
                 try:
                     return reimage_machines(ctx, machines, machine_type)
                 except Exception:
                     log.exception('Reimaging error. Unlocking machines...')
-                    unlock_many(machines, user)
+                    unlock_many(list(machines.keys()), user)
                     continue
             return machines
         elif response.status_code == 503:
@@ -160,7 +159,7 @@ def lock_many(ctx, num, machine_type, user=None, description=None,
     return []
 
 
-def lock_one(name, user=None, description=None):
+def lock_one(name: str, user: Optional[str] = None, description: Optional[str] = None) -> requests.Response:
     name = misc.canonicalize_hostname(name, user=None)
     if user is None:
         user = misc.get_user()
@@ -210,7 +209,7 @@ def unlock_one_safe(name: str, owner: str, run_name: str = "", job_id: str = "")
         return False
 
 
-def unlock_many(names, user):
+def unlock_many(names: list[str], user: str) -> bool:
     fixed_names = [misc.canonicalize_hostname(name, user=None) for name in
                    names]
     names = fixed_names
@@ -242,9 +241,9 @@ def unlock_one(name, user, description=None, status: Union[dict, None] = None) -
         log.error('destroy failed for %s', name)
         return False
     # we're trying to stop node before actual unlocking
-    status_info = teuthology.lock.query.get_status(name)
+    status_info = query.get_status(name)
     try:
-        if not teuthology.lock.query.is_vm(status=status_info):
+        if not query.is_vm(status=status_info):
             stop_node(name, status)
     except Exception:
         log.exception(f"Failed to stop {name}!")
@@ -273,7 +272,7 @@ def unlock_one(name, user, description=None, status: Union[dict, None] = None) -
     return False
 
 
-def update_lock(name, description=None, status=None, ssh_pub_key=None):
+def update_lock(name: str, description: Optional[str] = None, status: Optional[str] = None, ssh_pub_key: Optional[str] = None) -> bool:
     name = misc.canonicalize_hostname(name, user=None)
     updated = {}
     if description is not None:
@@ -298,7 +297,7 @@ def update_lock(name, description=None, status=None, ssh_pub_key=None):
     return True
 
 
-def update_inventory(node_dict):
+def update_inventory(node_dict: dict) -> None:
     """
     Like update_lock(), but takes a dict and doesn't try to do anything smart
     by itself
@@ -330,15 +329,18 @@ def update_inventory(node_dict):
             if response.ok:
                 return
 
-def do_update_keys(machines, all_=False, _raise=True):
-    reference = query.list_locks(keyed_by_name=True)
+def do_update_keys(machines: list[str], all_: bool = False, _raise: bool = True) -> tuple[int, dict[str, str]]:
+    reference = {node['name']: node for node in query.list_locks()}
     if all_:
-        machines = reference.keys()
+        if isinstance(reference, dict):
+            machines = list(reference.keys())
+        else:
+            machines = []
     keys_dict = misc.ssh_keyscan(machines, _raise=_raise)
     return push_new_keys(keys_dict, reference), keys_dict
 
 
-def push_new_keys(keys_dict, reference):
+def push_new_keys(keys_dict: dict[str, str], reference: dict[str, dict]) -> int:
     ret = 0
     for hostname, pubkey in keys_dict.items():
         log.info('Checking %s', hostname)
@@ -350,7 +352,7 @@ def push_new_keys(keys_dict, reference):
     return ret
 
 
-def reimage_machines(ctx, machines, machine_type):
+def reimage_machines(ctx, machines: dict, machine_type: str) -> dict[str, str]:
     reimage_types = teuthology.provision.get_reimage_types()
     if machine_type not in reimage_types:
         log.info(f"Skipping reimage of {machines.keys()} because {machine_type} is not in {reimage_types}")
@@ -371,11 +373,11 @@ def reimage_machines(ctx, machines, machine_type):
                         machine, machine_type)
                 reimaged[machine] = machines[machine]
     reimaged = do_update_keys(list(reimaged.keys()))[1]
-    update_nodes(reimaged)
+    update_nodes(list(reimaged.keys()))
     return reimaged
 
 
-def block_and_lock_machines(ctx, total_requested, machine_type, reimage=True, tries=10):
+def block_and_lock_machines(ctx, total_requested: int, machine_type: str, reimage: bool = True, tries: int = 10) -> None:
     # It's OK for os_type and os_version to be None here.  If we're trying
     # to lock a bare metal machine, we'll take whatever is available.  If
     # we want a vps, defaults will be provided by misc.get_distro and
@@ -436,11 +438,12 @@ def block_and_lock_machines(ctx, total_requested, machine_type, reimage=True, tr
             if 'summary' in ctx:
                 set_status(ctx.summary, 'dead')
             raise
-        all_locked.update(newly_locked)
+        if newly_locked:
+            all_locked.update(newly_locked)
         log.info(
             '{newly_locked} {mtype} machines locked this try, '
             '{total_locked}/{total_requested} locked so far'.format(
-                newly_locked=len(newly_locked),
+                newly_locked=len(newly_locked) if newly_locked else 0,
                 mtype=machine_type,
                 total_locked=len(all_locked),
                 total_requested=total_requested,
@@ -469,7 +472,7 @@ def block_and_lock_machines(ctx, total_requested, machine_type, reimage=True, tr
                                 full_name = misc.canonicalize_hostname(guest)
                                 teuthology.provision.destroy_if_vm(full_name)
                                 teuthology.provision.create_if_vm(ctx, full_name)
-                if do_update_keys(keys_dict)[0]:
+                if do_update_keys(list(keys_dict.keys()))[0]:
                     log.info("Error in virtual machine keys")
                 newscandict = {}
                 for dkey in all_locked.keys():
@@ -489,23 +492,24 @@ def block_and_lock_machines(ctx, total_requested, machine_type, reimage=True, tr
         elif not ctx.block:
             assert 0, 'not enough machines are available'
         else:
-            requested = requested - len(newly_locked)
+            requested = requested - (len(newly_locked) if newly_locked else 0)
             assert requested > 0, "lock_machines: requested counter went" \
                                   "negative, this shouldn't happen"
 
         log.info(
             "{total} machines locked ({new} new); need {more} more".format(
-                total=len(all_locked), new=len(newly_locked), more=requested)
+                total=len(all_locked), new=len(newly_locked) if newly_locked else 0, more=requested)
         )
         log.warning('Could not lock enough machines, waiting...')
         time.sleep(10)
 
 
-def stop_node(name: str, status: Union[dict, None]):
+def stop_node(name: str, status: Union[dict, None]) -> None:
     status = status or query.get_status(name)
     remote_ = remote.Remote(misc.canonicalize_hostname(name))
     if status['machine_type'] in provision.fog.get_types():
-        remote_.console.power_off()
+        if remote_.console:
+            remote_.console.power_off()
         return
     elif status['machine_type'] in provision.pelagos.get_types():
         provision.pelagos.park_node(name)

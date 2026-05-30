@@ -3,6 +3,7 @@ import logging
 import os
 import subprocess
 import tempfile
+from typing import Dict, List, Optional, Tuple
 import yaml
 
 from teuthology.config import config
@@ -14,7 +15,7 @@ from teuthology.lock import query
 log = logging.getLogger(__name__)
 
 
-def get_types():
+def get_types() -> List[str]:
     types = ['vps']
     if 'downburst' in config and 'machine' in config.downburst:
         machine = config.downburst.get('machine')
@@ -23,7 +24,7 @@ def get_types():
     return types
 
 
-def downburst_executable():
+def downburst_executable() -> str:
     """
     First check for downburst in the user's path.
     Then check in ~/src, ~ubuntu/src, and ~teuthology/src.
@@ -51,9 +52,11 @@ def downburst_executable():
     return ''
 
 
-def downburst_environment():
-    env = dict()
-    env['PATH'] = os.environ.get('PATH')
+def downburst_environment() -> Dict[str, str]:
+    env: Dict[str, str] = dict()
+    path = os.environ.get('PATH')
+    if path:
+        env['PATH'] = path
     discover_url = os.environ.get('DOWNBURST_DISCOVER_URL')
     if config.downburst and not discover_url:
         if isinstance(config.downburst, dict):
@@ -68,8 +71,15 @@ class Downburst(object):
     A class that provides methods for creating and destroying virtual machine
     instances using downburst: https://github.com/ceph/downburst
     """
-    def __init__(self, name, os_type, os_version, status=None, user='ubuntu',
-                 logfile=None):
+    def __init__(
+        self,
+        name: str,
+        os_type: Optional[str],
+        os_version: Optional[str],
+        status: Optional[dict] = None,
+        user: str = 'ubuntu',
+        logfile: Optional[str] = None
+    ) -> None:
         self.name = name
         self.shortname = decanonicalize_hostname(self.name)
         self.os_type = os_type
@@ -83,7 +93,7 @@ class Downburst(object):
         self.executable = downburst_executable()
         self.environment = downburst_environment()
 
-    def create(self):
+    def create(self) -> Optional[bool]:
         """
         Launch a virtual machine instance.
 
@@ -122,7 +132,7 @@ class Downburst(object):
                         break
             return success
 
-    def _run_create(self):
+    def _run_create(self) -> Tuple[int, str, str]:
         """
         Used by create(), this method is what actually calls downburst when
         creating a virtual machine instance.
@@ -154,7 +164,7 @@ class Downburst(object):
         out, err = proc.communicate()
         return (proc.returncode, out, err)
 
-    def destroy(self):
+    def destroy(self) -> bool:
         """
         Destroy (shutdown and delete) a virtual machine instance.
         """
@@ -185,25 +195,27 @@ class Downburst(object):
             log.info("Destroyed %s%s" % (self.name, out_str))
             return True
 
-    def build_config(self):
+    def build_config(self) -> bool:
         """
         Assemble a configuration to pass to downburst, and write it to a file.
         """
         config_fd = tempfile.NamedTemporaryFile(delete=False, mode='wt')
 
+        if not self.os_type or not self.os_version:
+            raise ValueError("os_type and os_version must be set")
         os_type = self.os_type.lower()
         os_version = self.os_version.lower()
 
         mac_address = self.status['mac_address']
-        machine = dict(
-            disk=os.environ.get('DOWNBURST_DISK_SIZE', '100G'),
-            ram=os.environ.get('DOWNBURST_RAM_SIZE', '3.8G'),
-            cpus=int(os.environ.get('DOWNBURST_CPUS', 1)),
-            volumes=dict(
-                count=int(os.environ.get('DOWNBURST_EXTRA_DISK_NUMBER', 4)),
-                size=os.environ.get('DOWNBURST_EXTRA_DISK_SIZE', '100G'),
-            ),
-        )
+        machine: dict = {
+            'disk': os.environ.get('DOWNBURST_DISK_SIZE', '100G'),
+            'ram': os.environ.get('DOWNBURST_RAM_SIZE', '3.8G'),
+            'cpus': int(os.environ.get('DOWNBURST_CPUS', 1)),
+            'volumes': {
+                'count': int(os.environ.get('DOWNBURST_EXTRA_DISK_NUMBER', 4)),
+                'size': os.environ.get('DOWNBURST_EXTRA_DISK_SIZE', '100G'),
+            },
+        }
         def belongs_machine_type(machine_config: dict, machine_type: str) -> bool:
             if isinstance(machine_config, dict):
                 t = machine_config.get('type', None)
@@ -212,15 +224,19 @@ class Downburst(object):
                 elif isinstance(t, list):
                     return machine_type in t
             return False
+        machine_config: Optional[dict] = None
         if isinstance(config.downburst, dict) and isinstance(config.downburst.get('machine'), list):
             machine_type = self.status['machine_type']
-            machine_config = next((m for m in config.downburst.get('machine')
-                        if belongs_machine_type(m, machine_type)), None)
-            if machine_config is None:
-                raise RuntimeError(f"Cannot find config for machine type {machine_type}.")
+            machine_list = config.downburst.get('machine')
+            if machine_list:
+                machine_config = next((m for m in machine_list
+                            if belongs_machine_type(m, machine_type)), None)
+                if machine_config is None:
+                    raise RuntimeError(f"Cannot find config for machine type {machine_type}.")
         elif isinstance(config.downburst, dict) and isinstance(config.downburst.get('machine'), dict):
             machine_config = config.downburst.get('machine')
-        deep_merge(machine, machine_config)
+        if machine_config:
+            deep_merge(machine, machine_config)
         log.debug('Using machine config: %s', machine)
         file_info = {
             'disk-size': machine['disk'],
@@ -247,7 +263,7 @@ class Downburst(object):
             # Remove the user's password so console logins are possible
             'runcmd': [
                 ['passwd', '-d', self.user],
-            ]
+            ],
         }
         # for opensuse-15.2 we need to replace systemd-logger with rsyslog for teuthology
         if os_type == 'opensuse' and os_version == '15.2':
@@ -257,18 +273,16 @@ class Downburst(object):
             ])
         # Install git on downbursted VMs to clone upstream linux-firmware.
         # Issue #17154
-        if 'packages' not in user_info:
-            user_info['packages'] = list()
-        user_info['packages'].extend([
+        packages: List[str] = [
             'git',
             'wget',
-        ])
+        ]
         if os_type in ('centos', 'opensuse'):
-            user_info['packages'].extend([
+            packages.extend([
                 'chrony',
             ])
         if os_type in ('ubuntu', 'debian'):
-            user_info['packages'].extend([
+            packages.extend([
                 'ntp',
             ])
 
@@ -281,19 +295,20 @@ class Downburst(object):
         # On Ubuntu, starting with 16.04, and Fedora, starting with 24, we need
         # to install 'python' to get python2.7, which ansible needs
         if os_type in ('ubuntu', 'fedora'):
-            user_info['packages'].append('python')
+            packages.append('python')
         if os_type in ('centos', 'rocky'):
-            user_info['packages'].extend([
+            packages.extend([
                 'python3-pip',
                 'bind-utils',
             ])
         user_fd = tempfile.NamedTemporaryFile(delete=False, mode='wt')
+        user_info['packages'] = packages
         user_str = "#cloud-config\n" + yaml.safe_dump(user_info)
         user_fd.write(user_str)
         self.user_path = user_fd.name
         return True
 
-    def remove_config(self):
+    def remove_config(self) -> bool:
         """
         Remove the downburst configuration file created by build_config()
         """
@@ -307,7 +322,7 @@ class Downburst(object):
             return True
         return False
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.remove_config()
 
 
@@ -333,7 +348,7 @@ _known_downburst_distros = {
         ],
 }
 
-def get_distro_from_downburst():
+def get_distro_from_downburst() -> Dict[str, List[str]]:
     """
     Return a table of valid distros.
 

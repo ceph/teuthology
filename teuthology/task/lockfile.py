@@ -3,16 +3,16 @@ Locking tests
 """
 import logging
 import os
-
-from teuthology.orchestra import run
-from teuthology import misc as teuthology
 import time
+
 import gevent
 
+from teuthology import misc as teuthology
+from teuthology.orchestra import run
 
 log = logging.getLogger(__name__)
 
-def task(ctx, config):
+def task(ctx, config: dict) -> None:
     """
     This task is designed to test locking. It runs an executable
     for each lock attempt you specify, at 0.01 second intervals (to
@@ -184,7 +184,7 @@ def task(ctx, config):
     #done!
 # task
 
-def lock_one(op, ctx):
+def lock_one(op: dict, ctx) -> bool:
     """
     Perform the individual lock
     """

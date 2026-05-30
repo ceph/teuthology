@@ -1,6 +1,7 @@
 import os
 import yaml
 import logging
+from typing import Optional, Iterator
 try:
     from collections.abc import MutableMapping
 except ImportError:
@@ -13,7 +14,7 @@ USER_CONFIG_PATH = '~/.teuthology.yaml'
 CONFIG_PATH_VAR_NAME = 'TEUTHOLOGY_CONFIG'  # name of env var to check
 
 
-def init_logging():
+def init_logging() -> logging.Logger:
     log = logging.getLogger(__name__)
     return log
 
@@ -31,14 +32,14 @@ class YamlConfig(MutableMapping):
     """
     _defaults = dict()
 
-    def __init__(self, yaml_path=None):
+    def __init__(self, yaml_path: Optional[str] = None) -> None:
         self.yaml_path = yaml_path
         if self.yaml_path:
             self.load()
         else:
             self._conf = dict()
 
-    def load(self, conf=None):
+    def load(self, conf: Optional[dict|str] = None) -> None:
         if conf is not None:
             if isinstance(conf, dict):
                 self._conf = conf
@@ -46,14 +47,14 @@ class YamlConfig(MutableMapping):
             elif conf:
                 self._conf = yaml.safe_load(conf)
                 return
-        if os.path.exists(self.yaml_path):
+        if self.yaml_path and os.path.exists(self.yaml_path):
             with open(self.yaml_path) as f:
                 self._conf = yaml.safe_load(f)
         else:
             log.debug("%s not found", self.yaml_path)
             self._conf = dict()
 
-    def update(self, in_dict):
+    def update(self, in_dict: dict) -> None:  # ty: ignore[invalid-method-override]
         """
         Update an existing configuration using dict.update()
 
@@ -62,7 +63,7 @@ class YamlConfig(MutableMapping):
         self._conf.update(in_dict)
 
     @classmethod
-    def from_dict(cls, in_dict):
+    def from_dict(cls, in_dict: dict) -> 'YamlConfig':
         """
         Build a config object from a dict.
 
@@ -73,14 +74,14 @@ class YamlConfig(MutableMapping):
         conf_obj._conf = in_dict
         return conf_obj
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         """
         :returns: A shallow copy of the configuration as a dict
         """
         return dict(self._conf)
 
     @classmethod
-    def from_str(cls, in_str):
+    def from_str(cls, in_str: str) -> 'YamlConfig':
         """
         Build a config object from a string or yaml stream.
 
@@ -91,49 +92,49 @@ class YamlConfig(MutableMapping):
         conf_obj._conf = yaml.safe_load(in_str)
         return conf_obj
 
-    def to_str(self):
+    def to_str(self) -> str:
         """
         :returns: str(self)
         """
         return str(self)
 
-    def get(self, key, default=None):
+    def get(self, key: str, default = None):
         return self._conf.get(key, default)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return yaml.safe_dump(self._conf, default_flow_style=False).strip()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__str__()
 
-    def __getitem__(self, name):
+    def __getitem__(self, name: str):
         return self.__getattr__(name)
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str):
         return self._conf.get(name, self._defaults.get(name))
 
-    def __contains__(self, name):
+    def __contains__(self, name: object) -> bool:
         return self._conf.__contains__(name)
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: str, value) -> None:
         if name.endswith('_conf') or name in ('yaml_path'):
             object.__setattr__(self, name, value)
         else:
             self._conf[name] = value
 
-    def __delattr__(self, name):
+    def __delattr__(self, name: str) -> None:
         del self._conf[name]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self._conf.__len__()
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         return self._conf.__iter__()
 
-    def __setitem__(self, name, value):
+    def __setitem__(self, name: str, value) -> None:
         self._conf.__setitem__(name, value)
 
-    def __delitem__(self, name):
+    def __delitem__(self, name: str) -> None:
         self._conf.__delitem__(name)
 
 
@@ -206,22 +207,22 @@ class TeuthologyConfig(YamlConfig):
         'active_machine_types': [],
     }
 
-    def __init__(self, yaml_path=None):
+    def __init__(self, yaml_path: Optional[str] = None) -> None:
         super(TeuthologyConfig, self).__init__(yaml_path or self.yaml_path)
 
-    def get_ceph_cm_ansible_git_url(self):
+    def get_ceph_cm_ansible_git_url(self) -> str:
         return (self.ceph_cm_ansible_git_url or
                 self.ceph_git_base_url + 'ceph-cm-ansible.git')
 
-    def get_ceph_qa_suite_git_url(self):
+    def get_ceph_qa_suite_git_url(self) -> str:
         return (self.ceph_qa_suite_git_url or
                 self.get_ceph_git_url())
 
-    def get_ceph_git_url(self):
+    def get_ceph_git_url(self) -> str:
         return (self.ceph_git_url or
                 self.ceph_git_base_url + 'ceph-ci.git')
 
-    def get_teuthology_git_url(self):
+    def get_teuthology_git_url(self) -> str:
         return (self.teuthology_git_url or
                 self.ceph_git_base_url + 'teuthology.git')
 
@@ -237,13 +238,13 @@ class FakeNamespace(YamlConfig):
     We'll use this as a stop-gap as we refactor commands but allow the tasks
     to still be passed a single namespace object for the time being.
     """
-    def __init__(self, config_dict=None):
+    def __init__(self, config_dict: Optional[dict] = None) -> None:
         if not config_dict:
             config_dict = dict()
         self._conf = self._clean_config(config_dict)
         set_config_attr(self)
 
-    def _clean_config(self, config_dict):
+    def _clean_config(self, config_dict: dict) -> dict:
         """
         Makes sure that the keys of config_dict are able to be used.  For
         example the "--" prefix of a docopt dict isn't valid and won't populate
@@ -264,7 +265,7 @@ class FakeNamespace(YamlConfig):
 
         return result
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str):
         """
         We need to modify this for FakeNamespace so that getattr() will
         work correctly on a FakeNamespace instance.
@@ -275,27 +276,27 @@ class FakeNamespace(YamlConfig):
             return self._defaults[name]
         raise AttributeError(name)
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: str, value) -> None:
         if name == 'teuthology_config':
             object.__setattr__(self, name, value)
         else:
             super(FakeNamespace, self).__setattr__(name, value)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr(self._conf)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self._conf)
 
 
-def set_config_attr(obj):
+def set_config_attr(obj) -> None:
     """
     Set obj.teuthology_config, mimicking the old behavior of misc.read_config
     """
     obj.teuthology_config = config
 
 
-def _get_config_path():
+def _get_config_path() -> Optional[str]:
     """Look for a teuthology config yaml and return it's path.
     Raises ValueError if no config yaml can be found.
     """

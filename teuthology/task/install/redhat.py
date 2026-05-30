@@ -1,18 +1,20 @@
 import contextlib
 import logging
-import yaml
 import os
+from typing import Generator, Optional
+
+import yaml
 
 from teuthology import packaging
+from teuthology.config import config as teuth_config
 from teuthology.orchestra import run
 from teuthology.parallel import parallel
-from teuthology.config import config as teuth_config
 
 log = logging.getLogger(__name__)
 
 
 @contextlib.contextmanager
-def install(ctx, config):
+def install(ctx, config: dict) -> Generator[None, None, None]:
     """
     Installs rh ceph on all hosts in ctx.
 
@@ -80,7 +82,7 @@ def install(ctx, config):
                     p.spawn(uninstall_pkgs, ctx, remote, downstream_config)
 
 
-def install_pkgs(ctx, remote, version, downstream_config):
+def install_pkgs(ctx, remote, version: str, downstream_config: dict) -> None:
     """
     Installs RH build using ceph-deploy.
 
@@ -126,7 +128,7 @@ def install_pkgs(ctx, remote, version, downstream_config):
         raise RuntimeError("Version check failed on node %s", remote.shortname)
 
 
-def set_deb_repo(remote, deb_repo, deb_gpg_key=None):
+def set_deb_repo(remote, deb_repo: str, deb_gpg_key: Optional[str] = None) -> None:
     """
     Sets up debian repo and gpg key for package verification
     :param remote - remote node object
@@ -162,8 +164,8 @@ def set_deb_repo(remote, deb_repo, deb_gpg_key=None):
 def install_deb_pkgs(
         ctx,
         remote,
-        version,
-        downstream_config):
+        version: str,
+        downstream_config: dict) -> None:
     """
     Setup debian repo, Install gpg key
     and Install on debian packages
@@ -197,7 +199,7 @@ def install_deb_pkgs(
         raise RuntimeError("Version check failed on node %s", remote.shortname)
 
 
-def uninstall_pkgs(ctx, remote, downstream_config):
+def uninstall_pkgs(ctx, remote, downstream_config: dict) -> None:
     """
     Removes Ceph from all RH hosts
 

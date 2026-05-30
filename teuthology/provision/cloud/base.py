@@ -1,5 +1,6 @@
 import logging
 from copy import deepcopy
+from typing import List, Optional
 
 from libcloud.compute.providers import get_driver
 from libcloud.compute.types import Provider as lc_Provider
@@ -12,9 +13,9 @@ log = logging.getLogger(__name__)
 
 
 class Provider(object):
-    _driver_posargs = list()
+    _driver_posargs: List[str] = []
 
-    def __init__(self, name, conf):
+    def __init__(self, name: str, conf: dict) -> None:
         self.name = name
         self.conf = conf
         self.driver_name = self.conf['driver']
@@ -31,15 +32,20 @@ class Provider(object):
         return driver
     driver = property(fget=_get_driver)
 
-    def _get_driver_args(self):
+    def _get_driver_args(self) -> dict:
         return deepcopy(self.conf['driver_args'])
 
 
 class Provisioner(object):
     def __init__(
-            self, provider, name, os_type=None, os_version=None,
-            conf=None, user='ubuntu',
-    ):
+        self,
+        provider: Provider | str,
+        name: str,
+        os_type: Optional[str] = None,
+        os_version: Optional[str] = None,
+        conf: Optional[dict] = None,
+        user: str = 'ubuntu',
+    ) -> None:
         if isinstance(provider, str):
             provider = teuthology.provision.cloud.get_provider(provider)
         self.provider = provider
@@ -49,7 +55,7 @@ class Provisioner(object):
         self.os_version = os_version
         self.user = user
 
-    def create(self):
+    def create(self) -> bool:
         try:
             return self._create()
         except Exception:
@@ -59,7 +65,7 @@ class Provisioner(object):
     def _create(self):
         pass
 
-    def destroy(self):
+    def destroy(self) -> bool:
         try:
             return self._destroy()
         except Exception:
@@ -77,7 +83,7 @@ class Provisioner(object):
             )
         return self._remote
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         template = "%s(provider='%s', name='%s', os_type='%s', " \
             "os_version='%s')"
         return template % (

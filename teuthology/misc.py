@@ -45,7 +45,7 @@ is_arm = lambda x: x.startswith('tala') or x.startswith(
 
 hostname_expr_templ = '(?P<user>.*@)?(?P<shortname>.*){lab_domain}'
 
-def host_shortname(hostname):
+def host_shortname(hostname: str) -> str:
     if _is_ipv4(hostname) or _is_ipv6(hostname):
         return hostname
     else:
@@ -80,7 +80,7 @@ def canonicalize_hostname(hostname, user: Optional[str] ='ubuntu'):
     return ret
 
 
-def decanonicalize_hostname(hostname):
+def decanonicalize_hostname(hostname: str) -> str:
     lab_domain = ''
     if config.lab_domain:
         lab_domain=r'\.' + config.lab_domain.replace('.', r'\.')
@@ -91,7 +91,7 @@ def decanonicalize_hostname(hostname):
     return hostname
 
 
-def config_file(string):
+def config_file(string: str) -> dict:
     """
     Create a config file
 

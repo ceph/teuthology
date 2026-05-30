@@ -1,7 +1,7 @@
 import logging
 import os
-
 from io import StringIO
+from typing import Dict, Optional
 
 from teuthology.exceptions import SELinuxError
 from teuthology.misc import get_archive_dir
@@ -38,12 +38,12 @@ class SELinux(Task):
 
     Automatically skips hosts running non-RPM-based OSes.
     """
-    def __init__(self, ctx, config):
+    def __init__(self, ctx, config: dict) -> None:
         super(SELinux, self).__init__(ctx, config)
         self.log = log
         self.mode = self.config.get('mode', 'permissive')
 
-    def filter_hosts(self):
+    def filter_hosts(self) -> Optional[Cluster]:
         """
         Exclude any non-RPM-based hosts, and any downburst VMs
         """
@@ -68,17 +68,17 @@ class SELinux(Task):
         self.cluster = new_cluster
         return self.cluster
 
-    def setup(self):
+    def setup(self) -> None:
         super(SELinux, self).setup()
         self.rotate_log()
         self.old_modes = self.get_modes()
         self.old_denials = self.get_denials()
         self.set_mode()
 
-    def rotate_log(self):
+    def rotate_log(self) -> None:
         self.cluster.run(args="sudo service auditd rotate")
 
-    def get_modes(self):
+    def get_modes(self) -> Dict[str, str]:
         """
         Get the current SELinux mode from each host so that we can restore
         during teardown
@@ -95,7 +95,7 @@ class SELinux(Task):
         log.debug("Existing SELinux modes: %s", modes)
         return modes
 
-    def set_mode(self):
+    def set_mode(self) -> None:
         """
         Set the requested SELinux mode
         """
@@ -108,7 +108,7 @@ class SELinux(Task):
                 args=['sudo', '/usr/sbin/setenforce', self.mode],
             )
 
-    def get_denials(self):
+    def get_denials(self) -> Dict[str, list]:
         """
         Look for denials in the audit log
         """
@@ -162,12 +162,12 @@ class SELinux(Task):
             all_denials[remote.name] = denials
         return all_denials
 
-    def teardown(self):
+    def teardown(self) -> None:
         self.restore_modes()
         self.archive_log()
         self.get_new_denials()
 
-    def restore_modes(self):
+    def restore_modes(self) -> None:
         """
         If necessary, restore previous SELinux modes
         """
@@ -184,7 +184,7 @@ class SELinux(Task):
                     args=['sudo', '/usr/sbin/setenforce', mode],
                 )
 
-    def archive_log(self):
+    def archive_log(self) -> None:
         if not hasattr(self.ctx, 'archive') or not self.ctx.archive:
             return
         archive_dir = get_archive_dir(self.ctx)
@@ -198,7 +198,7 @@ class SELinux(Task):
             args=full_cmd.format(audit_archive=audit_archive)
         )
 
-    def get_new_denials(self):
+    def get_new_denials(self) -> None:
         """
         Determine if there are any new denials in the audit log
         """

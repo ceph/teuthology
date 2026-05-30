@@ -1,6 +1,8 @@
 import logging
 import os
 import signal
+from typing import Callable, Optional
+from types import FrameType
 
 
 log = logging.getLogger(__name__)
@@ -11,10 +13,10 @@ class Exiter(object):
     A helper to manage any signal handlers we need to call upon receiving a
     given signal
     """
-    def __init__(self):
+    def __init__(self) -> None:
         self.handlers = list()
 
-    def add_handler(self, signals, func):
+    def add_handler(self, signals: int | list[int], func: Callable[[int, Optional[FrameType]], None]) -> 'Handler':
         """
         Adds a handler function to be called when any of the given signals are
         received.
@@ -37,7 +39,7 @@ class Exiter(object):
         self.handlers.append(handler)
         return handler
 
-    def default_handler(self, signal_, frame):
+    def default_handler(self, signal_: int, frame: Optional[FrameType]) -> None:
         log.debug(
             "Got signal %s; running %s handler%s...",
             signal_,
@@ -54,19 +56,19 @@ class Exiter(object):
 
 
 class Handler(object):
-    def __init__(self, exiter, func, signals):
+    def __init__(self, exiter: Exiter, func: Callable[[int, Optional[FrameType]], None], signals: list[int]) -> None:
         self.exiter = exiter
         self.func = func
         self.signals = signals
 
-    def remove(self):
+    def remove(self) -> None:
         try:
             log.debug("Removing handler: %s", self)
             self.exiter.handlers.remove(self)
         except ValueError:
             pass
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{c}(exiter={e}, func={f}, signals={s})".format(
             c=self.__class__.__name__,
             e=self.exiter,
