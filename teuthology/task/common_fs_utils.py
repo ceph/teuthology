@@ -5,7 +5,7 @@ could be used by other modules (tgt.py and iscsi.py for instance).
 """
 import logging
 import contextlib
-from teuthology import misc as teuthology
+from teuthology import misc
 
 log = logging.getLogger(__name__)
 
@@ -74,7 +74,7 @@ def generic_mount(ctx, config, devname_rtn):
     else:
         role_images = [(role, None) for role in config]
 
-    testdir = teuthology.get_testdir(ctx)
+    testdir = misc.get_testdir(ctx)
 
     mnt_template = '{tdir}/mnt.{id}'
     mounted = []
@@ -82,7 +82,7 @@ def generic_mount(ctx, config, devname_rtn):
         if image is None:
             image = default_image_name(role)
         (remote,) = ctx.cluster.only(role).remotes.keys()
-        _, _, id_ = teuthology.split_role(role)
+        _, _, id_ = misc.split_role(role)
         mnt = mnt_template.format(tdir=testdir, id=id_)
         mounted.append((remote, mnt))
         remote.run(

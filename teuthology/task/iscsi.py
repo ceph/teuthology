@@ -5,7 +5,7 @@ import logging
 import contextlib
 import socket
 
-from teuthology import misc as teuthology
+from teuthology import misc
 from teuthology import contextutil
 from teuthology.task.common_fs_utils import generic_mkfs
 from teuthology.task.common_fs_utils import generic_mount
@@ -37,7 +37,7 @@ def tgt_devname_get(ctx, test_image):
     Get the name of the newly created device by following the by-path
     link (which is symbolically linked to the appropriate /dev/sd* file).
     """
-    remotes = ctx.cluster.only(teuthology.is_type('client')).remotes
+    remotes = ctx.cluster.only(misc.is_type('client')).remotes
     rem_name = _get_remote_name(remotes, test_image)
     lnkpath = '/dev/disk/by-path/ip-%s:3260-iscsi-rbd-lun-1' % \
             socket.gethostbyname(rem_name)
@@ -128,7 +128,7 @@ def start_iscsi_initiators(ctx, tgt_link):
     performs a login (thereby creating a /dev/sd device).  It performs
     a logout when finished.
     """
-    remotes = ctx.cluster.only(teuthology.is_type('client')).remotes
+    remotes = ctx.cluster.only(misc.is_type('client')).remotes
     tgtd_list = []
     for role, host in tgt_link:
         rem = _get_remote(remotes, role)

@@ -5,7 +5,7 @@ import contextlib
 import logging
 import os
 
-from teuthology import misc as teuthology
+from teuthology import misc
 
 log = logging.getLogger(__name__)
 
@@ -51,9 +51,9 @@ def task(ctx, config):
     log.info('Mounting nfs clients...')
     assert isinstance(config, dict)
 
-    clients = list(teuthology.get_clients(ctx=ctx, roles=config.keys()))
+    clients = list(misc.get_clients(ctx=ctx, roles=config.keys()))
 
-    testdir = teuthology.get_testdir(ctx)
+    testdir = misc.get_testdir(ctx)
     for id_, remote in clients:
         mnt = os.path.join(testdir, 'mnt.{id}'.format(id=id_))
         client_config = config.get("client.%s" % id_)
@@ -69,8 +69,8 @@ def task(ctx, config):
 
         svr_remote  = None
         all_config = ['client.{id}'.format(id=tmpid)
-                  for tmpid in teuthology.all_roles_of_type(ctx.cluster, 'client')]
-        all_clients = list(teuthology.get_clients(ctx=ctx, roles=all_config))
+                  for tmpid in misc.all_roles_of_type(ctx.cluster, 'client')]
+        all_clients = list(misc.get_clients(ctx=ctx, roles=all_config))
         for tmpid, tmpremote in all_clients:
             if tmpid == svr_id:
                 svr_remote = tmpremote

@@ -3,7 +3,7 @@ Handle parallel execution on remote hosts
 """
 import logging
 
-from teuthology import misc as teuthology
+from teuthology import misc
 from teuthology.parallel import parallel
 from teuthology.orchestra import run as tor
 from teuthology.util.async_helpers import SyncEvent, SyncQueue
@@ -68,7 +68,7 @@ def _generate_remotes(ctx, config):
             yield (remote, ls)
     elif 'clients' in config:
         ls = config['clients']
-        for role in teuthology.all_roles_of_type(ctx.cluster, 'client'):
+        for role in misc.all_roles_of_type(ctx.cluster, 'client'):
             (remote,) = ctx.cluster.only('client.{r}'.format(r=role)).remotes.keys()
             yield (remote, ls)
         del config['clients']
@@ -136,7 +136,7 @@ def task(ctx, config):
         sudo = config['sudo']
         del config['sudo']
 
-    testdir = teuthology.get_testdir(ctx)
+    testdir = misc.get_testdir(ctx)
 
     remotes = list(_generate_remotes(ctx, config))
     count = len(remotes)

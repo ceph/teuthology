@@ -8,7 +8,7 @@ import time
 from typing import Optional
 
 from teuthology.orchestra import run
-from teuthology import misc as teuthology
+from teuthology import misc
 from teuthology.util.async_helpers import EventLoopManager, TaskHandle
 
 
@@ -112,7 +112,7 @@ def task(ctx, config):
             if badconfig:
                 raise KeyError("bad config {op_}".format(op_=op))
 
-        testdir = teuthology.get_testdir(ctx)
+        testdir = misc.get_testdir(ctx)
         assert testdir is not None
         clients = set(clients_list)
         files = set(files)
@@ -241,7 +241,7 @@ def lock_one(op, ctx):
     result = None
     (client_remote,)  = ctx.cluster.only(op['client']).remotes.keys()
     (_, _, client_id) = op['client'].partition('.')
-    testdir = teuthology.get_testdir(ctx)
+    testdir = misc.get_testdir(ctx)
     assert testdir is not None
     filepath = os.path.join(testdir, 'mnt.{id}'.format(id=client_id), op["lockfile"])
 

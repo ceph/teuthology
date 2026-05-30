@@ -5,7 +5,7 @@ import os
 import subprocess
 import yaml
 
-from teuthology import misc as teuthology
+from teuthology import misc
 from teuthology import contextutil, packaging
 from teuthology.parallel import parallel
 from teuthology.task import ansible
@@ -77,7 +77,7 @@ def install_packages(ctx, pkgs, config):
     }
     with parallel() as p:
         for remote in ctx.cluster.remotes.keys():
-            system_type = teuthology.get_system_type(remote)
+            system_type = misc.get_system_type(remote)
             p.spawn(
                 install_pkgs[system_type],
                 ctx, remote, pkgs[system_type], config)
@@ -103,7 +103,7 @@ def remove_packages(ctx, config, pkgs):
     with parallel() as p:
         for remote in ctx.cluster.remotes.keys():
             if not remote.is_reimageable or cleanup:
-                system_type = teuthology.get_system_type(remote)
+                system_type = misc.get_system_type(remote)
                 p.spawn(remove_pkgs[
                         system_type], ctx, config, remote, pkgs[system_type])
 
@@ -298,7 +298,7 @@ def upgrade_remote_to_config(ctx, config):
             this_overrides.pop('sha1', None)
             this_overrides.pop('tag', None)
             this_overrides.pop('branch', None)
-        teuthology.deep_merge(node, this_overrides)
+        misc.deep_merge(node, this_overrides)
         log.info('remote %s config %s', remote, node)
         node['project'] = project
 
@@ -323,7 +323,7 @@ def upgrade_common(ctx, config, deploy_style):
 
     for remote, node in remotes.items():
 
-        system_type = teuthology.get_system_type(remote)
+        system_type = misc.get_system_type(remote)
         assert system_type in ('deb', 'rpm')
         pkgs = get_package_list(ctx, config)[system_type]
         log.info("Upgrading {proj} {system_type} packages: {pkgs}".format(
@@ -417,7 +417,7 @@ ceph_deploy_upgrade.__doc__ = docstring_for_upgrade.format(
     cmd_parameter='ceph_deploy_upgrade')
 
 def _override_extra_system_packages(config, project, install_overrides):
-    teuthology.deep_merge(config, install_overrides.get(project, {}))
+    misc.deep_merge(config, install_overrides.get(project, {}))
     extra_overrides = install_overrides.get('extra_system_packages')
     if extra_overrides:
         extra = config.get('extra_system_packages')
@@ -431,7 +431,7 @@ def _override_extra_system_packages(config, project, install_overrides):
         if isinstance(extra_overrides, list):
             extra_overrides = dict(deb=extra_overrides, rpm=extra_overrides)
 
-        config['extra_system_packages'] = teuthology.deep_merge(e, extra_overrides)
+        config['extra_system_packages'] = misc.deep_merge(e, extra_overrides)
 
 @contextlib.contextmanager
 def task(ctx, config):

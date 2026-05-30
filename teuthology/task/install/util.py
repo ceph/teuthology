@@ -2,7 +2,7 @@ import contextlib
 import logging
 import os
 
-from teuthology import misc as teuthology
+from teuthology import misc
 from teuthology import packaging
 from teuthology.orchestra import run
 
@@ -28,7 +28,7 @@ def _get_local_dir(config, remote):
         remote.run(args=['sudo', 'mkdir', '-p', ldir])
         for fyle in os.listdir(ldir):
             fname = "%s/%s" % (ldir, fyle)
-            teuthology.sudo_write_file(
+            misc.sudo_write_file(
                 remote, fname, open(fname).read(), '644')
     return ldir
 
@@ -59,7 +59,7 @@ def _ship_utilities(ctx):
 
     :param ctx: Context
     """
-    testdir = teuthology.get_testdir(ctx)
+    testdir = misc.get_testdir(ctx)
     filenames = []
 
     log.info('Shipping valgrind.supp...')
@@ -72,7 +72,7 @@ def _ship_utilities(ctx):
             fn = os.path.join(testdir, 'valgrind.supp')
             filenames.append(fn)
             for rem in ctx.cluster.remotes.keys():
-                teuthology.sudo_write_file(
+                misc.sudo_write_file(
                     remote=rem,
                     path=fn,
                     data=f,
@@ -90,7 +90,7 @@ def _ship_utilities(ctx):
         filenames.append(dst)
         with open(src, 'rb') as f:
             for rem in ctx.cluster.remotes.keys():
-                teuthology.sudo_write_file(
+                misc.sudo_write_file(
                     remote=rem,
                     path=dst,
                     data=f,

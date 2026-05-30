@@ -5,7 +5,7 @@ import contextlib
 import logging
 import os
 
-from teuthology import misc as teuthology
+from teuthology import misc
 
 log = logging.getLogger(__name__)
 
@@ -32,14 +32,14 @@ def task(ctx, config):
     """
     log.info('Creating local mnt dirs...')
 
-    testdir = teuthology.get_testdir(ctx)
+    testdir = misc.get_testdir(ctx)
 
     if config is None:
         config = list('client.{id}'.format(id=id_)
-                      for id_ in teuthology.all_roles_of_type(ctx.cluster,
+                      for id_ in misc.all_roles_of_type(ctx.cluster,
                                                               'client'))
 
-    clients = list(teuthology.get_clients(ctx=ctx, roles=config))
+    clients = list(misc.get_clients(ctx=ctx, roles=config))
     for id_, remote in clients:
         mnt = os.path.join(testdir, 'mnt.{id}'.format(id=id_))
         log.info('Creating dir {remote} {mnt}...'.format(

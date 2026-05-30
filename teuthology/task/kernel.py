@@ -11,7 +11,7 @@ from io import StringIO
 
 from teuthology.util.compat import urljoin
 
-from teuthology import misc as teuthology
+from teuthology import misc
 from teuthology.parallel import parallel
 from teuthology.config import config as teuth_config
 from teuthology.orchestra import run
@@ -85,7 +85,7 @@ def normalize_config(ctx, config):
         new_config = {}
         if not config:
             config = CONFIG_DEFAULT
-        for role in teuthology.all_roles(ctx.cluster):
+        for role in misc.all_roles(ctx.cluster):
             new_config[role] = config.copy()
         return new_config
 
@@ -96,7 +96,7 @@ def normalize_config(ctx, config):
         if '.' in role:
             new_config[role] = role_config.copy()
         else:
-            for id_ in teuthology.all_roles_of_type(ctx.cluster, role):
+            for id_ in misc.all_roles_of_type(ctx.cluster, role):
                 name = '{type}.{id}'.format(type=role, id=id_)
                 # specific overrides generic
                 if name not in config:
@@ -138,7 +138,7 @@ def normalize_and_apply_overrides(ctx, config, overrides):
                     any(k in overrides[role] for k in VERSION_KEYS)):
                 for k in VERSION_KEYS:
                     role_config.pop(k, None)
-        teuthology.deep_merge(config, overrides)
+        misc.deep_merge(config, overrides)
 
     return (config, timeout)
 
@@ -194,7 +194,7 @@ def need_to_install(ctx, role, version):
         if cur_version == version:
             log.debug('utsrelease strings match, do not need to install')
             ret = False
-        os_type = teuthology.get_distro(ctx)
+        os_type = misc.get_distro(ctx)
         log.debug("Distro of this test job: {}".format(os_type))
         if os_type in ['sle', 'opensuse']:
             cur_version_match = re.search('(.*)-default$', cur_version)
@@ -839,7 +839,7 @@ def install_kernel(remote, role_config, path=None, version=None):
     if package_type == 'deb':
         newversion = get_latest_image_version_deb(remote, dist_release, role_config)
         if 'ubuntu' in dist_release:
-            grub2conf = teuthology.get_file(remote,
+            grub2conf = misc.get_file(remote,
                 '/boot/grub/grub.cfg', sudo=True).decode()
             submenu = ''
             menuentry = ''
@@ -861,8 +861,8 @@ def install_kernel(remote, role_config, path=None, version=None):
             else:
                 grubvalue = menuentry
             grubfile = 'cat <<EOF\nset default="' + grubvalue + '"\nEOF'
-            teuthology.delete_file(remote, '/etc/grub.d/01_ceph_kernel', sudo=True, force=True)
-            teuthology.sudo_write_file(remote, '/etc/grub.d/01_ceph_kernel', StringIO(grubfile), '755')
+            misc.delete_file(remote, '/etc/grub.d/01_ceph_kernel', sudo=True, force=True)
+            misc.sudo_write_file(remote, '/etc/grub.d/01_ceph_kernel', StringIO(grubfile), '755')
             log.info('Distro Kernel Version: {version}'.format(version=newversion))
             remote.run(args=['sudo', 'update-grub'])
             remote.safe_hard_reboot()
@@ -893,8 +893,8 @@ def update_grub_rpm(remote, newversion):
         for line in newgrub:
             data += line + '\n'
         temp_file_path = remote.mktemp()
-        teuthology.sudo_write_file(remote, temp_file_path, StringIO(data), '755')
-        teuthology.move_file(remote, temp_file_path, '/boot/grub/grub.conf', True)
+        misc.sudo_write_file(remote, temp_file_path, StringIO(data), '755')
+        misc.move_file(remote, temp_file_path, '/boot/grub/grub.conf', True)
     else:
         #Update grub menu entry to new version.
         grub2_kernel_select_generic(remote, newversion, 'rpm')
@@ -1057,7 +1057,7 @@ def grub2_kernel_select_generic(remote, newversion, ostype):
 
     # Non-BLS path- regenerate grub.cfg then pick the matching menuentry index.
     remote.run(args=['sudo', mkconfig, '-o', grubconfig])
-    grub2conf = teuthology.get_file(remote, grubconfig, sudo=True).decode()
+    grub2conf = misc.get_file(remote, grubconfig, sudo=True).decode()
 
     entry_num = 0
     entry = None
@@ -1084,7 +1084,7 @@ def generate_legacy_grub_entry(remote, newversion):
     a kernel just via a command. This generates an entry in legacy
     grub for a new kernel version using the existing entry as a base.
     """
-    grubconf = teuthology.get_file(remote,
+    grubconf = misc.get_file(remote,
         '/boot/grub/grub.conf', sudo=True).decode()
     titleline = ''
     rootline = ''

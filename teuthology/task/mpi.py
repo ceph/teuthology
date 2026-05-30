@@ -4,7 +4,7 @@ Start mpi processes (and allow commands to be run inside process)
 import logging
 import re
 
-from teuthology import misc as teuthology
+from teuthology import misc
 
 log = logging.getLogger(__name__)
 
@@ -84,7 +84,7 @@ def task(ctx, config):
     assert isinstance(config, dict), 'task mpi got invalid config'
     assert 'exec' in config, 'task mpi got invalid config, missing exec'
 
-    testdir = teuthology.get_testdir(ctx)
+    testdir = misc.get_testdir(ctx)
 
     mpiexec = config['exec'].replace('$TESTDIR', testdir)
     hosts = []
@@ -92,7 +92,7 @@ def task(ctx, config):
     main_remote = None
     if 'nodes' in config:
         if isinstance(config['nodes'], str) and config['nodes'] == 'all':
-            for role in  teuthology.all_roles(ctx.cluster):
+            for role in  misc.all_roles(ctx.cluster):
                 (remote,) = ctx.cluster.only(role).remotes.keys()
                 ip,port = remote.ssh.get_transport().getpeername()
                 hosts.append(ip)
@@ -106,7 +106,7 @@ def task(ctx, config):
                 remotes.append(remote)
             (main_remote,) = ctx.cluster.only(config['nodes'][0]).remotes.keys()
     else:
-        roles = ['client.{id}'.format(id=id_) for id_ in teuthology.all_roles_of_type(ctx.cluster, 'client')]
+        roles = ['client.{id}'.format(id=id_) for id_ in misc.all_roles_of_type(ctx.cluster, 'client')]
         (main_remote,) = ctx.cluster.only(roles[0]).remotes.keys()
         for role in roles:
             (remote,) = ctx.cluster.only(role).remotes.keys()
@@ -125,7 +125,7 @@ def task(ctx, config):
 
     # write out the mpi hosts file
     log.info('mpi nodes: [%s]' % (', '.join(hosts)))
-    teuthology.write_file(remote=main_remote,
+    misc.write_file(remote=main_remote,
                           path='{tdir}/mpi-hosts'.format(tdir=testdir),
                           data='\n'.join(hosts))
     log.info('mpiexec on {name}: {cmd}'.format(name=main_remote.name, cmd=mpiexec))

@@ -5,7 +5,7 @@ import contextlib
 import logging
 import os
 
-from teuthology import misc as teuthology
+from teuthology import misc
 
 log = logging.getLogger(__name__)
 
@@ -72,14 +72,14 @@ def task(ctx, config):
 
     if config is None:
         config = dict(('client.{id}'.format(id=id_), None)
-                  for id_ in teuthology.all_roles_of_type(ctx.cluster, 'client'))
+                  for id_ in misc.all_roles_of_type(ctx.cluster, 'client'))
     elif isinstance(config, list):
         config = dict((name, None) for name in config)
 
-    clients = list(teuthology.get_clients(ctx=ctx, roles=config.keys()))
+    clients = list(misc.get_clients(ctx=ctx, roles=config.keys()))
 
     for id_, remote in clients:
-        mnt = os.path.join(teuthology.get_testdir(ctx), 'mnt.{id}'.format(id=id_))
+        mnt = os.path.join(misc.get_testdir(ctx), 'mnt.{id}'.format(id=id_))
         client_config = config.get("client.%s" % id_)
         if client_config is None:
             client_config = {}
@@ -147,7 +147,7 @@ def task(ctx, config):
         log.info('Unexporting nfs server...')
         for id_, remote in clients:
             log.debug('Unexporting client client.{id}...'.format(id=id_))
-            mnt = os.path.join(teuthology.get_testdir(ctx), 'mnt.{id}'.format(id=id_))
+            mnt = os.path.join(misc.get_testdir(ctx), 'mnt.{id}'.format(id=id_))
             try:
                 log.debug('Checking active files on mount {mnt}'.format(mnt=mnt))
                 remote.run(

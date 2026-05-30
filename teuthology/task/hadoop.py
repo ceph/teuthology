@@ -1,7 +1,7 @@
 from io import StringIO
 import contextlib
 import logging
-from teuthology import misc as teuthology
+from teuthology import misc
 from teuthology import contextutil
 from teuthology.orchestra import run
 from teuthology.exceptions import UnsupportedPackageTypeError
@@ -24,7 +24,7 @@ def is_hadoop_type(type_):
     return lambda role: role.startswith('hadoop.' + type_)
 
 def get_slaves_data(ctx):
-    tempdir = teuthology.get_testdir(ctx)
+    tempdir = misc.get_testdir(ctx)
     path = "{tdir}/hadoop/etc/hadoop/slaves".format(tdir=tempdir)
     nodes = ctx.cluster.only(is_hadoop_type('slave'))
     hosts = [s.ssh.get_transport().getpeername()[0] for s in nodes.remotes]
@@ -32,7 +32,7 @@ def get_slaves_data(ctx):
     return path, data
 
 def get_masters_data(ctx):
-    tempdir = teuthology.get_testdir(ctx)
+    tempdir = misc.get_testdir(ctx)
     path = "{tdir}/hadoop/etc/hadoop/masters".format(tdir=tempdir)
     nodes = ctx.cluster.only(is_hadoop_type('master'))
     hosts = [s.ssh.get_transport().getpeername()[0] for s in nodes.remotes]
@@ -40,7 +40,7 @@ def get_masters_data(ctx):
     return path, data
 
 def get_core_site_data(ctx, config):
-    tempdir = teuthology.get_testdir(ctx)
+    tempdir = misc.get_testdir(ctx)
     path = "{tdir}/hadoop/etc/hadoop/core-site.xml".format(tdir=tempdir)
     nodes = ctx.cluster.only(is_hadoop_type('master'))
     host = [s.ssh.get_transport().getpeername()[0] for s in nodes.remotes][0]
@@ -79,7 +79,7 @@ def get_mapred_site_data(ctx):
     </property>
 </configuration>
 """
-    tempdir = teuthology.get_testdir(ctx)
+    tempdir = misc.get_testdir(ctx)
     path = "{tdir}/hadoop/etc/hadoop/mapred-site.xml".format(tdir=tempdir)
     nodes = ctx.cluster.only(is_hadoop_type('master'))
     hosts = [s.ssh.get_transport().getpeername()[0] for s in nodes.remotes]
@@ -100,7 +100,7 @@ def get_yarn_site_data(ctx):
     })
     data_tmpl = dict_to_hadoop_conf(conf)
 
-    tempdir = teuthology.get_testdir(ctx)
+    tempdir = misc.get_testdir(ctx)
     path = "{tdir}/hadoop/etc/hadoop/yarn-site.xml".format(tdir=tempdir)
     nodes = ctx.cluster.only(is_hadoop_type('master'))
     hosts = [s.ssh.get_transport().getpeername()[0] for s in nodes.remotes]
@@ -117,42 +117,42 @@ def get_hdfs_site_data(ctx):
      </property>
 </configuration>
 """
-    tempdir = teuthology.get_testdir(ctx)
+    tempdir = misc.get_testdir(ctx)
     path = "{tdir}/hadoop/etc/hadoop/hdfs-site.xml".format(tdir=tempdir)
     return path, data
 
 def configure(ctx, config, hadoops):
-    tempdir = teuthology.get_testdir(ctx)
+    tempdir = misc.get_testdir(ctx)
 
     log.info("Writing Hadoop slaves file...")
     for remote in hadoops.remotes:
         path, data = get_slaves_data(ctx)
-        teuthology.write_file(remote, path, StringIO(data))
+        misc.write_file(remote, path, StringIO(data))
 
     log.info("Writing Hadoop masters file...")
     for remote in hadoops.remotes:
         path, data = get_masters_data(ctx)
-        teuthology.write_file(remote, path, StringIO(data))
+        misc.write_file(remote, path, StringIO(data))
 
     log.info("Writing Hadoop core-site.xml file...")
     for remote in hadoops.remotes:
         path, data = get_core_site_data(ctx, config)
-        teuthology.write_file(remote, path, StringIO(data))
+        misc.write_file(remote, path, StringIO(data))
 
     log.info("Writing Hadoop yarn-site.xml file...")
     for remote in hadoops.remotes:
         path, data = get_yarn_site_data(ctx)
-        teuthology.write_file(remote, path, StringIO(data))
+        misc.write_file(remote, path, StringIO(data))
 
     log.info("Writing Hadoop hdfs-site.xml file...")
     for remote in hadoops.remotes:
         path, data = get_hdfs_site_data(ctx)
-        teuthology.write_file(remote, path, StringIO(data))
+        misc.write_file(remote, path, StringIO(data))
 
     log.info("Writing Hadoop mapred-site.xml file...")
     for remote in hadoops.remotes:
         path, data = get_mapred_site_data(ctx)
-        teuthology.write_file(remote, path, StringIO(data))
+        misc.write_file(remote, path, StringIO(data))
 
     log.info("Setting JAVA_HOME in hadoop-env.sh...")
     for remote in hadoops.remotes:
@@ -163,11 +163,11 @@ def configure(ctx, config, hadoops):
             data = "JAVA_HOME=/usr/lib/jvm/default-java\n"
         else:
             raise UnsupportedPackageTypeError(remote)
-        teuthology.prepend_lines_to_file(remote, path, data)
+        misc.prepend_lines_to_file(remote, path, data)
 
     if config.get('hdfs', False):
         log.info("Formatting HDFS...")
-        testdir = teuthology.get_testdir(ctx)
+        testdir = misc.get_testdir(ctx)
         hadoop_dir = "{tdir}/hadoop/".format(tdir=testdir)
         masters = ctx.cluster.only(is_hadoop_type('master'))
         assert len(masters.remotes) == 1
@@ -183,7 +183,7 @@ def configure(ctx, config, hadoops):
 
 @contextlib.contextmanager
 def install_hadoop(ctx, config):
-    testdir = teuthology.get_testdir(ctx)
+    testdir = misc.get_testdir(ctx)
 
     log.info("Downloading Hadoop...")
     hadoop_tarball = "{tdir}/hadoop.tar.gz".format(tdir=testdir)
@@ -254,7 +254,7 @@ def install_hadoop(ctx, config):
     if not config.get('hdfs', False):
         log.info("Fetching cephfs-hadoop...")
 
-        sha1, url = teuthology.get_ceph_binary_url(
+        sha1, url = misc.get_ceph_binary_url(
                 package = "hadoop",
                 format = "jar",
                 dist = "precise",
@@ -336,7 +336,7 @@ def install_hadoop(ctx, config):
 
 @contextlib.contextmanager
 def start_hadoop(ctx, config):
-    testdir = teuthology.get_testdir(ctx)
+    testdir = misc.get_testdir(ctx)
     hadoop_dir = "{tdir}/hadoop/".format(tdir=testdir)
     masters = ctx.cluster.only(is_hadoop_type('master'))
     assert len(masters.remotes) == 1
@@ -413,7 +413,7 @@ def task(ctx, config):
     assert isinstance(config, dict), "task hadoop config must be dictionary"
 
     overrides = ctx.config.get('overrides', {})
-    teuthology.deep_merge(config, overrides.get('hadoop', {}))
+    misc.deep_merge(config, overrides.get('hadoop', {}))
 
     tasks = [
         lambda: install_hadoop(ctx=ctx, config=config),

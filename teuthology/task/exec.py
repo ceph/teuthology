@@ -3,7 +3,7 @@ Exececute custom commands
 """
 import logging
 
-from teuthology import misc as teuthology
+from teuthology import misc
 
 log = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ def task(ctx, config):
             all-roles:
               - pwd
 
-    To avoid confusion it is recommended to explicitly enclose the commands in 
+    To avoid confusion it is recommended to explicitly enclose the commands in
     double quotes. For instance if the command is false (without double quotes) it will
     be interpreted as a boolean by the YAML parser.
 
@@ -43,15 +43,15 @@ def task(ctx, config):
     log.info('Executing custom commands...')
     assert isinstance(config, dict), "task exec got invalid config"
 
-    testdir = teuthology.get_testdir(ctx)
+    testdir = misc.get_testdir(ctx)
 
     if 'all' in config and len(config) == 1:
         a = config['all']
-        roles = teuthology.all_roles(ctx.cluster)
+        roles = misc.all_roles(ctx.cluster)
         config = dict((id_, a) for id_ in roles)
     elif 'all-roles' in config and len(config) == 1:
         a = config['all-roles']
-        roles = teuthology.all_roles(ctx.cluster)
+        roles = misc.all_roles(ctx.cluster)
         config = dict((id_, a) for id_ in roles)
     elif 'all-hosts' in config and len(config) == 1:
         a = config['all-hosts']

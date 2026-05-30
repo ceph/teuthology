@@ -4,7 +4,7 @@ Parallel contextmanager test
 import contextlib
 import logging
 
-from teuthology import misc as teuthology
+from teuthology import misc
 from teuthology import contextutil
 from teuthology.orchestra import run
 
@@ -45,7 +45,7 @@ def task(ctx, config):
         assert(False), "task parallel_example only supports a list or dictionary for configuration"
     if config is None:
         config = ['client.{id}'.format(id=id_)
-                  for id_ in teuthology.all_roles_of_type(ctx.cluster, 'client')]
+                  for id_ in misc.all_roles_of_type(ctx.cluster, 'client')]
     if isinstance(config, list):
         config = dict.fromkeys(config)
     clients = config.keys()
