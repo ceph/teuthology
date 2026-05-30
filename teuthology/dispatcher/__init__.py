@@ -9,12 +9,6 @@ import yaml
 
 from typing import Dict, List
 
-try:
-    from gevent.exceptions import LoopExit
-except ImportError:
-    # gevent might not be available in some environments
-    LoopExit = Exception
-
 from teuthology import (
     # non-modules
     setup_log_file,
@@ -81,8 +75,6 @@ def main(args):
     keep_running = True
     job_procs = set()
     worst_returncode = 0
-    loop_exit_count = 0
-    max_loop_exits = 10  # Prevent infinite restart loops
 
     while keep_running:
         try:
@@ -134,23 +126,6 @@ def main(args):
             if 'roles' in job_config:
                 try:
                     job_config = lock_machines(job_config)
-                except LoopExit as e:
-                    log.critical(
-                        "Caught gevent LoopExit exception during lock_machines for job %s. "
-                        "This is likely due to gevent/urllib3 blocking issues. "
-                        "Marking job as dead.",
-                        job_id
-                    )
-                    log.exception("LoopExit exception details:")
-                    report.try_push_job_info(
-                        job_config,
-                        dict(
-                            status='dead',
-                            failure_reason='gevent LoopExit during machine locking: {}'.format(str(e))
-                        )
-                    )
-                    # Skip this job and continue with the next one
-                    continue
                 except Exception as e:
                     log.exception("Unexpected exception during lock_machines for job %s", job_id)
                     report.try_push_job_info(
@@ -209,37 +184,6 @@ def main(args):
                 job.delete()
             except Exception:
                 log.exception("Saw exception while trying to delete job")
-
-            # Successful iteration - reset loop exit counter if it was set
-            if loop_exit_count > 0:
-                log.info("Successfully completed iteration after LoopExit exception(s). Resetting counter.")
-                loop_exit_count = 0
-
-        except LoopExit:
-            loop_exit_count += 1
-            log.critical(
-                "CRITICAL: Caught gevent LoopExit exception in dispatcher main loop "
-                "(count: %d/%d). This is likely due to gevent/urllib3 blocking issues. "
-                "The dispatcher will attempt to continue, but child processes should "
-                "be isolated and unaffected.",
-                loop_exit_count,
-                max_loop_exits
-            )
-            log.exception("LoopExit exception details:")
-
-            if loop_exit_count >= max_loop_exits:
-                log.critical(
-                    "Maximum LoopExit exceptions (%d) reached. "
-                    "Dispatcher is exiting to prevent infinite restart loop.",
-                    max_loop_exits
-                )
-                # Ensure all tracked job processes are noted as still running
-                # They should continue independently due to start_new_session=True
-                log.info("Dispatched %d job supervisor processes that should continue running independently", len(job_procs))
-                break
-
-            # Continue to next iteration to attempt recovery
-            continue
 
         except Exception as e:
             log.critical(
