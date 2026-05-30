@@ -2,8 +2,8 @@ import asyncio
 import functools
 import logging
 import sys
-import threading
 from typing import Any, Callable, Optional
+
 
 
 log = logging.getLogger(__name__)
@@ -65,7 +65,6 @@ class parallel(object):
         self.any_spawned = False
         self.iteration_stopped = False
         self._loop: Optional[asyncio.AbstractEventLoop] = None
-        self._loop_thread: Optional[threading.Thread] = None
         self._tasks = set()
         self._results_queue: Optional[asyncio.Queue] = None
         self._started = False
@@ -74,16 +73,17 @@ class parallel(object):
         """Start a dedicated event loop in a background thread."""
         if self._started:
             return
-        
+
         self._started = True
         self._loop = asyncio.new_event_loop()
         self._results_queue = asyncio.Queue()
-        
+
         def run_loop():
             assert self._loop is not None
             asyncio.set_event_loop(self._loop)
             self._loop.run_forever()
-        
+
+        import threading
         self._loop_thread = threading.Thread(target=run_loop, daemon=True)
         self._loop_thread.start()
 
@@ -144,9 +144,10 @@ class parallel(object):
 
     def _cleanup(self):
         """Clean up the event loop and thread."""
+        self._tasks.clear()
         if self._loop and self._loop.is_running():
             self._loop.call_soon_threadsafe(self._loop.stop)
-        if self._loop_thread and self._loop_thread.is_alive():
+        if getattr(self, "_loop_thread", None) and self._loop_thread.is_alive():
             self._loop_thread.join(timeout=1.0)
 
     def __iter__(self):

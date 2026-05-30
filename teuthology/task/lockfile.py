@@ -2,15 +2,14 @@
 Locking tests
 """
 import asyncio
-import functools
 import logging
 import os
-import threading
 import time
 from typing import Optional
 
 from teuthology.orchestra import run
 from teuthology import misc as teuthology
+from teuthology.util.async_helpers import EventLoopManager, TaskHandle
 
 
 log = logging.getLogger(__name__)
@@ -43,85 +42,6 @@ class _AsyncTimeout:
         return False
 
 
-class _TaskHandle:
-    """
-    Handle for managing an async task, compatible with gevent greenlet API.
-    """
-    def __init__(self, loop: asyncio.AbstractEventLoop, coro):
-        self._loop = loop
-        self._future = asyncio.run_coroutine_threadsafe(coro, loop)
-        self._killed = False
-    
-    def get(self):
-        """Wait for and return the task result (blocking)."""
-        try:
-            return self._future.result()
-        except Exception:
-            raise
-    
-    def kill(self, block=True):
-        """Kill the task."""
-        if not self._killed and not self._future.done():
-            self._killed = True
-            self._future.cancel()
-            if block:
-                try:
-                    self._future.result(timeout=1.0)
-                except Exception:
-                    pass
-
-
-class _EventLoopManager:
-    """
-    Manages a dedicated event loop in a background thread for async operations.
-    """
-    def __init__(self):
-        self._loop: Optional[asyncio.AbstractEventLoop] = None
-        self._thread: Optional[threading.Thread] = None
-        self._started = False
-    
-    def start(self):
-        """Start the event loop in a background thread."""
-        if self._started:
-            return
-        
-        self._started = True
-        self._loop = asyncio.new_event_loop()
-        
-        def run_loop():
-            assert self._loop is not None
-            asyncio.set_event_loop(self._loop)
-            self._loop.run_forever()
-        
-        self._thread = threading.Thread(target=run_loop, daemon=True)
-        self._thread.start()
-    
-    def stop(self):
-        """Stop the event loop and thread."""
-        if self._loop and self._loop.is_running():
-            self._loop.call_soon_threadsafe(self._loop.stop)
-        if self._thread and self._thread.is_alive():
-            self._thread.join(timeout=1.0)
-        self._started = False
-    
-    def spawn(self, func, *args, **kwargs):
-        """Spawn a function to run asynchronously."""
-        if not self._started:
-            self.start()
-        assert self._loop is not None
-        
-        # Wrap the sync function to run in executor
-        async def run_in_executor():
-            loop = asyncio.get_event_loop()
-            wrapped = functools.partial(func, *args, **kwargs)
-            return await loop.run_in_executor(None, wrapped)
-        
-        return _TaskHandle(self._loop, run_in_executor())
-    
-    @property
-    def loop(self):
-        """Get the event loop."""
-        return self._loop
 
 def task(ctx, config):
     """
@@ -161,6 +81,7 @@ def task(ctx, config):
     lock_procs = list()
     loop_manager = None
     clients = set()
+    files = set()
     testdir = None
     
     try:
@@ -192,6 +113,7 @@ def task(ctx, config):
                 raise KeyError("bad config {op_}".format(op_=op))
 
         testdir = teuthology.get_testdir(ctx)
+        assert testdir is not None
         clients = set(clients_list)
         files = set(files)
         for client in clients:
@@ -258,7 +180,7 @@ def task(ctx, config):
         log.debug('created files to lock')
 
         # Create event loop manager for async operations
-        loop_manager = _EventLoopManager()
+        loop_manager = EventLoopManager()
         
         # now actually run the locktests
         for op in config:
@@ -320,6 +242,7 @@ def lock_one(op, ctx):
     (client_remote,)  = ctx.cluster.only(op['client']).remotes.keys()
     (_, _, client_id) = op['client'].partition('.')
     testdir = teuthology.get_testdir(ctx)
+    assert testdir is not None
     filepath = os.path.join(testdir, 'mnt.{id}'.format(id=client_id), op["lockfile"])
 
     if "maxwait" in op:
@@ -384,3 +307,7 @@ def lock_one(op, ctx):
     ret = (result == 0 and not bool(op["expectfail"])) or (result == 1 and bool(op["expectfail"]))
 
     return ret  #we made it through
+
+
+_TaskHandle = TaskHandle
+_EventLoopManager = EventLoopManager

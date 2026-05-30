@@ -4,12 +4,12 @@ Process thrasher
 import asyncio
 import logging
 import random
-import threading
 import time
 from concurrent.futures import Future
 from typing import Optional, Union
 
 from teuthology.orchestra import run
+from teuthology.util.async_helpers import EventLoopManager
 
 log = logging.getLogger(__name__)
 
@@ -22,8 +22,9 @@ class ProcThrasher:
         self.proc_args = proc_args
         self.config = config
         self._task: Optional[Union[asyncio.Task, Future]] = None
+        self._loop_manager = EventLoopManager()
         self._loop: Optional[asyncio.AbstractEventLoop] = None
-        self._loop_thread: Optional[threading.Thread] = None
+        self._loop_thread = None
         self._started = False
         self.logger = proc_kwargs.get("logger", log.getChild('proc_thrasher'))
         self.remote = remote
@@ -40,20 +41,14 @@ class ProcThrasher:
         self.logger.info(msg)
 
     def _start_event_loop(self):
-        """Start a dedicated event loop in a background thread."""
+        """Start a dedicated background event loop."""
         if self._started:
             return
-        
+
         self._started = True
-        self._loop = asyncio.new_event_loop()
-        
-        def run_loop():
-            assert self._loop is not None
-            asyncio.set_event_loop(self._loop)
-            self._loop.run_forever()
-        
-        self._loop_thread = threading.Thread(target=run_loop, daemon=True)
-        self._loop_thread.start()
+        self._loop_manager.start()
+        self._loop = self._loop_manager.loop
+        self._loop_thread = self._loop_manager.thread
 
     def start(self):
         """
@@ -90,17 +85,9 @@ class ProcThrasher:
             self._cleanup()
 
     def _cleanup(self):
-        """Clean up the event loop and thread."""
-        if self._loop:
-            # Stop the event loop
-            if self._loop.is_running():
-                self._loop.call_soon_threadsafe(self._loop.stop)
-            # Give it a moment to stop
-            if self._loop_thread and self._loop_thread.is_alive():
-                self._loop_thread.join(timeout=2.0)
-            # Close the loop
-            if not self._loop.is_closed():
-                self._loop.close()
+        """Stop and close the dedicated event loop."""
+        self._task = None
+        self._loop_manager.stop(join_timeout=2.0, close_loop=True)
 
     async def _async_loop(self):
         """

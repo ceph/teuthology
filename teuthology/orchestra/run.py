@@ -7,6 +7,8 @@ import io
 import threading
 from typing import Optional
 
+from teuthology.util.async_helpers import EventLoopManager, TaskHandle
+
 from paramiko import ChannelFile
 
 import socket
@@ -38,7 +40,7 @@ class _AsyncResult:
         with self._lock:
             self._value = value
             self._ready = True
-            if self._future and not self._future.done():
+            if self._future and self._loop and not self._future.done():
                 self._loop.call_soon_threadsafe(self._future.set_result, value)
     
     def set_exception(self, exception):
@@ -46,7 +48,7 @@ class _AsyncResult:
         with self._lock:
             self._exception = exception
             self._ready = True
-            if self._future and not self._future.done():
+            if self._future and self._loop and not self._future.done():
                 self._loop.call_soon_threadsafe(self._future.set_exception, exception)
     
     def get(self, block=True, timeout=None):
@@ -82,81 +84,6 @@ class _AsyncResult:
         return self._ready
 
 
-class _TaskHandle:
-    """
-    Handle for managing an async task, compatible with gevent greenlet API.
-    """
-    def __init__(self, loop: asyncio.AbstractEventLoop, coro):
-        self._loop = loop
-        self._future = asyncio.run_coroutine_threadsafe(coro, loop)
-        self._killed = False
-    
-    def get(self, block=True, timeout=None):
-        """Wait for and return the task result (blocking)."""
-        try:
-            return self._future.result(timeout=timeout)
-        except Exception:
-            raise
-    
-    def kill(self, block=True):
-        """Kill the task."""
-        if not self._killed and not self._future.done():
-            self._killed = True
-            self._future.cancel()
-            if block:
-                try:
-                    self._future.result(timeout=1.0)
-                except Exception:
-                    pass
-
-
-class _EventLoopManager:
-    """
-    Singleton manager for a dedicated event loop in a background thread.
-    """
-    _instance: Optional['_EventLoopManager'] = None
-    _lock = threading.Lock()
-    
-    def __init__(self):
-        self._loop: Optional[asyncio.AbstractEventLoop] = None
-        self._thread: Optional[threading.Thread] = None
-        self._started = False
-    
-    @classmethod
-    def get_instance(cls) -> '_EventLoopManager':
-        """Get or create the singleton instance."""
-        if cls._instance is None:
-            with cls._lock:
-                if cls._instance is None:
-                    cls._instance = cls()
-        return cls._instance
-    
-    def start(self):
-        """Start the event loop in a background thread."""
-        if self._started:
-            return
-        
-        with _EventLoopManager._lock:
-            if self._started:
-                return
-            
-            self._started = True
-            self._loop = asyncio.new_event_loop()
-            
-            def run_loop():
-                assert self._loop is not None
-                asyncio.set_event_loop(self._loop)
-                self._loop.run_forever()
-            
-            self._thread = threading.Thread(target=run_loop, daemon=True)
-            self._thread.start()
-    
-    def get_loop(self) -> asyncio.AbstractEventLoop:
-        """Get the event loop, starting it if necessary."""
-        if not self._started:
-            self.start()
-        assert self._loop is not None
-        return self._loop
 
 
 def _spawn_task(coro):
@@ -164,9 +91,9 @@ def _spawn_task(coro):
     Spawn an async task in the background event loop.
     Returns a handle compatible with gevent greenlet API.
     """
-    manager = _EventLoopManager.get_instance()
+    manager = EventLoopManager.get_instance()
     loop = manager.get_loop()
-    return _TaskHandle(loop, coro)
+    return TaskHandle(loop, coro)
 
 
 class RemoteProcess(object):
