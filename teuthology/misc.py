@@ -1,6 +1,13 @@
 """
 Miscellaneous teuthology functions.
 Used by other modules, but mostly called from tasks.
+
+Note: Many functions have been moved to focused utility modules:
+- Hostname functions -> teuthology.util.hostname
+- Path functions -> teuthology.util.paths
+- SSH helper functions -> teuthology.util.ssh_helpers
+
+The functions remain here as deprecated wrappers for backward compatibility.
 """
 import argparse
 import os
@@ -18,6 +25,7 @@ import re
 from sys import stdin
 import pprint
 import datetime
+import warnings
 
 from tarfile import ReadError
 
@@ -35,6 +43,24 @@ from teuthology.config import config
 from teuthology.contextutil import safe_while
 from teuthology.orchestra.opsys import DEFAULT_OS_VERSION
 
+# Import functions from new utility modules
+from teuthology.util.hostname import (
+    host_shortname as _host_shortname,
+    canonicalize_hostname as _canonicalize_hostname,
+    decanonicalize_hostname as _decanonicalize_hostname,
+    hostname_expr_templ,
+)
+from teuthology.util.paths import (
+    get_testdir as _get_testdir,
+    get_test_user as _get_test_user,
+    get_archive_dir as _get_archive_dir,
+    get_http_log_path as _get_http_log_path,
+)
+from teuthology.util.ssh_helpers import (
+    ssh_keyscan as _ssh_keyscan,
+    ssh_keyscan_wait as _ssh_keyscan_wait,
+)
+
 
 log = logging.getLogger(__name__)
 
@@ -43,52 +69,48 @@ stamp = datetime.datetime.now().strftime("%y%m%d%H%M")
 is_arm = lambda x: x.startswith('tala') or x.startswith(
     'ubuntu@tala') or x.startswith('saya') or x.startswith('ubuntu@saya')
 
-hostname_expr_templ = '(?P<user>.*@)?(?P<shortname>.*){lab_domain}'
 
+# Deprecated wrapper functions for backward compatibility
 def host_shortname(hostname):
-    if _is_ipv4(hostname) or _is_ipv6(hostname):
-        return hostname
-    else:
-        return hostname.split('.', 1)[0]
-
-def canonicalize_hostname(hostname, user: Optional[str] ='ubuntu'):
-    hostname_expr = hostname_expr_templ.format(
-        lab_domain=config.lab_domain.replace('.', r'\.'))
-    match = re.match(hostname_expr, hostname)
-    if _is_ipv4(hostname) or _is_ipv6(hostname):
-        return "%s@%s" % (user, hostname)
-    if match:
-        match_d = match.groupdict()
-        shortname = match_d['shortname']
-        if user is None:
-            user_ = user
-        else:
-            user_ = match_d.get('user') or user
-    else:
-        shortname = host_shortname(hostname)
-        user_ = user
-
-    user_at = user_.strip('@') + '@' if user_ else ''
-    domain = config.lab_domain
-    if domain and not shortname.endswith('.'):
-        domain = '.' + domain
-    ret = '{user_at}{short}{domain}'.format(
-        user_at=user_at,
-        short=shortname,
-        domain=domain,
+    """
+    .. deprecated::
+        Use :func:`teuthology.util.hostname.host_shortname` instead.
+    """
+    warnings.warn(
+        "teuthology.misc.host_shortname is deprecated. "
+        "Use teuthology.util.hostname.host_shortname instead.",
+        DeprecationWarning,
+        stacklevel=2
     )
-    return ret
+    return _host_shortname(hostname)
+
+
+def canonicalize_hostname(hostname, user: Optional[str] = 'ubuntu'):
+    """
+    .. deprecated::
+        Use :func:`teuthology.util.hostname.canonicalize_hostname` instead.
+    """
+    warnings.warn(
+        "teuthology.misc.canonicalize_hostname is deprecated. "
+        "Use teuthology.util.hostname.canonicalize_hostname instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return _canonicalize_hostname(hostname, user)
 
 
 def decanonicalize_hostname(hostname):
-    lab_domain = ''
-    if config.lab_domain:
-        lab_domain=r'\.' + config.lab_domain.replace('.', r'\.')
-    hostname_expr = hostname_expr_templ.format(lab_domain=lab_domain)
-    match = re.match(hostname_expr, hostname)
-    if match:
-        hostname = match.groupdict()['shortname']
-    return hostname
+    """
+    .. deprecated::
+        Use :func:`teuthology.util.hostname.decanonicalize_hostname` instead.
+    """
+    warnings.warn(
+        "teuthology.misc.decanonicalize_hostname is deprecated. "
+        "Use teuthology.util.hostname.decanonicalize_hostname instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return _decanonicalize_hostname(hostname)
 
 
 def config_file(string):
@@ -133,54 +155,60 @@ def merge_configs(config_paths) -> dict:
     return conf_dict
 
 
-def get_testdir(ctx=None):
-    """
-    :param ctx: Unused; accepted for compatibility
-    :returns: A test directory
-    """
-    if 'test_path' in config:
-        return config['test_path']
-    return config.get(
-        'test_path',
-        '/home/%s/cephtest' % get_test_user()
-    )
-
-
 def get_test_user(ctx=None):
     """
-    :param ctx: Unused; accepted for compatibility
-    :returns:   str -- the user to run tests as on remote hosts
+    .. deprecated::
+        Use :func:`teuthology.util.paths.get_test_user` instead.
     """
-    return config.get('test_user', 'ubuntu')
+    warnings.warn(
+        "teuthology.misc.get_test_user is deprecated. "
+        "Use teuthology.util.paths.get_test_user instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return _get_test_user(ctx)
+
+
+def get_testdir(ctx=None):
+    """
+    .. deprecated::
+        Use :func:`teuthology.util.paths.get_testdir` instead.
+    """
+    warnings.warn(
+        "teuthology.misc.get_testdir is deprecated. "
+        "Use teuthology.util.paths.get_testdir instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return _get_testdir(ctx)
 
 
 def get_archive_dir(ctx):
     """
-    :returns: archive directory (a subdirectory of the test directory)
+    .. deprecated::
+        Use :func:`teuthology.util.paths.get_archive_dir` instead.
     """
-    test_dir = get_testdir(ctx)
-    return os.path.normpath(os.path.join(test_dir, 'archive'))
+    warnings.warn(
+        "teuthology.misc.get_archive_dir is deprecated. "
+        "Use teuthology.util.paths.get_archive_dir instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return _get_archive_dir(ctx)
 
 
 def get_http_log_path(archive_dir, job_id=None):
     """
-    :param archive_dir: directory to be searched
-    :param job_id: id of job that terminates the name of the log path
-    :returns: http log path
+    .. deprecated::
+        Use :func:`teuthology.util.paths.get_http_log_path` instead.
     """
-    http_base = config.archive_server
-    if not http_base:
-        return None
-
-    sep = os.path.sep
-    archive_dir = archive_dir.rstrip(sep)
-    archive_subdir = archive_dir.split(sep)[-1]
-    if archive_subdir.endswith(str(job_id)):
-        archive_subdir = archive_dir.split(sep)[-2]
-
-    if job_id is None:
-        return os.path.join(http_base, archive_subdir, '')
-    return os.path.join(http_base, archive_subdir, str(job_id), '')
+    warnings.warn(
+        "teuthology.misc.get_http_log_path is deprecated. "
+        "Use teuthology.util.paths.get_http_log_path instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return _get_http_log_path(archive_dir, job_id)
 
 
 def get_results_url(run_name, job_id=None):
@@ -1023,83 +1051,30 @@ def update_key(key_to_update, a: dict, b: dict):
 
 def ssh_keyscan(hostnames, _raise=True):
     """
-    Fetch the SSH public key of one or more hosts
-
-    :param hostnames: A list of hostnames, or a dict keyed by hostname
-    :param _raise: Whether to raise an exception if not all keys are retrieved
-    :returns: A dict keyed by hostname, with the host keys as values
+    .. deprecated::
+        Use :func:`teuthology.util.ssh_helpers.ssh_keyscan` instead.
     """
-    if not isinstance(hostnames, list) and not isinstance(hostnames, dict):
-        raise TypeError("'hostnames' must be a list")
-    hostnames = [canonicalize_hostname(name, user=None) for name in
-                 hostnames]
-    keys_dict = dict()
-    for hostname in hostnames:
-        with safe_while(
-            sleep=1,
-            tries=15 if _raise else 1,
-            increment=1,
-            _raise=_raise,
-            action="ssh_keyscan " + hostname,
-        ) as proceed:
-            while proceed():
-                key = _ssh_keyscan(hostname)
-                if key:
-                    keys_dict[hostname] = key
-                    break
-    if len(keys_dict) != len(hostnames):
-        missing = set(hostnames) - set(keys_dict.keys())
-        msg = "Unable to scan these host keys: %s" % ' '.join(missing)
-        if not _raise:
-            log.warning(msg)
-        else:
-            raise RuntimeError(msg)
-    return keys_dict
-
-
-def _ssh_keyscan(hostname):
-    """
-    Fetch the SSH public key of one or more hosts
-
-    :param hostname: The hostname
-    :returns: The host key
-    """
-    args = ['ssh-keyscan', '-T', '1', hostname]
-    p = subprocess.Popen(
-        args=args,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+    warnings.warn(
+        "teuthology.misc.ssh_keyscan is deprecated. "
+        "Use teuthology.util.ssh_helpers.ssh_keyscan instead.",
+        DeprecationWarning,
+        stacklevel=2
     )
-    p.wait()
-    for line in p.stderr:
-        line = line.decode()
-        line = line.strip()
-        if line and not line.startswith('#'):
-            log.error(line)
-    keys = list()
-    for line in p.stdout:
-        host, key = line.strip().decode().split(' ', 1)
-        keys.append(key)
-    if len(keys) > 0:
-        return sorted(keys)[0]
+    return _ssh_keyscan(hostnames, _raise)
 
 
 def ssh_keyscan_wait(hostname):
     """
-    Run ssh-keyscan against a host, return True if it succeeds,
-    False otherwise. Try again if ssh-keyscan timesout.
-    :param hostname: on which ssh-keyscan is run
+    .. deprecated::
+        Use :func:`teuthology.util.ssh_helpers.ssh_keyscan_wait` instead.
     """
-    with safe_while(sleep=6, tries=100, _raise=False,
-                    action="ssh_keyscan_wait " + hostname) as proceed:
-        success = False
-        while proceed():
-            key = _ssh_keyscan(hostname)
-            if key:
-                success = True
-                break
-            log.info("try ssh_keyscan again for " + str(hostname))
-        return success
+    warnings.warn(
+        "teuthology.misc.ssh_keyscan_wait is deprecated. "
+        "Use teuthology.util.ssh_helpers.ssh_keyscan_wait instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return _ssh_keyscan_wait(hostname)
 
 def stop_daemons_of_type(ctx, type_, cluster='ceph', timeout=300):
     """
