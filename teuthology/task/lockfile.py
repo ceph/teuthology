@@ -1,16 +1,127 @@
 """
 Locking tests
 """
+import asyncio
+import functools
 import logging
 import os
+import threading
+import time
+from typing import Optional
 
 from teuthology.orchestra import run
 from teuthology import misc as teuthology
-import time
-import gevent
 
 
 log = logging.getLogger(__name__)
+
+
+class _AsyncTimeout:
+    """
+    Asyncio-based timeout context manager compatible with gevent.Timeout API.
+    """
+    def __init__(self, seconds: Optional[float] = None):
+        self.seconds = seconds
+        self._task: Optional[asyncio.Task] = None
+        self._cancelled = False
+    
+    def start(self):
+        """Start the timeout (no-op for compatibility)."""
+        pass
+    
+    def cancel(self):
+        """Cancel the timeout."""
+        self._cancelled = True
+        if self._task and not self._task.done():
+            self._task.cancel()
+    
+    async def __aenter__(self):
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        self.cancel()
+        return False
+
+
+class _TaskHandle:
+    """
+    Handle for managing an async task, compatible with gevent greenlet API.
+    """
+    def __init__(self, loop: asyncio.AbstractEventLoop, coro):
+        self._loop = loop
+        self._future = asyncio.run_coroutine_threadsafe(coro, loop)
+        self._killed = False
+    
+    def get(self):
+        """Wait for and return the task result (blocking)."""
+        try:
+            return self._future.result()
+        except Exception:
+            raise
+    
+    def kill(self, block=True):
+        """Kill the task."""
+        if not self._killed and not self._future.done():
+            self._killed = True
+            self._future.cancel()
+            if block:
+                try:
+                    self._future.result(timeout=1.0)
+                except Exception:
+                    pass
+
+
+class _EventLoopManager:
+    """
+    Manages a dedicated event loop in a background thread for async operations.
+    """
+    def __init__(self):
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
+        self._thread: Optional[threading.Thread] = None
+        self._started = False
+    
+    def start(self):
+        """Start the event loop in a background thread."""
+        if self._started:
+            return
+        
+        self._started = True
+        self._loop = asyncio.new_event_loop()
+        
+        def run_loop():
+            assert self._loop is not None
+            asyncio.set_event_loop(self._loop)
+            self._loop.run_forever()
+        
+        self._thread = threading.Thread(target=run_loop, daemon=True)
+        self._thread.start()
+    
+    def stop(self):
+        """Stop the event loop and thread."""
+        if self._loop and self._loop.is_running():
+            self._loop.call_soon_threadsafe(self._loop.stop)
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=1.0)
+        self._started = False
+    
+    def spawn(self, func, *args, **kwargs):
+        """Spawn a function to run asynchronously."""
+        if not self._started:
+            self.start()
+        assert self._loop is not None
+        
+        # Wrap the sync function to run in executor
+        async def run_in_executor():
+            loop = asyncio.get_event_loop()
+            wrapped = functools.partial(func, *args, **kwargs)
+            return await loop.run_in_executor(None, wrapped)
+        
+        return _TaskHandle(self._loop, run_in_executor())
+    
+    @property
+    def loop(self):
+        """Get the event loop."""
+        return self._loop
 
 def task(ctx, config):
     """
@@ -47,6 +158,11 @@ def task(ctx, config):
     :param config: Configuration
     """
     log.info('Starting lockfile')
+    lock_procs = list()
+    loop_manager = None
+    clients = set()
+    testdir = None
+    
     try:
         assert isinstance(config, list), \
             "task lockfile got invalid config"
@@ -54,14 +170,14 @@ def task(ctx, config):
         log.info("building executable on each host")
         buildprocs = list()
         # build the locker executable on each client
-        clients = list()
+        clients_list = list()
         files = list()
         for op in config:
             if not isinstance(op, dict):
                 continue
             log.info("got an op")
             log.info("op['client'] = %s", op['client'])
-            clients.append(op['client'])
+            clients_list.append(op['client'])
             files.append(op['lockfile'])
             if not "expectfail" in op:
                 op["expectfail"] = False
@@ -76,14 +192,12 @@ def task(ctx, config):
                 raise KeyError("bad config {op_}".format(op_=op))
 
         testdir = teuthology.get_testdir(ctx)
-        clients = set(clients)
+        clients = set(clients_list)
         files = set(files)
-        lock_procs = list()
         for client in clients:
             (client_remote,) = ctx.cluster.only(client).remotes.keys()
             log.info("got a client remote")
             (_, _, client_id) = client.partition('.')
-            filepath = os.path.join(testdir, 'mnt.{id}'.format(id=client_id), op["lockfile"])
 
             proc = client_remote.run(
                 args=[
@@ -143,6 +257,9 @@ def task(ctx, config):
         run.wait(file_procs)
         log.debug('created files to lock')
 
+        # Create event loop manager for async operations
+        loop_manager = _EventLoopManager()
+        
         # now actually run the locktests
         for op in config:
             if not isinstance(op, dict):
@@ -150,37 +267,45 @@ def task(ctx, config):
                 log.info("sleeping for {sleep} seconds".format(sleep=op))
                 time.sleep(op)
                 continue
-            greenlet = gevent.spawn(lock_one, op, ctx)
-            lock_procs.append((greenlet, op))
+            task_handle = loop_manager.spawn(lock_one, op, ctx)
+            lock_procs.append((task_handle, op))
             time.sleep(0.1) # to provide proper ordering
         #for op in config
 
-        for (greenlet, op) in lock_procs:
+        for (task_handle, op) in lock_procs:
             log.debug('checking lock for op {op_}'.format(op_=op))
-            result = greenlet.get()
+            result = task_handle.get()
             if not result:
                 raise Exception("Got wrong result for op {op_}".format(op_=op))
-        # for (greenlet, op) in lock_procs
+        # for (task_handle, op) in lock_procs
 
     finally:
         #cleanup!
         if lock_procs:
-            for (greenlet, op) in lock_procs:
+            for (task_handle, op) in lock_procs:
                 log.debug('closing proc for op {op_}'.format(op_=op))
-                greenlet.kill(block=True)
+                task_handle.kill(block=True)
+        
+        # Stop the event loop
+        if loop_manager:
+            loop_manager.stop()
 
-        for client in clients:
-            (client_remote,)  = ctx.cluster.only(client).remotes.keys()
-            (_, _, client_id) = client.partition('.')
-            filepath = os.path.join(testdir, 'mnt.{id}'.format(id=client_id), op["lockfile"])
-            proc = client_remote.run(
-                args=[
-                    'rm', '-rf', '{tdir}/lockfile'.format(tdir=testdir),
-                    run.Raw(';'),
-                    'sudo', 'rm', '-rf', filepath
-                    ],
-                wait=True
-                ) #proc
+        if clients and testdir:
+            for client in clients:
+                (client_remote,)  = ctx.cluster.only(client).remotes.keys()
+                (_, _, client_id) = client.partition('.')
+                # Use the first lockfile from files for cleanup
+                for lockfile in files:
+                    filepath = os.path.join(testdir, 'mnt.{id}'.format(id=client_id), lockfile)
+                    proc = client_remote.run(
+                        args=[
+                            'rm', '-rf', '{tdir}/lockfile'.format(tdir=testdir),
+                            run.Raw(';'),
+                            'sudo', 'rm', '-rf', filepath
+                            ],
+                        wait=True
+                        ) #proc
+                    break  # Only need to clean up once per client
     #done!
 # task
 
@@ -189,7 +314,7 @@ def lock_one(op, ctx):
     Perform the individual lock
     """
     log.debug('spinning up locker with op={op_}'.format(op_=op))
-    timeout = None
+    timeout_obj = None
     proc = None
     result = None
     (client_remote,)  = ctx.cluster.only(op['client']).remotes.keys()
@@ -198,8 +323,10 @@ def lock_one(op, ctx):
     filepath = os.path.join(testdir, 'mnt.{id}'.format(id=client_id), op["lockfile"])
 
     if "maxwait" in op:
-        timeout = gevent.Timeout(seconds=float(op["maxwait"]))
-        timeout.start()
+        timeout_obj = _AsyncTimeout(seconds=float(op["maxwait"]))
+        timeout_obj.start()
+    
+    timeout_occurred = False
     try:
         proc = client_remote.run(
             args=[
@@ -219,20 +346,38 @@ def lock_one(op, ctx):
             stdin=run.PIPE,
             check_status=False
             )
-        result = proc.wait()
-    except gevent.Timeout as tout:
-        if tout is not timeout:
-            raise
-        if bool(op["expectfail"]):
-            result = 1
-        if result == 1:
-            if bool(op["expectfail"]):
-                log.info("failed as expected for op {op_}".format(op_=op))
-            else:
-                raise Exception("Unexpectedly failed to lock {op_} within given timeout!".format(op_=op))
+        
+        # Wait for process with timeout
+        if timeout_obj and timeout_obj.seconds:
+            import signal
+            
+            def timeout_handler(signum, frame):
+                raise TimeoutError("Operation timed out")
+            
+            old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(int(timeout_obj.seconds))
+            try:
+                result = proc.wait()
+                signal.alarm(0)  # Cancel alarm
+            except TimeoutError:
+                timeout_occurred = True
+                signal.alarm(0)  # Cancel alarm
+                if bool(op["expectfail"]):
+                    result = 1
+            finally:
+                signal.signal(signal.SIGALRM, old_handler)
+        else:
+            result = proc.wait()
+        
+        if timeout_occurred:
+            if result == 1:
+                if bool(op["expectfail"]):
+                    log.info("failed as expected for op {op_}".format(op_=op))
+                else:
+                    raise Exception("Unexpectedly failed to lock {op_} within given timeout!".format(op_=op))
     finally: #clean up proc
-        if timeout is not None:
-            timeout.cancel()
+        if timeout_obj is not None:
+            timeout_obj.cancel()
         if proc is not None:
             proc.stdin.close()
 
