@@ -60,6 +60,18 @@ from teuthology.util.ssh_helpers import (
     ssh_keyscan as _ssh_keyscan,
     ssh_keyscan_wait as _ssh_keyscan_wait,
 )
+from teuthology.util.remote_files import (
+    write_file as _write_file,
+    sudo_write_file as _sudo_write_file,
+    copy_file as _copy_file,
+    move_file as _move_file,
+    delete_file as _delete_file,
+    append_lines_to_file as _append_lines_to_file,
+    prepend_lines_to_file as _prepend_lines_to_file,
+    remove_lines_from_file as _remove_lines_from_file,
+    create_file as _create_file,
+    get_file as _get_file,
+)
 
 
 log = logging.getLogger(__name__)
@@ -557,16 +569,28 @@ def write_file(remote, path, data):
     """
     Write data to a remote file
 
+    .. deprecated::
+        Use :func:`teuthology.util.remote_files.write_file` instead.
+
     :param remote: Remote site.
     :param path: Path on the remote being written to.
     :param data: Data to be written.
     """
-    remote.write_file(path, data)
+    warnings.warn(
+        "teuthology.misc.write_file is deprecated. "
+        "Use teuthology.util.remote_files.write_file instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return _write_file(remote, path, data)
 
 
 def sudo_write_file(remote, path, data, perms=None, owner=None):
     """
     Write data to a remote file as super user
+
+    .. deprecated::
+        Use :func:`teuthology.util.remote_files.sudo_write_file` instead.
 
     :param remote: Remote site.
     :param path: Path on the remote being written to.
@@ -576,24 +600,37 @@ def sudo_write_file(remote, path, data, perms=None, owner=None):
 
     Both perms and owner are passed directly to chmod.
     """
-    remote.sudo_write_file(path, data, mode=perms, owner=owner)
+    warnings.warn(
+        "teuthology.misc.sudo_write_file is deprecated. "
+        "Use teuthology.util.remote_files.sudo_write_file instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return _sudo_write_file(remote, path, data, perms=perms, owner=owner)
 
 
 def copy_file(from_remote, from_path, to_remote, to_path=None):
     """
     Copies a file from one remote to another.
+
+    .. deprecated::
+        Use :func:`teuthology.util.remote_files.copy_file` instead.
     """
-    if to_path is None:
-        to_path = from_path
-    from_remote.run(args=[
-        'sudo', 'scp', '-v', from_path, "{host}:{file}".format(
-            host=to_remote.name, file=to_path)
-    ])
+    warnings.warn(
+        "teuthology.misc.copy_file is deprecated. "
+        "Use teuthology.util.remote_files.copy_file instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return _copy_file(from_remote, from_path, to_remote, to_path=to_path)
 
 
 def move_file(remote, from_path, to_path, sudo=False, preserve_perms=True):
     """
     Move a file from one path to another on a remote site
+
+    .. deprecated::
+        Use :func:`teuthology.util.remote_files.move_file` instead.
 
     If preserve_perms is true, the contents of the destination file (to_path,
     which must already exist in this case) are replaced with the contents of the
@@ -601,58 +638,30 @@ def move_file(remote, from_path, to_path, sudo=False, preserve_perms=True):
     preserve_perms is false, to_path does not need to exist, and is simply
     clobbered if it does.
     """
-    if preserve_perms:
-        args = []
-        if sudo:
-            args.append('sudo')
-        args.extend([
-            'stat',
-            '-c',
-            '\"%a\"',
-            to_path
-        ])
-        perms = remote.sh(args).rstrip().strip('\"')
-
-    args = []
-    if sudo:
-        args.append('sudo')
-    args.extend([
-        'mv',
-        '--',
-        from_path,
-        to_path,
-    ])
-    remote.sh(args)
-
-    if preserve_perms:
-        # reset the file back to the original permissions
-        args = []
-        if sudo:
-            args.append('sudo')
-        args.extend([
-            'chmod',
-            perms,
-            to_path,
-        ])
-        remote.sh(args)
+    warnings.warn(
+        "teuthology.misc.move_file is deprecated. "
+        "Use teuthology.util.remote_files.move_file instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return _move_file(remote, from_path, to_path, sudo=sudo, preserve_perms=preserve_perms)
 
 
 def delete_file(remote, path, sudo=False, force=False, check=True):
     """
     rm a file on a remote site. Use force=True if the call should succeed even
     if the file is absent or rm path would otherwise fail.
+
+    .. deprecated::
+        Use :func:`teuthology.util.remote_files.delete_file` instead.
     """
-    args = []
-    if sudo:
-        args.append('sudo')
-    args.extend(['rm'])
-    if force:
-        args.extend(['-f'])
-    args.extend([
-        '--',
-        path,
-    ])
-    remote.sh(args, check_status=check)
+    warnings.warn(
+        "teuthology.misc.delete_file is deprecated. "
+        "Use teuthology.util.remote_files.delete_file instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return _delete_file(remote, path, sudo=sudo, force=force, check=check)
 
 
 def remove_lines_from_file(remote, path, line_is_valid_test,
@@ -662,92 +671,83 @@ def remove_lines_from_file(remote, path, line_is_valid_test,
     the appropriate lines, saving the file, and then replacing the original
     file with the new file.  Intermediate files are used to prevent data loss
     on when the main site goes up and down.
+
+    .. deprecated::
+        Use :func:`teuthology.util.remote_files.remove_lines_from_file` instead.
     """
-    # read in the specified file
-    in_data = remote.read_file(path, False).decode()
-    out_data = ""
-
-    first_line = True
-    # use the 'line_is_valid_test' function to remove unwanted lines
-    for line in in_data.split('\n'):
-        if line_is_valid_test(line, string_to_test_for):
-            if not first_line:
-                out_data += '\n'
-            else:
-                first_line = False
-
-            out_data += '{line}'.format(line=line)
-
-        else:
-            log.info('removing line: {bad_line}'.format(bad_line=line))
-
-    # get a temp file path on the remote host to write to,
-    # we don't want to blow away the remote file and then have the
-    # network drop out
-    temp_file_path = remote.mktemp()
-
-    # write out the data to a temp file
-    write_file(remote, temp_file_path, out_data)
-
-    # then do a 'mv' to the actual file location
-    move_file(remote, temp_file_path, path)
+    warnings.warn(
+        "teuthology.misc.remove_lines_from_file is deprecated. "
+        "Use teuthology.util.remote_files.remove_lines_from_file instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return _remove_lines_from_file(remote, path, line_is_valid_test, string_to_test_for)
 
 
 def append_lines_to_file(remote, path, lines, sudo=False):
     """
     Append lines to a file.
+
+    .. deprecated::
+        Use :func:`teuthology.util.remote_files.append_lines_to_file` instead.
     """
-    remote.write_file(path, lines, append=True, sudo=sudo)
+    warnings.warn(
+        "teuthology.misc.append_lines_to_file is deprecated. "
+        "Use teuthology.util.remote_files.append_lines_to_file instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return _append_lines_to_file(remote, path, lines, sudo=sudo)
 
 def prepend_lines_to_file(remote, path, lines, sudo=False):
     """
     Prepend lines to a file.
     An intermediate file is used in the same manner as in
     Remove_lines_from_list.
-    """
 
-    temp_file_path = remote.mktemp()
-    remote.write_file(temp_file_path, lines)
-    remote.copy_file(path, temp_file_path, append=True, sudo=sudo)
-    remote.move_file(temp_file_path, path, sudo=sudo)
+    .. deprecated::
+        Use :func:`teuthology.util.remote_files.prepend_lines_to_file` instead.
+    """
+    warnings.warn(
+        "teuthology.misc.prepend_lines_to_file is deprecated. "
+        "Use teuthology.util.remote_files.prepend_lines_to_file instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return _prepend_lines_to_file(remote, path, lines, sudo=sudo)
 
 
 def create_file(remote, path, data="", permissions=str(644), sudo=False):
     """
     Create a file on the remote host.
+
+    .. deprecated::
+        Use :func:`teuthology.util.remote_files.create_file` instead.
     """
-    args = []
-    if sudo:
-        args.append('sudo')
-    args.extend([
-        'touch',
-        path,
-        run.Raw('&&')
-    ])
-    if sudo:
-        args.append('sudo')
-    args.extend([
-        'chmod',
-        permissions,
-        '--',
-        path
-    ])
-    remote.sh(args)
-    # now write out the data if any was passed in
-    if "" != data:
-        append_lines_to_file(remote, path, data, sudo)
+    warnings.warn(
+        "teuthology.misc.create_file is deprecated. "
+        "Use teuthology.util.remote_files.create_file instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return _create_file(remote, path, data=data, permissions=permissions, sudo=sudo)
 
 
 def get_file(remote, path, sudo=False, dest_dir='/tmp'):
     """
     Get the contents of a remote file. Do not use for large files; use
     Remote.get_file() instead.
+
+    .. deprecated::
+        Use :func:`teuthology.util.remote_files.get_file` instead.
     """
-    local_path = remote.get_file(path, sudo=sudo, dest_dir=dest_dir)
-    with open(local_path, 'rb') as file_obj:
-        file_data = file_obj.read()
-    os.remove(local_path)
-    return file_data
+    warnings.warn(
+        "teuthology.misc.get_file is deprecated. "
+        "Use teuthology.util.remote_files.get_file instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return _get_file(remote, path, sudo=sudo, dest_dir=dest_dir)
 
 
 def copy_fileobj(src, tarinfo, local_path):
