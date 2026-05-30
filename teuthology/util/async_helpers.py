@@ -59,6 +59,7 @@ class TaskHandle:
                 try:
                     self._future.result(timeout=1.0)
                 except Exception:
+                    # Expected: CancelledError or other exceptions during cancellation
                     pass
 
     @property
@@ -156,18 +157,36 @@ class EventLoopManager:
             self._thread.start()
             self._started = True
 
-    def stop(self, join_timeout: float = 1.0, close_loop: bool = False):
+    def stop(self, join_timeout: float = 1.0, close_loop: bool = True):
         """Stop the background event loop.
 
         :param join_timeout: Maximum time to wait for the loop thread to exit.
         :param close_loop: Close the loop object after the thread stops. This is
             useful for call sites that historically owned a short-lived loop.
+            Defaults to True to prevent resource warnings.
         """
         with self._state_lock:
             loop = self._loop
             thread = self._thread
 
             if loop and loop.is_running():
+                # Cancel all pending tasks and wait for them to complete
+                async def cancel_and_wait():
+                    tasks = [task for task in asyncio.all_tasks(loop)
+                            if not task.done() and task is not asyncio.current_task(loop)]
+                    for task in tasks:
+                        task.cancel()
+                    # Wait for all tasks to be cancelled
+                    if tasks:
+                        await asyncio.gather(*tasks, return_exceptions=True)
+                
+                # Schedule the cancellation and wait for it to complete
+                future = asyncio.run_coroutine_threadsafe(cancel_and_wait(), loop)
+                try:
+                    future.result(timeout=0.5)
+                except Exception:
+                    pass
+                
                 loop.call_soon_threadsafe(loop.stop)
             if thread and thread.is_alive():
                 thread.join(timeout=join_timeout)

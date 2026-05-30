@@ -149,6 +149,9 @@ class parallel(object):
             self._loop.call_soon_threadsafe(self._loop.stop)
         if getattr(self, "_loop_thread", None) and self._loop_thread.is_alive():
             self._loop_thread.join(timeout=1.0)
+        # Close the event loop to prevent resource warnings
+        if self._loop and not self._loop.is_closed():
+            self._loop.close()
 
     def __iter__(self):
         return self
