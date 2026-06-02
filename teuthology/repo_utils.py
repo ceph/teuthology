@@ -124,15 +124,25 @@ def enforce_repo_state(repo_url, dest_path, branch, commit=None, remove_on_error
             log.debug("Using bare clone methodology at %s", dest_clone)
             bare_lock_path = dest_clone.rstrip('/') + '.lock'
             bare_sentinel = os.path.join(dest_clone, '.fetched')
+            fetch_head = os.path.join(dest_clone, 'FETCH_HEAD')
+
             with FileLock(bare_lock_path, noop=not lock):
                 if not os.path.isdir(dest_clone):
                     log.info("Bare clone not found; initializing at %s", dest_clone)
                     init_bare_repo(dest_clone)
-                elif not commit and not is_fresh(bare_sentinel):
+
+                # Always fetch if FETCH_HEAD doesn't exist, regardless of freshness
+                needs_fetch = not os.path.exists(fetch_head)
+                if needs_fetch:
+                    log.debug("FETCH_HEAD missing in bare clone %s; forcing fetch", dest_clone)
+                if not commit and not is_fresh(bare_sentinel):
                     log.debug("Updating freshness sentinel for bare clone")
+                    needs_fetch = True
+
+                if needs_fetch:
+                    fetch_bare_repo(dest_clone, repo_url, branch, commit)
                     touch_file(bare_sentinel)
 
-                fetch_bare_repo(dest_clone, repo_url, branch, commit)
                 prune_bare_repo(dest_clone)
                 create_worktree(dest_clone, dest_path, commit or 'FETCH_HEAD')
                 touch_file(repo_reset)
