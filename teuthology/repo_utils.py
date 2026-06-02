@@ -233,7 +233,7 @@ def fetch_bare_repo(bare_dir, url, branch, commit=None):
             return
 
     log.debug("Commit not present or not specified; fetching from remote")
-    args = ['git', 'fetch', url]
+    args = ['git', 'fetch', '--update-shallow', url]
     if commit is not None:
         args.append(commit)
     else:
