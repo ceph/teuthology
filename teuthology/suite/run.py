@@ -20,7 +20,7 @@ from teuthology.exceptions import (
 from teuthology.misc import deep_merge, get_results_url, update_key
 from teuthology.orchestra.opsys import OS
 from teuthology.repo_utils import build_git_url
-from teuthology.report import try_create_run
+from teuthology.report import normalize_tags, try_create_run
 
 from teuthology.suite import util
 from teuthology.suite.merge import config_merge
@@ -53,7 +53,7 @@ class Run(object):
             config.ceph_git_url = self.args.ceph_repo
         if self.args.suite_repo:
             config.ceph_qa_suite_git_url = self.args.suite_repo
-        self.tag = self.args.tag or []
+        self.tag = normalize_tags(self.args.tag)
 
         self.base_config = self.create_initial_config()
 

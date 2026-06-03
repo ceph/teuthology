@@ -17,6 +17,22 @@ from teuthology.job_status import get_status, set_status
 report_exceptions = (requests.exceptions.RequestException, socket.error)
 
 
+def normalize_tags(value):
+    """
+    Normalize --tag / config input to a list of tag strings for Paddles.
+
+    Accepts a comma-separated string or a list. Tag values are lowercased to
+    match teuthology-suite argument handling.
+    """
+    if not value:
+        return []
+    if isinstance(value, str):
+        parts = value.split(',')
+    else:
+        parts = value
+    return [str(t).strip().lower() for t in parts if str(t).strip()]
+
+
 def init_logging():
     """
     Set up logging for the module
@@ -448,17 +464,50 @@ class ResultsReporter(object):
 
     def create_run(self, run_name, tag_list):
         """
-        Create a new run in the results server with an optional tag.
+        Register a run on Paddles with the given tags.
+
+        Uses POST /runs/ when the run does not exist yet. If the run was
+        already created (e.g. by the first job POST), updates tags via PUT.
 
         :param run_name: The name of the run
-        :param tag_list: List of tags
+        :param tag_list: List of tags (or comma-separated string)
         """
-        uri = "{base}/runs/{name}".format(base=self.base_uri, name=run_name)
+        tag_list = normalize_tags(tag_list)
+        if not tag_list:
+            return
+
+        base = self.base_uri.rstrip('/')
+        create_uri = "{base}/runs/".format(base=base)
         payload = {
             "name": run_name,
-            "tag": tag_list
+            "tags": tag_list,
         }
-        response = self.session.post(uri, json=payload)
+        response = self.session.post(create_uri, json=payload)
+        if response.status_code == 200:
+            return
+
+        try:
+            message = response.json().get('message', '')
+        except ValueError:
+            message = response.text or ''
+
+        if response.status_code == 400 and 'already exists' in message:
+            self.update_run_tags(run_name, tag_list)
+            return
+
+        response.raise_for_status()
+
+    def update_run_tags(self, run_name, tag_list):
+        """
+        Replace tags on an existing run (PUT /runs/<name>/).
+
+        :param run_name: The name of the run
+        :param tag_list: List of tags (or comma-separated string)
+        """
+        tag_list = normalize_tags(tag_list)
+        base = self.base_uri.rstrip('/')
+        uri = "{base}/runs/{name}/".format(base=base, name=run_name)
+        response = self.session.put(uri, json={"tags": tag_list})
         response.raise_for_status()
 
     def delete_run(self, run_name):

@@ -184,6 +184,7 @@ class TeuthologyConfig(YamlConfig):
         'use_shaman': True,
         'shaman_host': 'shaman.ceph.com',
         'teuthology_path': None,
+        'tag': None,
         'suite_verify_ceph_hash': True,
         'suite_allow_missing_packages': False,
         'openstack': {

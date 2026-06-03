@@ -10,7 +10,7 @@ import time
 
 import teuthology
 from teuthology.config import config, YamlConfig
-from teuthology.report import ResultsReporter
+from teuthology.report import ResultsReporter, normalize_tags
 from teuthology.results import UNFINISHED_STATUSES
 
 from teuthology.suite.run import Run
@@ -55,7 +55,7 @@ def process_args(args):
         if key == 'suite_branch':
             value = value or override_arg_defaults('--suite-branch', None)
         if key == "tag" and value is not None:
-            value = [val.lower() for val in value]
+            value = normalize_tags(value)
         if key == 'suite' and value is not None:
             value = normalize_suite_name(value)
         if key == 'suite_relpath' and value is None:
