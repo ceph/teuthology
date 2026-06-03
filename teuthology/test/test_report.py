@@ -1,4 +1,6 @@
 import json
+from unittest.mock import Mock
+
 import pytest
 import yaml
 
@@ -82,5 +84,46 @@ def test_json_for_job(archive, reporter):
         run_name, str(job['job_id']))
     out_obj = json.loads(out_json)
     assert full_obj == out_obj
+
+
+def test_normalize_tags():
+    assert report.normalize_tags('Foo, bar') == ['foo', 'bar']
+    assert report.normalize_tags(['Squid', 'Reef']) == ['squid', 'reef']
+    assert report.normalize_tags('') == []
+    assert report.normalize_tags(None) == []
+
+
+def test_create_run_posts_to_paddles_runs():
+    reporter = report.ResultsReporter(archive_base='/tmp')
+    reporter.base_uri = 'http://paddles:8080'
+    reporter.session = Mock()
+    ok = Mock(status_code=200)
+    reporter.session.post.return_value = ok
+
+    reporter.create_run('my-run', 'tracker-74166')
+
+    reporter.session.post.assert_called_once_with(
+        'http://paddles:8080/runs/',
+        json={'name': 'my-run', 'tags': ['tracker-74166']},
+    )
+
+
+def test_create_run_puts_when_run_already_exists():
+    reporter = report.ResultsReporter(archive_base='/tmp')
+    reporter.base_uri = 'http://paddles:8080'
+    reporter.session = Mock()
+    exists = Mock(status_code=400)
+    exists.json.return_value = {
+        'message': 'run with name my-run already exists',
+    }
+    reporter.session.post.return_value = exists
+    reporter.session.put.return_value = Mock(status_code=200)
+
+    reporter.create_run('my-run', ['squid'])
+
+    reporter.session.put.assert_called_once_with(
+        'http://paddles:8080/runs/my-run/',
+        json={'tags': ['squid']},
+    )
 
 
