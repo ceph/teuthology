@@ -546,7 +546,10 @@ def try_delete_jobs(run_name, job_ids, delete_empty_run=True):
         server=config.results_server, jobs=str(job_ids)))
 
     if delete_empty_run:
-        got_jobs = reporter.get_jobs(run_name, fields=['job_id'])
+        try:
+            got_jobs = reporter.get_jobs(run_name, fields=['job_id'])
+        except report_exceptions:
+            return
         got_job_ids = [j['job_id'] for j in got_jobs]
         if sorted(got_job_ids) == sorted(job_ids):
             try:
