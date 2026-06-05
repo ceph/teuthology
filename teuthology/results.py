@@ -97,7 +97,7 @@ def email_results(subject, from_, to, body):
     smtp.quit()
 
 
-def build_email_body(name, _reporter=None):
+def build_email_body(name):
     stanzas = OrderedDict([
         ('fail', dict()),
         ('dead', dict()),
@@ -106,7 +106,7 @@ def build_email_body(name, _reporter=None):
         ('queued', dict()),
         ('pass', dict()),
     ])
-    reporter = _reporter or ResultsReporter()
+    reporter = ResultsReporter()
     fields = ('job_id', 'status', 'description', 'duration', 'failure_reason',
               'sentry_event', 'log_href')
     jobs = reporter.get_jobs(name, fields=fields)

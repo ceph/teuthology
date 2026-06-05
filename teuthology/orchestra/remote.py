@@ -401,9 +401,8 @@ class Remote(RemoteShell):
             # clear from the technical side.
             # I'll get "[Errno 98] Address already in use" altough
             # there are no open tcp(ssh) connections.
-            # When connecting without keepalive, host_key and _create_key 
-            # set, it will proceed.
-            args = dict(user_at_host=self.name, _create_key=False, host_key=None)
+            # When connecting without keepalive and host_key set, it will proceed.
+            args = dict(user_at_host=self.name, host_key=None)
         if timeout:
             args['timeout'] = timeout
 

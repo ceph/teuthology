@@ -54,7 +54,6 @@ class TestConnection(object):
         m_ssh_instance.get_transport.return_value = m_transport
         got = connection.connect(
             'jdoe@orchestra.test.newdream.net.invalid',
-            _SSHClient=self.m_ssh,
         )
         self.m_ssh.assert_called_once()
         m_ssh_instance.set_missing_host_key_policy.assert_called_once()
@@ -75,7 +74,6 @@ class TestConnection(object):
         m_ssh_instance.get_transport.return_value = m_transport
         got = connection.connect(
             'jdoe@orchestra.test.newdream.net.invalid',
-            _SSHClient=self.m_ssh,
         )
         self.m_ssh.assert_called_once()
         m_ssh_instance.set_missing_host_key_policy.assert_called_once()
@@ -88,20 +86,18 @@ class TestConnection(object):
         m_transport.set_keepalive.assert_called_once_with(False)
         assert got is m_ssh_instance
 
-    def test_connect_override_hostkeys(self):
+    @patch('teuthology.orchestra.connection.create_key')
+    def test_connect_override_hostkeys(self, m_create_key):
         self.clear_config()
         m_ssh_instance = self.m_ssh.return_value = Mock();
         m_transport = Mock()
         m_ssh_instance.get_transport.return_value = m_transport
         m_host_keys = Mock()
         m_ssh_instance.get_host_keys.return_value = m_host_keys
-        m_create_key = Mock()
         m_create_key.return_value = "frobnitz"
         got = connection.connect(
             'jdoe@orchestra.test.newdream.net.invalid',
             host_key='ssh-rsa testkey',
-            _SSHClient=self.m_ssh,
-            _create_key=m_create_key,
             )
         self.m_ssh.assert_called_once()
         m_ssh_instance.get_host_keys.assert_called_once()
