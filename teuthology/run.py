@@ -272,6 +272,21 @@ def report_outcome(config, archive, summary):
     summary_dump = yaml.safe_dump(summary)
     log.info('Summary data:\n%s' % summary_dump)
 
+    if not passed:
+        try:
+            from teuthology.util.redmine_suggest import log_redmine_suggestions_on_failure
+            log_redmine_suggestions_on_failure(
+                log,
+                summary.get('failure_reason'),
+                config,
+                failure_reason_detail=summary.get('failure_reason_detail'),
+                teuthology_log_path=(
+                    os.path.join(archive, 'teuthology.log') if archive else None
+                ),
+            )
+        except Exception as e:
+            log.debug('Redmine tracker suggestions skipped: %s', e)
+
     if ('email-on-error' in config
             and not passed):
         config_dump = yaml.safe_dump(config)
