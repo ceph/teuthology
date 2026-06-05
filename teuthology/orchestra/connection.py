@@ -4,7 +4,7 @@ Connection utilities
 import paramiko
 import os
 import logging
-from typing import Callable, Optional, Tuple, Union, List
+from typing import Optional, Tuple, Union, List
 
 from teuthology.config import config
 from teuthology.contextutil import safe_while
@@ -39,8 +39,7 @@ def create_key(keytype: str, key: str) -> PKey:
 
 
 def connect(user_at_host: str, host_key: Optional[str] = None, keep_alive: bool = False,
-            timeout: int = 60, _SSHClient: Optional = None,
-            _create_key: Optional[Callable[[str, str], PKey]] = None,
+            timeout: int = 60,
             retry: bool = True, key_filename: Optional[Union[str, List[str]]] = None) -> paramiko.SSHClient:
     """
     ssh connection routine.
@@ -49,8 +48,6 @@ def connect(user_at_host: str, host_key: Optional[str] = None, keep_alive: bool 
     :param host_key: ssh key
     :param keep_alive: keep_alive indicator
     :param timeout:    timeout in seconds
-    :param _SSHClient: client, default is paramiko ssh client
-    :param _create_key: routine to create a key (defaults to local reate_key)
     :param retry:       Whether or not to retry failed connection attempts
                         (eventually giving up if none succeed). Default is True
     :param key_filename:  Optionally override which private key to use.
@@ -59,12 +56,7 @@ def connect(user_at_host: str, host_key: Optional[str] = None, keep_alive: bool 
     if timeout is None:
         timeout = 60
     user, host = split_user(user_at_host)
-    if _SSHClient is None:
-        _SSHClient = paramiko.SSHClient
-    ssh = _SSHClient()
-
-    if _create_key is None:
-        _create_key = create_key
+    ssh = paramiko.SSHClient()
 
     if host_key is None:
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -76,7 +68,7 @@ def connect(user_at_host: str, host_key: Optional[str] = None, keep_alive: bool 
         ssh.get_host_keys().add(
             hostname=host,
             keytype=keytype,
-            key=_create_key(keytype, key)
+            key=create_key(keytype, key)
             )
 
     connect_args: dict[str, Union[str, None, int, list[str]]] = dict(

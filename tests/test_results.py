@@ -1,9 +1,8 @@
 import textwrap
 from teuthology.config import config
 from teuthology import results
-from teuthology import report
 
-from unittest.mock import patch, DEFAULT
+from unittest.mock import patch
 
 
 class TestResultsEmail(object):
@@ -141,15 +140,11 @@ class TestResultsEmail(object):
         config.results_ui_server = "http://example.com/"
         config.archive_server = "http://qa-proxy.ceph.com/teuthology/"
 
-    def test_build_email_body(self):
+    @patch('teuthology.results.ResultsReporter')
+    def test_build_email_body(self, m_reporter):
         run_name = self.reference['run_name']
-        with patch.multiple(
-                report,
-                ResultsReporter=DEFAULT,
-                ):
-            reporter = report.ResultsReporter()
-            reporter.get_jobs.return_value = self.reference['jobs']
-            (subject, body) = results.build_email_body(
-                run_name, _reporter=reporter)
+        reporter = m_reporter.return_value
+        reporter.get_jobs.return_value = self.reference['jobs']
+        (subject, body) = results.build_email_body(run_name)
         assert subject == self.reference['subject']
         assert body == self.reference['body']

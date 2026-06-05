@@ -18,68 +18,62 @@ class TestDownburst(object):
             description="desc",
         )
 
-    def test_create_if_vm_success(self):
+    @patch('teuthology.lock.query.get_status')
+    @patch('teuthology.provision.downburst.Downburst')
+    def test_create_if_vm_success(self, m_downburst, m_get_status):
         name = self.name
         ctx = self.ctx
         status = self.status
+        m_get_status.return_value = status
 
-        dbrst = provision.downburst.Downburst(
-            name, ctx.os_type, ctx.os_version, status)
+        dbrst = MagicMock()
         dbrst.executable = '/fake/path'
         dbrst.build_config = MagicMock(name='build_config')
         dbrst._run_create = MagicMock(name='_run_create')
         dbrst._run_create.return_value = (0, '', '')
+        dbrst.create.return_value = True
         remove_config = MagicMock(name='remove_config')
         dbrst.remove_config = remove_config
+        m_downburst.return_value = dbrst
 
-        result = provision.create_if_vm(ctx, name, dbrst)
+        result = provision.create_if_vm(ctx, name)
         assert result is True
 
-        dbrst._run_create.assert_called_with()
-        dbrst.build_config.assert_called_with()
-        del dbrst
-        remove_config.assert_called_with()
+        dbrst.create.assert_called_with()
 
-    def test_destroy_if_vm_success(self):
+    @patch('teuthology.lock.query.get_status')
+    @patch('teuthology.provision.downburst.Downburst')
+    def test_destroy_if_vm_success(self, m_downburst, m_get_status):
         name = self.name
-        ctx = self.ctx
         status = self.status
+        m_get_status.return_value = status
 
-        dbrst = provision.downburst.Downburst(
-            name, ctx.os_type, ctx.os_version, status)
+        dbrst = MagicMock()
         dbrst.destroy = MagicMock(name='destroy')
         dbrst.destroy.return_value = True
+        m_downburst.return_value = dbrst
 
-        result = provision.destroy_if_vm(name, user="user@a", _downburst=dbrst)
+        result = provision.destroy_if_vm(name, user="user@a")
         assert result is True
 
         dbrst.destroy.assert_called_with()
 
-    def test_destroy_if_vm_wrong_owner(self):
+    @patch('teuthology.lock.query.get_status')
+    def test_destroy_if_vm_wrong_owner(self, m_get_status):
         name = self.name
-        ctx = self.ctx
         status = self.status
+        m_get_status.return_value = status
 
-        dbrst = provision.downburst.Downburst(
-            name, ctx.os_type, ctx.os_version, status)
-        dbrst.destroy = MagicMock(name='destroy', side_effect=RuntimeError)
-
-        result = provision.destroy_if_vm(name, user='user@b',
-                                         _downburst=dbrst)
+        result = provision.destroy_if_vm(name, user='user@b')
         assert result is False
 
-    def test_destroy_if_vm_wrong_description(self):
+    @patch('teuthology.lock.query.get_status')
+    def test_destroy_if_vm_wrong_description(self, m_get_status):
         name = self.name
-        ctx = self.ctx
         status = self.status
+        m_get_status.return_value = status
 
-        dbrst = provision.downburst.Downburst(
-            name, ctx.os_type, ctx.os_version, status)
-        dbrst.destroy = MagicMock(name='destroy')
-        dbrst.destroy = MagicMock(name='destroy', side_effect=RuntimeError)
-
-        result = provision.destroy_if_vm(name, description='desc_b',
-                                         _downburst=dbrst)
+        result = provision.destroy_if_vm(name, description='desc_b')
         assert result is False
 
     @patch('teuthology.provision.downburst.downburst_executable')

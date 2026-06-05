@@ -62,16 +62,11 @@ def reimage(ctx, machine_name: str, machine_type: str):
     return result
 
 
-def create_if_vm(ctx, machine_name: str, _downburst: Optional = None) -> bool:
+def create_if_vm(ctx, machine_name: str) -> bool:
     """
     Use downburst to create a virtual machine
-
-    :param _downburst: Only used for unit testing.
     """
-    if _downburst:
-        status_info = _downburst.status
-    else:
-        status_info = teuthology.lock.query.get_status(machine_name)
+    status_info = teuthology.lock.query.get_status(machine_name)
     shortname = decanonicalize_hostname(machine_name)
     machine_type = status_info['machine_type']
     os_type = get_distro(ctx)
@@ -94,10 +89,9 @@ def create_if_vm(ctx, machine_name: str, _downburst: Optional = None) -> bool:
             'Usage of a custom downburst config has been deprecated.'
         )
 
-    dbrst = _downburst or \
-        downburst.Downburst(name=machine_name, os_type=os_type,
-                            os_version=os_version, status=status_info,
-                            logfile=_logfile(ctx, shortname))
+    dbrst = downburst.Downburst(name=machine_name, os_type=os_type,
+                                os_version=os_version, status=status_info,
+                                logfile=_logfile(ctx, shortname))
     result = dbrst.create()
     return bool(result)
 
@@ -106,19 +100,13 @@ def destroy_if_vm(
     machine_name: str,
     user: str = "",
     description: str = "",
-    _downburst: Optional = None
 ) -> bool:
     """
     Use downburst to destroy a virtual machine
 
     Return False only on vm downburst failures.
-
-    :param _downburst: Only used for unit testing.
     """
-    if _downburst:
-        status_info = _downburst.status
-    else:
-        status_info = teuthology.lock.query.get_status(machine_name)
+    status_info = teuthology.lock.query.get_status(machine_name)
     if not status_info or not teuthology.lock.query.is_vm(status=status_info):
         return True
     if user is not None and user != status_info['locked_by']:
@@ -142,8 +130,7 @@ def destroy_if_vm(
         return cloud.get_provisioner(
             machine_type, shortname, None, None).destroy()
 
-    dbrst = _downburst or \
-        downburst.Downburst(name=machine_name, os_type=None,
-                            os_version=None, status=status_info,
-                            logfile=_logfile(description, shortname))
+    dbrst = downburst.Downburst(name=machine_name, os_type=None,
+                                os_version=None, status=status_info,
+                                logfile=_logfile(description, shortname))
     return dbrst.destroy()
