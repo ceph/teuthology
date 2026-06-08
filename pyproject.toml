@@ -10,7 +10,7 @@ authors = [
 dynamic = ["version"]
 description = "Ceph test framework"
 readme = "README.rst"
-license = {text = "MIT"}
+license = "MIT"
 requires-python = ">=3.10"
 dependencies = [
     "ansible-core==2.17.7",
@@ -46,7 +46,6 @@ dependencies = [
 keywords = ["teuthology", "test", "ceph", "cluster"]
 classifiers = [
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Natural Language :: English",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
