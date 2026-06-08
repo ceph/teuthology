@@ -125,13 +125,12 @@ requires = [
 [tool.uv]
 cache-keys = [{ file = "pyproject.toml" }, { git = { commit = true, tags = true } }]
 
-[tool.setuptools.packages.find]
-exclude = [
-    "*test*",
-]
+[tool.setuptools]
+include-package-data = true
 
-[tool.setuptools.exclude-package-data]
-"*" = ["test*"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["teuthology*", "scripts"]
 
 [tool.setuptools_scm]
 version_scheme = "python-simplified-semver"
