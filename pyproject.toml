@@ -139,3 +139,10 @@ version_scheme = "python-simplified-semver"
 
 [tool.ruff]
 lint.select = ["F", "E9"]
+
+[tool.pytest]
+testpaths = ["teuthology", "scripts"]
+norecursedirs = [".git", "build", "virtualenv", "teuthology.egg-info", ".tox", "*/integration", "teuthology/task/tests"]
+log_cli = true
+log_level = "NOTSET"
+addopts = ["-p", "no:cacheprovider"]
