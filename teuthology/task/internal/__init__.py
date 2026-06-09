@@ -299,6 +299,27 @@ def check_conflict(ctx, config):
         raise RuntimeError('Stale jobs detected, aborting.')
 
 
+def get_dump_program(file_info: str) -> str:
+    """
+    Parse the output of the file(1) command on a core dump to extract the
+    program that produced it. Prefers execfn (the actual file passed to
+    execve) over the 'from' field (argv[0], which can be overridden).
+
+    Raises ValueError if neither field can be parsed.
+    """
+    execfn_match = re.findall(r"execfn:\s*'([^']+)'", file_info)
+    if execfn_match:
+        program = execfn_match[0]
+        log.info(f' dump_program (from execfn): {program}')
+        return program
+    from_match = re.findall("from '([^ ']+)", file_info)
+    if from_match:
+        program = from_match[0].split()[0]
+        log.info(f' dump_program: {program}')
+        return program
+    raise ValueError(f"cannot parse program name from file output: {file_info}")
+
+
 def fetch_binaries_for_coredumps(path, remote):
     """
     Pul ELFs (debug and stripped) for each coredump found
@@ -334,34 +355,57 @@ def fetch_binaries_for_coredumps(path, remote):
                     log.error(e)
                     continue
             try:
-                dump_command = re.findall("from '([^ ']+)", dump_out)[0]
-                dump_program = dump_command.split()[0]
-                log.info(f' dump_program: {dump_program}')
-            except Exception as e:
+                dump_program = get_dump_program(dump_out)
+            except ValueError as e:
                 log.info("core doesn't have the desired format, moving on ...")
                 log.error(e)
                 continue
 
             # Find path on remote server:
-            remote_path = remote.sh(['which', dump_program]).rstrip()
+            if os.path.isabs(dump_program):
+                remote_path = dump_program
+            else:
+                remote_path = remote.sh(['which', dump_program]).rstrip()
 
             # Pull remote program into coredump folder:
             local_path = os.path.join(coredump_path,
-                                      dump_program.lstrip(os.path.sep))
+                                      remote_path.lstrip(os.path.sep))
             local_dir = os.path.dirname(local_path)
             if not os.path.exists(local_dir):
                 os.makedirs(local_dir)
             remote._sftp_get_file(remote_path, local_path)
 
+            # Resolve symlinks (e.g. update-alternatives) so the
+            # debug path matches the debuginfo package contents.
+            try:
+                resolved_path = remote.sh(
+                    ['readlink', '-f', remote_path]).rstrip()
+                if resolved_path:
+                    remote_path = resolved_path
+            except Exception:
+                pass
+
             # Pull Debug symbols:
-            debug_path = os.path.join('/usr/lib/debug', remote_path)
+            debug_dir = os.path.dirname(os.path.join(
+                '/usr/lib/debug', remote_path.lstrip(os.path.sep)))
+            binary_name = os.path.basename(remote_path)
 
-            # RPM distro's append their non-stripped ELF's with .debug
-            # When deb based distro's do not.
             if remote.system_type == 'rpm':
-                debug_path = '{debug_path}.debug'.format(debug_path=debug_path)
+                # RPM debuginfo packages may include the version-release-arch
+                # in the filename, so use find to locate the debug file.
+                find_out = remote.sh([
+                    'find', debug_dir, '-maxdepth', '1',
+                    '-name', f'{binary_name}*.debug',
+                ]).rstrip()
+                if find_out:
+                    debug_path = find_out.splitlines()[0]
+                else:
+                    debug_path = os.path.join(debug_dir,
+                                              f'{binary_name}.debug')
+            else:
+                debug_path = os.path.join(debug_dir, binary_name)
 
-            remote.get_file(debug_path, coredump_path)
+            remote.get_file(debug_path, dest_dir=coredump_path)
 
 
 def gzip_if_too_large(compress_min_size, src, tarinfo, local_path):
