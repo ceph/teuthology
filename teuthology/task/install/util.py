@@ -1,6 +1,7 @@
 import contextlib
 import logging
 import os
+from typing import Generator, List, Optional
 
 from teuthology import misc as teuthology
 from teuthology import packaging
@@ -9,7 +10,7 @@ from teuthology.orchestra import run
 log = logging.getLogger(__name__)
 
 
-def _get_builder_project(ctx, remote, config):
+def _get_builder_project(ctx, remote, config: dict):
     return packaging.get_builder_project()(
         config.get('project', 'ceph'),
         config,
@@ -18,7 +19,7 @@ def _get_builder_project(ctx, remote, config):
     )
 
 
-def _get_local_dir(config, remote):
+def _get_local_dir(config: dict, remote) -> Optional[str]:
     """
     Extract local directory name from the task lists.
     Copy files over to the remote site.
@@ -33,7 +34,7 @@ def _get_local_dir(config, remote):
     return ldir
 
 
-def get_flavor(config):
+def get_flavor(config: Optional[dict]) -> str:
     """
     Determine the flavor to use.
     """
@@ -51,7 +52,7 @@ def get_flavor(config):
                 flavor = 'gcov'
     return flavor
 
-def _ship_utilities(ctx):
+def _ship_utilities(ctx) -> List[str]:
     """
     Write a copy of valgrind.supp to each of the remote sites.  Set executables
     used by Ceph in /usr/local/bin.  When finished (upon exit of the teuthology
@@ -107,7 +108,7 @@ def _ship_utilities(ctx):
                 )
     return filenames
 
-def _remove_utilities(ctx, filenames):
+def _remove_utilities(ctx, filenames: List[str]) -> None:
     """
     Remove the shipped utilities.
 
@@ -130,7 +131,7 @@ def _remove_utilities(ctx, filenames):
     )
 
 @contextlib.contextmanager
-def ship_utilities(ctx, config):
+def ship_utilities(ctx, config: None) -> Generator[None, None, None]:
     """
     Ship utilities during the first call, and skip it in the following ones.
     See also `_ship_utilities`.

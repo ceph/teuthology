@@ -4,15 +4,17 @@ Connection utilities
 import paramiko
 import os
 import logging
+from typing import Optional, Tuple, Union, List
 
 from teuthology.config import config
 from teuthology.contextutil import safe_while
 from paramiko.hostkeys import HostKeyEntry
+from paramiko.pkey import PKey
 
 log = logging.getLogger(__name__)
 
 
-def split_user(user_at_host):
+def split_user(user_at_host: str) -> Tuple[Optional[str], str]:
     """
     break apart user@host fields into user and host.
     """
@@ -25,7 +27,7 @@ def split_user(user_at_host):
     return user, host
 
 
-def create_key(keytype, key):
+def create_key(keytype: str, key: str) -> PKey:
     """
     Create an ssh-rsa, ssh-dss or ssh-ed25519 key.
     """
@@ -36,8 +38,9 @@ def create_key(keytype, key):
     return ke.key
 
 
-def connect(user_at_host, host_key=None, keep_alive=False, timeout=60,
-            _SSHClient=None, _create_key=None, retry=True, key_filename=None):
+def connect(user_at_host: str, host_key: Optional[str] = None, keep_alive: bool = False,
+            timeout: int = 60,
+            retry: bool = True, key_filename: Optional[Union[str, List[str]]] = None) -> paramiko.SSHClient:
     """
     ssh connection routine.
 
@@ -45,20 +48,15 @@ def connect(user_at_host, host_key=None, keep_alive=False, timeout=60,
     :param host_key: ssh key
     :param keep_alive: keep_alive indicator
     :param timeout:    timeout in seconds
-    :param _SSHClient: client, default is paramiko ssh client
-    :param _create_key: routine to create a key (defaults to local reate_key)
     :param retry:       Whether or not to retry failed connection attempts
                         (eventually giving up if none succeed). Default is True
     :param key_filename:  Optionally override which private key to use.
     :return: ssh connection.
     """
+    if timeout is None:
+        timeout = 60
     user, host = split_user(user_at_host)
-    if _SSHClient is None:
-        _SSHClient = paramiko.SSHClient
-    ssh = _SSHClient()
-
-    if _create_key is None:
-        _create_key = create_key
+    ssh = paramiko.SSHClient()
 
     if host_key is None:
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -70,10 +68,10 @@ def connect(user_at_host, host_key=None, keep_alive=False, timeout=60,
         ssh.get_host_keys().add(
             hostname=host,
             keytype=keytype,
-            key=_create_key(keytype, key)
+            key=create_key(keytype, key)
             )
 
-    connect_args = dict(
+    connect_args: dict[str, Union[str, None, int, list[str]]] = dict(
         hostname=host,
         username=user,
         timeout=timeout

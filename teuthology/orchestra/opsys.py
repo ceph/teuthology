@@ -1,4 +1,5 @@
 import re
+from typing import Dict, Optional, Tuple
 
 from packaging.version import parse as parse_version, Version
 
@@ -112,23 +113,38 @@ class OS(object):
 
     __slots__ = ['name', 'version', 'codename', 'package_type']
 
+    name: str
+    version: str
+    codename: Optional[str]
+    package_type: str
+
     _deb_distros = ('debian', 'ubuntu')
     _rpm_distros = ('alma', 'rocky', 'fedora', 'rhel', 'centos', 'opensuse', 'sle')
 
-    def __init__(self, name=None, version=None, codename=None):
+    def __init__(self, name: str, version: Optional[str] = None,
+                 codename: Optional[str] = None) -> None:
         self.name = name
-        self.version = version or self._codename_to_version(name, codename)
-        self.codename = codename or self._version_to_codename(name, version)
+        if version and codename:
+            self.version = version
+            self.codename = codename
+        if version is None:
+            assert codename is not None
+            self.codename = codename
+            self.version = self._codename_to_version(name, codename)
+        if codename is None:
+            assert version is not None
+            self.version = version
+            self.codename = self._version_to_codename(name, version)
         self._set_package_type()
 
     @staticmethod
-    def _version_to_codename(name, version):
-        for (_version, codename) in DISTRO_CODENAME_MAP[name].items():
+    def _version_to_codename(name: str, version: str) -> Optional[str]:
+        for (_version, codename) in DISTRO_CODENAME_MAP.get(name, {}).items():
             if str(version) == _version or str(version).split('.')[0] == _version:
                 return codename
 
     @staticmethod
-    def _codename_to_version(name, codename):
+    def _codename_to_version(name: str, codename: str) -> str:
         for (version, _codename) in DISTRO_CODENAME_MAP[name].items():
             if codename == _codename:
                 return version
@@ -138,7 +154,7 @@ class OS(object):
         ))
 
     @classmethod
-    def from_lsb_release(cls, lsb_release_str):
+    def from_lsb_release(cls, lsb_release_str: str) -> 'OS':
         """
         Parse output from lsb_release -a and populate attributes
 
@@ -172,7 +188,7 @@ class OS(object):
         return obj
 
     @classmethod
-    def from_os_release(cls, os_release_str):
+    def from_os_release(cls, os_release_str: str) -> 'OS':
         """
         Parse /etc/os-release and populate attributes
 
@@ -210,7 +226,7 @@ class OS(object):
 
 
     @classmethod
-    def version_codename(cls, name, version_or_codename):
+    def version_codename(cls, name: str, version_or_codename: str) -> Tuple[str, str]:
         """
         Return (version, codename) based on one input, trying to infer
         which we're given
@@ -239,36 +255,38 @@ class OS(object):
 
 
     @staticmethod
-    def _get_value(str_, name):
+    def _get_value(str_: str, name: str) -> str:
         regex = '^%s[:=](.+)' % name
         match = re.search(regex, str_, flags=re.M)
         if match:
             return match.groups()[0].strip(' \t"\'')
         return ''
 
-    def _set_package_type(self):
+    def _set_package_type(self) -> None:
         if self.name in self._deb_distros:
             self.package_type = "deb"
         elif self.name in self._rpm_distros:
             self.package_type = "rpm"
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Optional[str]]:
         return dict(
             name=self.name,
             version=self.version,
             codename=self.codename,
         )
 
-    def __str__(self):
-        return " ".join([self.name, self.version]).strip()
+    def __str__(self) -> str:
+        return " ".join([str(self.name), str(self.version)]).strip()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "OS(name={name}, version={version}, codename={codename})"\
             .format(name=repr(self.name),
                     version=repr(self.version),
                     codename=repr(self.codename))
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, self.__class__):
+            return NotImplemented
         if self.name.lower() != other.name.lower():
             return False
         normalize = lambda s: s.lower().removesuffix(".stream")

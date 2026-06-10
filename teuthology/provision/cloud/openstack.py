@@ -4,11 +4,13 @@ import requests
 import socket
 import time
 import yaml
+from typing import Callable, Optional
 
 from teuthology.util.compat import urlencode
 
 from copy import deepcopy
 from libcloud.common.exceptions import RateLimitReachedError, BaseHTTPError
+from libcloud.compute.base import Node
 
 from paramiko import AuthenticationException
 from paramiko.ssh_exception import NoValidConnectionsError
@@ -27,7 +29,7 @@ log = logging.getLogger(__name__)
 RETRY_EXCEPTIONS = (RateLimitReachedError, BaseHTTPError)
 
 
-def retry(function, *args, **kwargs):
+def retry(function: Callable, *args, **kwargs):
     """
     Call a function (returning its results), retrying if any of the exceptions
     in RETRY_EXCEPTIONS are raised
@@ -39,9 +41,10 @@ def retry(function, *args, **kwargs):
             try:
                 result = function(*args, **kwargs)
                 if tries > 1:
+                    func_name = getattr(function, '__name__', str(function))
                     log.debug(
                         "'%s' succeeded after %s tries",
-                        function.__name__,
+                        func_name,
                         tries,
                     )
                 return result
@@ -68,7 +71,7 @@ class OpenStackProvider(Provider):
         return driver
     driver = property(fget=_get_driver)
 
-    def _get_driver_args(self):
+    def _get_driver_args(self) -> dict:
         driver_args = super(OpenStackProvider, self)._get_driver_args()
         if self._auth_token.value:
             driver_args['ex_force_auth_token'] = self._auth_token.value
@@ -76,13 +79,13 @@ class OpenStackProvider(Provider):
         return driver_args
 
     @property
-    def ssh_interface(self):
+    def ssh_interface(self) -> str:
         if not hasattr(self, '_ssh_interface'):
             self._ssh_interface = self.conf.get('ssh_interface', 'public_ips')
         return self._ssh_interface
 
     @property
-    def images(self):
+    def images(self) -> list:
         if not hasattr(self, '_images'):
             exclude_image = self.conf.get('exclude_image', [])
             if exclude_image and not isinstance(exclude_image, list):
@@ -94,7 +97,7 @@ class OpenStackProvider(Provider):
         return self._images
 
     @property
-    def sizes(self):
+    def sizes(self) -> list:
         if not hasattr(self, '_sizes'):
             allow_sizes = self.conf.get('allow_sizes', '.*')
             if not isinstance(allow_sizes, list):
@@ -116,7 +119,7 @@ class OpenStackProvider(Provider):
         return self._sizes
 
     @property
-    def networks(self):
+    def networks(self) -> list:
         if not hasattr(self, '_networks'):
             allow_networks = self.conf.get('allow_networks', '.*')
             if not isinstance(allow_networks, list):
@@ -125,25 +128,25 @@ class OpenStackProvider(Provider):
             try:
                 networks = retry(self.driver.ex_list_networks)
                 if networks:
-                    self._networks = filter(
+                    self._networks = list(filter(
                         lambda s: any(x.match(s.name) for x in networks_re),
                         networks
-                    )
+                    ))
                 else:
-                    self._networks = list()
+                    self._networks = []
             except AttributeError:
                 log.warning("Unable to list networks for %s", self.driver)
-                self._networks = list()
+                self._networks = []
         return self._networks
 
     @property
-    def default_userdata(self):
+    def default_userdata(self) -> dict:
         if not hasattr(self, '_default_userdata'):
             self._default_userdata = self.conf.get('userdata', dict())
         return self._default_userdata
 
     @property
-    def security_groups(self):
+    def security_groups(self) -> list:
         if not hasattr(self, '_security_groups'):
             try:
                 self._security_groups = retry(
@@ -157,6 +160,8 @@ class OpenStackProvider(Provider):
 
 class OpenStackProvisioner(base.Provisioner):
     _sentinel_path = '/.teuth_provisioned'
+    provider: OpenStackProvider
+    user: str
 
     defaults = dict(
         openstack=dict(
@@ -174,16 +179,19 @@ class OpenStackProvisioner(base.Provisioner):
 
     def __init__(
         self,
-        provider, name, os_type=None, os_version=None,
-        conf=None,
-        user='ubuntu',
-    ):
+        provider: OpenStackProvider | str,
+        name: str,
+        os_type: Optional[str] = None,
+        os_version: Optional[str] = None,
+        conf: Optional[dict] = None,
+        user: str = 'ubuntu',
+    ) -> None:
         super(OpenStackProvisioner, self).__init__(
             provider, name, os_type, os_version, conf=conf, user=user,
         )
         self._read_conf(conf)
 
-    def _read_conf(self, conf=None):
+    def _read_conf(self, conf: Optional[dict] = None) -> None:
         """
         Looks through the following in order:
 
@@ -256,7 +264,7 @@ class OpenStackProvisioner(base.Provisioner):
         self._wait_for_ready()
         return self.node
 
-    def _create_volumes(self):
+    def _create_volumes(self) -> bool:
         vol_count = self.conf['volumes']['count']
         vol_size = self.conf['volumes']['size']
         name_templ = "%s_%0{0}d".format(len(str(vol_count - 1)))
@@ -281,7 +289,7 @@ class OpenStackProvisioner(base.Provisioner):
             return False
         return True
 
-    def _destroy_volumes(self):
+    def _destroy_volumes(self) -> None:
         all_volumes = retry(self.provider.driver.list_volumes)
         our_volumes = [vol for vol in all_volumes
                        if vol.name.startswith("%s_" % self.name)]
@@ -295,7 +303,7 @@ class OpenStackProvisioner(base.Provisioner):
             except Exception:
                 log.exception("Could not destroy volume %s", vol)
 
-    def _update_dns(self):
+    def _update_dns(self) -> None:
         query = urlencode(dict(
             name=self.name,
             ip=self.ips[0],
@@ -307,7 +315,7 @@ class OpenStackProvisioner(base.Provisioner):
         resp = requests.get(nsupdate_url)
         resp.raise_for_status()
 
-    def _wait_for_ready(self):
+    def _wait_for_ready(self) -> None:
         with safe_while(sleep=6, tries=20) as proceed:
             while proceed():
                 try:
@@ -363,7 +371,7 @@ class OpenStackProvisioner(base.Provisioner):
         return smallest_match
 
     @property
-    def security_groups(self):
+    def security_groups(self) -> Optional[list]:
         group_names = self.provider.conf.get('security_groups')
         if group_names is None:
             return
@@ -382,10 +390,10 @@ class OpenStackProvisioner(base.Provisioner):
         return result
 
     @property
-    def userdata(self):
+    def userdata(self) -> str:
         spec="{t}-{v}".format(t=self.os_type,
                               v=self.os_version)
-        base_config = dict(
+        base_config: dict = dict(
             packages=[
                 'git',
                 'wget',
@@ -402,13 +410,12 @@ class OpenStackProvisioner(base.Provisioner):
         if spec in self.provider.default_userdata:
             base_config = deepcopy(
                     self.provider.default_userdata.get(spec, dict()))
-        base_config.update(user=self.user)
+        base_config['user'] = self.user
         if 'manage_etc_hosts' not in base_config:
-            base_config.update(
-                manage_etc_hosts=True,
-                hostname=self.hostname,
-            )
-        base_config['runcmd'] = base_config.get('runcmd', list())
+            base_config['manage_etc_hosts'] = True
+            base_config['hostname'] = self.hostname
+        if 'runcmd' not in base_config:
+            base_config['runcmd'] = []
         base_config['runcmd'].extend(runcmd)
         ssh_pubkey = util.get_user_ssh_pubkey()
         if ssh_pubkey:
@@ -419,7 +426,7 @@ class OpenStackProvisioner(base.Provisioner):
         return user_str
 
     @property
-    def node(self):
+    def node(self) -> Optional[Node]:
         if hasattr(self, '_node'):
             return self._node
         matches = self._find_nodes()
@@ -435,12 +442,12 @@ class OpenStackProvisioner(base.Provisioner):
             return self._node
         raise RuntimeError(msg % self.name)
 
-    def _find_nodes(self):
+    def _find_nodes(self) -> list[Node]:
         nodes = retry(self.provider.driver.list_nodes)
         matches = [node for node in nodes if node.name == self.name]
         return matches
 
-    def _destroy(self):
+    def _destroy(self) -> bool:
         self._destroy_volumes()
         nodes = self._find_nodes()
         if not nodes:

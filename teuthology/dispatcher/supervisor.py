@@ -123,7 +123,7 @@ def run_job(job_config: dict,
         for f in os.listdir(job_config['archive_path']):
             os.remove(os.path.join(job_config['archive_path'], f))
         os.rmdir(job_config['archive_path'])
-        return
+        return 0
 
     log.info('Running job %s', job_config['job_id'])
 

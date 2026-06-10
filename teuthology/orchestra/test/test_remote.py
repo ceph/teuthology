@@ -151,7 +151,7 @@ class TestRemote(object):
         m_transport.get_remote_server_key.assert_called_once_with()
 
     def test_inventory_info(self):
-        r = remote.Remote('user@host', host_key='host_key')
+        r = remote.Remote('user@host', host_key='host_key', ssh=self.m_ssh)
         r._arch = 'arch'
         r._os = opsys.OS(name='os_name', version='1.2.3', codename='code')
         inv_info = r.inventory_info
@@ -233,7 +233,7 @@ class TestRemote(object):
         except Exception as e:
             assert 'Cannot get IPv4 address' in str(e)
         try:
-            ip4 = remote.Remote.resolve_ip(r, 'smithi001', 5)
+            ip4 = remote.Remote.resolve_ip(r, 'smithi001', "5")
         except Exception as e:
             assert 'Unknown IP version' in str(e)
         

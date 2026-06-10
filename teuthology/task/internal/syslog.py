@@ -1,18 +1,17 @@
 import contextlib
 import logging
-
 from io import BytesIO
+from typing import Generator
 
 from teuthology import misc
 from teuthology.job_status import set_status
 from teuthology.orchestra import run
 
-
 log = logging.getLogger(__name__)
 
 
 @contextlib.contextmanager
-def syslog(ctx, config):
+def syslog(ctx, config) -> Generator[None, None, None]:
     """
     start syslog / stop syslog on exit.
     """

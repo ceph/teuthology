@@ -2,14 +2,14 @@ import logging
 import os
 import subprocess
 
+from teuthology.exceptions import CommandFailedError
 from teuthology.parallel import parallel
 from teuthology.task import ansible
-from teuthology.exceptions import CommandFailedError
 
 log = logging.getLogger(__name__)
 
 
-def vm_setup(ctx, config):
+def vm_setup(ctx, config) -> None:
     """
     Look for virtual machines and handle their initialization
     """

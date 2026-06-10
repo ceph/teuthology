@@ -1,5 +1,6 @@
 import logging
 import sentry_sdk
+from typing import Optional
 
 from copy import deepcopy
 
@@ -9,7 +10,7 @@ from teuthology.misc import get_http_log_path
 log = logging.getLogger(__name__)
 
 
-def report_error(job_config, exception, task_name=None):
+def report_error(job_config: dict, exception: Exception, task_name: Optional[str] = None) -> Optional[str]:
     if not teuth_config.sentry_dsn:
         return None
     sentry_sdk.init(teuth_config.sentry_dsn)

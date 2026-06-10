@@ -4,7 +4,7 @@ log = logging.getLogger(__name__)
 
 
 # This is being kept because ceph.git/qa/tasks/cephfs/filesystem.py references it.
-def clear_firewall(ctx):
+def clear_firewall(ctx) -> None:
     """
     Remove any iptables rules created by teuthology.  These rules are
     identified by containing a comment with 'teuthology' in it.  Non-teuthology

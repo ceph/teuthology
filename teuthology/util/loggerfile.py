@@ -11,9 +11,9 @@ class LoggerFile(object):
         self.logger = logger
         self.level = level
 
-    def write(self, string):
+    def write(self, string: bytes) -> None:
         self.logger.log(self.level, string.decode('utf-8', 'ignore'))
 
-    def flush(self):
+    def flush(self) -> None:
         pass
 

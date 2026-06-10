@@ -5,6 +5,7 @@ import logging
 import pprint
 import sys
 from collections import OrderedDict
+from typing import Optional
 
 from teuthology import report
 from teuthology.config import config
@@ -12,7 +13,7 @@ from teuthology.config import config
 log = logging.getLogger(__name__)
 
 
-def connect():
+def connect() -> beanstalkc.Connection:
     host = config.queue_host
     port = config.queue_port
     if host is None or port is None:
@@ -22,7 +23,7 @@ def connect():
     return beanstalkc.Connection(host=host, port=port, parse_yaml=yaml.safe_load)
 
 
-def watch_tube(connection, tube_name):
+def watch_tube(connection: beanstalkc.Connection, tube_name: str) -> str:
     """
     Watch a given tube, potentially correcting to 'multi' if necessary. Returns
     the tube_name that was actually used.
@@ -35,7 +36,7 @@ def watch_tube(connection, tube_name):
     return tube_name
 
 
-def walk_jobs(connection, tube_name, processor, pattern=None):
+def walk_jobs(connection: beanstalkc.Connection, tube_name: str, processor: 'JobProcessor', pattern: Optional[str] = None) -> None:
     """
     def callback(jobs_dict)
     """
@@ -62,26 +63,26 @@ def walk_jobs(connection, tube_name, processor, pattern=None):
     processor.complete()
 
 
-def print_progress(index, total, message=None):
+def print_progress(index: int, total: int, message: Optional[str] = None) -> None:
     msg = "{m} ".format(m=message) if message else ''
     sys.stderr.write("{msg}{i}/{total}\r".format(
         msg=msg, i=index, total=total))
     sys.stderr.flush()
 
 
-def end_progress():
+def end_progress() -> None:
     sys.stderr.write('\n')
     sys.stderr.flush()
 
 
 class JobProcessor(object):
-    def __init__(self):
+    def __init__(self) -> None:
         self.jobs = OrderedDict()
 
-    def add_job(self, job_id, job_config, job_obj=None):
+    def add_job(self, job_id: int | str, job_config: dict, job_obj: Optional[beanstalkc.Job] = None) -> None:
         job_id = str(job_id)
 
-        job_dict = dict(
+        job_dict: dict = dict(
             index=(len(self.jobs) + 1),
             job_config=job_config,
         )
@@ -91,20 +92,20 @@ class JobProcessor(object):
 
         self.process_job(job_id)
 
-    def process_job(self, job_id):
+    def process_job(self, job_id: str) -> None:
         pass
 
-    def complete(self):
+    def complete(self) -> None:
         pass
 
 
 class JobPrinter(JobProcessor):
-    def __init__(self, show_desc=False, full=False):
+    def __init__(self, show_desc: bool = False, full: bool = False) -> None:
         super(JobPrinter, self).__init__()
         self.show_desc = show_desc
         self.full = full
 
-    def process_job(self, job_id):
+    def process_job(self, job_id: str) -> None:
         job_config = self.jobs[job_id]['job_config']
         job_index = self.jobs[job_id]['index']
         job_priority = job_config['priority']
@@ -124,11 +125,11 @@ class JobPrinter(JobProcessor):
 
 
 class RunPrinter(JobProcessor):
-    def __init__(self):
+    def __init__(self) -> None:
         super(RunPrinter, self).__init__()
         self.runs = list()
 
-    def process_job(self, job_id):
+    def process_job(self, job_id: str) -> None:
         run = self.jobs[job_id]['job_config']['name']
         if run not in self.runs:
             self.runs.append(run)
@@ -136,16 +137,16 @@ class RunPrinter(JobProcessor):
 
 
 class JobDeleter(JobProcessor):
-    def __init__(self, pattern):
+    def __init__(self, pattern: str) -> None:
         self.pattern = pattern
         super(JobDeleter, self).__init__()
 
-    def add_job(self, job_id, job_config, job_obj=None):
+    def add_job(self, job_id: int | str, job_config: dict, job_obj: Optional[beanstalkc.Job] = None) -> None:
         job_name = job_config['name']
         if self.pattern in job_name:
             super(JobDeleter, self).add_job(job_id, job_config, job_obj)
 
-    def process_job(self, job_id):
+    def process_job(self, job_id: str) -> None:
         job_config = self.jobs[job_id]['job_config']
         job_name = job_config['name']
         print('Deleting {job_name}/{job_id}'.format(
@@ -158,7 +159,7 @@ class JobDeleter(JobProcessor):
         report.try_delete_jobs(job_name, job_id)
 
 
-def pause_tube(connection, tube, duration):
+def pause_tube(connection: beanstalkc.Connection, tube: Optional[str], duration: int | str) -> None:
     duration = int(duration)
     if not tube:
         tubes = sorted(connection.tubes())
@@ -172,7 +173,7 @@ def pause_tube(connection, tube, duration):
         connection.pause_tube(tube, duration)
 
 
-def stats_tube(connection, tube):
+def stats_tube(connection: beanstalkc.Connection, tube: str) -> dict:
     stats = connection.stats_tube(tube)
     result = dict(
         name=tube,
@@ -182,7 +183,7 @@ def stats_tube(connection, tube):
     return result
 
 
-def main(args):
+def main(args: dict) -> None:
     machine_type = args['--machine_type']
     status = args['--status']
     delete = args['--delete']

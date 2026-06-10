@@ -1,38 +1,42 @@
 """
 Handle iscsi adm commands for tgt connections.
 """
-import logging
 import contextlib
+import logging
 import socket
+from typing import Generator, List, Optional, Tuple
 
-from teuthology import misc as teuthology
 from teuthology import contextutil
-from teuthology.task.common_fs_utils import generic_mkfs
-from teuthology.task.common_fs_utils import generic_mount
+from teuthology import misc as teuthology
 from teuthology.orchestra import run
+from teuthology.task.common_fs_utils import generic_mkfs, generic_mount
 
 log = logging.getLogger(__name__)
 
 
-def _get_remote(remotes, client):
+def _get_remote(remotes: dict, client: str) -> Optional:
     """
     Get remote object that is associated with the client specified.
     """
     for rem in remotes:
         if client in remotes[rem]:
             return rem
+    return None
 
 
-def _get_remote_name(remotes, client):
+def _get_remote_name(remotes: dict, client: str) -> str:
     """
     Get remote name that is associated with the client specified.
     """
-    rem_name = _get_remote(remotes, client).name
+    rem = _get_remote(remotes, client)
+    if rem is None:
+        raise ValueError(f"No remote found for client {client}")
+    rem_name = rem.name
     rem_name = rem_name[rem_name.find('@') + 1:]
     return rem_name
 
 
-def tgt_devname_get(ctx, test_image):
+def tgt_devname_get(ctx, test_image: str) -> str:
     """
     Get the name of the newly created device by following the by-path
     link (which is symbolically linked to the appropriate /dev/sd* file).
@@ -44,7 +48,7 @@ def tgt_devname_get(ctx, test_image):
     return lnkpath
 
 
-def tgt_devname_rtn(ctx, test_image):
+def tgt_devname_rtn(ctx, test_image: str) -> str:
     """
     Wrapper passed to common_fs_util functions.
     """
@@ -52,7 +56,7 @@ def tgt_devname_rtn(ctx, test_image):
     return tgt_devname_get(ctx, image)
 
 
-def file_io_test(rem, file_from, lnkpath):
+def file_io_test(rem, file_from: str, lnkpath: str) -> None:
     """
     dd to the iscsi inteface, read it, and compare with original
     """
@@ -96,7 +100,7 @@ def file_io_test(rem, file_from, lnkpath):
     rem.run(args=['rm', tfile2])
 
 
-def general_io_test(ctx, rem, image_name):
+def general_io_test(ctx, rem, image_name: str) -> None:
     """
     Do simple I/O tests to the iscsi interface before putting a
     filesystem on it.
@@ -122,7 +126,7 @@ def general_io_test(ctx, rem, image_name):
 
 
 @contextlib.contextmanager
-def start_iscsi_initiators(ctx, tgt_link):
+def start_iscsi_initiators(ctx, tgt_link: List[Tuple[str, str]]) -> Generator[None, None, None]:
     """
     This is the sub-task that assigns an rbd to an iscsiadm control and
     performs a login (thereby creating a /dev/sd device).  It performs
@@ -177,7 +181,7 @@ def start_iscsi_initiators(ctx, tgt_link):
             ])
 
 @contextlib.contextmanager
-def task(ctx, config):
+def task(ctx, config) -> Generator[None, None, None]:
     """
     handle iscsi admin login after a tgt connection has been established.
 

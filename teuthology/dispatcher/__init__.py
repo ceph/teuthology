@@ -7,13 +7,13 @@ import subprocess
 import sys
 import yaml
 
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 try:
     from gevent.exceptions import LoopExit
 except ImportError:
     # gevent might not be available in some environments
-    LoopExit = Exception
+    LoopExit: type[Exception] = Exception
 
 from teuthology import (
     # non-modules
@@ -39,7 +39,7 @@ def stop(_sig, _frame) -> None:
     sys.exit(0)
 
 
-def load_config(archive_dir=None):
+def load_config(archive_dir: Optional[str] = None) -> None:
     teuth_config.load()
     if archive_dir is not None:
         if not os.path.isdir(archive_dir):
@@ -51,7 +51,7 @@ def load_config(archive_dir=None):
             teuth_config.archive_base = archive_dir
 
 
-def main(args):
+def main(args) -> int:
     signal.signal(signal.SIGTERM, stop)
     archive_dir = args.archive_dir or teuth_config.archive_base
 

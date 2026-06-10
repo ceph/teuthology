@@ -18,7 +18,7 @@ import logging
 
 log = logging.getLogger(__name__)
 
-def task(ctx, config):
+def task(ctx, config) -> None:
     """
     Print out config argument in teuthology log/output
     """

@@ -1,14 +1,16 @@
 """
 Clock synchronizer
 """
-import logging
 import contextlib
+import logging
+from typing import Generator
 
 from teuthology.orchestra import run
+from teuthology.orchestra.cluster import Cluster
 
 log = logging.getLogger(__name__)
 
-def filter_out_containers(cluster):
+def filter_out_containers(cluster: Cluster) -> Cluster:
     """
     Returns a cluster that excludes remotes which should skip this task.
     Currently, only skips containerized remotes.
@@ -16,7 +18,7 @@ def filter_out_containers(cluster):
     return cluster.filter(lambda r: not r.is_container)
 
 @contextlib.contextmanager
-def task(ctx, config):
+def task(ctx, config) -> Generator[None, None, None]:
     """
     Sync or skew clock
 
@@ -82,7 +84,7 @@ def task(ctx, config):
 
 
 @contextlib.contextmanager
-def check(ctx, config):
+def check(ctx, config) -> Generator[None, None, None]:
     """
     Run ntpq at the start and the end of the task.
 

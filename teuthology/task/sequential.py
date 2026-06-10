@@ -1,15 +1,15 @@
 """
 Task sequencer
 """
-import sys
 import logging
+import sys
 
 from teuthology import run_tasks
 
 log = logging.getLogger(__name__)
 
 
-def task(ctx, config):
+def task(ctx, config: list) -> None:
     """
     Sequentialize a group of tasks into one executable block
 
