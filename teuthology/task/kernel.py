@@ -374,7 +374,7 @@ def download_kernel(ctx, config):
                 ctx=ctx,
                 remote=role_remote,
             )
-            if teuth_config.use_shaman:
+            if teuth_config.package_source in ['shaman', 'pulp']:
                 if role_remote.os.package_type == 'rpm':
                     arch = builder.arch
                     baseurl = urljoin(
@@ -1443,7 +1443,7 @@ def process_role(ctx, config, timeout, role, role_config):
         ctx.summary['{role}-kernel-sha1'.format(role=role)] = sha1
 
         if need_to_install(ctx, role, sha1):
-            if teuth_config.use_shaman:
+            if teuth_config.package_source in ('shaman', 'pulp'):
                 version = builder.scm_version
             else:
                 version = builder.version
