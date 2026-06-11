@@ -82,7 +82,7 @@ def install(ctx, config):
 
 def install_pkgs(ctx, remote, version, downstream_config):
     """
-    Installs RH build using ceph-deploy.
+    Installs RH build using ceph.
 
     :param ctx: the argparse.Namespace object
     :param remote: the teuthology.orchestra.remote.Remote object
