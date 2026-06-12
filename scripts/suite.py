@@ -85,6 +85,9 @@ Standard arguments:
                               purposes, but it will still be used for test
                               running. The <suite_dir> must have `qa/suite`
                               sub-directory.
+  --teuthology-repo <teuthology_repo>
+                              Use this repository for teuthology run
+                              [default: {default_teuthology_repo}]
   --validate-sha1 <bool>
                               Validate that git SHA1s passed to -S exist.
                               [default: true]
@@ -222,6 +225,8 @@ Scheduler arguments:
                             config.get_ceph_git_url()),
     default_suite_repo=defaults('--suite-repo',
                             config.get_ceph_qa_suite_git_url()),
+    default_teuthology_repo=defaults('--teuthology-repo',
+                            config.get_teuthology_git_url()),
     default_ceph_branch=defaults('--ceph-branch', 'main'),
     default_job_threshold=config.job_threshold,
 )

@@ -24,8 +24,10 @@ def override_arg_defaults(name, default, env=os.environ):
     env_arg = {
         '--ceph-repo'         : 'TEUTH_CEPH_REPO',
         '--suite-repo'        : 'TEUTH_SUITE_REPO',
+        '--teuthology-repo'   : 'TEUTH_REPO',
         '--ceph-branch'       : 'TEUTH_CEPH_BRANCH',
         '--suite-branch'      : 'TEUTH_SUITE_BRANCH',
+        '--teuthology-branch' : 'TEUTH_BRANCH',
     }
     if name in env_arg and env_arg[name] in env.keys():
         variable = env_arg[name]
@@ -79,6 +81,10 @@ def process_args(args):
             value = expand_short_repo_name(
                 value,
                 config.get_ceph_qa_suite_git_url())
+        elif key == 'teuthology_repo':
+            value = expand_short_repo_name(
+                value,
+                config.get_teuthology_git_url())
         elif key in ('validate_sha1', 'filter_fragments', 'kdb'):
             value = strtobool(value)
         conf[key] = value
