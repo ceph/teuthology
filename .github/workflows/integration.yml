@@ -7,27 +7,51 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Make archive directory
-        run: mkdir /tmp/archive_dir
-      - name: Test using docker-compose
-        run: ./start.sh
-        working-directory: ./docs/docker-compose
-      - name: Rename Directory
-        # Replace ":" with "_" everywhere in directory path.
-        # This needs to be done because GA does not support ":" colon character in artifacts (like in /root-2025-03-06_18:47:26-teuthology:no-ceph-main-distro-default-testnode).
-        # Invalid characters include:  Double quote ", Colon :, Less than <, Greater than >, Vertical bar |, Asterisk *, Question mark ?, Carriage return \r, Line feed \n
-        if: always()
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+      - name: Install ceph-devstack
+        run: uv tool install ceph-devstack
+      - name: Configure ceph-devstack
         run: |
-          for DIR in /tmp/archive_dir/root-*; do
-            SAFE_DIR="${DIR//:/_}"   # Replace in '/tmp/archive_dir/root-2025-03-06_18:47:26-teuthology:no-ceph-main-distro-default-testnode'
-            if [ "$DIR" != "$SAFE_DIR" ]; then
-              mv "$DIR" "$SAFE_DIR"
-            fi
-          done
-      - name: Upload teuthology archive logs 
+          ceph-devstack doctor --fix
+          ceph-devstack config set containers.postgres.count 0
+          ceph-devstack config set containers.teuthology.repo "$PWD"
+      - name: Build teuthology container
+        run: ceph-devstack -v build
+      - name: Pull other required containers
+        run: ceph-devstack pull
+      - name: Start ceph-devstack
+        run: ceph-devstack -v start
+      - name: Wait
+        run: timeout 600 ceph-devstack wait teuthology
+      - name: Dump logs
+        if: success() || failure()
+        run: podman logs -f teuthology
+      - name: Create archive
+        if: success() || failure()
+        run: |
+          mkdir -p /tmp/artifacts
+      - name: Dump job data
+        if: success() || failure()
+        run: |
+          podman cp paddles:/paddles/dev.db /tmp/
+          sqlite3 /tmp/dev.db ".output stdout" ".mode json" "select * from jobs" | jq | tee /tmp/artifacts/jobs.json
+      - name: Upload jobs.json
+        if: success() || failure()
         uses: actions/upload-artifact@v4
-        if: always()
         with:
-          name: teuthology-logs 
-          path: |
-            /tmp/archive_dir/*
+          name: jobs
+          path: /tmp/artifacts/jobs.json
+      - name: Create tarball of log archive
+        if: success() || failure()
+        run: |
+          tar -czf /tmp/artifacts/archive.tar ~/.local/share/ceph-devstack/archive/
+      - name: Upload log archive
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: archive
+          path: /tmp/artifacts/archive.tar
+      - name: Remove
+        if: always()
+        run: ceph-devstack -v remove
