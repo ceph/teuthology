@@ -8,6 +8,7 @@ doc = ls.__doc__
 
 class TestLs(Script):
     script_name = 'teuthology-ls'
+    script_module = 'scripts.ls'
 
     def test_args(self):
         args = docopt.docopt(doc, ["--verbose", "some/archive/dir"])
