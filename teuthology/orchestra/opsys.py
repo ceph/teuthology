@@ -90,6 +90,7 @@ DISTRO_CODENAME_MAP = {
         "15.5": "sle",
         "15.6": "sle",
         "15.7": "sle",
+        "16.0": "sle",
     },
 }
 
