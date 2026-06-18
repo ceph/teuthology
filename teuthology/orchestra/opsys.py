@@ -46,7 +46,9 @@ DISTRO_CODENAME_MAP = {
     "rocky": {
         "8.10": "rocky",
         "9.7": "rocky",
+        "9.8": "rocky",
         "10.1": "rocky",
+        "10.2": "rocky",
     },
     "centos": {
         "10": "stream",
