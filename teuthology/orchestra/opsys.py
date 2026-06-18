@@ -27,6 +27,7 @@ DISTRO_CODENAME_MAP = {
         "10": "buster",
         "11": "bullseye",
         "12": "bookworm",
+        "13": "trixie",
     },
     "rhel": {
         "9": "plow",
