@@ -75,6 +75,7 @@ DISTRO_CODENAME_MAP = {
         "15.5": "leap",
         "15.6": "leap",
         "16.0": "leap",
+        "16.1": "leap",
         "42.3": "leap",
     },
     "sle": {
