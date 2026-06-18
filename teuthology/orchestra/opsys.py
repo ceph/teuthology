@@ -37,7 +37,9 @@ DISTRO_CODENAME_MAP = {
     "alma": {
         "8.10": "alma",
         "9.7": "alma",
+        "9.8": "alma",
         "10.1": "alma",
+        "10.2": "alma",
     },
     "rocky": {
         "8.10": "rocky",
