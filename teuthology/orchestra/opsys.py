@@ -5,6 +5,7 @@ from packaging.version import parse as parse_version, Version
 
 DISTRO_CODENAME_MAP = {
     "ubuntu": {
+        "26.04": "resolute",
         "24.04": "noble",
         "22.04": "jammy",
         "20.04": "focal",
