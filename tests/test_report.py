@@ -2,7 +2,7 @@ import json
 import pytest
 import yaml
 
-from teuthology.test import fake_archive
+from tests import fake_archive
 from teuthology import report
 
 

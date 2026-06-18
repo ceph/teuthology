@@ -6,7 +6,7 @@ from unittest.mock import patch, call
 
 from teuthology import run
 from scripts import run as scripts_run
-from teuthology.test import skipif_teuthology_process
+from tests import skipif_teuthology_process
 
 
 class TestRun(object):

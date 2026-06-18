@@ -127,12 +127,9 @@ cache-keys = [{ file = "pyproject.toml" }, { git = { commit = true, tags = true 
 
 [tool.setuptools.packages.find]
 exclude = [
-    "*test*",
+    "tests*",
     "docs*",
 ]
-
-[tool.setuptools.exclude-package-data]
-"*" = ["test*"]
 
 [tool.setuptools_scm]
 version_scheme = "python-simplified-semver"
@@ -141,7 +138,7 @@ version_scheme = "python-simplified-semver"
 lint.select = ["F", "E9"]
 
 [tool.pytest]
-testpaths = ["teuthology", "scripts"]
+testpaths = ["tests"]
 norecursedirs = [".git", "build", "virtualenv", "teuthology.egg-info", ".tox", "*/integration", "teuthology/task/tests"]
 log_cli = true
 log_level = "NOTSET"

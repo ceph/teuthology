@@ -4,7 +4,7 @@ import random
 from mock import patch, MagicMock
 
 from teuthology.suite import build_matrix
-from teuthology.test.fake_fs import make_fake_fstools
+from tests.fake_fs import make_fake_fstools
 
 
 class TestBuildMatrixSimple(object):

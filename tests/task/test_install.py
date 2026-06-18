@@ -13,7 +13,7 @@ class TestInstall(object):
     def _get_default_package_list(self, project='ceph', debug=False):
         path = os.path.join(
             os.path.dirname(__file__),
-            '..', '..', 'task', 'install', 'packages.yaml',
+            '..', '..', 'teuthology', 'task', 'install', 'packages.yaml',
         )
         pkgs = yaml.safe_load(open(path))[project]
         if not debug:

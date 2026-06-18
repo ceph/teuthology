@@ -2,7 +2,7 @@ from mock import patch, Mock
 
 from teuthology import config
 from teuthology.orchestra import connection
-from teuthology.orchestra.test.util import assert_raises
+from tests.orchestra.util import assert_raises
 
 
 class TestConnection(object):
