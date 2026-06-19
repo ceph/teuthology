@@ -5,6 +5,7 @@ from packaging.version import parse as parse_version, Version
 
 DISTRO_CODENAME_MAP = {
     "ubuntu": {
+        "26.04": "resolute",
         "24.04": "noble",
         "22.04": "jammy",
         "20.04": "focal",
@@ -27,6 +28,7 @@ DISTRO_CODENAME_MAP = {
         "10": "buster",
         "11": "bullseye",
         "12": "bookworm",
+        "13": "trixie",
     },
     "rhel": {
         "9": "plow",
@@ -37,12 +39,16 @@ DISTRO_CODENAME_MAP = {
     "alma": {
         "8.10": "alma",
         "9.7": "alma",
+        "9.8": "alma",
         "10.1": "alma",
+        "10.2": "alma",
     },
     "rocky": {
         "8.10": "rocky",
         "9.7": "rocky",
+        "9.8": "rocky",
         "10.1": "rocky",
+        "10.2": "rocky",
     },
     "centos": {
         "10": "stream",
@@ -72,6 +78,7 @@ DISTRO_CODENAME_MAP = {
         "15.5": "leap",
         "15.6": "leap",
         "16.0": "leap",
+        "16.1": "leap",
         "42.3": "leap",
     },
     "sle": {
@@ -86,6 +93,7 @@ DISTRO_CODENAME_MAP = {
         "15.5": "sle",
         "15.6": "sle",
         "15.7": "sle",
+        "16.0": "sle",
     },
 }
 
