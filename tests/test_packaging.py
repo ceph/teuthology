@@ -922,6 +922,28 @@ class TestPulpProject(TestBuilderProject):
         assert 'branch=jewel' in labels
         assert 'sha1=sha1' not in labels
 
+    @pytest.mark.parametrize(
+        'os_type,os_version,codename,expected',
+        [
+            ('rocky', '9.7', None, 'distro_version=9'),
+            ('rocky', '10.1', None, 'distro_version=10'),
+            ('alma', '9.7', None, 'distro_version=9'),
+            ('centos', '8.1', None, 'distro_version=8'),
+            ('rhel', '7.0', None, 'distro_version=7'),
+            ('ubuntu', '20.04', 'focal', 'distro_version=focal'),
+        ],
+    )
+    def test_search_uses_major_distro_version(
+            self, os_type, os_version, codename, expected):
+        config = dict(os_type=os_type, os_version=os_version)
+        if codename:
+            config['codename'] = codename
+        gp = self.klass('ceph', config)
+        gp._search()
+        labels = self.m_get.call_args[1]['params']['pulp_label_select']
+        assert expected in labels
+        assert f'distro_version={os_version},' not in labels
+
     def test_get_package_version_found(self):
         resp = Mock()
         resp.ok = True
