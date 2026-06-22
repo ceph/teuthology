@@ -17,7 +17,7 @@ from teuthology.orchestra.remote import Remote
 from teuthology.task import ansible
 from teuthology.task.ansible import Ansible, CephLab, FailureAnalyzer
 
-from teuthology.test.task import TestTask
+from tests.task import TestTask
 
 
 class TestFailureAnalyzer:

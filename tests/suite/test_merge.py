@@ -5,7 +5,7 @@ from mock import patch, MagicMock
 
 from teuthology.suite import build_matrix
 from teuthology.suite.merge import config_merge
-from teuthology.test.fake_fs import make_fake_fstools
+from tests.fake_fs import make_fake_fstools
 
 log = logging.getLogger(__name__)
 

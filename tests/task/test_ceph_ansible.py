@@ -12,7 +12,7 @@ from teuthology.orchestra.remote import Remote
 from teuthology.task import ceph_ansible
 from teuthology.task.ceph_ansible import CephAnsible
 
-from teuthology.test.task import TestTask
+from tests.task import TestTask
 
 SKIP_IRRELEVANT = "Not relevant to this subclass"
 

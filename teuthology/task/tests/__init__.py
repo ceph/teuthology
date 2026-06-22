@@ -137,7 +137,7 @@ class Tests(Task):
         super().end()
 
     def run_cli(self):
-        pytest_args = self.base_args + ['./teuthology/test', './scripts']
+        pytest_args = self.base_args + ['./tests/']
         if len(self.cluster.remotes):
             pytest_args.append('./teuthology/task/tests')
         self.log.info(f"pytest args: {pytest_args}")
@@ -153,7 +153,7 @@ class Tests(Task):
         return status, []
 
     def run_py(self):
-        pytest_args = self.base_args + ['--pyargs', 'teuthology', 'scripts']
+        pytest_args = self.base_args + ['--pyargs', './tests/']
         if len(self.cluster.remotes):
             pytest_args.append(__name__)
         self.log.info(f"pytest args: {pytest_args}")

@@ -10,7 +10,7 @@ authors = [
 dynamic = ["version"]
 description = "Ceph test framework"
 readme = "README.rst"
-license = {text = "MIT"}
+license = "MIT"
 requires-python = ">=3.10"
 dependencies = [
     "ansible-core==2.17.7",
@@ -46,7 +46,6 @@ dependencies = [
 keywords = ["teuthology", "test", "ceph", "cluster"]
 classifiers = [
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Natural Language :: English",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
@@ -128,14 +127,19 @@ cache-keys = [{ file = "pyproject.toml" }, { git = { commit = true, tags = true 
 
 [tool.setuptools.packages.find]
 exclude = [
-    "*test*",
+    "tests*",
+    "docs*",
 ]
-
-[tool.setuptools.exclude-package-data]
-"*" = ["test*"]
 
 [tool.setuptools_scm]
 version_scheme = "python-simplified-semver"
 
 [tool.ruff]
 lint.select = ["F", "E9"]
+
+[tool.pytest]
+testpaths = ["tests"]
+norecursedirs = [".git", "build", "virtualenv", "teuthology.egg-info", ".tox", "*/integration", "teuthology/task/tests"]
+log_cli = true
+log_level = "NOTSET"
+addopts = ["-p", "no:cacheprovider"]
