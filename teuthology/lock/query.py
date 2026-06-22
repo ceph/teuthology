@@ -66,6 +66,8 @@ def list_locks(keyed_by_name=False, tries=10, **kwargs):
     if kwargs:
         if machine_type := kwargs.get("machine_type"):
             kwargs['machine_type'] = machine_type.replace(',','|')
+        elif machine_type is None:
+            kwargs.pop("machine_type")
         uri += '?' + urlencode(kwargs)
     with safe_while(
             sleep=1,
