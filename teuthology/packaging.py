@@ -1164,7 +1164,12 @@ class PulpProject(GitbuilderProject):
         labels = f'project={self.project},'
         labels += f'flavors={self.flavor},'
         labels += f'distro={self.os_type},'
-        labels += f'distro_version={self.os_version},'
+        distro_version = self._get_distro(
+            distro=self.os_type,
+            version=self.os_version,
+            codename=self.codename,
+        ).split('/', 1)[1]
+        labels += f'distro_version={distro_version},'
 
         # Add the architecture to the search parameters.
         arch = 'noarch' if self.force_noarch else self.arch
