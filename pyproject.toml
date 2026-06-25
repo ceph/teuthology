@@ -80,6 +80,7 @@ test = [
     "pynose",
     "pytest",
     "pytest-cov",
+    "pytest-json-report",
     "toml",
     "tox",
     "tox-uv",

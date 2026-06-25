@@ -11,11 +11,14 @@ An example::
     tasks
       - tests:
 """
+import json
 import logging
 import os
 import pathlib
 import pexpect
 import pytest
+
+from tempfile import NamedTemporaryFile
 
 from teuthology.job_status import set_status
 from teuthology.task import Task
@@ -56,7 +59,7 @@ class TeuthologyContextPlugin(object):
             if call.when == 'call':
                 log.info(log_msg)
             else:
-                log.info(f"----- {name} {call.when} -----")
+                log.debug(f"----- {name} {call.when} -----")
         else:
             log_msg = f"{log_msg}:{call.when}"
             if call.excinfo:
@@ -86,14 +89,14 @@ class Tests(Task):
     and then executing them with the teuthology ctx and config args.
     Your tests must follow standard pytest conventions to be discovered.
 
-    If config["mode"] == "py", (the default), it will be run in the job's process.
-    If config["mode"] == "cli" py.test will be invoked as a subprocess.
+    If config["mode"] == "cli", (the default) py.test will be invoked as a subprocess.
+    If config["mode"] == "py", it will be run in the job's process.
     """
-    base_args = ['-v', '--color=no']
+    base_args = ['-v', '--color=no', '--log-cli-level=CRITICAL']
 
     def setup(self):
         super().setup()
-        mode = self.config.get("mode", "py")
+        mode = self.config.get("mode", "cli")
         assert mode in ["py", "cli"], "mode must either be 'py' or 'cli'"
         if mode == "cli":
             # integration tests need ctx from this process, so we need to invoke
@@ -103,6 +106,12 @@ class Tests(Task):
         self.mode = mode
         self.stats = dict()
         self.orig_curdir = os.curdir
+        if self.config.get("quiet") is True:
+            self.base_args += ["--log-level=INFO"]
+        elif self.config.get("verbose") is True:
+            self.base_args += ["--log-level=DEBUG"]
+        if other_args := self.config.get("other_args"):
+            self.base_args.extend(other_args)
 
     def begin(self):
         super().begin()
@@ -137,10 +146,23 @@ class Tests(Task):
         super().end()
 
     def run_cli(self):
-        pytest_args = self.base_args + ['./tests/']
+        pytest_args = self.base_args + [
+            '--json-report',
+            '--json-report-omit', 'collectors' , 'keywords', 'log', 'streams',
+        ]
+        if self.ctx.archive:
+            json_report_file = os.path.join(self.ctx.archive, 'pytest_report.json')
+        else:
+            json_report_file = NamedTemporaryFile(
+               prefix="teuthology_pytest_report_",
+               suffix=".json",
+               dir='/tmp/',
+               delete=False,
+            ).name
+        pytest_args += [f"--json-report-file={json_report_file}", "./tests"]
         if len(self.cluster.remotes):
             pytest_args.append('./teuthology/task/tests')
-        self.log.info(f"pytest args: {pytest_args}")
+        log.info(f"pytest args: {pytest_args}")
         cwd = str(pathlib.Path(__file__).parents[3])
         log.info(f"pytest cwd: {cwd}")
         _, status = pexpect.run(
@@ -148,9 +170,12 @@ class Tests(Task):
             cwd=cwd,
             withexitstatus=True,
             timeout=None,
-            logfile=LoggerFile(self.log, logging.INFO),
+            logfile=LoggerFile(log, logging.INFO),
         )
-        return status, []
+        with open(json_report_file, 'r') as report_file:
+            report = json.load(report_file)
+            failures = [test['nodeid'] for test in report["tests"] if test["outcome"] == "failed"]
+        return status, failures
 
     def run_py(self):
         pytest_args = self.base_args + ['--pyargs', './tests/']
