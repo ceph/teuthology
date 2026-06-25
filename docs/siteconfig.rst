@@ -276,6 +276,17 @@ Here is a sample configuration with many of the options set and documented::
       timeout: 900
       user_data: teuthology/maas/user_data/maas-{os_type}-{os_version}-user-data.txt
 
+    # Settings for OpenShift Virtualization (see docs/openshift/README.md)
+    openshift:
+      namespace: teuthology
+      machine_types: ['ocpvirt']
+      user_data: teuthology/ocp/user_data/ocp-{os_type}-{os_version}-user-data.txt
+      # Multus UserDefinedNetwork for guest DHCP/DNS (empty disables UDN NIC)
+      udn_name: teuthology-net
+      udn_binding: l2bridge
+      # datasource_namespace: openshift-virtualization-os-images
+      # storage_size: 30Gi
+
     # Do not allow more than that many jobs in a single run by default.
     # To disable this check use 0.
     job_threshold: 500
