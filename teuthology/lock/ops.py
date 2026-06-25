@@ -513,6 +513,9 @@ def stop_node(name: str, status: Union[dict, None]):
     elif status['machine_type'] in provision.maas.get_types():
         provision.maas.MAAS(name).release()
         return
+    elif status['machine_type'] in provision.openshift.get_types():
+        provision.openshift.OpenShift(name).release()
+        return
     elif remote_.is_container:
         remote_.run(
             args=['sudo', '/testnode_stop.sh'],
