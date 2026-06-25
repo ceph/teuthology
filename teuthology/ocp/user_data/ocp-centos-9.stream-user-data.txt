@@ -1,0 +1,23 @@
+#cloud-config
+disable_root: false
+users:
+  - name: ubuntu
+    groups: wheel
+    shell: /bin/bash
+    sudo: ["ALL=(ALL) NOPASSWD:ALL"]
+    ssh_authorized_keys:
+      # Lab SSH public keys injected at lock/reimage (not ~/.ssh on the locker).
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJkG2Yv5LMxK/vrCVfVuxYBiOV+ZNf4IGs2juRPAjGXa teuthology@teuthology-0
+network:
+  version: 2
+  ethernets:
+    eth0:
+      dhcp4: true
+    eth1:
+      dhcp4: true
+# Extra blank disks (stripped before cloud-init; same role as openstack.volumes).
+volumes:
+  - count: 3
+    size: 15  # Gi
+  - count: 2
+    size: 20  # Gi

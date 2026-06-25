@@ -261,6 +261,7 @@ def unlock_one(name, user, description=None, status: Union[dict, None] = None) -
                 response = requests.put(uri, json.dumps(request))
                 if response.ok:
                     log.info('unlocked: %s', name)
+                    _mark_openshift_down(name, status or status_info)
                     return response.ok
                 if response.status_code == 403:
                     break
@@ -274,6 +275,15 @@ def unlock_one(name, user, description=None, status: Union[dict, None] = None) -
     log.error('failed to unlock {node}. reason: {reason}'.format(
         node=name, reason=reason))
     return False
+
+
+def _mark_openshift_down(name, status):
+    """Set paddles up=false after unlocking an OpenShift node (VM is deleted)."""
+    status = status or query.get_status(name) or {}
+    machine_type = status.get('machine_type')
+    if machine_type and machine_type in provision.openshift.get_types():
+        log.info('Marking OpenShift node %s down after unlock', name)
+        update_lock(name, status='down')
 
 
 def update_lock(name, description=None, status=None, ssh_pub_key=None):
@@ -527,6 +537,9 @@ def stop_node(name: str, status: Union[dict, None]):
         return
     elif status['machine_type'] in provision.maas.get_types():
         provision.maas.MAAS(name).release()
+        return
+    elif status['machine_type'] in provision.openshift.get_types():
+        provision.openshift.OpenShift(name).release()
         return
     elif remote_.is_container:
         remote_.run(
