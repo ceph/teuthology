@@ -276,6 +276,51 @@ Here is a sample configuration with many of the options set and documented::
       timeout: 900
       user_data: teuthology/maas/user_data/maas-{os_type}-{os_version}-user-data.txt
 
+    # Settings for OpenShift Virtualization.
+    # user_data templates are cloud-init only. Extra disks and DataSource names
+    # come from openshift.volumes / openshift.datasources (not the OS template).
+    #
+    # Guests get a single Multus NIC (no pod/masquerade). Register nodes in
+    # paddles with is_vm: false and mac_address; lab DHCP/DNS map
+    # MAC→hostname→IP (do not run a DHCP server on the front network).
+    # Sepia front example: ocpvirt001-100, MAC 52:54:00:14:c2:XX.
+    openshift:
+      namespace: teuthology
+      machine_types: ['ocpvirt']
+      user_data: teuthology/ocp/user_data/ocp-{os_type}-{os_version}-user-data.txt
+      # Public keys injected into guest cloud-init (do not hardcode in user_data)
+      ssh_authorized_keys:
+        - ssh-ed25519 AAAA... teuthology@teuthology-0
+      server: https://api.example.com:6443
+      token: <service-account-token>
+      # Optional cluster CA (base64). When unset, the system CA store is used.
+      # certificate_authority_data: <base64-ca>
+      # Explicit opt-out only; defaults to verifying TLS (never silent).
+      # insecure_skip_tls_verify: true
+      # Required Multus NetworkAttachmentDefinition / UDN name
+      udn_name: vlan1338-front
+      udn_binding: l2bridge
+      datasource_namespace: openshift-virtualization-os-images
+      # Map os_type/os_version to a cluster DataSource name
+      datasources:
+        ubuntu/22.04: ubuntu-22.04
+        ubuntu/24.04: ubuntu-24.04
+        rocky/10: rocky-10
+        centos/9.stream: centos-stream9
+      # Extra blank disks attached to every guest ( [] = root disk only )
+      volumes:
+        - count: 3
+          size: 15
+        - count: 2
+          size: 20
+      # Wait timeout for status/IP/delete/SSH (large root-disk clones may need more)
+      timeout: 900
+      vcpus: 4
+      ram: 8Gi
+      root_storage_size: 40Gi
+      root_storage_class: <rwx-storage-class>
+      data_storage_class: <rwx-storage-class>
+
     # Do not allow more than that many jobs in a single run by default.
     # To disable this check use 0.
     job_threshold: 500
