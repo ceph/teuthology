@@ -1,4 +1,5 @@
 import argparse
+import logging
 import pytest
 import subprocess
 
@@ -20,7 +21,8 @@ def test_sh_normal(caplog):
 
 
 def test_sh_truncate(caplog):
-    assert misc.sh("/bin/echo -n AB ; /bin/echo C", 2) == "ABC\n"
+    with caplog.at_level(logging.DEBUG):
+        assert misc.sh("/bin/echo -n AB ; /bin/echo C", 2) == "ABC\n"
     assert "truncated" in caplog.text
     assert "ABC" not in caplog.text
 
@@ -35,8 +37,9 @@ def test_sh_fail(caplog):
                     'ABC\n' == record.message)
 
 def test_sh_progress(caplog):
-    assert misc.sh("echo AB ; sleep 0.1 ; /bin/echo C", 2) == "AB\nC\n"
-    records = caplog.records
+    with caplog.at_level(logging.DEBUG):
+        assert misc.sh("echo AB ; sleep 0.1 ; /bin/echo C", 2) == "AB\nC\n"
+        records = caplog.records
     assert ':sh: ' in records[0].message
     assert 'AB' == records[1].message
     assert 'C' == records[2].message
