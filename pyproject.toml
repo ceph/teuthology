@@ -88,6 +88,9 @@ openstack = [
     "python-novaclient",
     "python-openstackclient",
 ]
+openshift = [
+    "kubernetes",
+]
 
 [project.scripts]
 teuthology = "scripts.run:main"
