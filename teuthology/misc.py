@@ -783,13 +783,26 @@ def get_scratch_devices(remote):
         file_data = remote.read_file("/scratch_devs").decode()
         devs = file_data.split()
     except Exception:
-        devs = remote.sh('ls /dev/[sv]d?').strip().split('\n')
+        try:
+            devs = remote.sh('ls /dev/[sv]d? /dev/nvme*n1').strip().split('\n')
+        except Exception as e:
+            log.debug("Failed to auto-detect scratch devices: %s", e)
 
-    # Remove root device (vm guests) from the disk list
+    # Remove empty strings and root device (vm guests) from the disk list
+    has_vda = any(dev.split('/')[-1] == 'vda' for dev in devs if dev)
+    filtered_devs = []
     for dev in devs:
-        if 'vda' in dev:
-            devs.remove(dev)
+        if not dev:
+            continue
+        dev_basename = dev.split('/')[-1]
+        if dev_basename == 'vda':
             log.warning("Removing root device: %s from device list" % dev)
+            continue
+        if dev_basename == 'nvme0n1' and not has_vda:
+            log.warning("Removing root device: %s from device list" % dev)
+            continue
+        filtered_devs.append(dev)
+    devs = filtered_devs
 
     log.debug('devs={d}'.format(d=devs))
 
