@@ -11,6 +11,7 @@ from teuthology.provision import fog
 from teuthology.provision import maas
 from teuthology.provision import openstack
 from teuthology.provision import pelagos
+from teuthology.provision import openshift
 
 log = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ def _logfile(shortname: str, archive_path: str = ""):
 
 
 def get_reimage_types():
-    return pelagos.get_types() + fog.get_types() + maas.get_types()
+    return pelagos.get_types() + fog.get_types() + maas.get_types() + openshift.get_types()
 
 
 def reimage(ctx, machine_name, machine_type):
@@ -31,9 +32,11 @@ def reimage(ctx, machine_name, machine_type):
     pelagos_types = pelagos.get_types()
     fog_types = fog.get_types()
     maas_types = maas.get_types()
+    openshift_types = openshift.get_types()
     if (machine_type in pelagos_types and
         machine_type in fog_types and
-        machine_type in maas_types):
+        machine_type in maas_types and
+        machine_type in openshift_types):
         raise Exception('machine_type can be used with one provisioner only')
     elif machine_type in pelagos_types:
         obj = pelagos.Pelagos(machine_name, os_type, os_version)
@@ -41,6 +44,8 @@ def reimage(ctx, machine_name, machine_type):
         obj = fog.FOG(machine_name, os_type, os_version)
     elif machine_type in maas_types:
         obj = maas.MAAS(machine_name, os_type, os_version)
+    elif machine_type in openshift_types:
+        obj = openshift.OpenShift(machine_name, os_type, os_version)
     else:
         raise Exception("The machine_type '%s' is not known to any "
                         "of configured provisioners" % machine_type)

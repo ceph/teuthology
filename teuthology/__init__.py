@@ -17,10 +17,16 @@ try:
 except ImportError:
     pass
 from gevent import monkey
-patch_threads=True
+patch_threads = True
 for arg in sys.argv:
     if "teuthology_api" in arg:
-        patch_threads=False
+        patch_threads = False
+        break
+if patch_threads:
+    if '-h' in sys.argv or '--help' in sys.argv:
+        patch_threads = False
+    elif os.path.basename(sys.argv[0]) == 'teuthology-lock':
+        patch_threads = False
 monkey.patch_all(
     dns=False,
     # Don't patch subprocess to avoid http://tracker.ceph.com/issues/14990
@@ -43,6 +49,7 @@ except ImportError:
 
 __version__ = importlib_metadata.version("teuthology")
 
+import atexit
 import logging
 
 # If we are running inside a virtualenv, ensure we have its 'bin' directory in
@@ -66,10 +73,13 @@ logging.getLogger('requests_oauthlib').setLevel(
     logging.WARN)
 # Suppresses the underlying oauthlib library
 logging.getLogger('oauthlib.oauth1').setLevel(logging.WARN)
+# Avoid verbose logging for kubernetes
+logging.getLogger('kubernetes').setLevel(logging.WARN)
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s.%(msecs)03d %(levelname)s:%(name)s:%(message)s')
+atexit.register(logging.shutdown)
 log = logging.getLogger(__name__)
 
 log.debug('teuthology version: %s', __version__)
