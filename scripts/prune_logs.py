@@ -1,38 +1,67 @@
-import docopt
+import argparse
 
 import teuthology.config
 import teuthology.prune
 
-doc = """
-usage:
-    teuthology-prune-logs -h
-    teuthology-prune-logs [-v] [options]
+def _build_parser():
+    parser = argparse.ArgumentParser(
+        description='Prune old logfiles from the archive',
+    )
+    parser.add_argument(
+        '-v', '--verbose',
+        action='store_true',
+        help='Be more verbose'
+    )
+    parser.add_argument(
+        '-a', '--archive',
+        default=teuthology.config.config.archive_base,
+        help='The base archive directory [default: %(default)s]'
+    )
+    parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help="Don't actually delete anything; just log what would be deleted"
+    )
+    parser.add_argument(
+        '-p', '--pass',
+        type=int,
+        default=14,
+        metavar='DAYS',
+        dest='pass_days',
+        help=('Remove all logs for jobs which passed and are older than DAYS. '
+              'Negative values will skip this operation. [default: %(default)s]'),
+    )
+    parser.add_argument(
+        '-f', '--fail',
+        type=int,
+        default=-1,
+        metavar='DAYS',
+        dest='fail_days',
+        help='Like --pass, but for failed jobs. [default: %(default)s]'
+    )
+    parser.add_argument(
+        '-r', '--remotes',
+        type=int,
+        default=60,
+        metavar='DAYS',
+        help=("Remove the 'remote' subdir of jobs older than DAYS. "
+              'Negative values will skip this operation. [default: %(default)s]'),
+    )
+    parser.add_argument(
+        '-z', '--compress',
+        type=int,
+        default=30,
+        metavar='DAYS',
+        help=('Compress (using gzip) any teuthology.log files older than DAYS. '
+              'Negative values will skip this operation. [default: %(default)s]'),
+    )
+    return parser
 
-Prune old logfiles from the archive
 
-optional arguments:
-  -h, --help            Show this help message and exit
-  -v, --verbose         Be more verbose
-  -a ARCHIVE, --archive ARCHIVE
-                        The base archive directory
-                        [default: {archive_base}]
-  --dry-run             Don't actually delete anything; just log what would be
-                        deleted
-  -p DAYS, --pass DAYS  Remove all logs for jobs which passed and are older
-                        than DAYS. Negative values will skip this operation.
-                        [default: 14]
-  -f DAYS, --fail DAYS  Like --pass, but for failed jobs. [default: -1]
-  -r DAYS, --remotes DAYS
-                        Remove the 'remote' subdir of jobs older than DAYS.
-                        Negative values will skip this operation.
-                        [default: 60]
-  -z DAYS, --compress DAYS
-                        Compress (using gzip) any teuthology.log files older
-                        than DAYS. Negative values will skip this operation.
-                        [default: 30]
-""".format(archive_base=teuthology.config.config.archive_base)
+def parse_args(argv=None):
+    return _build_parser().parse_args(argv)
 
 
 def main():
-    args = docopt.docopt(doc)
-    teuthology.prune.main(args)
+    args = parse_args()
+    teuthology.prune.main(args.__dict__)

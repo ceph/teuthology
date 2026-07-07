@@ -19,19 +19,19 @@ UNFINISHED_STATUSES = ('queued', 'running', 'waiting')
 def main(args):
 
     log = logging.getLogger(__name__)
-    if args['--verbose']:
+    if args['verbose']:
         teuthology.log.setLevel(logging.DEBUG)
 
-    if not args['--dry-run']:
-        log_path = os.path.join(args['--archive-dir'], 'results.log')
+    if not args['dry_run']:
+        log_path = os.path.join(args['archive_dir'], 'results.log')
         teuthology.setup_log_file(log_path)
 
     try:
-        if args['--seed']:
-            note_rerun_params(args['--subset'], args['--no-nested-subset'], args['--seed'])
+        if args['seed']:
+            note_rerun_params(args['subset'], args['no_nested_subset'], args['seed'])
         else:
-            results(args['--archive-dir'], args['--name'], args['--email'],
-                    int(args['--timeout']), args['--dry-run'])
+            results(args['archive_dir'], args['name'], args['email'],
+                    int(args['timeout']), args['dry_run'])
     except Exception:
         log.exception('error generating memo/results')
         raise

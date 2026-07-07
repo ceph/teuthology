@@ -1,11 +1,9 @@
 import os
 import pytest
-import docopt
 
 from unittest.mock import patch, call
 
 from teuthology import run
-from scripts import run as scripts_run
 from tests import skipif_teuthology_process
 
 
@@ -166,19 +164,22 @@ class TestRun(object):
         config = {"job_id": 1}
         m_setup_config.return_value = config
         m_get_machine_type.return_value = "machine_type"
-        doc = scripts_run.__doc__
-        args = docopt.docopt(doc, [
-            "--verbose",
-            "--archive", "some/archive/dir",
-            "--description", "the_description",
-            "--lock",
-            "--os-type", "os_type",
-            "--os-version", "os_version",
-            "--block",
-            "--name", "the_name",
-            "--suite-path", "some/suite/dir",
-            "path/to/config.yml",
-        ])
+        # Create args dict
+        args = {
+            'verbose': True,
+            'archive': 'some/archive/dir',
+            'description': 'the_description',
+            'owner': None,
+            'lock': True,
+            'machine_type': None,
+            'os_type': 'os_type',
+            'os_version': 'os_version',
+            'block': True,
+            'name': 'the_name',
+            'suite_path': 'some/suite/dir',
+            'interactive_on_error': False,
+            'config': ['path/to/config.yml'],
+        }
         m_get_user.return_value = "the_owner"
         m_get_summary.return_value = dict(success=True, owner="the_owner", description="the_description")
         m_validate_tasks.return_value = ['task3']
@@ -249,27 +250,44 @@ class TestRun(object):
         config = {"job_id": 1}
         m_setup_config.return_value = config
         m_get_machine_type.return_value = "machine_type"
-        doc = scripts_run.__doc__
-        args = docopt.docopt(doc, [
-            "--interactive-on-error",
-            "path/to/config.yml",
-        ])
+        # Create args
+        args = {
+            'verbose': False,
+            'archive': None,
+            'description': None,
+            'owner': None,
+            'lock': False,
+            'machine_type': None,
+            'os_type': None,
+            'os_version': None,
+            'block': False,
+            'name': None,
+            'suite_path': None,
+            'interactive_on_error': True,
+            'config': ['path/to/config.yml'],
+        }
         run.main(args)
         args, kwargs = m_run_tasks.call_args
         fake_ctx = kwargs["ctx"]._conf
-        assert fake_ctx['interactive_on_error'] is True
+        assert fake_ctx['config']['interactive-on-error'] is True
 
     def test_get_teuthology_command(self):
-        doc = scripts_run.__doc__
-        args = docopt.docopt(doc, [
-            "--archive", "some/archive/dir",
-            "--description", "the_description",
-            "--lock",
-            "--block",
-            "--name", "the_name",
-            "--suite-path", "some/suite/dir",
-            "path/to/config.yml", "path/to/config2.yaml",
-        ])
+        # Create args dict
+        args = {
+            'verbose': False,
+            'archive': 'some/archive/dir',
+            'description': 'the_description',
+            'owner': None,
+            'lock': True,
+            'machine_type': None,
+            'os_type': None,
+            'os_version': None,
+            'block': True,
+            'name': 'the_name',
+            'suite_path': 'some/suite/dir',
+            'interactive_on_error': False,
+            'config': ['path/to/config.yml', 'path/to/config2.yaml'],
+        }
         result = run.get_teuthology_command(args)
         result = result.split()
         expected = [

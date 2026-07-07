@@ -283,17 +283,17 @@ def do_summary(ctx):
 
 
 def updatekeys(args):
-    loglevel = logging.DEBUG if args['--verbose'] else logging.INFO
+    loglevel = logging.DEBUG if args['verbose'] else logging.INFO
     logging.basicConfig(
         level=loglevel,
     )
-    all_ = args['--all']
+    all_ = args['all']
     machines = []
-    if args['<machine>']:
+    if args['machines']:
         machines = [misc.canonicalize_hostname(m, user=None)
-                    for m in args['<machine>']]
-    elif args['--targets']:
-        targets = args['--targets']
+                    for m in args['machines']]
+    elif args['targets']:
+        targets = args['targets']
         with open(targets) as f:
             docs = yaml.safe_load_all(f)
             for doc in docs:
