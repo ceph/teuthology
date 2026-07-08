@@ -105,6 +105,7 @@ Standard arguments:
                               aarch64, armv7l, x86_64. Normally this
                               argument should not be provided and the arch
                               is determined from --machine-type.
+                              [default: {default_arch}]
 
 Scheduler arguments:
   --owner <owner>             Job owner
@@ -216,6 +217,7 @@ Scheduler arguments:
 +-----------------+-----------------------------------------------------------------+
 
 """.format(
+    default_arch=config.default_arch,
     default_machine_type=config.default_machine_type,
     default_results_timeout=config.results_timeout,
     default_ceph_repo=defaults('--ceph-repo',
