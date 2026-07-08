@@ -12,6 +12,7 @@ from pathlib import Path
 from humanfriendly import format_timespan
 
 from teuthology import repo_utils
+from teuthology import lock
 
 from teuthology.config import config, JobConfig
 from teuthology.exceptions import (
@@ -605,7 +606,7 @@ Note: If you still want to go ahead, use --job-threshold 0'''
             arch = self.args.arch
             log.debug("Using '%s' as an arch" % arch)
         else:
-            arch = util.get_arch(self.base_config.machine_type)
+            arch = lock.query.get_arch(self.base_config.machine_type)
         suite_name = self.base_config.suite
         suite_path = os.path.normpath(os.path.join(
             self.suite_repo_path,

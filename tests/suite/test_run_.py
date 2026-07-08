@@ -269,7 +269,7 @@ class TestScheduleSuite(object):
     @patch('teuthology.suite.util.git_ls_remote')
     @patch('teuthology.suite.util.package_version_for_hash')
     @patch('teuthology.suite.util.git_validate_sha1')
-    @patch('teuthology.suite.util.get_arch')
+    @patch('teuthology.lock.query.get_arch')
     def test_successful_schedule(
         self,
         m_get_arch,
@@ -380,7 +380,7 @@ class TestScheduleSuite(object):
     @patch('teuthology.suite.util.git_ls_remote')
     @patch('teuthology.suite.util.package_version_for_hash')
     @patch('teuthology.suite.util.git_validate_sha1')
-    @patch('teuthology.suite.util.get_arch')
+    @patch('teuthology.lock.query.get_arch')
     def test_newest_failure(
         self,
         m_get_arch,
@@ -427,7 +427,7 @@ class TestScheduleSuite(object):
     @patch('teuthology.suite.util.git_ls_remote')
     @patch('teuthology.suite.util.package_version_for_hash')
     @patch('teuthology.suite.util.git_validate_sha1')
-    @patch('teuthology.suite.util.get_arch')
+    @patch('teuthology.lock.query.get_arch')
     def test_newest_success_same_branch_same_repo(
         self,
         m_get_arch,
@@ -535,7 +535,7 @@ class TestScheduleSuite(object):
     @patch('teuthology.suite.util.git_ls_remote')
     @patch('teuthology.suite.util.package_version_for_hash')
     @patch('teuthology.suite.util.git_validate_sha1')
-    @patch('teuthology.suite.util.get_arch')
+    @patch('teuthology.lock.query.get_arch')
     def test_newest_success_diff_branch_diff_repo(
         self,
         m_get_arch,
