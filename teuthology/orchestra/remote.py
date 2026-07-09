@@ -9,7 +9,6 @@ from teuthology.orchestra import run
 from teuthology.orchestra import connection
 from teuthology.orchestra import console
 from teuthology.orchestra.opsys import OS
-from teuthology import misc
 from teuthology.exceptions import CommandFailedError, UnitTestError
 from teuthology.util.scanner import UnitTestScanner
 from teuthology.misc import host_shortname
@@ -563,7 +562,26 @@ class Remote(RemoteShell):
         """
         System type decorator
         """
-        return misc.get_system_type(self)
+        return self.get_system_type()
+
+    def get_system_type(self, distro=False, version=False):
+        """
+        Returns system type info based on arguments for the remote.
+
+        If distro, return distro.
+        If version, return version
+        If both, return both.
+        If neither, return 'deb' or 'rpm' if distro is known to be one of those
+        """
+        if version:
+            version = self.os.version
+        if distro and version:
+            return self.os.name, version
+        if distro:
+            return self.os.name
+        if version:
+            return version
+        return self.os.package_type
 
     def __str__(self):
         return self.name
