@@ -971,9 +971,10 @@ def _kernel_set_default_bls(remote, newversion, ostype):
     Prefer `grubby --set-default` when available.
     Otherwise fall back to `grub2-set-default <BLS_ENTRY_ID>` using /boot/loader/entries.
     """
-    has_grubby = remote.sh("sudo command -v grubby && echo yes || echo no").strip() == 'yes'
-
-    if has_grubby and ostype == 'rpm':
+    # grubby is only useful on RPM distros; `command -v` prints the path on
+    # success, so test for non-empty output.
+    if ostype == 'rpm' and remote.sh(
+            "sudo command -v grubby", check_status=False).strip() != '':
         vmlinuz = remote.sh(
             f"sudo find /boot -maxdepth 1 -name 'vmlinuz-*' -type f | "
             f"grep -F '{newversion}' | head -n 1"
@@ -989,6 +990,27 @@ def _kernel_set_default_bls(remote, newversion, ostype):
     grubset = 'grub2-set-default' if ostype == 'rpm' else 'grub-set-default'
     remote.run(args=['sudo', grubset, entry_id])
     return True
+
+
+def _kernel_ensure_grub_default_saved(remote):
+    """Ensure /etc/default/grub has GRUB_DEFAULT=saved (RPM only).
+
+    grubby/grub2-set-default record the chosen entry as `saved_entry` in
+    grubenv, but the generated grub.cfg only consults `saved_entry` when
+    GRUB_DEFAULT=saved.  Some lab images (e.g. Rocky 10 on legacy BIOS
+    smithi nodes, whose bootloader is hand-installed because Rocky 10
+    ships no grub2-pc) don't set it, so grub falls back to menu position
+    and reboots land in the old kernel.
+    """
+    # Drop any existing GRUB_DEFAULT line, then append.  The leading newline
+    # guards against files without a trailing newline, where a plain >> would
+    # otherwise glue onto the last line (e.g. GRUB_TERMINAL_OUTPUT=console).
+    remote.run(args=[
+        'sudo', 'sh', '-c',
+        'touch /etc/default/grub'
+        ' && sed -i "/^GRUB_DEFAULT=/d" /etc/default/grub'
+        ' && printf "\\nGRUB_DEFAULT=saved\\n" >> /etc/default/grub'
+    ])
 
 
 def _kernel_sync_uefi_grubcfg(remote, grubconfig, ostype):
@@ -1045,13 +1067,20 @@ def grub2_kernel_select_generic(remote, newversion, ostype):
     else:
         raise UnsupportedPackageTypeError(f"Unknown ostype: {ostype}")
 
+    if ostype == 'rpm':
+        # Make the generated grub.cfg honor grubenv's saved_entry, which is
+        # what grubby/grub2-set-default write below.
+        _kernel_ensure_grub_default_saved(remote)
+
     if _kernel_has_bls(remote):
+        # Regenerate grub.cfg first: EL's patched grub2-mkconfig and grub.d
+        # scripts can rewrite grubenv, which would clobber a default set
+        # beforehand.  Set the default entry only after mkconfig has run.
+        remote.run(args=['sudo', mkconfig, '-o', grubconfig])
         status_ok = _kernel_set_default_bls(remote, newversion, ostype)
         if not status_ok:
             log.warning('Unable to set default kernel on BLS system')
             return
-        # Regenerate grub.cfg to reflect the new default, then sync to UEFI
-        remote.run(args=['sudo', mkconfig, '-o', grubconfig])
         _kernel_sync_uefi_grubcfg(remote, grubconfig, ostype)
         return
 
