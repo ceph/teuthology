@@ -88,6 +88,7 @@ class CephadmUnit(DaemonState):
             check_status=False,
         )
         #self.log.info('_stop_logger %s waiting')
+        assert self.remote_logger
         self.remote_logger.wait()
         self.remote_logger = None
         #self.log.info('_stop_logger done')

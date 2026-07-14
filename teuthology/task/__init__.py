@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from teuthology.misc import deep_merge
 from teuthology.orchestra.cluster import Cluster
@@ -24,7 +25,7 @@ class Task(object):
                   name = 'mytask.mysubtask'
     """
 
-    def __init__(self, ctx, config=None):
+    def __init__(self, ctx, config: Optional[dict] = None) -> None:
         if not hasattr(self, 'name'):
             self.name = self.__class__.__name__.lower()
         self.log = log
@@ -35,7 +36,7 @@ class Task(object):
         self.apply_overrides()
         self.filter_hosts()
 
-    def apply_overrides(self):
+    def apply_overrides(self) -> None:
         """
         Look for an 'overrides' dict in self.ctx.config; look inside that for a
         dict with the same name as this task. Override any settings in
@@ -54,7 +55,7 @@ class Task(object):
             )
             deep_merge(self.config, task_overrides)
 
-    def filter_hosts(self):
+    def filter_hosts(self) -> Optional[Cluster]:
         """
         Look for a 'hosts' list in self.config. Each item in the list may
         either be a role or a hostname. Builds a new Cluster object containing
@@ -63,7 +64,7 @@ class Task(object):
         that the task may only run against those hosts.
         """
         if not hasattr(self.ctx, 'cluster'):
-            return
+            return None
         elif 'hosts' not in self.config:
             self.cluster = self.ctx.cluster
             return self.cluster
@@ -88,25 +89,25 @@ class Task(object):
         )
         return self.cluster
 
-    def setup(self):
+    def setup(self) -> None:
         """
         Perform any setup that is needed by the task before it executes
         """
         pass
 
-    def begin(self):
+    def begin(self) -> None:
         """
         Execute the main functionality of the task
         """
         pass
 
-    def end(self):
+    def end(self) -> None:
         """
         Perform any work needed to stop processes started in begin()
         """
         pass
 
-    def teardown(self):
+    def teardown(self) -> None:
         """
         Perform any work needed to restore configuration to a previous state.
 
@@ -114,7 +115,7 @@ class Task(object):
         """
         pass
 
-    def __enter__(self):
+    def __enter__(self) -> "Task":
         """
         When using an instance of the class as a context manager, this method
         calls self.setup(), then calls self.begin() and returns self.
@@ -123,7 +124,7 @@ class Task(object):
         self.begin()
         return self
 
-    def __exit__(self, type_, value, traceback):
+    def __exit__(self, type_, value, traceback) -> None:
         """
         When using an instance of the class as a context manager, this method
         calls self.end() and self.teardown() - unless

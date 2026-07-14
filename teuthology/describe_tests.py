@@ -110,7 +110,7 @@ def output_results(headers, rows, output_format, hrule):
 def output_summary(path, limit=0,
                          seed=None,
                          subset=None,
-                         no_nested_subset=None,
+                         no_nested_subset=False,
                          show_desc=True,
                          show_frag=False,
                          show_matrix=False,

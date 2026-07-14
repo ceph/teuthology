@@ -1,14 +1,14 @@
 """
 Task to loop a list of items
 """
-import sys
 import logging
+import sys
 
 from teuthology import run_tasks
 
 log = logging.getLogger(__name__)
 
-def task(ctx, config):
+def task(ctx, config: dict) -> None:
     """
     Loop a sequential group of tasks
 

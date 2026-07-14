@@ -23,6 +23,7 @@ import os
 import pwd
 import tempfile
 import netaddr
+from typing import List, Optional, Union
 
 log = logging.getLogger(__name__)
 
@@ -43,10 +44,18 @@ class RemoteShell(object):
     the subclass.
     """
 
-    def remove(self, path):
+    # Attributes that subclasses should provide
+    name: str
+    shortname: str
+
+    def run(self, **_):
+        """Subclasses must implement this method"""
+        raise NotImplementedError("Subclasses must implement run()")
+
+    def remove(self, path: str):
         self.run(args=['rm', '-fr', path])
 
-    def mkdtemp(self, suffix=None, parentdir=None):
+    def mkdtemp(self, suffix: Optional[str] = None, parentdir: Optional[str] = None) -> str:
         """
         Create a temporary directory on remote machine and return it's path.
         """
@@ -59,7 +68,8 @@ class RemoteShell(object):
 
         return self.sh(args).strip()
 
-    def mktemp(self, suffix=None, parentdir=None, data=None):
+    def mktemp(self, suffix: Optional[str] = None, parentdir: Optional[str] = None,
+               data: Optional[Union[str, bytes]] = None) -> str:
         """
         Make a remote temporary file.
 
@@ -82,7 +92,7 @@ class RemoteShell(object):
 
         return path
 
-    def sh(self, script, **kwargs):
+    def sh(self, script: Union[str, List[str]], **kwargs) -> str:
         """
         Shortcut for run method.
 
@@ -101,7 +111,8 @@ class RemoteShell(object):
         else:
             return out
 
-    def sh_file(self, script, label="script", sudo=False, **kwargs):
+    def sh_file(self, script: Union[str], label: str = "script",
+                sudo: Union[bool, str] = False, **kwargs) -> str:
         """
         Run shell script after copying its contents to a remote file
 
@@ -126,7 +137,7 @@ class RemoteShell(object):
 
         return self.sh(command, **kwargs)
 
-    def chmod(self, file_path, permissions):
+    def chmod(self, file_path: str, permissions: str) -> None:
         """
         As super-user, set permissions on the remote file specified.
         """
@@ -140,7 +151,7 @@ class RemoteShell(object):
             args=args,
             )
 
-    def chcon(self, file_path, context):
+    def chcon(self, file_path: str, context: str) -> None:
         """
         Set the SELinux context of a given file.
 
@@ -158,8 +169,8 @@ class RemoteShell(object):
         self.run(args="sudo chcon {con} {path}".format(
             con=context, path=file_path))
 
-    def copy_file(self, src, dst, sudo=False, mode=None, owner=None,
-                                              mkdir=False, append=False):
+    def copy_file(self, src: str, dst: str, sudo: bool = False, mode: Optional[str] = None,
+                  owner: Optional[str] = None, mkdir: bool = False, append: bool = False) -> None:
         """
         Copy data to remote file
 
@@ -190,8 +201,8 @@ class RemoteShell(object):
         args = 'set -ex' + '\n' + args
         self.run(args=args)
 
-    def move_file(self, src, dst, sudo=False, mode=None, owner=None,
-                                              mkdir=False):
+    def move_file(self, src: str, dst: str, sudo: bool = False, mode: Optional[str] = None,
+                  owner: Optional[str] = None, mkdir: bool = False):
         """
         Move data to remote file
 
@@ -358,7 +369,6 @@ class Remote(RemoteShell):
 
     # for unit tests to hook into
     _runner = staticmethod(run.run)
-    _reimage_types = None
 
     def __init__(self, name, ssh=None, shortname=None, console=None,
                  host_key=None, keep_alive=True):
@@ -379,12 +389,13 @@ class Remote(RemoteShell):
         self._console = console
         self.ssh = ssh
 
-        if self._reimage_types is None:
-            Remote._reimage_types = teuthology.provision.get_reimage_types()
+    @property
+    def reimage_types(self):
+        return teuthology.provision.get_reimage_types()
 
     def connect(self, timeout=None, create_key=None, context='connect'):
         args = dict(user_at_host=self.name, host_key=self._host_key,
-                    keep_alive=self.keep_alive, _create_key=create_key)
+                    keep_alive=self.keep_alive)
         if context == 'reconnect':
             # The reason for the 'context' workaround is not very
             # clear from the technical side.
@@ -450,6 +461,7 @@ class Remote(RemoteShell):
 
     @property
     def ip_address(self):
+        assert self.ssh
         return self.ssh.get_transport().getpeername()[0]
 
     @property
@@ -539,7 +551,7 @@ class Remote(RemoteShell):
 
     @property
     def is_reimageable(self):
-        return self.machine_type in self._reimage_types
+        return self.machine_type in self.reimage_types
 
     @property
     def shortname(self):
@@ -615,6 +627,7 @@ class Remote(RemoteShell):
         """
         Use the paramiko.SFTPClient to put a file. Returns the remote filename.
         """
+        assert self.ssh
         sftp = self.ssh.open_sftp()
         sftp.put(local_path, remote_path)
         return
@@ -623,6 +636,7 @@ class Remote(RemoteShell):
         """
         Use the paramiko.SFTPClient to get a file. Returns the local filename.
         """
+        assert self.ssh
         file_size = self._format_size(
             self._sftp_get_size(remote_path)
         ).strip()
@@ -636,6 +650,7 @@ class Remote(RemoteShell):
         Use the paramiko.SFTPClient to open a file. Returns a
         paramiko.SFTPFile object.
         """
+        assert self.ssh
         sftp = self.ssh.open_sftp()
         if mode:
             return sftp.open(remote_path, mode)
@@ -752,6 +767,7 @@ class Remote(RemoteShell):
 
     @property
     def host_key(self):
+        assert self.ssh
         if not self._host_key:
             trans = self.ssh.get_transport()
             key = trans.get_remote_server_key()

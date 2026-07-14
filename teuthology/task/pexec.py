@@ -2,21 +2,22 @@
 Handle parallel execution on remote hosts
 """
 import logging
+from typing import Generator, List, Tuple
+
+from gevent import event as event
+from gevent import queue as queue
 
 from teuthology import misc as teuthology
-from teuthology.parallel import parallel
 from teuthology.orchestra import run as tor
+from teuthology.parallel import parallel
 
 log = logging.getLogger(__name__)
 
-from gevent import queue as queue
-from gevent import event as event
-
-def _init_barrier(barrier_queue, remote):
+def _init_barrier(barrier_queue: queue.Queue, remote) -> None:
     """current just queues a remote host""" 
     barrier_queue.put(remote)
 
-def _do_barrier(barrier, barrier_queue, remote):
+def _do_barrier(barrier: event.Event, barrier_queue: queue.Queue, remote) -> None:
     """special case for barrier"""
     barrier_queue.get()
     if barrier_queue.empty():
@@ -32,7 +33,7 @@ def _do_barrier(barrier, barrier_queue, remote):
     else:
         barrier.wait()
 
-def _exec_host(barrier, barrier_queue, remote, sudo, testdir, ls):
+def _exec_host(barrier: event.Event, barrier_queue: queue.Queue, remote, sudo: bool, testdir: str, ls: List[str]) -> None:
     """Execute command remotely"""
     args = [
         'TESTDIR={tdir}'.format(tdir=testdir),
@@ -61,7 +62,7 @@ def _exec_host(barrier, barrier_queue, remote, sudo, testdir, ls):
         log.info('%s', l)
     tor.wait([r])
 
-def _generate_remotes(ctx, config):
+def _generate_remotes(ctx, config: dict) -> Generator[Tuple[object, list[str]], None, None]:
     """Return remote roles and the type of role specified in config"""
     if 'all' in config and len(config) == 1:
         ls = config['all']
@@ -81,7 +82,7 @@ def _generate_remotes(ctx, config):
             (remote,) = ctx.cluster.only(role).remotes.keys()
             yield (remote, ls)
 
-def task(ctx, config):
+def task(ctx, config: dict) -> None:
     """
     Execute commands on multiple hosts in parallel
 

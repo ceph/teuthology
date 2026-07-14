@@ -2,6 +2,8 @@ import contextlib
 import sys
 import logging
 import time
+from typing import Callable, Generator, Optional
+from types import TracebackType
 
 from teuthology.config import config
 from teuthology.exceptions import MaxWhileTries
@@ -10,7 +12,7 @@ from teuthology.exceptions import MaxWhileTries
 log = logging.getLogger(__name__)
 
 @contextlib.contextmanager
-def nested(*managers):
+def nested(*managers: Callable[[], contextlib.AbstractContextManager]) -> Generator[list, None, None]:
     """
     Like contextlib.nested but takes callables returning context
     managers, to avoid the major reason why contextlib.nested was
@@ -90,8 +92,8 @@ class safe_while(object):
                       Default time.sleep
     """
 
-    def __init__(self, sleep=6, increment=0, tries=10, timeout=0, action=None,
-                 _raise=True, _sleeper=None):
+    def __init__(self, sleep: int = 6, increment: float = 0, tries: int = 10, timeout: int = 0, action: Optional[str] = None,
+                 _raise: bool = True, _sleeper: Optional[Callable[[float], None]] = None) -> None:
         self.sleep = sleep
         self.increment = increment
         self.tries = tries
@@ -103,7 +105,7 @@ class safe_while(object):
         self.sleeper = _sleeper or time.sleep
         self.total_seconds = sleep
 
-    def _make_error_msg(self):
+    def _make_error_msg(self) -> str:
         """
         Sum the total number of seconds we waited while providing the number
         of tries we attempted
@@ -120,11 +122,11 @@ class safe_while(object):
         )
         return msg
 
-    def __call__(self):
+    def __call__(self) -> bool:
         self.counter += 1
         if self.counter == 1:
             return True
-        def must_stop():
+        def must_stop() -> bool:
             return self.tries > 0 and self.counter > self.tries
         if ((self.timeout > 0 and
              self.total_seconds >= self.timeout) or
@@ -142,8 +144,8 @@ class safe_while(object):
         self.sleeper(self.sleep_current)
         return True
 
-    def __enter__(self):
+    def __enter__(self) -> 'safe_while':
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Optional[type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]) -> bool:
         return False

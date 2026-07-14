@@ -2,12 +2,13 @@
 Exececute custom commands
 """
 import logging
+from typing import Dict, List
 
 from teuthology import misc as teuthology
 
 log = logging.getLogger(__name__)
 
-def task(ctx, config):
+def task(ctx, config: Dict[str, List[str]]) -> None:
     """
     Execute commands on a given role
 

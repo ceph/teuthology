@@ -7,6 +7,7 @@ import smtplib
 import socket
 from subprocess import Popen, PIPE, DEVNULL
 import sys
+from typing import Optional
 
 from email.mime.text import MIMEText
 
@@ -29,7 +30,7 @@ CONTAINER_DISTRO = 'centos/9'       # the one to check for build_complete
 CONTAINER_FLAVOR = 'default'
 
 
-def fetch_repos(branch, test_name, dry_run, commit=None):
+def fetch_repos(branch: str, test_name: str, dry_run: bool, commit: Optional[str] = None) -> str:
     """
     Fetch the suite repo (and also the teuthology repo) so that we can use it
     to build jobs. Repos are stored in ~/src/.
@@ -42,6 +43,7 @@ def fetch_repos(branch, test_name, dry_run, commit=None):
 
     :returns: The path to the suite repo on disk
     """
+    suite_repo_path: str
     try:
         # When a user is scheduling a test run from their own copy of
         # teuthology, let's not wreak havoc on it.
@@ -52,10 +54,11 @@ def fetch_repos(branch, test_name, dry_run, commit=None):
         suite_repo_path = fetch_qa_suite(branch, commit)
     except BranchNotFoundError as exc:
         schedule_fail(message=str(exc), name=test_name, dry_run=dry_run)
+        raise  # schedule_fail raises, but type checker doesn't know
     return suite_repo_path
 
 
-def schedule_fail(message, name='', dry_run=None):
+def schedule_fail(message: str, name: str = '', dry_run: Optional[bool] = None) -> None:
     """
     If an email address has been specified anywhere, send an alert there. Then
     raise a ScheduleFailError.
@@ -77,7 +80,7 @@ def schedule_fail(message, name='', dry_run=None):
     raise ScheduleFailError(message, name)
 
 
-def get_worker(machine_type):
+def get_worker(machine_type: str) -> str:
     """
     Map a given machine_type to a beanstalkd worker. If machine_type mentions
     multiple machine types - e.g. 'plana,mira', then this returns 'multi'.
@@ -89,9 +92,9 @@ def get_worker(machine_type):
         return machine_type
 
 
-def get_gitbuilder_hash(project=None, branch=None, flavor=None,
-                        machine_type=None, distro=None,
-                        distro_version=None):
+def get_gitbuilder_hash(project: Optional[str] = None, branch: Optional[str] = None, flavor: Optional[str] = None,
+                        machine_type: Optional[str] = None, distro: Optional[str] = None,
+                        distro_version: Optional[str] = None) -> Optional[str]:
     """
     Find the hash representing the head of the project's repository via
     querying a gitbuilder repo.
@@ -119,7 +122,7 @@ def get_gitbuilder_hash(project=None, branch=None, flavor=None,
     return bp.sha1
 
 
-def get_distro_defaults(distro, machine_type):
+def get_distro_defaults(distro: Optional[str], machine_type: str) -> tuple[str, str, OS]:
     """
     Given a distro (e.g. 'ubuntu') and machine type, return:
         (arch, release, pkg_type)
@@ -146,7 +149,7 @@ def get_distro_defaults(distro, machine_type):
     )
 
 
-def git_ls_remote(project_or_url, branch, project_owner='ceph'):
+def git_ls_remote(project_or_url: str, branch: str, project_owner: str = 'ceph') -> Optional[str]:
     """
     Find the latest sha1 for a given project's branch.
 
@@ -163,7 +166,7 @@ def git_ls_remote(project_or_url, branch, project_owner='ceph'):
     return repo_utils.ls_remote(url, branch)
 
 
-def git_validate_sha1(project, sha1, project_owner='ceph'):
+def git_validate_sha1(project: str, sha1: str, project_owner: str = 'ceph') -> Optional[str]:
     '''
     Use http to validate that project contains sha1
     I can't find a way to do this with git, period, so
@@ -189,7 +192,7 @@ def git_validate_sha1(project, sha1, project_owner='ceph'):
     return None
 
 
-def git_branch_exists(project_or_url, branch, project_owner='ceph'):
+def git_branch_exists(project_or_url: str, branch: str, project_owner: str = 'ceph') -> bool:
     """
     Query the git repository to check the existence of a project's branch
 
@@ -201,7 +204,7 @@ def git_branch_exists(project_or_url, branch, project_owner='ceph'):
     return git_ls_remote(project_or_url, branch, project_owner) is not None
 
 
-def get_branch_info(project, branch, project_owner='ceph'):
+def get_branch_info(project: str, branch: str, project_owner: str = 'ceph') -> Optional[dict]:
     """
     NOTE: This is currently not being used because of GitHub's API rate
     limiting. We use github_branch_exists() instead.
@@ -224,8 +227,8 @@ def get_branch_info(project, branch, project_owner='ceph'):
 
 
 @functools.lru_cache()
-def package_version_for_hash(hash, flavor='default', distro='rhel',
-                             distro_version='8.0', machine_type='smithi'):
+def package_version_for_hash(hash: str, flavor: str = 'default', distro: str = 'rhel',
+                             distro_version: str = '8.0', machine_type: str = 'smithi') -> Optional[str]:
     """
     Does what it says on the tin. Uses gitbuilder repos.
 
@@ -245,8 +248,8 @@ def package_version_for_hash(hash, flavor='default', distro='rhel',
         ),
     )
 
-    if (bp.distro == CONTAINER_DISTRO and bp.flavor == CONTAINER_FLAVOR and 
-            not bp.build_complete):
+    if (bp.distro == CONTAINER_DISTRO and bp.flavor == CONTAINER_FLAVOR and
+            not getattr(bp, 'build_complete', True)):
         log.info("Container build incomplete")
         return None
 
@@ -256,7 +259,7 @@ def package_version_for_hash(hash, flavor='default', distro='rhel',
         return None
 
 
-def get_arch(machine_type):
+def get_arch(machine_type: str) -> Optional[str]:
     """
     Based on a given machine_type, return its architecture by querying the lock
     server.
@@ -270,7 +273,7 @@ def get_arch(machine_type):
         return result[0]['arch']
 
 
-def strip_fragment_path(original_path):
+def strip_fragment_path(original_path: str) -> str:
     """
     Given a path, remove the text before '/suites/'.  Part of the fix for
     http://tracker.ceph.com/issues/15470
@@ -282,7 +285,7 @@ def strip_fragment_path(original_path):
     return original_path
 
 
-def get_install_task_flavor(job_config):
+def get_install_task_flavor(job_config: dict) -> str:
     """
     Pokes through the install task's configuration (including its overrides) to
     figure out which flavor it will want to install.
@@ -305,7 +308,7 @@ def get_install_task_flavor(job_config):
     return get_flavor(first_install_config)
 
 
-def teuthology_schedule(args, verbose, dry_run, log_prefix='', stdin=None):
+def teuthology_schedule(args: list[str], verbose: int, dry_run: bool, log_prefix: str = '', stdin: Optional[str] = None) -> None:
     """
     Run teuthology-schedule to schedule individual jobs.
 
@@ -340,7 +343,7 @@ def teuthology_schedule(args, verbose, dry_run, log_prefix='', stdin=None):
         else:
             p.communicate()
 
-def find_git_parents(project: str, sha1: str, count=1):
+def find_git_parents(project: str, sha1: str, count: int = 1) -> list[str]:
 
     base_url = config.githelper_base_url
     if not base_url:

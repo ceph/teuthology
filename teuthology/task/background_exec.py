@@ -4,6 +4,7 @@ Background task
 
 import contextlib
 import logging
+from typing import Dict, Generator, List, Union
 
 from teuthology import misc
 from teuthology.orchestra import run
@@ -12,7 +13,7 @@ log = logging.getLogger(__name__)
 
 
 @contextlib.contextmanager
-def task(ctx, config):
+def task(ctx, config: Dict[str, Union[str, List[str]]]) -> Generator[None, None, None]:
     """
     Run a background task.
 

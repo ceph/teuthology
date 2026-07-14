@@ -280,6 +280,7 @@ def clone_repo(repo_url, dest_path, branch, shallow=True):
         stderr=subprocess.STDOUT)
 
     not_found_str = "Remote branch %s not found" % branch
+    assert proc.stdout
     out = proc.stdout.read().decode()
     result = proc.wait()
     # Newer git versions will bail if the branch is not found, but older ones
@@ -358,6 +359,7 @@ def set_remote(repo_path, repo_url):
         cwd=repo_path,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT)
+    assert proc.stdout
     if proc.wait() != 0:
         out = proc.stdout.read()
         log.error(out)
@@ -377,6 +379,7 @@ def fetch(repo_path):
         cwd=repo_path,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT)
+    assert proc.stdout
     if proc.wait() != 0:
         out = proc.stdout.read().decode()
         log.error(out)
@@ -404,6 +407,7 @@ def fetch_branch(repo_path, branch, shallow=True):
         cwd=repo_path,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT)
+    assert proc.stdout
     if proc.wait() != 0:
         not_found_str = "fatal: couldn't find remote ref %s" % branch
         out = proc.stdout.read().decode()
@@ -523,7 +527,9 @@ def url_to_dirname(url):
         file:///my/dir/has/ceph.git -> my_dir_has_ceph
     """
     # Strip protocol from left-hand side
-    string = re.match('(?:.*://|.*@)(.*)', url).group(1)
+    match = re.match('(?:.*://|.*@)(.*)', url)
+    assert match, "URL is invalid"
+    string = match.group(1)
     # Strip '.git' from the right-hand side
     if string.endswith('.git'):
         string = string[:-4]

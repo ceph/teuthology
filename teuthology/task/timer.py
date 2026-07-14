@@ -1,14 +1,15 @@
 """
 Timer task
 """
-import logging
 import contextlib
 import datetime
+import logging
+from typing import Generator
 
 log = logging.getLogger(__name__)
 
 @contextlib.contextmanager
-def task(ctx, config):
+def task(ctx, config: str) -> Generator[None, None, None]:
     """
     Timer
 

@@ -3,11 +3,12 @@ import logging
 import requests
 import re
 import time
+from typing import Dict, List, Optional
 
 from teuthology.config import config
 from teuthology.contextutil import safe_while
 from teuthology.misc import canonicalize_hostname
-from teuthology.util.compat import  HTTPError
+from teuthology.util.compat import HTTPError
 
 log = logging.getLogger(__name__)
 config_section = 'pelagos'
@@ -15,7 +16,7 @@ config_section = 'pelagos'
 # Provisioner configuration section description see in
 # docs/siteconfig.rst
 
-def enabled(warn=False):
+def enabled(warn: bool = False) -> bool:
     """
     Check for required Pelagos settings
 
@@ -33,7 +34,7 @@ def enabled(warn=False):
     return (unset == [])
 
 
-def get_types():
+def get_types() -> List[str]:
     """
     Fetch and parse config.pelagos['machine_types']
 
@@ -48,14 +49,14 @@ def get_types():
         types = [_ for _ in types.split(',') if _]
     return [_ for _ in types if _]
 
-def park_node(name):
+def park_node(name: str) -> None:
     p = Pelagos(name, "maintenance_image")
     p.create(wait=False)
 
 
 class Pelagos(object):
 
-    def __init__(self, name, os_type, os_version=""):
+    def __init__(self, name: str, os_type: str, os_version: str = "") -> None:
         #for service should be a hostname, not a user@host
         split_uri = re.search(r'(\w*)@(.+)', canonicalize_hostname(name))
         if split_uri is not None:
@@ -71,7 +72,7 @@ class Pelagos(object):
             self.os_name = os_type
         self.log = log.getChild(self.name)
 
-    def create(self, wait=True):
+    def create(self, wait: bool = True):
         """
         Initiate deployment via REST requests and wait until completion
          :param wait: optional, by default is True, if set to False, function
@@ -84,7 +85,7 @@ class Pelagos(object):
         """
         if not enabled():
             raise RuntimeError("Pelagos is not configured!")
-        location = None
+        location: Optional[str] = None
         try:
             params = dict(os=self.os_name, node=self.name)
             response = self.do_request('node/provision',
@@ -92,6 +93,8 @@ class Pelagos(object):
             if not wait:
                 return response
             location = response.headers.get('Location')
+            if not location:
+                raise RuntimeError("No Location header in response")
             self.log.debug("provision task: '%s'", location)
             # gracefully wait till provision task gets created on pelagos
             time.sleep(2)
@@ -109,25 +112,25 @@ class Pelagos(object):
                 self.log.error("Failed to start deploy tasks!")
             raise e
         self.log.info("Deploy complete!")
-        if self.task_status_response.status_code != 200:
+        if hasattr(self.task_status_response, 'status_code') and self.task_status_response.status_code != 200:
             raise Exception("Deploy failed")
         return self.task_status_response
 
-    def cancel_deploy_task(self,  task_id):
+    def cancel_deploy_task(self, task_id: str) -> None:
         # TODO implement it
         return
 
-    def is_task_active(self, task_url):
+    def is_task_active(self, task_url: str) -> bool:
         try:
             status_response = self.do_request('', url=task_url, verify=False)
         except HTTPError as err:
             self.log.error("Task fail reason: '%s'", err.reason)
-            if err.status_code == 404:
+            if hasattr(err, 'status_code') and err.status_code == 404:
                 self.log.error(err.reason)
                 self.task_status_response = 'failed'
                 return False
             else:
-                raise HTTPError(err.code, err.reason)
+                raise
             self.log.debug("Response code '%s'",
                                 str(status_response.status_code))
         self.task_status_response = status_response
@@ -138,7 +141,14 @@ class Pelagos(object):
                 return True
         return False
 
-    def do_request(self, url_suffix, url="" , data=None, method='GET', verify=True):
+    def do_request(
+        self,
+        url_suffix: str,
+        url: str = "",
+        data: Optional[Dict[str, str]] = None,
+        method: str = 'GET',
+        verify: bool = True
+    ) -> requests.Response:
         """
         A convenience method to submit a request to the Pelagos server
         :param url_suffix: The portion of the URL to append to the endpoint,
@@ -167,7 +177,7 @@ class Pelagos(object):
             resp.raise_for_status()
         return resp
 
-    def destroy(self):
+    def destroy(self) -> None:
         """A no-op; we just leave idle nodes as-is"""
         pass
 

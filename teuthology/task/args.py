@@ -1,7 +1,9 @@
 """
 These routines only appear to be used by the peering_speed tests.
 """
-def gen_args(name, args):
+from typing import Callable, List, Tuple
+
+def gen_args(name: str, args: List[Tuple[str, str, object, Callable]]) -> Tuple[str, Callable]:
     """
     Called from argify to generate arguments.
     """
@@ -36,25 +38,25 @@ def gen_args(name, args):
         return obj
     return usage, ret
 
-def argify(name, args):
+def argify(name: str, args: List[Tuple[str, str, object, Callable]]) -> Callable[[Callable], Callable]:
     """
     Object used as a decorator for the peering speed tests.
     See peering_spee_test.py
     """
     (usage, config_func) = gen_args(name, args)
-    def ret1(f):
+    def ret1(f: Callable) -> Callable:
         """
         Wrapper to handle doc and usage information
         """
         def ret2(**kwargs):
             """
-            Call f (the parameter passed to ret1) 
+            Call f (the parameter passed to ret1)
             """
             config = kwargs.get('config', {})
             if config is None:
                 config = {}
             kwargs['config'] = config_func(config)
             return f(**kwargs)
-        ret2.__doc__ = f.__doc__ + usage
+        ret2.__doc__ = (f.__doc__ or '') + usage
         return ret2
     return ret1

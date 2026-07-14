@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+from typing import Callable, Optional
 
 from teuthology import misc
 import teuthology.provision.downburst
@@ -8,7 +9,7 @@ import teuthology.provision.downburst
 log = logging.getLogger(__name__)
 
 
-def vps_version_or_type_valid(machine_type, os_type, os_version):
+def vps_version_or_type_valid(machine_type: str, os_type: Optional[str], os_version: Optional[str]) -> bool:
     """
     Check os-type and os-version parameters when locking a vps.
     Os-type will always be set (defaults to ubuntu).
@@ -42,7 +43,7 @@ def vps_version_or_type_valid(machine_type, os_type, os_version):
     return True
 
 
-def validate_distro_version(version, supported_versions):
+def validate_distro_version(version: str, supported_versions: list[str]) -> Optional[bool]:
     """
     Return True if the version is valid.  For Ubuntu, possible
     supported version values are of the form '12.04 (precise)' where
@@ -59,7 +60,7 @@ def validate_distro_version(version, supported_versions):
                 return True
 
 
-def json_matching_statuses(json_file_or_str, statuses):
+def json_matching_statuses(json_file_or_str: str, statuses: list[dict]) -> list[dict]:
     """
     Filter statuses by json dict in file or fragment; return list of
     matching statuses.  json_file_or_str must be a file containing
@@ -69,8 +70,6 @@ def json_matching_statuses(json_file_or_str, statuses):
         open(json_file_or_str, 'r')
     except IOError:
         query = json.loads(json_file_or_str)
-    else:
-        query = json.load(json_file_or_str)
 
     if not isinstance(query, dict):
         raise RuntimeError('--json-query must be a dict')
@@ -86,7 +85,7 @@ def json_matching_statuses(json_file_or_str, statuses):
     return return_statuses
 
 
-def winnow(statuses, arg, status_key, func=None):
+def winnow(statuses: list[dict], arg, status_key: str, func: Optional[Callable[[dict], bool]] = None) -> list[dict]:
     """
     Call with a list of statuses, and the ctx.<key>
     'arg' that you may want to filter by.
@@ -112,7 +111,7 @@ def winnow(statuses, arg, status_key, func=None):
     return statuses
 
 
-def locked_since_seconds(node):
+def locked_since_seconds(node: dict) -> float:
     now = datetime.datetime.now()
     since = datetime.datetime.strptime(
         node['locked_since'], '%Y-%m-%d %H:%M:%S.%f')

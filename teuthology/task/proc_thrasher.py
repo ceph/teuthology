@@ -2,9 +2,10 @@
 Process thrasher
 """
 import logging
-import gevent
 import random
 import time
+
+import gevent
 
 from teuthology.orchestra import run
 
@@ -14,7 +15,7 @@ class ProcThrasher:
     """ Kills and restarts some number of the specified process on the specified
         remote
     """
-    def __init__(self, config, remote, *proc_args, **proc_kwargs):
+    def __init__(self, config: dict, remote, *proc_args, **proc_kwargs) -> None:
         self.proc_kwargs = proc_kwargs
         self.proc_args = proc_args
         self.config = config
@@ -27,13 +28,13 @@ class ProcThrasher:
         self.rest_period = self.config.get("rest_period", 100) # seconds
         self.run_time = self.config.get("run_time", 1000) # seconds
 
-    def log(self, msg):
+    def log(self, msg: str) -> None:
         """
         Local log wrapper
         """
         self.logger.info(msg)
 
-    def start(self):
+    def start(self) -> None:
         """
         Start thrasher.  This also makes sure that the greenlet interface
         is used.
@@ -43,13 +44,13 @@ class ProcThrasher:
         self.greenlet = gevent.Greenlet(self.loop)
         self.greenlet.start()
 
-    def join(self):
+    def join(self) -> None:
         """
         Local join
         """
         self.greenlet.join()
 
-    def loop(self):
+    def loop(self) -> None:
         """
         Thrashing loop -- loops at time intervals.  Inside that loop, the
         code loops through the individual procs, creating new procs.

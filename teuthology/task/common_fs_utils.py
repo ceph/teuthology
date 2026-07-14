@@ -3,14 +3,16 @@ Common filesystem related utilities.  Originally this
 code was part of rbd.py.  It was broken out so that it
 could be used by other modules (tgt.py and iscsi.py for instance).
 """
-import logging
 import contextlib
+import logging
+from typing import Callable, Dict, Generator, List, Optional, Union
+
 from teuthology import misc as teuthology
 
 log = logging.getLogger(__name__)
 
 
-def default_image_name(role):
+def default_image_name(role: str) -> str:
     """
     Image name used by rbd and iscsi
     """
@@ -18,7 +20,7 @@ def default_image_name(role):
 
 
 @contextlib.contextmanager
-def generic_mkfs(ctx, config, devname_rtn):
+def generic_mkfs(ctx, config: Union[List[str], dict], devname_rtn: Callable) -> Generator[None, None, None]:
     """
     Create a filesystem (either rbd or tgt, depending on devname_rtn)
 
@@ -55,7 +57,7 @@ def generic_mkfs(ctx, config, devname_rtn):
 
 
 @contextlib.contextmanager
-def generic_mount(ctx, config, devname_rtn):
+def generic_mount(ctx, config: Union[List[str], Dict[str, Optional[str]]], devname_rtn: Callable) -> Generator[None, None, None]:
     """
     Generic Mount an rbd or tgt image.
 

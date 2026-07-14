@@ -155,7 +155,7 @@ class TestPhysicalConsole(TestConsole):
             cons = self.klass(self.hostname)
         assert cons.has_conserver is True
         with patch(
-            'teuthology.orchestra.console.pexpect.spawn',
+            'teuthology.orchestra.console.LoggedPexpect',
             autospec=True,
         ) as m_spawn:
             cons._get_console()
@@ -174,7 +174,7 @@ class TestPhysicalConsole(TestConsole):
             cons = self.klass(self.hostname)
         assert cons.has_conserver is True
         with patch(
-            'teuthology.orchestra.console.pexpect.spawn',
+            'teuthology.orchestra.console.LoggedPexpect',
             autospec=True,
         ) as m_spawn:
             cons.has_conserver = False
@@ -193,7 +193,7 @@ class TestPhysicalConsole(TestConsole):
             cons = self.klass(self.hostname)
         assert cons.has_conserver is True
         with patch(
-            'teuthology.orchestra.console.pexpect.spawn',
+            'teuthology.orchestra.console.LoggedPexpect',
             autospec=True,
         ) as m_spawn:
             cons.has_conserver = True

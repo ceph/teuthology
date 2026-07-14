@@ -2,14 +2,15 @@
 Drop into a python shell
 """
 import code
+import pprint
 import readline
 import rlcompleter
+
 rlcompleter.__name__ # silence pyflakes
-import pprint
 
 readline.parse_and_bind('tab: complete')
 
-def task(ctx, config):
+def task(ctx, config) -> None:
     """
     Run an interactive Python shell, with the cluster accessible via
     the ``ctx`` variable.

@@ -22,7 +22,7 @@ from teuthology.lock import (
 log = logging.getLogger(__name__)
 
 
-def main(ctx):
+def main(ctx) -> int:
     if ctx.verbose:
         teuthology.log.setLevel(logging.DEBUG)
 
@@ -251,7 +251,7 @@ def main(ctx):
     return ret
 
 
-def do_summary(ctx):
+def do_summary(ctx) -> None:
     lockd = collections.defaultdict(lambda: [0, 0, 'unknown'])
     if ctx.machine_type:
         locks = query.list_locks(machine_type=ctx.machine_type)
@@ -282,7 +282,7 @@ def do_summary(ctx):
     print("{cnt:12d}  {up:3d}".format(cnt=total_count, up=total_up))
 
 
-def updatekeys(args):
+def updatekeys(args: dict) -> int:
     loglevel = logging.DEBUG if args['--verbose'] else logging.INFO
     logging.basicConfig(
         level=loglevel,

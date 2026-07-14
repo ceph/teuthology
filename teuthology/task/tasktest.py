@@ -2,14 +2,15 @@
 Parallel and sequential task tester.  Not used by any ceph tests, but used to
 unit test the parallel and sequential tasks
 """
-import logging
 import contextlib
+import logging
 import time
+from typing import Generator
 
 log = logging.getLogger(__name__)
 
 @contextlib.contextmanager
-def task(ctx, config):
+def task(ctx, config) -> Generator[None, None, None]:
     """
     Task that just displays information when it is create and when it is
     destroyed/cleaned up.  This task was used to test parallel and
