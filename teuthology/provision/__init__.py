@@ -31,10 +31,19 @@ def reimage(ctx, machine_name, machine_type):
     pelagos_types = pelagos.get_types()
     fog_types = fog.get_types()
     maas_types = maas.get_types()
-    if (machine_type in pelagos_types and
-        machine_type in fog_types and
-        machine_type in maas_types):
-        raise Exception('machine_type can be used with one provisioner only')
+    machine_provisioners = {
+        p: provision_types for (p, provision_types) in {
+            'fog': fog_types,
+            'maas': maas_types,
+            'pelagos': pelagos_types,
+        }.items() if machine_type in provision_types
+    }
+
+    if (len(machine_provisioners.keys()) > 1):
+        raise Exception(
+            'A machine_type can be used with one provisioner only, '
+            f"but found in {', '.join(machine_provisioners.keys())}"
+            )
     elif machine_type in pelagos_types:
         obj = pelagos.Pelagos(machine_name, os_type, os_version)
     elif machine_type in fog_types:
