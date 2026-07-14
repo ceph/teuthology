@@ -135,6 +135,12 @@ Scheduler arguments:
                               2/<outof> ... <outof>-1/<outof> will schedule all
                               jobs in the suite (many more than once). If specified,
                               this value can be found in results.log.
+  -o <path>, --output-file <path>
+                              Save all generated job configs in one file.
+  -O <path>, --output-dir <path>
+                              Save all generated job configs to a directory,
+                              create for each job separate sub-directory and
+                              dump job config to 'config.yaml'.
   -p <priority>, --priority <priority>
                               Job priority (lower is sooner)
                               [default: 1000]

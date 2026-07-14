@@ -18,7 +18,13 @@ from teuthology.config import config, JobConfig
 from teuthology.exceptions import (
     BranchMismatchError, BranchNotFoundError, CommitNotFoundError,
 )
-from teuthology.misc import deep_merge, get_results_url, update_key
+from teuthology.misc import (
+        deep_merge,
+        merge_configs,
+        get_user,
+        get_results_url,
+        update_key,
+)
 from teuthology.orchestra.opsys import OS
 from teuthology.repo_utils import build_git_url
 
@@ -44,6 +50,7 @@ class Run(object):
         args must be a config.YamlConfig object
         """
         self.args = args
+
         # We assume timestamp is a datetime.datetime object
         self.timestamp = self.args.timestamp or \
             datetime.datetime.now().strftime(TIMESTAMP_FMT)
@@ -418,6 +425,8 @@ class Run(object):
 
 
     def write_rerun_memo(self):
+        if self.args.save_configs:
+            return
         args = copy.deepcopy(self.base_args)
         args.append('--first-in-suite')
         if self.args.subset:
@@ -434,6 +443,8 @@ class Run(object):
 
 
     def write_result(self):
+        if self.args.save_configs:
+            return
         arg = copy.deepcopy(self.base_args)
         arg.append('--last-in-suite')
         if self.base_config.email:
@@ -511,15 +522,12 @@ class Run(object):
             # In order overriding with extra yaml paths could possibly work,
             # order parsed yaml before base_yaml_paths
             arg.append('-')
-            parsed_yaml_txt = yaml.dump(parsed_yaml)
-            arg.extend(self.base_yaml_paths)
 
             job = dict(
                 yaml=parsed_yaml,
                 desc=description,
                 sha1=self.base_config.sha1,
                 args=arg,
-                stdin=parsed_yaml_txt,
             )
 
             sha1 = self.base_config.sha1
@@ -540,7 +548,45 @@ class Run(object):
         return jobs_missing_packages, jobs_to_schedule
 
     def schedule_jobs(self, jobs_missing_packages, jobs_to_schedule, name):
+        dump_path = None
+        if self.args.output_dir:
+            dump_path = self.args.output_dir
+            count_file_path = os.path.join(dump_path, 'count')
+            jid = 1
+            if os.path.exists(count_file_path):
+                with open(count_file_path, 'r') as f:
+                    jid = int(f.read() or '0') + 1
+            log.info(f'--- There will be {len(jobs_to_schedule)} saved in {dump_path} starting from {jid} ---')
+        #if self.args.output_file:
+        #    dump_path = self.args.output_file
+        #    count_file_path = dump_path + '.count'
+
+        extra_config_dict = merge_configs(self.base_yaml_paths)
         for job in jobs_to_schedule:
+            deep_merge(job['yaml'], extra_config_dict)
+            if dump_path:
+                num = self.args.num
+                while num > 0:
+                    log.info(f"Saving config for {job['desc']}")
+                    dump_dir_path = os.path.join(dump_path, str(jid))
+                    dump_file_path = os.path.join(dump_dir_path, 'config.yaml')
+                    os.makedirs(dump_dir_path, exist_ok=True)
+                    with open(dump_file_path, 'a') as f:
+                        job_config = dict(
+                            name=self.args.name,
+                            description=job['desc'],
+                            tube=util.get_worker(self.args.machine_type),
+                            owner=self.args.owner or f'scheduled_{get_user()}',
+                            verbose=(self.args.verbose > 0),
+                            job_id=str(jid),
+                        )
+                        job_config.update(job['yaml'])
+                        #job_config['job_id'] = str(jid)
+                        job_data = yaml.safe_dump(job_config)
+                        f.write('---\n' + job_data)
+                        log.debug(f"Config saved for job '{self.name}/{jid}' to {dump_file_path}")
+                        jid += 1
+                    num -= 1
             log.info(
                 'Scheduling %s', job['desc']
             )
@@ -555,17 +601,25 @@ class Run(object):
                         name,
                         dry_run=self.args.dry_run,
                     )
+            log.debug(f"teuthology-schedule: {job['args']}")
+            parsed_yaml_txt = yaml.dump(job['yaml'])
+
             util.teuthology_schedule(
                 args=job['args'],
                 dry_run=self.args.dry_run,
                 verbose=self.args.verbose,
                 log_prefix=log_prefix,
-                stdin=job['stdin'],
+                stdin=parsed_yaml_txt,
             )
             throttle = self.args.throttle
             if not self.args.dry_run and throttle:
                 log.info("pause between jobs : --throttle " + str(throttle))
                 time.sleep(int(throttle))
+
+        if dump_path:
+            with open(count_file_path, 'w') as f:
+                f.write(str(jid - 1))
+
 
     def check_priority(self, jobs_to_schedule):
         priority = self.args.priority

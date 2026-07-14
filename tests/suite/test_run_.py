@@ -355,7 +355,6 @@ class TestScheduleSuite(object):
                 '--',
                 '-'
             ],
-            stdin=ANY,
             desc=os.path.join(self.args.suite, build_matrix_desc),
         )
 
@@ -365,7 +364,7 @@ class TestScheduleSuite(object):
         args = m_schedule_jobs.call_args.args
         log.debug("args =\n%s", args)
         jobargs  = args[1][0]
-        stdin_yaml = yaml.safe_load(jobargs['stdin'])
+        stdin_yaml = jobargs['yaml']
         for k in y:
             assert y[k] == stdin_yaml[k]
         for k in teuthology_keys:
