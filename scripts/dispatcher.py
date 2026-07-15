@@ -1,6 +1,8 @@
 import argparse
 import sys
 
+import teuthology.monkeythreading # noqa: F401
+
 import teuthology.dispatcher.supervisor
 
 from .supervisor import parse_args as parse_supervisor_args
