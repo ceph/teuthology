@@ -224,11 +224,7 @@ Maybe you want 'gibba,smithi,mira' or similar"
             get_gitbuilder_hash=DEFAULT,
             git_ls_remote=lambda *args: '1234',
             package_version_for_hash=DEFAULT,
-        ) as m, \
-        patch.multiple(
-            'teuthology.lock.query',
-            get_arch=lambda x: 'x86_64',
-        ) as mq:
+        ) as m:
             m['package_version_for_hash'].return_value = 'fake-9.5'
             config.suite_verify_ceph_hash = False
             main([
@@ -255,11 +251,7 @@ Maybe you want 'gibba,smithi,mira' or similar"
             get_gitbuilder_hash=DEFAULT,
             git_ls_remote=lambda *args: '12345',
             package_version_for_hash=DEFAULT,
-        ) as m, \
-        patch.multiple(
-            'teuthology.lock.query',
-            get_arch=lambda x: 'x86_64',
-        ) as mq:
+        ) as m:
             m['package_version_for_hash'].return_value = 'fake-9.5'
             config.suite_verify_ceph_hash = True
             main([
