@@ -13,7 +13,7 @@ readme = "README.rst"
 license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
-    "ansible-core==2.17.7",
+    "ansible-core==2.18.18rc1",
     "apache-libcloud",
     "backports.ssl-match-hostname",
     "beanstalkc3>=0.4.0",
