@@ -7,8 +7,8 @@ import yaml
 from teuthology import misc as teuthology
 from teuthology import contextutil, packaging
 from teuthology.parallel import parallel
+from teuthology.provision import get_reimage_types
 from teuthology.task import ansible
-
 from teuthology.task.install.util import (
     _get_builder_project, get_flavor, ship_utilities,
 )
@@ -77,6 +77,8 @@ def install_packages(ctx, pkgs, config):
         # verifies that the install worked as expected
         verify_package_version(ctx, config, remote)
 
+def _is_reimageable(remote):
+    return remote.machine_type in get_reimage_types()
 
 def remove_packages(ctx, config, pkgs):
     """
@@ -93,7 +95,7 @@ def remove_packages(ctx, config, pkgs):
     cleanup = config.get('cleanup', False)
     with parallel() as p:
         for remote in ctx.cluster.remotes.keys():
-            if not remote.is_reimageable or cleanup:
+            if not _is_reimageable(remote) or cleanup:
                 system_type = teuthology.get_system_type(remote)
                 p.spawn(remove_pkgs[
                         system_type], ctx, config, remote, pkgs[system_type])
@@ -114,7 +116,7 @@ def remove_sources(ctx, config):
     project = config.get('project', 'ceph')
     with parallel() as p:
         for remote in ctx.cluster.remotes.keys():
-            if not remote.is_reimageable or cleanup:
+            if not _is_reimageable(remote) or cleanup:
                 log.info("Removing {p} sources lists on {r}"
                          .format(p=project,r=remote))
                 remove_fn = remove_sources_pkgs[remote.os.package_type]
