@@ -9,7 +9,6 @@ from teuthology.orchestra import run
 from teuthology.orchestra import connection
 from teuthology.orchestra import console
 from teuthology.orchestra.opsys import OS
-import teuthology.provision
 from teuthology import misc
 from teuthology.exceptions import CommandFailedError, UnitTestError
 from teuthology.util.scanner import UnitTestScanner
@@ -358,7 +357,6 @@ class Remote(RemoteShell):
 
     # for unit tests to hook into
     _runner = staticmethod(run.run)
-    _reimage_types = None
 
     def __init__(self, name, ssh=None, shortname=None, console=None,
                  host_key=None, keep_alive=True):
@@ -379,8 +377,6 @@ class Remote(RemoteShell):
         self._console = console
         self.ssh = ssh
 
-        if self._reimage_types is None:
-            Remote._reimage_types = teuthology.provision.get_reimage_types()
 
     def connect(self, timeout=None, create_key=None, context='connect'):
         args = dict(user_at_host=self.name, host_key=self._host_key,
@@ -536,10 +532,6 @@ class Remote(RemoteShell):
                 return None
             self._machine_type = remote_info.get("machine_type", None)
         return self._machine_type
-
-    @property
-    def is_reimageable(self):
-        return self.machine_type in self._reimage_types
 
     @property
     def shortname(self):
