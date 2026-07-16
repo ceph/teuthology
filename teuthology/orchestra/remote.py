@@ -9,7 +9,6 @@ from teuthology.orchestra import run
 from teuthology.orchestra import connection
 from teuthology.orchestra import console
 from teuthology.orchestra.opsys import OS
-from teuthology import misc
 from teuthology.exceptions import CommandFailedError, UnitTestError
 from teuthology.util.scanner import UnitTestScanner
 from teuthology.misc import host_shortname
