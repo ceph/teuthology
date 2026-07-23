@@ -4,12 +4,13 @@ Export/Unexport a ``nfs server`` client.
 import contextlib
 import logging
 import os
+from typing import Generator, List, Optional, Union
 
 from teuthology import misc as teuthology
 
 log = logging.getLogger(__name__)
 
-def get_nfsd_args(remote, cmd):
+def get_nfsd_args(remote, cmd: str) -> List[str]:
     args=[
         'sudo',
         'service',
@@ -21,7 +22,7 @@ def get_nfsd_args(remote, cmd):
     return args
 
 @contextlib.contextmanager
-def task(ctx, config):
+def task(ctx, config: Optional[Union[List[str], dict]]) -> Generator[None, None, None]:
     """
     Export/Unexport a ``nfs server`` client.
 

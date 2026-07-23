@@ -2,6 +2,7 @@
 Cluster definition
 part of context, Cluster is used to save connection information.
 """
+from typing import Callable, Iterable, List, Optional, Tuple, Union
 from teuthology.orchestra import run
 
 class Cluster(object):
@@ -9,17 +10,17 @@ class Cluster(object):
     Manage SSH connections to a cluster of machines.
     """
 
-    def __init__(self, remotes=None):
+    def __init__(self, remotes: Optional[Iterable[Tuple[object, list[str]]]] = None) -> None:
         """
         :param remotes: A sequence of 2-tuples of this format:
                             (Remote, [role_1, role_2 ...])
         """
-        self.remotes = {}
+        self.remotes: dict = {}
         if remotes is not None:
             for remote, roles in remotes:
                 self.add(remote, roles)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         remotes = [(k, v) for k, v in self.remotes.items()]
         remotes.sort(key=lambda tup: tup[0].name)
         remotes = '[' + ', '.join('[{remote!r}, {roles!r}]'.format(
@@ -29,14 +30,14 @@ class Cluster(object):
             remotes=remotes,
             )
 
-    def __str__(self):
+    def __str__(self) -> str:
         remotes = list(self.remotes.items())
         remotes.sort(key=lambda tup: tup[0].name)
         remotes = ((k, ','.join(v)) for k, v in remotes)
         remotes = ('{k}[{v}]'.format(k=k, v=v) for k, v in remotes)
         return ' '.join(remotes)
 
-    def add(self, remote, roles):
+    def add(self, remote, roles: List[str]) -> None:
         """
         Add roles to the list of remotes.
         """
@@ -49,7 +50,7 @@ class Cluster(object):
                 )
         self.remotes[remote] = list(roles)
 
-    def run(self, wait=True, parallel=False, **kwargs):
+    def run(self, wait: bool = True, parallel: bool = False, **kwargs) -> list:
         """
         Run a command on all the nodes in this cluster.
 
@@ -91,7 +92,7 @@ class Cluster(object):
             run.wait(procs)
         return procs
 
-    def sh(self, script, **kwargs):
+    def sh(self, script: str, **kwargs) -> List[str]:
         """
         Run a command on all the nodes in this cluster.
 
@@ -102,7 +103,8 @@ class Cluster(object):
         remotes = sorted(self.remotes.keys(), key=lambda rem: rem.name)
         return [remote.sh(script, **kwargs) for remote in remotes]
 
-    def write_file(self, file_name, content, sudo=False, perms=None, owner=None):
+    def write_file(self, file_name: str, content: str, sudo: bool = False,
+                   perms: Optional[str] = None, owner: Optional[str] = None) -> None:
         """
         Write text to a file on each node.
 
@@ -121,7 +123,7 @@ class Cluster(object):
                     raise ValueError("To specify perms or owner, sudo must be True")
                 remote.write_file(file_name, content)
 
-    def only(self, *roles):
+    def only(self, *roles: Union[str, Callable[[str], bool]]) -> 'Cluster':
         """
         Return a cluster with only the remotes that have all of given roles.
 
@@ -161,7 +163,7 @@ class Cluster(object):
 
         return c
 
-    def exclude(self, *roles):
+    def exclude(self, *roles: Union[str, Callable[[str], bool]]) -> 'Cluster':
         """
         Return a cluster *without* remotes that have all of given roles.
 
@@ -174,7 +176,7 @@ class Cluster(object):
                 c.add(remote, has_roles)
         return c
 
-    def filter(self, func):
+    def filter(self, func: Callable) -> 'Cluster':
         """
         Return a cluster whose remotes are filtered by `func`.
 

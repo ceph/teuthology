@@ -5,7 +5,7 @@ import logging
 
 log = logging.getLogger(__name__)
 
-def patch_001_paramiko_deprecation():
+def patch_001_paramiko_deprecation() -> None:
     """
     Silence an an unhelpful Deprecation Warning triggered by Paramiko.
 
@@ -19,7 +19,7 @@ def patch_001_paramiko_deprecation():
         )
 
 
-def patch_100_paramiko_log():
+def patch_100_paramiko_log() -> None:
     """
     Silence some noise paramiko likes to log.
 
@@ -28,24 +28,13 @@ def patch_100_paramiko_log():
     logging.getLogger('paramiko.transport').setLevel(logging.WARNING)
 
 
-def patch_100_logger_getChild():
-    """
-    Imitate Python 2.7 feature Logger.getChild.
-    """
-    import logging
-    if not hasattr(logging.Logger, 'getChild'):
-        def getChild(self, name):
-            return logging.getLogger('.'.join([self.name, name]))
-        logging.Logger.getChild = getChild
-
-
-def patch_100_trigger_rekey():
+def patch_100_trigger_rekey() -> None:
     # Fixes http://tracker.ceph.com/issues/15236
     from paramiko.packet import Packetizer
-    Packetizer._trigger_rekey = lambda self: True
+    Packetizer._trigger_rekey = lambda _: True  # ty: ignore[invalid-assignment]
 
 
-def patch_all():
+def patch_all() -> None:
     """
     Run all the patch_* functions in this module.
     """

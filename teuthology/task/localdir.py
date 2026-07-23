@@ -4,6 +4,7 @@ Localdir
 import contextlib
 import logging
 import os
+from typing import Generator, List, Optional
 
 from teuthology import misc as teuthology
 
@@ -11,7 +12,7 @@ log = logging.getLogger(__name__)
 
 
 @contextlib.contextmanager
-def task(ctx, config):
+def task(ctx, config: Optional[List[str]]) -> Generator[None, None, None]:
     """
     Create a mount dir 'client' that is just the local disk:
 

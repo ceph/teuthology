@@ -4,13 +4,14 @@ Nfs client tester
 import contextlib
 import logging
 import os
+from typing import Dict, Generator
 
 from teuthology import misc as teuthology
 
 log = logging.getLogger(__name__)
 
 @contextlib.contextmanager
-def task(ctx, config):
+def task(ctx, config: Dict[str, dict]) -> Generator[None, None, None]:
     """
     Mount nfs client (requires nfs server export like knfsd or ganesh)
 
@@ -63,6 +64,7 @@ def task(ctx, config):
 
         assert client_config.get('server') is not None
         server = client_config.get('server');
+        assert server
 
         svr_id = server[len('client.'):]
         svr_mnt = os.path.join(testdir, 'mnt.{id}'.format(id=svr_id))
@@ -79,8 +81,8 @@ def task(ctx, config):
         assert svr_remote is not None 
         svr_remote = svr_remote.name.split('@', 2)[1]
 
-        if client_config.get('options') is not None:
-            opts = ','.join(client_config.get('options'))
+        if (opts := client_config.get('options')) is not None:
+            opts = ','.join(opts)
         else:
             opts = 'rw'
 

@@ -6,6 +6,7 @@ import pwd
 import yaml
 import re
 import time
+from typing import Optional
 
 from pathlib import Path
 
@@ -13,7 +14,7 @@ from humanfriendly import format_timespan
 
 from teuthology import repo_utils
 
-from teuthology.config import config, JobConfig
+from teuthology.config import config, JobConfig, YamlConfig
 from teuthology.exceptions import (
     BranchMismatchError, BranchNotFoundError, CommitNotFoundError,
 )
@@ -38,7 +39,7 @@ class Run(object):
         'base_args', 'kernel_dict', 'config_input', 'timestamp', 'user', 'os',
     )
 
-    def __init__(self, args):
+    def __init__(self, args: YamlConfig) -> None:
         """
         args must be a config.YamlConfig object
         """
@@ -60,7 +61,7 @@ class Run(object):
         self.base_yaml_paths = [os.path.join(self.suite_repo_path, b) for b in
                                 self.args.base_yaml_paths]
 
-    def make_run_name(self):
+    def make_run_name(self) -> str:
         """
         Generate a run name. A run name looks like:
             teuthology-2014-06-23_19:00:37-rados-dumpling-testing-basic-plana
@@ -77,7 +78,7 @@ class Run(object):
             ]
         ).replace('/', ':')
 
-    def create_initial_config(self):
+    def create_initial_config(self) -> JobConfig:
         """
         Put together the config file used as the basis for each job in the run.
         Grabs hashes for the latest ceph, kernel and teuthology versions in the
@@ -136,7 +137,7 @@ class Run(object):
             self.config_input['os_version'] = self.args.distro_version.lower()
         return self.build_base_config()
 
-    def get_expiration(self, _base_time: datetime.datetime | None = None) -> datetime.datetime | None:
+    def get_expiration(self, _base_time: Optional[datetime.datetime] = None) -> Optional[datetime.datetime]:
         """
         _base_time: For testing, calculate relative offsets from this base time
 
@@ -155,7 +156,7 @@ class Run(object):
             expires = _base_time + parse_offset(expires_str)
         return expires
 
-    def choose_os(self):
+    def choose_os(self) -> OS:
         os_type = self.args.distro
         os_version = self.args.distro_version
         if not (os_type and os_version):
@@ -165,7 +166,7 @@ class Run(object):
             os_ = OS(os_type, os_version)
         return os_
 
-    def choose_kernel(self):
+    def choose_kernel(self) -> dict:
         # Put together a stanza specifying the kernel hash
         if self.args.kernel_branch == 'distro':
             kernel_hash = 'distro'
@@ -201,7 +202,7 @@ class Run(object):
             kernel_dict = dict()
         return kernel_dict
 
-    def choose_ceph_hash(self):
+    def choose_ceph_hash(self) -> str:
         """
         Get the ceph hash: if --sha1/-S is supplied, use it if it is valid, and
         just keep the ceph_branch around.  Otherwise use the current git branch
@@ -232,10 +233,11 @@ class Run(object):
                 )
                 util.schedule_fail(message=str(exc), name=self.name, dry_run=self.args.dry_run)
 
+        assert ceph_hash is not None
         log.info("ceph sha1: {hash}".format(hash=ceph_hash))
         return ceph_hash
 
-    def choose_teuthology_branch(self):
+    def choose_teuthology_branch(self) -> tuple[str, str]:
         """Select teuthology branch, check if it is present in repo and return
         tuple (branch, hash) where hash is commit sha1 corresponding
         to the HEAD of the branch.
@@ -304,28 +306,29 @@ class Run(object):
         if not teuthology_sha1:
             exc = BranchNotFoundError(teuthology_branch, build_git_url('teuthology'))
             util.schedule_fail(message=str(exc), name=self.name, dry_run=self.args.dry_run)
+        assert teuthology_sha1 is not None
         log.info("teuthology branch: %s %s", teuthology_branch, teuthology_sha1)
         return teuthology_branch, teuthology_sha1
 
     @property
-    def ceph_repo_name(self):
+    def ceph_repo_name(self) -> str:
         if self.args.ceph_repo:
             return self._repo_name(self.args.ceph_repo)
         else:
             return 'ceph'
 
     @property
-    def suite_repo_name(self):
+    def suite_repo_name(self) -> str:
         if self.args.suite_repo:
             return self._repo_name(self.args.suite_repo)
         else:
             return 'ceph-qa-suite'
 
     @staticmethod
-    def _repo_name(url):
+    def _repo_name(url: str) -> str:
         return re.sub(r'\.git$', '', url.split('/')[-1])
 
-    def choose_suite_branch(self):
+    def choose_suite_branch(self) -> str:
         suite_repo_name = self.suite_repo_name
         suite_repo_project_or_url = self.args.suite_repo or 'ceph-qa-suite'
         suite_branch = self.args.suite_branch
@@ -351,7 +354,7 @@ class Run(object):
                 suite_branch = 'main'
         return suite_branch
 
-    def choose_suite_hash(self, suite_branch):
+    def choose_suite_hash(self, suite_branch: str) -> str:
         suite_repo_name = self.suite_repo_name
         suite_hash = None
         if self.args.suite_sha1:
@@ -374,10 +377,11 @@ class Run(object):
             if not suite_hash:
                 exc = BranchNotFoundError(suite_branch, suite_repo_name)
                 util.schedule_fail(message=str(exc), name=self.name, dry_run=self.args.dry_run)
+        assert suite_hash is not None
         log.info("%s branch: %s %s", suite_repo_name, suite_branch, suite_hash)
         return suite_hash
 
-    def build_base_config(self):
+    def build_base_config(self) -> JobConfig:
         conf_dict = substitute_placeholders(dict_templ, self.config_input)
         conf_dict.update(self.kernel_dict)
         job_config = JobConfig.from_dict(conf_dict)
@@ -398,7 +402,7 @@ class Run(object):
             job_config.rocketchat = self.args.rocketchat
         return job_config
 
-    def build_base_args(self):
+    def build_base_args(self) -> list[str]:
         base_args = [
             '--name', self.name,
             '--worker', util.get_worker(self.args.machine_type),
@@ -416,7 +420,7 @@ class Run(object):
         return base_args
 
 
-    def write_rerun_memo(self):
+    def write_rerun_memo(self) -> None:
         args = copy.deepcopy(self.base_args)
         args.append('--first-in-suite')
         if self.args.subset:
@@ -432,7 +436,7 @@ class Run(object):
             log_prefix="Memo: ")
 
 
-    def write_result(self):
+    def write_result(self) -> None:
         arg = copy.deepcopy(self.base_args)
         arg.append('--last-in-suite')
         if self.base_config.email:
@@ -449,7 +453,7 @@ class Run(object):
             log.info("Test results viewable at %s", results_url)
 
 
-    def prepare_and_schedule(self):
+    def prepare_and_schedule(self) -> None:
         """
         Puts together some "base arguments" with which to execute
         teuthology-schedule for each job, then passes them and other parameters
@@ -469,7 +473,7 @@ class Run(object):
         if num_jobs:
             self.write_result()
 
-    def collect_jobs(self, arch, configs, newest=False, limit=0):
+    def collect_jobs(self, arch: str|None, configs: list[tuple[str, list[str], dict]], newest: bool = False, limit: int = 0) -> tuple[list[dict], list[dict]]:
         jobs_to_schedule = []
         jobs_missing_packages = []
         for description, fragment_paths, parsed_yaml in configs:
@@ -538,7 +542,7 @@ class Run(object):
             jobs_to_schedule.append(job)
         return jobs_missing_packages, jobs_to_schedule
 
-    def schedule_jobs(self, jobs_missing_packages, jobs_to_schedule, name):
+    def schedule_jobs(self, jobs_missing_packages: list[dict], jobs_to_schedule: list[dict], name: str) -> None:
         for job in jobs_to_schedule:
             log.info(
                 'Scheduling %s', job['desc']
@@ -566,7 +570,7 @@ class Run(object):
                 log.info("pause between jobs : --throttle " + str(throttle))
                 time.sleep(int(throttle))
 
-    def check_priority(self, jobs_to_schedule):
+    def check_priority(self, jobs_to_schedule: int) -> None:
         priority = self.args.priority
         msg=f'''Unable to schedule {jobs_to_schedule} jobs with priority {priority}.
 
@@ -585,7 +589,7 @@ Note: To force run, use --force-priority'''
         elif priority < 150 and jobs_to_schedule > 100:
             util.schedule_fail(msg, dry_run=self.args.dry_run)
 
-    def check_num_jobs(self, jobs_to_schedule):
+    def check_num_jobs(self, jobs_to_schedule: int) -> None:
         """
         Fail schedule if number of jobs exceeds job threshold.
         """
@@ -596,7 +600,7 @@ Note: If you still want to go ahead, use --job-threshold 0'''
         if threshold and jobs_to_schedule > threshold:
             util.schedule_fail(msg, dry_run=self.args.dry_run)
 
-    def schedule_suite(self):
+    def schedule_suite(self) -> int:
         """
         Schedule the suite-run. Returns the number of jobs scheduled.
         """

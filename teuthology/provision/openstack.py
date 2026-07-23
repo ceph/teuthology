@@ -6,6 +6,7 @@ import re
 import subprocess
 import time
 import tempfile
+from typing import List, Optional
 
 from subprocess import CalledProcessError
 
@@ -25,7 +26,7 @@ class ProvisionOpenStack(OpenStack):
     A class that provides methods for creating and destroying virtual machine
     instances using OpenStack
     """
-    def __init__(self):
+    def __init__(self) -> None:
         super(ProvisionOpenStack, self).__init__()
         fd, self.user_data = tempfile.mkstemp()
         os.close(fd)
@@ -34,11 +35,11 @@ class ProvisionOpenStack(OpenStack):
         self.up_string = 'The system is finally up'
         self.property = "%16x" % random.getrandbits(128)
 
-    def __del__(self):
+    def __del__(self) -> None:
         if os.path.exists(self.user_data):
             os.unlink(self.user_data)
 
-    def init_user_data(self, os_type, os_version):
+    def init_user_data(self, os_type: str, os_version: str) -> None:
         """
         Get the user-data file that is fit for os_type and os_version.
         It is responsible for setting up enough for ansible to take
@@ -56,7 +57,7 @@ class ProvisionOpenStack(OpenStack):
             lab_domain=config.lab_domain)
         open(self.user_data, 'w').write(user_data)
 
-    def _openstack(self, subcommand, get=None):
+    def _openstack(self, subcommand: str, get: Optional[str] = None):
         # do not use OpenStack().run because its
         # bugous for volume create as of openstackclient 3.2.0
         # https://bugs.launchpad.net/python-openstackclient/+bug/1619726
@@ -67,7 +68,7 @@ class ProvisionOpenStack(OpenStack):
             return self.get_value(r, get)
         return r
 
-    def _create_volume(self, volume_name, size):
+    def _create_volume(self, volume_name: str, size: int) -> str:
         """
         Create a volume and return valume id
         """
@@ -91,7 +92,7 @@ class ProvisionOpenStack(OpenStack):
         else:
             raise Exception("Failed to create volume %s" % volume_name)
 
-    def _await_volume_status(self, volume_id, status='available'):
+    def _await_volume_status(self, volume_id: str, status: str = 'available') -> None:
         """
         Wait for volume to have status, like 'available' or 'in-use'
         """
@@ -110,7 +111,7 @@ class ProvisionOpenStack(OpenStack):
                         log.warning("volume " + volume_id +
                                  " not information available yet")
 
-    def _attach_volume(self, volume_id, name):
+    def _attach_volume(self, volume_id: str, name: str) -> None:
         """
         Attach volume to OpenStack instance.
 
@@ -126,7 +127,7 @@ class ProvisionOpenStack(OpenStack):
                     log.warning("openstack add volume failed unexpectedly; retrying")
         self._await_volume_status(volume_id, 'in-use')
 
-    def attach_volumes(self, server_name, volumes):
+    def attach_volumes(self, server_name: str, volumes: dict) -> None:
         """
         Create and attach volumes to the named OpenStack instance.
         If attachment is failed, make another try.
@@ -148,14 +149,21 @@ class ProvisionOpenStack(OpenStack):
                             OpenStack().volume_delete(volume_id)
 
     @staticmethod
-    def ip2name(prefix, ip):
+    def ip2name(prefix: str, ip: str) -> str:
         """
         return the instance name suffixed with the IP address.
         """
         digits = map(int, re.findall(r'(\d+)\.(\d+)\.(\d+)\.(\d+)', ip)[0])
         return prefix + "%03d%03d%03d%03d" % tuple(digits)
 
-    def create(self, num, os_type, os_version, arch, resources_hint):
+    def create(
+        self,
+        num: int,
+        os_type: str,
+        os_version: str,
+        arch: Optional[str],
+        resources_hint: dict
+    ) -> List[str]:
         """
         Create num OpenStack instances running os_type os_version and
         return their names. Each instance has at least the resources
@@ -230,6 +238,6 @@ class ProvisionOpenStack(OpenStack):
             raise e
         return fqdns
 
-    def destroy(self, name_or_id):
+    def destroy(self, name_or_id: str) -> bool:
         log.debug('ProvisionOpenStack:destroy ' + name_or_id)
         return OpenStackInstance(name_or_id).destroy()

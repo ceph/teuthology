@@ -2,6 +2,7 @@ import logging
 import os
 import pexpect
 import time
+from typing import Optional
 
 from teuthology.config import config as teuth_config
 from teuthology.exceptions import CommandFailedError
@@ -13,7 +14,7 @@ log = logging.getLogger(__name__)
 
 
 class CephMetrics(Ansible):
-    def __init__(self, ctx, config):
+    def __init__(self, ctx, config: dict) -> None:
         super(CephMetrics, self).__init__(ctx, config)
         if 'repo' not in self.config:
             self.config['repo'] = os.path.join(
@@ -21,10 +22,10 @@ class CephMetrics(Ansible):
         if 'playbook' not in self.config:
             self.config['playbook'] = './ansible/playbook.yml'
 
-    def get_inventory(self):
-        return False
+    def get_inventory(self) -> Optional[str]:
+        return None
 
-    def generate_inventory(self):
+    def generate_inventory(self) -> None:
         groups_to_roles = {
             'mons': 'mon',
             'mgrs': 'mgr',
@@ -58,10 +59,10 @@ class CephMetrics(Ansible):
             hosts_lines.append('[%s]' % group)
             for host, vars_ in hosts_dict[group]['hosts'].items():
                 host_line = ' '.join(
-                    [host] + map(
+                    [host] + list(map(
                         lambda tuple_: '='.join(tuple_),
                         vars_.items(),
-                    )
+                    ))
                 )
                 hosts_lines.append(host_line)
             hosts_lines.append('')
@@ -69,7 +70,7 @@ class CephMetrics(Ansible):
         self.inventory = self._write_inventory_files(hosts_str)
         self.generated_inventory = True
 
-    def begin(self):
+    def begin(self) -> None:
         super(CephMetrics, self).begin()
         wait_time = 5 * 60
         self.log.info(
@@ -79,7 +80,7 @@ class CephMetrics(Ansible):
         time.sleep(wait_time)
         self.run_tests()
 
-    def run_tests(self):
+    def run_tests(self) -> None:
         self.log.info("Running tests...")
         command = "tox -e integration %s" % self.inventory
         out, status = pexpect.run(

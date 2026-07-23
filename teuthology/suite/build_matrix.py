@@ -1,13 +1,14 @@
 import logging
 import os
 import random
+from typing import Optional, cast
 
 from teuthology.suite import matrix
 
 log = logging.getLogger(__name__)
 
 
-def build_matrix(path, subset=None, no_nested_subset=False, seed=None):
+def build_matrix(path: str, subset: Optional[tuple[int, int]] = None, no_nested_subset: bool = False, seed: Optional[int] = None) -> list[tuple[str, list[str]]]:
     """
     Return a list of items descibed by path such that if the list of
     items is chunked into mincyclicity pieces, each piece is still a
@@ -63,17 +64,21 @@ def build_matrix(path, subset=None, no_nested_subset=False, seed=None):
     return generate_combinations(path, mat, first, matlimit)
 
 
-def _get_matrix(path, subset=None, no_nested_subset=False):
+def _get_matrix(path: str, subset: Optional[tuple[int, int]] = None, no_nested_subset: bool = False) -> tuple[matrix.Matrix, int, int]:
     (which, divisions) = (0,1) if subset is None else subset
+    mat: matrix.Matrix
     if divisions > 1:
-        mat = _build_matrix(path, mincyclicity=divisions, no_nested_subset=no_nested_subset)
-        mat = matrix.Subset(mat, divisions, which=which)
+        built_mat = _build_matrix(path, mincyclicity=divisions, no_nested_subset=no_nested_subset)
+        assert built_mat is not None
+        mat = matrix.Subset(built_mat, divisions, which=which)
     else:
-        mat = _build_matrix(path, no_nested_subset=no_nested_subset)
-    return mat, 0, mat.size()
+        built_mat = _build_matrix(path, no_nested_subset=no_nested_subset)
+        assert built_mat is not None
+        mat = built_mat
+    return mat, 0, cast(int, mat.size())
 
 
-def _build_matrix(path, mincyclicity=0, no_nested_subset=False, item=''):
+def _build_matrix(path: str, mincyclicity: int = 0, no_nested_subset: bool = False, item: str = '') -> Optional[matrix.Matrix]:
     if os.path.basename(path)[0] == '.':
         return None
     if not os.path.exists(path):
@@ -167,7 +172,7 @@ def _build_matrix(path, mincyclicity=0, no_nested_subset=False, item=''):
     return None
 
 
-def generate_combinations(path, mat, generate_from, generate_to):
+def generate_combinations(path: str, mat: matrix.Matrix, generate_from: int, generate_to: int) -> list[tuple[str, list[str]]]:
     """
     Return a list of items describe by path
 
@@ -200,7 +205,7 @@ def generate_combinations(path, mat, generate_from, generate_to):
     return ret
 
 
-def combine_path(left, right):
+def combine_path(left: str, right: Optional[str]) -> str:
     """
     os.path.join(a, b) doesn't like it when b is None
     """

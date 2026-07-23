@@ -7,8 +7,9 @@ import datetime
 import logging
 import paramiko
 import re
-
 from io import StringIO
+from typing import Generator, Optional, Tuple
+
 from teuthology import contextutil
 import teuthology.misc as misc
 from teuthology.orchestra import run
@@ -17,14 +18,14 @@ log = logging.getLogger(__name__)
 ssh_keys_user = 'ssh-keys-user'
 
 
-def timestamp(format_='%Y-%m-%d_%H:%M:%S:%f'):
+def timestamp(format_: str = '%Y-%m-%d_%H:%M:%S:%f') -> str:
     """
     Return a UTC timestamp suitable for use in filenames
     """
     return datetime.datetime.now(datetime.timezone.utc).strftime(format_)
 
 
-def backup_file(remote, path, sudo=False):
+def backup_file(remote, path: str, sudo: bool = False) -> str:
     """
     Creates a backup of a file on the remote, simply by copying it and adding a
     timestamp to the name.
@@ -41,7 +42,7 @@ def backup_file(remote, path, sudo=False):
     return backup_path
 
 
-def generate_keys():
+def generate_keys() -> Tuple[str, str]:
     """
     Generatees a public and private key
     """
@@ -50,7 +51,7 @@ def generate_keys():
     key.write_private_key(privateString)
     return key.get_base64(), privateString.getvalue()
 
-def particular_ssh_key_test(line_to_test, ssh_key):
+def particular_ssh_key_test(line_to_test: str, ssh_key: str) -> bool:
     """
     Check the validity of the ssh_key
     """
@@ -61,7 +62,7 @@ def particular_ssh_key_test(line_to_test, ssh_key):
     else:
         return True
 
-def ssh_keys_user_line_test(line_to_test, username ):
+def ssh_keys_user_line_test(line_to_test: str, username: str) -> bool:
     """
     Check the validity of the username
     """
@@ -72,7 +73,7 @@ def ssh_keys_user_line_test(line_to_test, username ):
     else:
         return True
 
-def cleanup_added_key(ctx, key_backup_files, path):
+def cleanup_added_key(ctx, key_backup_files: dict, path: str) -> None:
     """
     Delete the keys and removes ~/.ssh/authorized_keys entries we added
     """
@@ -89,7 +90,7 @@ def cleanup_added_key(ctx, key_backup_files, path):
             misc.move_file(remote, key_backup_files[remote], path)
 
 @contextlib.contextmanager
-def tweak_ssh_config(ctx, config):
+def tweak_ssh_config(ctx, config: dict) -> Generator[None, None, None]:
     """
     Turn off StrictHostKeyChecking
     """
@@ -125,7 +126,7 @@ def tweak_ssh_config(ctx, config):
         )
 
 @contextlib.contextmanager
-def push_keys_to_host(ctx, config, public_key, private_key):
+def push_keys_to_host(ctx, config: dict, public_key: str, private_key: str) -> Generator[None, None, None]:
     """
     Push keys to all hosts
     """
@@ -178,7 +179,7 @@ def push_keys_to_host(ctx, config, public_key, private_key):
 
 
 @contextlib.contextmanager
-def task(ctx, config):
+def task(ctx, config: Optional[dict]) -> Generator[None, None, None]:
     """
     Creates a set of RSA keys, distributes the same key pair
     to all hosts listed in ctx.cluster, and adds all hosts

@@ -1,15 +1,15 @@
 """
 Task sequencer - full
 """
-import sys
 import logging
+import sys
 
 from teuthology import run_tasks
 
 log = logging.getLogger(__name__)
 
 
-def task(ctx, config):
+def task(ctx, config: list) -> None:
     """
     Run a set of tasks to completion in order.  __exit__ is called on a task
     before __enter__ on the next

@@ -3,11 +3,12 @@ Sleep task
 """
 import logging
 import time
+from typing import Optional
 
 log = logging.getLogger(__name__)
 
 
-def task(ctx, config):
+def task(ctx, config: Optional[dict]) -> None:
     """
     Sleep for some number of seconds.
 

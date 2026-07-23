@@ -1,3 +1,4 @@
+from typing import List, Optional, Union
 from teuthology import misc
 from teuthology.orchestra.daemon.state import DaemonState
 from teuthology.orchestra.daemon.systemd import SystemDState
@@ -8,7 +9,7 @@ class DaemonGroup(object):
     """
     Collection of daemon state instances
     """
-    def __init__(self, use_systemd=False, use_cephadm=None):
+    def __init__(self, use_systemd: bool = False, use_cephadm: Optional[bool] = None) -> None:
         """
         self.daemons is a dictionary indexed by role.  Each entry is a
         dictionary of DaemonState values indexed by an id parameter.
@@ -21,7 +22,7 @@ class DaemonGroup(object):
         self.use_systemd = use_systemd
         self.use_cephadm = use_cephadm
 
-    def add_daemon(self, remote, type_, id_, *args, **kwargs):
+    def add_daemon(self, remote, type_: str, id_: str, *args, **kwargs) -> None:
         """
         Add a daemon.  If there already is a daemon for this id_ and role, stop
         that daemon.  (Re)start the daemon once the new value is set.
@@ -39,7 +40,7 @@ class DaemonGroup(object):
         role = cluster + '.' + type_
         self.daemons[role][id_].restart()
 
-    def register_daemon(self, remote, type_, id_, *args, **kwargs):
+    def register_daemon(self, remote, type_: str, id_: str, *args, **kwargs) -> None:
         """
         Add a daemon.  If there already is a daemon for this id_ and role, stop
         that daemon.
@@ -73,7 +74,7 @@ class DaemonGroup(object):
         self.daemons[role][id_] = klass(
             remote, role, id_, *args, **kwargs)
 
-    def get_daemon(self, type_, id_, cluster='ceph'):
+    def get_daemon(self, type_: str, id_: Union[str, int], cluster: str = 'ceph') -> Optional[DaemonState]:
         """
         get the daemon associated with this id_ for this role.
 
@@ -85,7 +86,7 @@ class DaemonGroup(object):
             return None
         return self.daemons[role].get(str(id_), None)
 
-    def iter_daemons_of_role(self, type_, cluster='ceph'):
+    def iter_daemons_of_role(self, type_: str, cluster: str = 'ceph'):
         """
         Iterate through all daemon instances for this role.  Return dictionary
         of daemon values.
@@ -95,7 +96,8 @@ class DaemonGroup(object):
         role = cluster + '.' + type_
         return self.daemons.get(role, {}).values()
 
-    def resolve_role_list(self, roles, types, cluster_aware=False):
+    def resolve_role_list(self, roles: Optional[List[str]], types: List[str],
+                         cluster_aware: bool = False) -> List[str]:
         """
         Resolve a configuration setting that may be None or contain wildcards
         into a list of roles (where a role is e.g. 'mds.a' or 'osd.0').  This

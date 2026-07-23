@@ -3,20 +3,21 @@ import random
 import heapq
 from math import gcd
 from functools import reduce
+from typing import Callable, Optional, Iterator
 
-def lcm(a, b):
+def lcm(a: int, b: int) -> int:
     return a*b // gcd(a, b)
-def lcml(l):
+def lcml(l: Iterator[int]) -> int:
     return reduce(lcm, l)
 
 class Matrix:
     """
     Interface for sets
     """
-    def size(self):
-        pass
+    def size(self) -> int:
+        ...
 
-    def index(self, i):
+    def index(self, i: int):
         """
         index() should return a recursive structure represending the paths
         to concatenate for index i:
@@ -32,23 +33,23 @@ class Matrix:
         """
         pass
 
-    def minscanlen(self):
+    def minscanlen(self) -> int:
         """
         min run require to get a good sample
         """
-        pass
+        ...
 
-    def cyclicity(self):
+    def cyclicity(self) -> int:
         """
         A cyclicity of N means that the set represented by the Matrix
         can be chopped into N good subsets of sequential indices.
         """
         return self.size() // self.minscanlen()
 
-    def tostr(self, depth):
-        pass
+    def tostr(self, depth: int) -> str:
+        ...
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         str method
         """
@@ -59,20 +60,20 @@ class Cycle(Matrix):
     """
     Run a matrix multiple times
     """
-    def __init__(self, num, mat):
+    def __init__(self, num: int, mat: 'Matrix') -> None:
         self.mat = mat
         self.num = num
 
-    def size(self):
+    def size(self) -> int:
         return self.mat.size() * self.num
 
-    def index(self, i):
+    def index(self, i: int):
         return self.mat.index(i % self.mat.size())
 
-    def minscanlen(self):
+    def minscanlen(self) -> int:
         return self.mat.minscanlen()
 
-    def tostr(self, depth):
+    def tostr(self, depth: int) -> str:
         return '\t'*depth + "Cycle({num}):\n".format(num=self.num) + self.mat.tostr(depth + 1)
 
 # Logically, inverse of Cycle
@@ -80,7 +81,7 @@ class Subset(Matrix):
     """
     Run a matrix subset.
     """
-    def __init__(self, mat, divisions, which=None):
+    def __init__(self, mat: 'Matrix', divisions: int, which: Optional[int] = None) -> None:
         self.mat = mat
         self.divisions = divisions
         if which is None:
@@ -89,38 +90,38 @@ class Subset(Matrix):
             assert which < divisions
             self.which = which
 
-    def size(self):
+    def size(self) -> int:
         return self.mat.size() // self.divisions
 
-    def index(self, i):
+    def index(self, i: int):
         i += self.which * self.size()
         assert i < self.mat.size()
         return self.mat.index(i)
 
-    def minscanlen(self):
+    def minscanlen(self) -> int:
         return self.mat.minscanlen()
 
-    def tostr(self, depth):
-        return '\t'*depth + "Subset({num}, {index}):\n".format(num=self.num, index=self.index) + self.mat.tostr(depth + 1)
+    def tostr(self, depth: int) -> str:
+        return '\t'*depth + "Subset({divisions}, {which}):\n".format(divisions=self.divisions, which=self.which) + self.mat.tostr(depth + 1)
 
 
 class Base(Matrix):
     """
     Just a single item.
     """
-    def __init__(self, item):
+    def __init__(self, item: str) -> None:
         self.item = item
 
-    def size(self):
+    def size(self) -> int:
         return 1
 
-    def index(self, i):
+    def index(self, i: int) -> str:
         return self.item
 
-    def minscanlen(self):
+    def minscanlen(self) -> int:
         return 1
 
-    def tostr(self, depth):
+    def tostr(self, depth: int) -> str:
         return '\t'*depth + "Base({item})\n".format(item=self.item)
 
 
@@ -129,7 +130,7 @@ class Product(Matrix):
     Builds items by taking one item from each submatrix.  Contiguous
     subsequences should move through all dimensions.
     """
-    def __init__(self, item, _submats):
+    def __init__(self, item: str, _submats: list['Matrix']) -> None:
         assert len(_submats) > 0, \
             "Product requires child submats to be passed in"
         self.item = item
@@ -150,17 +151,17 @@ class Product(Matrix):
         else:
             self._minscanlen += 1
 
-    def tostr(self, depth):
+    def tostr(self, depth: int) -> str:
         ret = '\t'*depth + "Product({item}):\n".format(item=self.item)
         return ret + ''.join([i[1].tostr(depth+1) for i in self.submats])
 
-    def minscanlen(self):
+    def minscanlen(self) -> int:
         return self._minscanlen
 
-    def size(self):
+    def size(self) -> int:
         return self._size
 
-    def _index(self, i, submats):
+    def _index(self, i: int, submats: list[tuple[int, 'Matrix']]) -> frozenset:
         """
         We recursively reduce the N dimension problem to a two
         dimension problem.
@@ -199,7 +200,7 @@ class Product(Matrix):
         ritems = self._index(i, submats[1:])
         return combine(litems, combine(ritems))
 
-    def index(self, i):
+    def index(self, i: int) -> tuple[str, frozenset]:
         items = self._index(i, self.submats)
         return (self.item, items)
 
@@ -207,24 +208,24 @@ class Concat(Matrix):
     """
     Concatenates all items in child matrices
     """
-    def __init__(self, item, submats):
+    def __init__(self, item: str, submats: list['Matrix']) -> None:
         self.submats = submats
         self.item = item
 
-    def size(self):
+    def size(self) -> int:
         return 1
 
-    def minscanlen(self):
+    def minscanlen(self) -> int:
         return 1
 
-    def index(self, i):
+    def index(self, i: int) -> tuple[str, frozenset]:
         out = frozenset()
         for submat in self.submats:
             for i in range(submat.size()):
                 out = out | frozenset([submat.index(i)])
         return (self.item, out)
 
-    def tostr(self, depth):
+    def tostr(self, depth: int) -> str:
         ret = '\t'*depth + "Concat({item}):\n".format(item=self.item)
         return ret + ''.join([i.tostr(depth+1) for i in self.submats])
 
@@ -232,23 +233,23 @@ class PickRandom(Matrix):
     """
     Select a random item from the child matrices.
     """
-    def __init__(self, item, submats):
+    def __init__(self, item: str, submats: list['Matrix']) -> None:
         self.submats = submats
         self.item = item
 
-    def size(self):
+    def size(self) -> int:
         return 1
 
-    def minscanlen(self):
+    def minscanlen(self) -> int:
         return 1
 
-    def index(self, i):
+    def index(self, i: int) -> tuple[str, frozenset]:
         indx = random.randint(0, len(self.submats) - 1)
         submat = self.submats[indx]
         out = frozenset([submat.index(indx)])
         return (self.item, out)
 
-    def tostr(self, depth):
+    def tostr(self, depth: int) -> str:
         ret = '\t'*depth + "PickRandom({item}):\n".format(item=self.item)
         return ret + ''.join([i.tostr(depth+1) for i in self.submats])
 
@@ -275,7 +276,7 @@ class Sum(Matrix):
     precompute a mapping in the constructor (self._i_so_sis) from
     index to (subset_index, subset).
     """
-    def __init__(self, item, _submats):
+    def __init__(self, item: str, _submats: list['Matrix']) -> None:
         assert len(_submats) > 0, \
             f"Sum requires non-empty _submats: {item}"
         self.item = item
@@ -314,7 +315,7 @@ class Sum(Matrix):
         self._minscanlen = self.pseudo_index_to_index(
             max(map(sm_to_pmsl, self._submats)))
 
-    def pi_to_sis(self, pi, offset_multiple):
+    def pi_to_sis(self, pi: int, offset_multiple: tuple[int, int]) -> int:
         """
         offset_multiple tuple of offset and multiple
 
@@ -325,27 +326,27 @@ class Sum(Matrix):
             return -1
         return (pi - offset) // multiple
 
-    def pseudo_index_to_index(self, pi):
+    def pseudo_index_to_index(self, pi: int) -> int:
         """
         Count all pseudoindex values <= pi with corresponding subset indices
         """
         return sum((self.pi_to_sis(pi, i) + 1 for i, _ in self._submats)) - 1
 
-    def tostr(self, depth):
+    def tostr(self, depth: int) -> str:
         ret = '\t'*depth + "Sum({item}):\n".format(item=self.item)
         return ret + ''.join([i[1].tostr(depth+1) for i in self._submats])
 
-    def minscanlen(self):
+    def minscanlen(self) -> int:
         return self._minscanlen
 
-    def size(self):
+    def size(self) -> int:
         return self._size
 
-    def index(self, i):
+    def index(self, i: int) -> tuple:
         si, submat = self._i_to_sis[i % self._size]
         return (self.item, submat.index(si))
 
-def generate_lists(result):
+def generate_lists(result) -> frozenset[tuple]:
     """
     Generates a set of tuples representing paths to concatenate
     """
@@ -366,14 +367,14 @@ def generate_lists(result):
         return frozenset([(result,)])
 
 
-def generate_paths(path, result, joinf=os.path.join):
+def generate_paths(path: str, result, joinf: Callable[[str, str], str] = os.path.join) -> list[str]:
     """
     Generates from the result set a list of sorted paths to concatenate
     """
     return [reduce(joinf, i, path) for i in sorted(generate_lists(result))]
 
 
-def generate_desc(joinf, result):
+def generate_desc(joinf: Callable[[str, str], str], result) -> str:
     """
     Generates the text description of the test represented by result
     """

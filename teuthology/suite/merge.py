@@ -1,8 +1,9 @@
 import copy
 import logging
-import lupa.lua54 as lupa
+import lupa.lua54 as lupa  # ty: ignore[unresolved-import]
 import os
 from types import MappingProxyType
+from typing import Iterator, Optional
 import yaml
 
 from teuthology.config import JobConfig
@@ -25,7 +26,7 @@ FRAGMENT_MERGE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fragm
 with open(FRAGMENT_MERGE) as f:
     L.execute(f.read())
 
-def config_merge(configs, suite_name=None, **kwargs):
+def config_merge(configs: list[tuple[str, list[str]]], suite_name: Optional[str] = None, **kwargs) -> Iterator[tuple[str, list[str], dict]]:
     """
     This procedure selects and merges YAML fragments for each job in the
     configs array generated for the matrix of jobs.
@@ -138,7 +139,7 @@ def config_merge(configs, suite_name=None, **kwargs):
                     txt = f.read()
                     yaml_cache[path] = (txt, yaml.safe_load(txt))
 
-            yaml_fragment_txt, yaml_fragment_obj = yaml_cache[path]
+            _, yaml_fragment_obj = yaml_cache[path]
             if yaml_fragment_obj is None:
                 continue
             yaml_fragment_obj = copy.deepcopy(yaml_fragment_obj)
