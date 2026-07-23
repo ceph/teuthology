@@ -13,7 +13,7 @@ jobs:
         run: uv tool install ceph-devstack
       - name: Configure ceph-devstack
         run: |
-          ceph-devstack doctor --fix
+          ceph-devstack -v doctor --fix
           ceph-devstack config set containers.postgres.count 0
           ceph-devstack config set containers.teuthology.repo "$PWD"
       - name: Build teuthology container
