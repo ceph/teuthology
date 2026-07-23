@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 jobs:
   test:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
@@ -13,7 +13,8 @@ jobs:
         run: uv tool install ceph-devstack
       - name: Configure ceph-devstack
         run: |
-          ceph-devstack doctor --fix
+          sudo chown $(whoami) /dev/loop-control
+          ceph-devstack -v doctor --fix
           ceph-devstack config set containers.postgres.count 0
           ceph-devstack config set containers.teuthology.repo "$PWD"
       - name: Build teuthology container
