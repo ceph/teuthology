@@ -276,9 +276,8 @@ def report_outcome(config, archive, summary):
             and not passed):
         config_dump = yaml.safe_dump(config)
         subject = "Teuthology error -- %s" % summary['failure_reason']
-        email_results(subject, "Teuthology", config['email-on-error'],
-            "\n".join([summary_dump, config_dump]))
-
+        body = "\n".join([summary_dump, config_dump])
+        email_results(config, subject, "Teuthology", body)
 
     report.try_push_job_info(config, summary)
 
