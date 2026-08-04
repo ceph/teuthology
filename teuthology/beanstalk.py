@@ -183,13 +183,13 @@ def stats_tube(connection, tube):
 
 
 def main(args):
-    machine_type = args['--machine_type']
-    status = args['--status']
-    delete = args['--delete']
-    runs = args['--runs']
-    show_desc = args['--description']
-    full = args['--full']
-    pause_duration = args['--pause']
+    machine_type = args['machine_type']
+    status = args['status']
+    delete = args['delete']
+    runs = args['runs']
+    show_desc = args['description']
+    full = args['full']
+    pause_duration = args['pause']
     try:
         connection = connect()
         if machine_type and not pause_duration:

@@ -1,18 +1,24 @@
-import docopt
+import argparse
 
 import teuthology.exporter
 
-doc = """
-usage: teuthology-exporter --help
-       teuthology-exporter [--interval INTERVAL]
+def _build_parser():
+    parser = argparse.ArgumentParser(
+        description='Export teuthology metrics',
+    )
+    parser.add_argument(
+        '--interval',
+        type=int,
+        default=60,
+        help='update metrics this often, in seconds [default: %(default)s]'
+    )
+    return parser
 
-optional arguments:
-  -h, --help                     show this help message and exit
-  --interval INTERVAL            update metrics this often, in seconds
-                                 [default: 60]
-"""
+
+def parse_args(argv=None):
+    return _build_parser().parse_args(argv)
 
 
 def main():
-    args = docopt.docopt(doc)
+    args = parse_args()
     teuthology.exporter.main(args)
