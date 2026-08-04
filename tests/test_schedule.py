@@ -1,25 +1,27 @@
 from teuthology.schedule import build_config
+from teuthology.schedule.cli import make_parser
 from teuthology.misc import get_user
+from tests.cli_test import CliTest
 
 
-class TestSchedule(object):
-    basic_args = {
-        '--verbose': False,
-        '--owner': 'OWNER',
-        '--description': 'DESC',
-        '--email': 'EMAIL',
-        '--first-in-suite': False,
-        '--last-in-suite': True,
-        '--name': 'NAME',
-        '--worker': 'tala',
-        '--timeout': '6',
-        '--priority': '99',
+class TestSchedule(CliTest):
+    script_name = 'teuthology-schedule'
+    argv = [
+        '--name', 'NAME',
+        '--owner', 'OWNER',
+        '--description', 'DESC',
+        '--email', 'EMAIL',
+        '--last-in-suite',
+        '--worker', 'tala',
+        '--timeout', '6',
+        '--priority', '99',
         # TODO: make this work regardless of $PWD
         #'<conf_file>': ['../../examples/3node_ceph.yaml',
         #                '../../examples/3node_rgw.yaml'],
-        }
+    ]
 
     def test_basic(self):
+        args = make_parser().parse_args(self.argv).__dict__
         expected = {
             'description': 'DESC',
             'email': 'EMAIL',
@@ -29,17 +31,21 @@ class TestSchedule(object):
             'name': 'NAME',
             'owner': 'OWNER',
             'priority': 99,
-            'results_timeout': '6',
+            'results_timeout': 6,
             'verbose': False,
             'tube': 'tala',
         }
 
-        job_dict = build_config(self.basic_args)
+        job_dict = build_config(args)
         assert job_dict == expected
 
     def test_owner(self):
-        args = self.basic_args
-        args['--owner'] = None
-        job_dict = build_config(self.basic_args)
+        argv = list(self.argv)
+        if '--owner' in argv:
+            idx = argv.index('--owner')
+            argv.pop(idx)   # remove --owner flag
+            argv.pop(idx)   # remove its value
+        args = make_parser().parse_args(argv).__dict__
+        job_dict = build_config(args)
         assert job_dict['owner'] == 'scheduled_%s' % get_user()
 
