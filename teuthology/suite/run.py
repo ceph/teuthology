@@ -11,13 +11,14 @@ from pathlib import Path
 
 from humanfriendly import format_timespan
 
-from teuthology import repo_utils
+from teuthology import repo_utils, schedule
+import teuthology.beanstalk
 
 from teuthology.config import config, JobConfig
 from teuthology.exceptions import (
     BranchMismatchError, BranchNotFoundError, CommitNotFoundError,
 )
-from teuthology.misc import deep_merge, get_results_url, update_key
+from teuthology.misc import deep_merge, get_results_url, merge_configs, update_key
 from teuthology.orchestra.opsys import OS
 from teuthology.repo_utils import build_git_url
 
@@ -35,7 +36,7 @@ class Run(object):
     WAIT_PAUSE = 5 * 60
     __slots__ = (
         'args', 'name', 'base_config', 'suite_repo_path', 'base_yaml_paths',
-        'base_args', 'kernel_dict', 'config_input', 'timestamp', 'user', 'os',
+        'kernel_dict', 'config_input', 'timestamp', 'user', 'os',
     )
 
     def __init__(self, args):
@@ -398,52 +399,58 @@ class Run(object):
             job_config.rocketchat = self.args.rocketchat
         return job_config
 
-    def build_base_args(self):
-        base_args = [
-            '--name', self.name,
-            '--worker', util.get_worker(self.args.machine_type),
-        ]
+    def build_job_config(self, conf_dict, description=None, **kwargs):
+        return schedule.build_config(
+            conf_dict,
+            name=self.name,
+            description=description,
+            owner=self.args.owner,
+            worker=util.get_worker(self.args.machine_type),
+            priority=(self.args.priority
+                      if self.args.priority is not None else 1000),
+            verbose=bool(self.args.verbose),
+            **kwargs
+        )
+
+    def queue_job(self, job_config, num=1, report_status=True,
+                  log_prefix='', connection=None):
+        """
+        Queue a job, or with --dry-run, just log its config (and print it
+        if --verbose was passed more than once).
+        """
         if self.args.dry_run:
-            base_args.append('--dry-run')
-        if self.args.priority is not None:
-            base_args.extend(['--priority', str(self.args.priority)])
-        if self.args.verbose:
-            base_args.append('-v')
-        if self.args.owner:
-            base_args.extend(['--owner', self.args.owner])
-        if self.args.queue_backend:
-            base_args.extend(['--queue-backend', self.args.queue_backend])
-        return base_args
+            log.debug('%sjob config:\n%s', log_prefix,
+                      yaml.safe_dump(job_config))
+            if self.args.verbose and self.args.verbose > 1:
+                print('---\n' + yaml.safe_dump(job_config))
+            return
+        schedule.queue_job(job_config, self.args.queue_backend or 'beanstalk',
+                           num, report_status, connection=connection)
 
 
     def write_rerun_memo(self):
-        args = copy.deepcopy(self.base_args)
-        args.append('--first-in-suite')
+        subset = None
         if self.args.subset:
             subset = '/'.join(str(i) for i in self.args.subset)
-            args.extend(['--subset', subset])
-        if self.args.no_nested_subset:
-            args.extend(['--no-nested-subset'])
-        args.extend(['--seed', str(self.args.seed)])
-        util.teuthology_schedule(
-            args=args,
-            dry_run=self.args.dry_run,
-            verbose=self.args.verbose,
-            log_prefix="Memo: ")
+        job_config = self.build_job_config(
+            {},
+            first_in_suite=True,
+            subset=subset,
+            no_nested_subset=bool(self.args.no_nested_subset),
+            seed=str(self.args.seed),
+        )
+        self.queue_job(job_config, report_status=False, log_prefix="Memo: ")
 
 
     def write_result(self):
-        arg = copy.deepcopy(self.base_args)
-        arg.append('--last-in-suite')
-        if self.base_config.email:
-            arg.extend(['--email', self.base_config.email])
-        if self.args.timeout:
-            arg.extend(['--timeout', self.args.timeout])
-        util.teuthology_schedule(
-            args=arg,
-            dry_run=self.args.dry_run,
-            verbose=self.args.verbose,
-            log_prefix="Results: ")
+        job_config = self.build_job_config(
+            {},
+            last_in_suite=True,
+            email=self.base_config.email or None,
+            timeout=self.args.timeout or None,
+        )
+        self.queue_job(job_config, report_status=False,
+                       log_prefix="Results: ")
         results_url = get_results_url(self.base_config.name)
         if results_url:
             log.info("Test results viewable at %s", results_url)
@@ -451,13 +458,10 @@ class Run(object):
 
     def prepare_and_schedule(self):
         """
-        Puts together some "base arguments" with which to execute
-        teuthology-schedule for each job, then passes them and other parameters
-        to schedule_suite(). Finally, schedules a "last-in-suite" job that
-        sends an email to the specified address (if one is configured).
+        Calls schedule_suite() to schedule each job. Finally, schedules a
+        "last-in-suite" job that sends an email to the specified address (if
+        one is configured).
         """
-        self.base_args = self.build_base_args()
-
         # Make sure the yaml paths are actually valid
         for yaml_path in self.base_yaml_paths:
             full_yaml_path = os.path.join(self.suite_repo_path, yaml_path)
@@ -501,24 +505,10 @@ class Run(object):
 
             parsed_yaml['flavor'] = flavor
 
-            arg = copy.deepcopy(self.base_args)
-            arg.extend([
-                '--num', str(self.args.num),
-                '--description', description,
-                '--',
-            ])
-            # In order overriding with extra yaml paths could possibly work,
-            # order parsed yaml before base_yaml_paths
-            arg.append('-')
-            parsed_yaml_txt = yaml.dump(parsed_yaml)
-            arg.extend(self.base_yaml_paths)
-
             job = dict(
                 yaml=parsed_yaml,
                 desc=description,
                 sha1=self.base_config.sha1,
-                args=arg,
-                stdin=parsed_yaml_txt,
             )
 
             sha1 = self.base_config.sha1
@@ -539,32 +529,46 @@ class Run(object):
         return jobs_missing_packages, jobs_to_schedule
 
     def schedule_jobs(self, jobs_missing_packages, jobs_to_schedule, name):
-        for job in jobs_to_schedule:
-            log.info(
-                'Scheduling %s', job['desc']
-            )
+        # In order overriding with extra yaml paths could possibly work,
+        # merge base_yaml_paths over the parsed yaml
+        base_yaml_conf = merge_configs(self.base_yaml_paths)
 
-            log_prefix = ''
-            if job in jobs_missing_packages:
-                log_prefix = "Missing Packages: "
-                if not config.suite_allow_missing_packages:
-                    util.schedule_fail(
-                        "At least one job needs packages that don't exist "
-                        f"for hash {self.base_config.sha1}.",
-                        name,
-                        dry_run=self.args.dry_run,
-                    )
-            util.teuthology_schedule(
-                args=job['args'],
-                dry_run=self.args.dry_run,
-                verbose=self.args.verbose,
-                log_prefix=log_prefix,
-                stdin=job['stdin'],
-            )
-            throttle = self.args.throttle
-            if not self.args.dry_run and throttle:
-                log.info("pause between jobs : --throttle " + str(throttle))
-                time.sleep(int(throttle))
+        connection = None
+        if not self.args.dry_run and \
+                (self.args.queue_backend or 'beanstalk') == 'beanstalk':
+            connection = teuthology.beanstalk.connect()
+
+        try:
+            for job in jobs_to_schedule:
+                log.info(
+                    'Scheduling %s', job['desc']
+                )
+
+                log_prefix = ''
+                if job in jobs_missing_packages:
+                    log_prefix = "Missing Packages: "
+                    if not config.suite_allow_missing_packages:
+                        util.schedule_fail(
+                            "At least one job needs packages that don't exist "
+                            f"for hash {self.base_config.sha1}.",
+                            name,
+                            dry_run=self.args.dry_run,
+                        )
+
+                conf_dict = copy.deepcopy(job['yaml'])
+                deep_merge(conf_dict, copy.deepcopy(base_yaml_conf))
+                job_config = self.build_job_config(
+                    conf_dict, description=job['desc'])
+                self.queue_job(job_config, num=self.args.num,
+                               log_prefix=log_prefix, connection=connection)
+
+                throttle = self.args.throttle
+                if not self.args.dry_run and throttle:
+                    log.info("pause between jobs : --throttle " + str(throttle))
+                    time.sleep(int(throttle))
+        finally:
+            if connection:
+                connection.close()
 
     def check_priority(self, jobs_to_schedule):
         priority = self.args.priority
