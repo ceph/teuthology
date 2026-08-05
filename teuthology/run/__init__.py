@@ -289,28 +289,6 @@ def report_outcome(config, archive, summary):
         sys.exit(1)
 
 
-def get_teuthology_command(args):
-    """
-    Rebuilds the teuthology command used to run this job
-    and returns it as a string.
-    """
-    cmd = ["teuthology"]
-    for key, value in args.items():
-        if value:
-            # config paths are positional arguments, not flags
-            if key == "config":
-                for arg in value:
-                    cmd.append(str(arg))
-                continue
-            # convert argparse underscore keys back to --hyphen-flag form
-            flag = "--" + key.replace("_", "-")
-            cmd.append(flag)
-            # so we don't print something like --verbose True
-            if isinstance(value, str):
-                cmd.append(value)
-    return " ".join(cmd)
-
-
 def main(args):
     verbose = args["verbose"]
     archive = args["archive"]
@@ -326,8 +304,7 @@ def main(args):
     os_version = args["os_version"]
     interactive_on_error = args["interactive_on_error"]
 
-    # print the command being ran
-    log.debug("Teuthology command: {0}".format(get_teuthology_command(args)))
+    log.debug("Teuthology command: %s", " ".join(sys.argv))
 
     if owner is None:
         args["owner"] = owner = get_user()

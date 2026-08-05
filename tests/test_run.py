@@ -4,11 +4,57 @@ import pytest
 from unittest.mock import patch, call
 
 from teuthology import run
+from teuthology.run.cli import parse_args
 from tests import skipif_teuthology_process
 
 
 class TestRun(object):
-    """ Tests for teuthology.run """
+    """ Tests for teuthology.run and teuthology.run.cli """
+
+    def test_help(self, capsys):
+        with pytest.raises(SystemExit):
+            parse_args([])
+        captured = capsys.readouterr()
+        assert "usage: " in captured.err
+
+    def test_invalid(self):
+        with pytest.raises(SystemExit):
+            parse_args(["--invalid-option", "config.yml"])
+
+    def test_all_args(self):
+        args = parse_args([
+            "--verbose",
+            "--archive", "some/archive/dir",
+            "--description", "the_description",
+            "--owner", "the_owner",
+            "--lock",
+            "--machine-type", "machine_type",
+            "--os-type", "os_type",
+            "--os-version", "os_version",
+            "--block",
+            "--name", "the_name",
+            "--suite-path", "some/suite/dir",
+            "path/to/config.yml",
+        ])
+        assert args.verbose
+        assert args.archive == "some/archive/dir"
+        assert args.description == "the_description"
+        assert args.owner == "the_owner"
+        assert args.lock
+        assert args.machine_type == "machine_type"
+        assert args.os_type == "os_type"
+        assert args.os_version == "os_version"
+        assert args.block
+        assert args.name == "the_name"
+        assert args.suite_path == "some/suite/dir"
+        assert args.config == ["path/to/config.yml"]
+
+    def test_multiple_configs(self):
+        args = parse_args([
+            "config1.yml",
+            "config2.yml",
+        ])
+        assert args.config == ["config1.yml", "config2.yml"]
 
     @patch("teuthology.log.setLevel")
     @patch("teuthology.setup_log_file")
@@ -164,22 +210,18 @@ class TestRun(object):
         config = {"job_id": 1}
         m_setup_config.return_value = config
         m_get_machine_type.return_value = "machine_type"
-        # Create args dict
-        args = {
-            'verbose': True,
-            'archive': 'some/archive/dir',
-            'description': 'the_description',
-            'owner': None,
-            'lock': True,
-            'machine_type': None,
-            'os_type': 'os_type',
-            'os_version': 'os_version',
-            'block': True,
-            'name': 'the_name',
-            'suite_path': 'some/suite/dir',
-            'interactive_on_error': False,
-            'config': ['path/to/config.yml'],
-        }
+        args = parse_args([
+            "--verbose",
+            "--archive", "some/archive/dir",
+            "--description", "the_description",
+            "--lock",
+            "--os-type", "os_type",
+            "--os-version", "os_version",
+            "--block",
+            "--name", "the_name",
+            "--suite-path", "some/suite/dir",
+            "path/to/config.yml",
+        ]).__dict__
         m_get_user.return_value = "the_owner"
         m_get_summary.return_value = dict(success=True, owner="the_owner", description="the_description")
         m_validate_tasks.return_value = ['task3']
@@ -250,56 +292,12 @@ class TestRun(object):
         config = {"job_id": 1}
         m_setup_config.return_value = config
         m_get_machine_type.return_value = "machine_type"
-        # Create args
-        args = {
-            'verbose': False,
-            'archive': None,
-            'description': None,
-            'owner': None,
-            'lock': False,
-            'machine_type': None,
-            'os_type': None,
-            'os_version': None,
-            'block': False,
-            'name': None,
-            'suite_path': None,
-            'interactive_on_error': True,
-            'config': ['path/to/config.yml'],
-        }
+        args = parse_args([
+            "--interactive-on-error",
+            "path/to/config.yml",
+        ]).__dict__
         run.main(args)
         args, kwargs = m_run_tasks.call_args
         fake_ctx = kwargs["ctx"]._conf
         assert fake_ctx['config']['interactive-on-error'] is True
 
-    def test_get_teuthology_command(self):
-        # Create args dict
-        args = {
-            'verbose': False,
-            'archive': 'some/archive/dir',
-            'description': 'the_description',
-            'owner': None,
-            'lock': True,
-            'machine_type': None,
-            'os_type': None,
-            'os_version': None,
-            'block': True,
-            'name': 'the_name',
-            'suite_path': 'some/suite/dir',
-            'interactive_on_error': False,
-            'config': ['path/to/config.yml', 'path/to/config2.yaml'],
-        }
-        result = run.get_teuthology_command(args)
-        result = result.split()
-        expected = [
-            "teuthology",
-            "path/to/config.yml", "path/to/config2.yaml",
-            "--suite-path", "some/suite/dir",
-            "--lock",
-            "--description", "the_description",
-            "--name", "the_name",
-            "--block",
-            "--archive", "some/archive/dir",
-        ]
-        assert len(result) == len(expected)
-        for arg in expected:
-            assert arg in result

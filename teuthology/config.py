@@ -248,12 +248,9 @@ class FakeNamespace(YamlConfig):
 
     def _clean_config(self, config_dict):
         """
-        Makes sure that the keys of config_dict are able to be used. For
-        example the "--" prefix from argparse/docopt dicts isn't valid and
-        won't populate correctly. This method:
-        - Strips "--" prefix from arguments
-        - Strips "<>" from positional arguments
-        - Replaces hyphens with underscores
+        Makes sure that the keys of config_dict are able to be used.  For
+        example the "--" prefix of a docopt dict isn't valid and won't populate
+        correctly.
         """
         result = dict()
         for key, value in config_dict.items():

@@ -90,7 +90,7 @@ openstack = [
 ]
 
 [project.scripts]
-teuthology = "scripts.run:main"
+teuthology = "teuthology.run.cli:main"
 teuthology-openstack = "scripts.openstack:main"
 teuthology-suite = "scripts.suite:main"
 teuthology-ls = "scripts.ls:main"

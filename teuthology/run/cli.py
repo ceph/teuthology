@@ -4,7 +4,7 @@ import teuthology
 import teuthology.run
 
 
-def _build_parser():
+def make_parser():
     parser = argparse.ArgumentParser(
         description='Run ceph integration tests',
     )
@@ -78,7 +78,7 @@ def _build_parser():
 
 
 def parse_args(argv=None):
-    return _build_parser().parse_args(argv)
+    return make_parser().parse_args(argv)
 
 
 def main():
