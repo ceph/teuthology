@@ -31,7 +31,24 @@ def main(args):
     name = args['--name']
     if not name or name.isdigit():
         raise ValueError("Please use a more descriptive value for --name")
-    job_config = build_config(args)
+    config_paths = args.get('<conf_file>', list())
+    conf_dict = merge_configs(config_paths)
+    job_config = build_config(
+        conf_dict,
+        name=args['--name'],
+        description=args['--description'],
+        owner=args['--owner'],
+        worker=args['--worker'],
+        priority=args['--priority'],
+        first_in_suite=args['--first-in-suite'],
+        last_in_suite=args['--last-in-suite'],
+        email=args['--email'],
+        verbose=args['--verbose'],
+        timeout=args.get('--timeout'),
+        seed=args.get('--seed'),
+        subset=args.get('--subset'),
+        no_nested_subset=args.get('--no-nested-subset'),
+    )
     backend = args['--queue-backend']
     if args['--dry-run']:
         print('---\n' + yaml.safe_dump(job_config))
@@ -44,60 +61,57 @@ def main(args):
                          "Try 'beanstalk' or '@path-to-a-file" % backend)
 
 
-def build_config(args):
+def build_config(conf_dict, name, description, owner, worker, priority,
+                 first_in_suite=False, last_in_suite=False, email=None,
+                 verbose=False, timeout=None, seed=None, subset=None,
+                 no_nested_subset=None):
     """
-    Given a dict of arguments, build a job config
+    Build a job config dict from a merged config dict and scheduling
+    parameters.
+
+    Settings in conf_dict override the explicit parameters so that YAML
+    config can, for example, change the machine_type.
     """
-    config_paths = args.get('<conf_file>', list())
-    conf_dict = merge_configs(config_paths)
-    # strip out targets; the worker will allocate new ones when we run
-    # the job with --lock.
+    conf_dict = dict(conf_dict)
     if 'targets' in conf_dict:
         del conf_dict['targets']
-    args['config'] = conf_dict
 
-    owner = args['--owner']
     if owner is None:
         owner = 'scheduled_{user}'.format(user=get_user())
 
     job_config = dict(
-        name=args['--name'],
-        first_in_suite=args['--first-in-suite'],
-        last_in_suite=args['--last-in-suite'],
-        email=args['--email'],
-        description=args['--description'],
+        name=name,
+        first_in_suite=first_in_suite,
+        last_in_suite=last_in_suite,
+        email=email,
+        description=description,
         owner=owner,
-        verbose=args['--verbose'],
-        machine_type=args['--worker'],
-        tube=args['--worker'],
-        priority=int(args['--priority']),
+        verbose=verbose,
+        machine_type=worker,
+        tube=worker,
+        priority=int(priority),
     )
-    # Update the dict we just created, and not the other way around, to let
-    # settings in the yaml override what's passed on the command line. This is
-    # primarily to accommodate jobs with multiple machine types.
     job_config.update(conf_dict)
-    for arg,conf in {'--timeout':'results_timeout',
-                     '--seed': 'seed',
-                     '--subset': 'subset',
-                     '--no-nested-subset': 'no_nested_subset'}.items():
-        val = args.get(arg, None)
+    for key, val in [('results_timeout', timeout), ('seed', seed),
+                     ('subset', subset), ('no_nested_subset', no_nested_subset)]:
         if val is not None:
-            job_config[conf] = val
-
+            job_config[key] = val
     return job_config
 
 
-def schedule_job(job_config, num=1, report_status=True):
+def schedule_job(job_config, num=1, report_status=True, connection=None):
     """
     Schedule a job.
 
     :param job_config: The complete job dict
     :param num:      The number of times to schedule the job
+    :param report_status: Whether to report job status to paddles
+    :param connection: Optional existing beanstalk connection to reuse
     """
     num = int(num)
     job = yaml.safe_dump(job_config)
     tube = job_config.pop('tube')
-    beanstalk = teuthology.beanstalk.connect()
+    beanstalk = connection or teuthology.beanstalk.connect()
     beanstalk.use(tube)
     while num > 0:
         jid = beanstalk.put(
