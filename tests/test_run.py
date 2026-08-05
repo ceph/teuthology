@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import patch, call
 
 from teuthology import run
-from teuthology.run.cli import parse_args
+from teuthology.run.cli import make_parser
 from tests import skipif_teuthology_process
 
 
@@ -13,16 +13,16 @@ class TestRun(object):
 
     def test_help(self, capsys):
         with pytest.raises(SystemExit):
-            parse_args([])
+            make_parser([])
         captured = capsys.readouterr()
         assert "usage: " in captured.err
 
     def test_invalid(self):
         with pytest.raises(SystemExit):
-            parse_args(["--invalid-option", "config.yml"])
+            make_parser(["--invalid-option", "config.yml"])
 
     def test_all_args(self):
-        args = parse_args([
+        args = make_parser([
             "--verbose",
             "--archive", "some/archive/dir",
             "--description", "the_description",
@@ -50,7 +50,7 @@ class TestRun(object):
         assert args.config == ["path/to/config.yml"]
 
     def test_multiple_configs(self):
-        args = parse_args([
+        args = make_parser([
             "config1.yml",
             "config2.yml",
         ])
@@ -210,7 +210,7 @@ class TestRun(object):
         config = {"job_id": 1}
         m_setup_config.return_value = config
         m_get_machine_type.return_value = "machine_type"
-        args = parse_args([
+        args = make_parser([
             "--verbose",
             "--archive", "some/archive/dir",
             "--description", "the_description",
@@ -292,7 +292,7 @@ class TestRun(object):
         config = {"job_id": 1}
         m_setup_config.return_value = config
         m_get_machine_type.return_value = "machine_type"
-        args = parse_args([
+        args = make_parser([
             "--interactive-on-error",
             "path/to/config.yml",
         ]).__dict__
