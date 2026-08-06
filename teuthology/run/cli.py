@@ -4,7 +4,7 @@ import teuthology
 import teuthology.run
 
 
-def make_parser(argv=None):
+def make_parser():
     parser = argparse.ArgumentParser(
         description='Run ceph integration tests',
     )
@@ -74,9 +74,9 @@ def make_parser(argv=None):
         help=('drop to a python shell on failure, which will halt the job; '
               'developer can then ssh to targets and examine cluster state'),
     )
-    return parser.parse_args(argv)
+    return parser
 
 
 def main():
-    args = make_parser()
+    args = make_parser().parse_args()
     teuthology.run.main(args.__dict__)
