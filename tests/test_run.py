@@ -4,17 +4,16 @@ import pytest
 from unittest.mock import patch, call
 
 from teuthology import run
-from teuthology.run.cli import make_parser
 from tests import skipif_teuthology_process
 from tests.cli_test import CliTest
 
 
 class TestRun(CliTest):
     """ Tests for teuthology.run and teuthology.run.cli """
-    script_name = 'teuthology'
+    cli_name = 'teuthology'
 
-    def test_all_args(self):
-        args = make_parser().parse_args([
+    def test_all_args(self, parser):
+        args = parser.parse_args([
             "--verbose",
             "--archive", "some/archive/dir",
             "--description", "the_description",
@@ -41,8 +40,8 @@ class TestRun(CliTest):
         assert args.suite_path == "some/suite/dir"
         assert args.config == ["path/to/config.yml"]
 
-    def test_multiple_configs(self):
-        args = make_parser().parse_args([
+    def test_multiple_configs(self, parser):
+        args = parser.parse_args([
             "config1.yml",
             "config2.yml",
         ])
@@ -197,12 +196,12 @@ class TestRun(CliTest):
     @patch("teuthology.run.report_outcome")
     def test_main(self, m_report_outcome, m_run_tasks, m_fetch_tasks_if_needed, m_get_initial_tasks, m_validate_tasks,
                   m_safe_dump, m_get_summary, m_get_machine_type, m_try_push_job_info, m_write_initial_metadata,
-                  m_get_user, m_setup_config, m_set_up_logging):
+                  m_get_user, m_setup_config, m_set_up_logging, parser):
         """ This really should be an integration test of some sort. """
         config = {"job_id": 1}
         m_setup_config.return_value = config
         m_get_machine_type.return_value = "machine_type"
-        args = make_parser().parse_args([
+        args = parser.parse_args([
             "--verbose",
             "--archive", "some/archive/dir",
             "--description", "the_description",
@@ -280,11 +279,12 @@ class TestRun(CliTest):
         m_get_user,
         m_setup_config,
         m_set_up_logging,
+        parser
     ):
         config = {"job_id": 1}
         m_setup_config.return_value = config
         m_get_machine_type.return_value = "machine_type"
-        args = make_parser().parse_args([
+        args = parser.parse_args([
             "--interactive-on-error",
             "path/to/config.yml",
         ]).__dict__
