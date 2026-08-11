@@ -1201,13 +1201,13 @@ class PulpProject(GitbuilderProject):
 
     @classmethod
     def _get_distro(cls, distro=None, version=None, codename=None):
+        # Like shaman/chacra, deb-based distros use the numeric version
+        # (e.g. ubuntu/22.04), not the codename.
         if distro in ('centos', 'rhel'):
             distro = 'centos'
             version = cls._parse_version(version)
         if distro in ('alma', 'rocky'):
             version = cls._parse_version(version)
-        if distro in ('ubuntu', 'debian'):
-            version = codename or version
         return f'{distro}/{version}'
 
     def _get_package_sha1(self):
