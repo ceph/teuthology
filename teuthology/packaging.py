@@ -1125,6 +1125,33 @@ class PulpProject(GitbuilderProject):
         return urljoin(self.pulp_server_url, path)
 
     @property
+    def _search_labels(self):
+        """Build the pulp_label_select filter used to find our distribution"""
+        labels = f'project={self.project},'
+        labels += f'flavors={self.flavor},'
+        labels += f'distro={self.os_type},'
+        distro_version = self._get_distro(
+            distro=self.os_type,
+            version=self.os_version,
+            codename=self.codename,
+        ).split('/', 1)[1]
+        labels += f'distro_version={distro_version},'
+
+        # Add the architecture to the search parameters.
+        arch = 'noarch' if self.force_noarch else self.arch
+        labels += f'arch={arch},'
+
+        # Add the reference to the search parameters.
+        ref_name, ref_val = list(self._choose_reference().items())[0]
+        labels += f'{ref_name}={ref_val}'
+        return labels
+
+    @property
+    def _search_query(self):
+        """The full search url, including the label filter"""
+        return f'{self._search_uri}?pulp_label_select={self._search_labels}'
+
+    @property
     def _result(self):
         """Get the results from the pulp api"""
         if getattr(self, '_result_obj', None) is None:
@@ -1133,11 +1160,11 @@ class PulpProject(GitbuilderProject):
 
             # Check if there is exactly one result.
             if not len(self._result_obj):
-                log.error(f'No results found for {self._search_uri}')
-                raise VersionNotFoundError(f'No results found for {self._search_uri}')
+                log.error(f'No results found for {self._search_query}')
+                raise VersionNotFoundError(f'No results found for {self._search_query}')
             elif len(self._result_obj) > 1:
-                log.error(f'Multiple results found for {self._search_uri}')
-                raise VersionNotFoundError(f'Multiple results found for {self._search_uri}')
+                log.error(f'Multiple results found for {self._search_query}')
+                raise VersionNotFoundError(f'Multiple results found for {self._search_query}')
 
         return self._result_obj[0]
 
@@ -1160,24 +1187,7 @@ class PulpProject(GitbuilderProject):
 
     def _search(self):
         """Search for the package in the pulp api"""
-        # Build the search parameters.
-        labels = f'project={self.project},'
-        labels += f'flavors={self.flavor},'
-        labels += f'distro={self.os_type},'
-        distro_version = self._get_distro(
-            distro=self.os_type,
-            version=self.os_version,
-            codename=self.codename,
-        ).split('/', 1)[1]
-        labels += f'distro_version={distro_version},'
-
-        # Add the architecture to the search parameters.
-        arch = 'noarch' if self.force_noarch else self.arch
-        labels += f'arch={arch},'
-
-        # Add the reference to the search parameters.
-        ref_name, ref_val = list(self._choose_reference().items())[0]
-        labels += f'{ref_name}={ref_val}'
+        labels = self._search_labels
         resp = requests.get(
             self._search_uri,
             params={'pulp_label_select': labels},
