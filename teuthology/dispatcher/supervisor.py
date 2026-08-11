@@ -16,6 +16,7 @@ from teuthology.misc import get_user, archive_logs, compress_logs
 from teuthology.config import FakeNamespace
 from teuthology.lock import ops as lock_ops
 from teuthology.task import internal
+from teuthology.task.ansible import FailureAnalyzer, FAILURE_LOG_NAME
 from teuthology.misc import decanonicalize_hostname as shortname
 from teuthology.lock import query
 from teuthology.util import sentry
@@ -181,7 +182,11 @@ def run_job(job_config: dict,
     else:
         log.info('Success!')
     if 'targets' in job_config:
+        # Always mark nodes down before unlocking them. Otherwise another job
+        # can grab a broken node before we get to it.
+        failures = check_for_ansible_failures_and_mark_down(job_config)
         unlock_targets(job_config)
+        describe_disabled_targets(failures)
     return p.returncode
 
 def failure_is_reimage(failure_reason):
@@ -225,6 +230,96 @@ def check_for_reimage_failures_and_mark_down(targets, count=10):
         log.error(
             'Reimage failed {0} times ... marking machine down'.format(count)
         )
+
+
+def check_for_ansible_failures_and_mark_down(job_config):
+    """
+    Mark nodes down as soon as ansible reports a failure we know means the
+    node is broken, instead of waiting for it to fail a streak of jobs first.
+
+    The patterns to look for come from disable_targets.ansible_failure_patterns
+    in the site config, keyed by machine type. The job process itself doesn't
+    do any of this: it only archives the ansible failure log, which we read
+    back here, so a running job never has to talk to paddles. See
+    docs/node_health.rst.
+
+    :param job_config: dict, job config data
+    :returns:          dict, mapping machine name to the failure message, for
+                       the nodes that were marked down
+    """
+    marked_down = dict()
+    patterns = (teuth_config.disable_targets or dict()).get(
+        'ansible_failure_patterns', dict()
+    ).get(job_config.get('machine_type'))
+    if not patterns:
+        return marked_down
+    failure_log = os.path.join(job_config['archive_path'], FAILURE_LOG_NAME)
+    if not os.path.exists(failure_log):
+        return marked_down
+    try:
+        with open(failure_log) as f:
+            failures = FailureAnalyzer().find_matching_failures(
+                f.read(), patterns
+            )
+    except Exception:
+        log.exception("Failed to check %s for failures", failure_log)
+        return marked_down
+    targets = set(shortname(t) for t in job_config.get('targets', dict()))
+    for hostname, msg in sorted(failures.items()):
+        machine_name = shortname(hostname)
+        if machine_name not in targets:
+            log.warning(
+                "Not marking %s down; it is not a target of this job",
+                machine_name,
+            )
+            continue
+        log.error("Marking %s down: %s", machine_name, msg)
+        # Only the status is updated here. The job still holds the lock, and
+        # unlock_targets() refuses to unlock a node whose description no longer
+        # matches the job's archive path, so the reason is recorded later by
+        # describe_disabled_targets().
+        try:
+            lock_ops.update_lock(machine_name, status='down')
+            marked_down[machine_name] = msg
+        except Exception:
+            log.exception("Failed to mark %s down", machine_name)
+    return marked_down
+
+
+def describe_disabled_targets(failures):
+    """
+    Record why a node was marked down, so it's visible in
+    'teuthology-lock --list' and not just in this log.
+
+    This has to happen after the nodes have been unlocked; see
+    check_for_ansible_failures_and_mark_down().
+
+    :param failures: dict, mapping machine name to the failure message
+    """
+    if not failures:
+        return
+    still_locked = set(
+        shortname(status['name']) for status in query.get_statuses(failures)
+        if status['locked']
+    )
+    for machine_name, msg in sorted(failures.items()):
+        if machine_name in still_locked:
+            # unlock_on_failure was probably set. Leave the description alone
+            # so the node can still be unlocked later.
+            log.warning(
+                "Not updating the description for %s; it is still locked",
+                machine_name,
+            )
+            continue
+        try:
+            lock_ops.update_lock(
+                machine_name,
+                description='ansible failure: {0}'.format(msg),
+            )
+        except Exception:
+            log.exception(
+                "Failed to update the description for %s", machine_name
+            )
 
 
 def reimage(job_config):
