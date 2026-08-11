@@ -621,6 +621,26 @@ class GitbuilderProject(object):
         return version.split(".")[0]
 
     @classmethod
+    def _get_distro_numeric(cls, distro=None, version=None, codename=None):
+        """
+        The distro/version string used when searching shaman or pulp,
+        e.g. ubuntu/22.04 or centos/9.
+
+        Unlike gitbuilder/chacra URLs (see _get_distro), searches always
+        use the numeric version, never the codename.
+
+        :param distro:   The distro as a string
+        :param version:  The version as a string
+        :param codename: Unused; accepted so both methods share a signature
+        """
+        if distro in ('centos', 'rhel'):
+            distro = 'centos'
+            version = cls._parse_version(version)
+        if distro in ('alma', 'rocky'):
+            version = cls._parse_version(version)
+        return f'{distro}/{version}'
+
+    @classmethod
     def _get_distro(cls, distro=None, version=None, codename=None):
         """
         Given a distro and a version, returned the combined string
@@ -981,14 +1001,7 @@ class ShamanProject(GitbuilderProject):
         if len(self._result.json()) == 0:
             raise VersionNotFoundError(self._result.url)
 
-    @classmethod
-    def _get_distro(cls, distro=None, version=None, codename=None):
-        if distro in ('centos', 'rhel'):
-            distro = 'centos'
-            version = cls._parse_version(version)
-        if distro in ('alma', 'rocky'):
-            version = cls._parse_version(version)
-        return "%s/%s" % (distro, version)
+    _get_distro = GitbuilderProject._get_distro_numeric
 
     def _get_package_sha1(self):
         # This doesn't raise because GitbuilderProject._get_package_sha1()
@@ -1199,16 +1212,9 @@ class PulpProject(GitbuilderProject):
 
         return resp.json()
 
-    @classmethod
-    def _get_distro(cls, distro=None, version=None, codename=None):
-        # Like shaman/chacra, deb-based distros use the numeric version
-        # (e.g. ubuntu/22.04), not the codename.
-        if distro in ('centos', 'rhel'):
-            distro = 'centos'
-            version = cls._parse_version(version)
-        if distro in ('alma', 'rocky'):
-            version = cls._parse_version(version)
-        return f'{distro}/{version}'
+    # Pulp labels follow the shaman convention: numeric distro versions,
+    # set by ceph-build's pulp_upload.sh.
+    _get_distro = GitbuilderProject._get_distro_numeric
 
     def _get_package_sha1(self):
         """Get the package sha1 from the pulp api"""
