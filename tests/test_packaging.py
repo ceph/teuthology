@@ -930,7 +930,6 @@ class TestPulpProject(TestBuilderProject):
             ('alma', '9.7', None, 'distro_version=9'),
             ('centos', '8.1', None, 'distro_version=8'),
             ('rhel', '7.0', None, 'distro_version=7'),
-            ('ubuntu', '20.04', 'focal', 'distro_version=focal'),
         ],
     )
     def test_search_uses_major_distro_version(
@@ -943,6 +942,19 @@ class TestPulpProject(TestBuilderProject):
         labels = self.m_get.call_args[1]['params']['pulp_label_select']
         assert expected in labels
         assert f'distro_version={os_version},' not in labels
+
+    # deb distros search with the numeric version like shaman/chacra,
+    # never the codename, even when the job config supplies a codename.
+    @pytest.mark.parametrize(
+        'os_version',
+        ['20.04', 'focal'],
+    )
+    def test_search_uses_numeric_distro_version_for_deb(self, os_version):
+        gp = self.klass('ceph', dict(os_type='ubuntu', os_version=os_version))
+        gp._search()
+        labels = self.m_get.call_args[1]['params']['pulp_label_select']
+        assert 'distro_version=20.04,' in labels
+        assert 'focal' not in labels
 
     def test_get_package_version_found(self):
         resp = Mock()
@@ -990,7 +1002,7 @@ class TestPulpProject(TestBuilderProject):
         ('rocky', '10.1', None, 'rocky/10'),
         ('centos', '8.1', None, 'centos/8'),
         ('fedora', '20', None, 'fedora/20'),
-        ('ubuntu', '20.04', 'focal', 'ubuntu/focal'),
+        ('ubuntu', '20.04', 'focal', 'ubuntu/20.04'),
     ]
 
     @pytest.mark.parametrize(
@@ -1004,7 +1016,7 @@ class TestPulpProject(TestBuilderProject):
         ('rhel', None, None, 'centos/8'),
         ('centos', None, None, 'centos/9'),
         ('fedora', None, None, 'fedora/25'),
-        ('ubuntu', None, None, 'ubuntu/jammy'),
+        ('ubuntu', None, None, 'ubuntu/22.04'),
         ('alma', None, None, 'alma/9'),
         ('rocky', None, None, 'rocky/9'),
     ]
@@ -1015,7 +1027,7 @@ class TestPulpProject(TestBuilderProject):
         ('rocky', '10.1', None, 'rocky/10'),
         ('centos', '8.1', None, 'centos/8'),
         ('fedora', '20', None, 'fedora/20'),
-        ('ubuntu', '20.04', None, 'ubuntu/focal'),
+        ('ubuntu', '20.04', None, 'ubuntu/20.04'),
     ]
 
     @pytest.mark.parametrize(

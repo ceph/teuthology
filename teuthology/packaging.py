@@ -621,6 +621,26 @@ class GitbuilderProject(object):
         return version.split(".")[0]
 
     @classmethod
+    def _get_distro_numeric(cls, distro=None, version=None, codename=None):
+        """
+        The distro/version string used when searching shaman or pulp,
+        e.g. ubuntu/22.04 or centos/9.
+
+        Unlike gitbuilder/chacra URLs (see _get_distro), searches always
+        use the numeric version, never the codename.
+
+        :param distro:   The distro as a string
+        :param version:  The version as a string
+        :param codename: Unused; accepted so both methods share a signature
+        """
+        if distro in ('centos', 'rhel'):
+            distro = 'centos'
+            version = cls._parse_version(version)
+        if distro in ('alma', 'rocky'):
+            version = cls._parse_version(version)
+        return f'{distro}/{version}'
+
+    @classmethod
     def _get_distro(cls, distro=None, version=None, codename=None):
         """
         Given a distro and a version, returned the combined string
@@ -981,14 +1001,7 @@ class ShamanProject(GitbuilderProject):
         if len(self._result.json()) == 0:
             raise VersionNotFoundError(self._result.url)
 
-    @classmethod
-    def _get_distro(cls, distro=None, version=None, codename=None):
-        if distro in ('centos', 'rhel'):
-            distro = 'centos'
-            version = cls._parse_version(version)
-        if distro in ('alma', 'rocky'):
-            version = cls._parse_version(version)
-        return "%s/%s" % (distro, version)
+    _get_distro = GitbuilderProject._get_distro_numeric
 
     def _get_package_sha1(self):
         # This doesn't raise because GitbuilderProject._get_package_sha1()
@@ -1125,6 +1138,33 @@ class PulpProject(GitbuilderProject):
         return urljoin(self.pulp_server_url, path)
 
     @property
+    def _search_labels(self):
+        """Build the pulp_label_select filter used to find our distribution"""
+        labels = f'project={self.project},'
+        labels += f'flavors={self.flavor},'
+        labels += f'distro={self.os_type},'
+        distro_version = self._get_distro(
+            distro=self.os_type,
+            version=self.os_version,
+            codename=self.codename,
+        ).split('/', 1)[1]
+        labels += f'distro_version={distro_version},'
+
+        # Add the architecture to the search parameters.
+        arch = 'noarch' if self.force_noarch else self.arch
+        labels += f'arch={arch},'
+
+        # Add the reference to the search parameters.
+        ref_name, ref_val = list(self._choose_reference().items())[0]
+        labels += f'{ref_name}={ref_val}'
+        return labels
+
+    @property
+    def _search_query(self):
+        """The full search url, including the label filter"""
+        return f'{self._search_uri}?pulp_label_select={self._search_labels}'
+
+    @property
     def _result(self):
         """Get the results from the pulp api"""
         if getattr(self, '_result_obj', None) is None:
@@ -1133,11 +1173,11 @@ class PulpProject(GitbuilderProject):
 
             # Check if there is exactly one result.
             if not len(self._result_obj):
-                log.error(f'No results found for {self._search_uri}')
-                raise VersionNotFoundError(f'No results found for {self._search_uri}')
+                log.error(f'No results found for {self._search_query}')
+                raise VersionNotFoundError(f'No results found for {self._search_query}')
             elif len(self._result_obj) > 1:
-                log.error(f'Multiple results found for {self._search_uri}')
-                raise VersionNotFoundError(f'Multiple results found for {self._search_uri}')
+                log.error(f'Multiple results found for {self._search_query}')
+                raise VersionNotFoundError(f'Multiple results found for {self._search_query}')
 
         return self._result_obj[0]
 
@@ -1160,24 +1200,7 @@ class PulpProject(GitbuilderProject):
 
     def _search(self):
         """Search for the package in the pulp api"""
-        # Build the search parameters.
-        labels = f'project={self.project},'
-        labels += f'flavors={self.flavor},'
-        labels += f'distro={self.os_type},'
-        distro_version = self._get_distro(
-            distro=self.os_type,
-            version=self.os_version,
-            codename=self.codename,
-        ).split('/', 1)[1]
-        labels += f'distro_version={distro_version},'
-
-        # Add the architecture to the search parameters.
-        arch = 'noarch' if self.force_noarch else self.arch
-        labels += f'arch={arch},'
-
-        # Add the reference to the search parameters.
-        ref_name, ref_val = list(self._choose_reference().items())[0]
-        labels += f'{ref_name}={ref_val}'
+        labels = self._search_labels
         resp = requests.get(
             self._search_uri,
             params={'pulp_label_select': labels},
@@ -1189,16 +1212,9 @@ class PulpProject(GitbuilderProject):
 
         return resp.json()
 
-    @classmethod
-    def _get_distro(cls, distro=None, version=None, codename=None):
-        if distro in ('centos', 'rhel'):
-            distro = 'centos'
-            version = cls._parse_version(version)
-        if distro in ('alma', 'rocky'):
-            version = cls._parse_version(version)
-        if distro in ('ubuntu', 'debian'):
-            version = codename or version
-        return f'{distro}/{version}'
+    # Pulp labels follow the shaman convention: numeric distro versions,
+    # set by ceph-build's pulp_upload.sh.
+    _get_distro = GitbuilderProject._get_distro_numeric
 
     def _get_package_sha1(self):
         """Get the package sha1 from the pulp api"""
