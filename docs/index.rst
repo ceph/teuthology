@@ -14,6 +14,7 @@ Content Index
    downburst_vms.rst
    INSTALL.rst
    LAB_SETUP.rst
+   node_health.rst
    exporter.rst
    commands/list.rst
    ChangeLog.rst

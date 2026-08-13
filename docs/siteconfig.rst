@@ -96,6 +96,16 @@ Here is a sample configuration with many of the options set and documented::
     # it is killed by the supervisor process.
     max_job_time: 259200
 
+    # Ansible failure messages that mean a node is broken, per machine type.
+    # The supervisor marks a node down when its ansible failure matches one of
+    # these. See :ref:`node_health`.
+    disable_targets:
+      ansible_failure_patterns:
+        trial: &missing_osd_devices
+          - 'Wanted \d+ disks? of .+ but only matched \d+'
+        gibba: *missing_osd_devices
+        smithi: *missing_osd_devices
+
     # The template from which the URL of the repository containing packages
     # is built.
     #

@@ -19,6 +19,10 @@ from teuthology.util.loggerfile import LoggerFile
 
 log = logging.getLogger(__name__)
 
+# The name the ansible failure log is archived under. The supervisor reads it
+# back to decide whether to mark a node down; see docs/node_health.rst.
+FAILURE_LOG_NAME = "ansible_failures.yaml"
+
 
 class FailureAnalyzer:
     def analyze(self, failure_log):
@@ -31,6 +35,38 @@ class FailureAnalyzer:
                 continue
             lines = lines.union(self.analyze_host_record(host_obj))
         return sorted(lines)
+
+    def find_matching_failures(self, failure_log, patterns):
+        """
+        Find hosts whose failure messages match any of the given patterns.
+
+        :param failure_log: The contents of an ansible failure log
+        :param patterns:    A list of regular expressions to match against
+        :returns:           A dict mapping hostname to the message that matched
+        """
+        failure_obj = yaml.safe_load(failure_log)
+        failures = dict()
+        if not isinstance(failure_obj, dict):
+            return failures
+        for hostname, host_obj in failure_obj.items():
+            if not isinstance(host_obj, dict):
+                continue
+            for result in host_obj.get("results", [host_obj]):
+                if not isinstance(result, dict):
+                    continue
+                msg = result.get("msg")
+                if not isinstance(msg, str):
+                    continue
+                # ansible wraps long messages, so collapse whitespace before
+                # matching
+                msg = " ".join(msg.split())
+                for pattern in patterns:
+                    if re.search(pattern, msg, flags=re.IGNORECASE):
+                        failures[hostname] = msg
+                        break
+                if hostname in failures:
+                    break
+        return failures
 
     def analyze_host_record(self, record):
         lines = set()
@@ -392,7 +428,7 @@ class Ansible(Task):
 
     def _archive_failures(self):
         if self.ctx.archive:
-            archive_path = "{0}/ansible_failures.yaml".format(self.ctx.archive)
+            archive_path = os.path.join(self.ctx.archive, FAILURE_LOG_NAME)
             log.info("Archiving ansible failure log at: {0}".format(
                 archive_path,
             ))

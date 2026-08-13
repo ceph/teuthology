@@ -162,6 +162,9 @@ class TeuthologyConfig(YamlConfig):
         'gitbuilder_host': 'gitbuilder.ceph.com',
         'githelper_base_url': 'https://githelper.ceph.com',
         'check_package_signatures': True,
+        'disable_targets': {
+            'ansible_failure_patterns': {},
+        },
         'job_threshold': 500,
         'lab_domain': 'front.sepia.ceph.com',
         'lock_server': 'https://paddles.front.sepia.ceph.com/',

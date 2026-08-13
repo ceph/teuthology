@@ -56,6 +56,76 @@ class TestFailureAnalyzer:
         obj = self.klass()
         assert obj.analyze_line(line) == result
 
+    @mark.parametrize(
+        'failure_log,result',
+        [
+            [
+                "",
+                {},
+            ],
+            [
+                yaml.safe_dump({
+                    "smithi001.front.sepia.ceph.com": {
+                        "changed": False,
+                        "msg": "Failure talking to yum: failure",
+                    },
+                }),
+                {},
+            ],
+            [
+                yaml.safe_dump({
+                    "trial007.front.sepia.ceph.com": {
+                        "_ansible_no_log": False,
+                        "changed": False,
+                        "msg": "Wanted 2 disks of ~1700 GB (rotational=False),"
+                               " but only matched 1: ['nvme1n1']",
+                    },
+                }),
+                {
+                    "trial007.front.sepia.ceph.com":
+                        "Wanted 2 disks of ~1700 GB (rotational=False), but"
+                        " only matched 1: ['nvme1n1']",
+                },
+            ],
+            [
+                # ansible wraps the message onto multiple lines
+                yaml.safe_dump({
+                    "trial007.front.sepia.ceph.com": {
+                        "msg": "Wanted 2 disks of ~1700 GB\n"
+                               "(rotational=False), but only matched\n"
+                               "1: ['nvme1n1']",
+                    },
+                }),
+                {
+                    "trial007.front.sepia.ceph.com":
+                        "Wanted 2 disks of ~1700 GB (rotational=False), but"
+                        " only matched 1: ['nvme1n1']",
+                },
+            ],
+            [
+                yaml.safe_dump({
+                    "trial007.front.sepia.ceph.com": {
+                        "results": [
+                            {"msg": "Failure talking to yum: failure"},
+                            {"msg": "Wanted 2 disks of ~1700 GB"
+                                    " (rotational=False), but only matched 0:"
+                                    " []"},
+                        ],
+                    },
+                }),
+                {
+                    "trial007.front.sepia.ceph.com":
+                        "Wanted 2 disks of ~1700 GB (rotational=False), but"
+                        " only matched 0: []",
+                },
+            ],
+        ]
+    )
+    def test_find_matching_failures(self, failure_log, result):
+        obj = self.klass()
+        patterns = [r"Wanted \d+ disks? of .+ but only matched \d+"]
+        assert obj.find_matching_failures(failure_log, patterns) == result
+
 
 class TestAnsibleTask(TestTask):
     klass = Ansible
