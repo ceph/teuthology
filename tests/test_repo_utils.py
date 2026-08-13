@@ -200,6 +200,35 @@ class TestRepoUtils(object):
         with raises(ValueError):
             repo_utils.enforce_repo_state(self.repo_url, self.dest_path, 'a b', self.commit)
 
+    def test_enforce_worktree_picks_up_new_commits(self):
+        bare_path = self.temp_path + '/bare_clone'
+        try:
+            repo_utils.enforce_repo_state(self.repo_url, self.dest_path, 'main',
+                                          dest_clone=bare_path)
+            assert os.path.exists(self.dest_path)
+
+            subprocess.check_call(
+                ('git', 'commit', '--allow-empty', '--allow-empty-message',
+                 '--no-edit'),
+                cwd=self.src_path,
+                stdout=subprocess.DEVNULL,
+            )
+            expected = subprocess.check_output(
+                ('git', 'rev-parse', 'HEAD'),
+                cwd=self.src_path,
+            ).decode().strip()
+
+            repo_utils.enforce_repo_state(self.repo_url, self.dest_path, 'main',
+                                          dest_clone=bare_path)
+            actual = subprocess.check_output(
+                ('git', 'rev-parse', 'HEAD'),
+                cwd=self.dest_path,
+            ).decode().strip()
+            assert actual == expected
+        finally:
+            shutil.rmtree(bare_path, ignore_errors=True)
+            shutil.rmtree(bare_path + '.lock', ignore_errors=True)
+
     def test_simultaneous_access(self):
         count = 5
         with parallel.parallel() as p:
