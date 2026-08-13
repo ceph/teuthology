@@ -191,13 +191,15 @@ def create_worktree(bare_dir, workspace_dir, ref='FETCH_HEAD'):
     log.info("Setting up worktree at %s from bare repo %s using ref %s", workspace_dir, bare_dir, ref)
 
     if os.path.exists(workspace_dir):
-        log.debug("Workspace directory %s already exists, verifying", workspace_dir)
-        args = [
-            'git',
-            'log',
-            '-1',
-        ]
-        run_subprocess(args, cwd=workspace_dir)
+        # FETCH_HEAD is per-worktree, so resolve it in the bare repo, where the
+        # fetch happened.
+        sha = run_subprocess(
+            ['git', 'rev-parse', ref],
+            cwd=bare_dir,
+        ).stdout.strip()
+        log.debug("Workspace directory %s already exists, resetting it to %s",
+                  workspace_dir, sha)
+        run_subprocess(['git', 'reset', '--hard', sha], cwd=workspace_dir)
         return
 
     log.debug("Adding new worktree at %s", workspace_dir)
