@@ -1,16 +1,51 @@
 import os
 import pytest
-import docopt
 
 from unittest.mock import patch, call
 
 from teuthology import run
-from scripts import run as scripts_run
 from tests import skipif_teuthology_process
+from tests.cli_test import CliTest
 
 
-class TestRun(object):
-    """ Tests for teuthology.run """
+class TestRun(CliTest):
+    """ Tests for teuthology.run and teuthology.run.cli """
+    cli_name = 'teuthology'
+
+    def test_all_args(self, parser):
+        args = parser.parse_args([
+            "--verbose",
+            "--archive", "some/archive/dir",
+            "--description", "the_description",
+            "--owner", "the_owner",
+            "--lock",
+            "--machine-type", "machine_type",
+            "--os-type", "os_type",
+            "--os-version", "os_version",
+            "--block",
+            "--name", "the_name",
+            "--suite-path", "some/suite/dir",
+            "path/to/config.yml",
+        ])
+        assert args.verbose
+        assert args.archive == "some/archive/dir"
+        assert args.description == "the_description"
+        assert args.owner == "the_owner"
+        assert args.lock
+        assert args.machine_type == "machine_type"
+        assert args.os_type == "os_type"
+        assert args.os_version == "os_version"
+        assert args.block
+        assert args.name == "the_name"
+        assert args.suite_path == "some/suite/dir"
+        assert args.config == ["path/to/config.yml"]
+
+    def test_multiple_configs(self, parser):
+        args = parser.parse_args([
+            "config1.yml",
+            "config2.yml",
+        ])
+        assert args.config == ["config1.yml", "config2.yml"]
 
     @patch("teuthology.log.setLevel")
     @patch("teuthology.setup_log_file")
@@ -161,13 +196,12 @@ class TestRun(object):
     @patch("teuthology.run.report_outcome")
     def test_main(self, m_report_outcome, m_run_tasks, m_fetch_tasks_if_needed, m_get_initial_tasks, m_validate_tasks,
                   m_safe_dump, m_get_summary, m_get_machine_type, m_try_push_job_info, m_write_initial_metadata,
-                  m_get_user, m_setup_config, m_set_up_logging):
+                  m_get_user, m_setup_config, m_set_up_logging, parser):
         """ This really should be an integration test of some sort. """
         config = {"job_id": 1}
         m_setup_config.return_value = config
         m_get_machine_type.return_value = "machine_type"
-        doc = scripts_run.__doc__
-        args = docopt.docopt(doc, [
+        args = parser.parse_args([
             "--verbose",
             "--archive", "some/archive/dir",
             "--description", "the_description",
@@ -178,7 +212,7 @@ class TestRun(object):
             "--name", "the_name",
             "--suite-path", "some/suite/dir",
             "path/to/config.yml",
-        ])
+        ]).__dict__
         m_get_user.return_value = "the_owner"
         m_get_summary.return_value = dict(success=True, owner="the_owner", description="the_description")
         m_validate_tasks.return_value = ['task3']
@@ -245,43 +279,17 @@ class TestRun(object):
         m_get_user,
         m_setup_config,
         m_set_up_logging,
+        parser
     ):
         config = {"job_id": 1}
         m_setup_config.return_value = config
         m_get_machine_type.return_value = "machine_type"
-        doc = scripts_run.__doc__
-        args = docopt.docopt(doc, [
+        args = parser.parse_args([
             "--interactive-on-error",
             "path/to/config.yml",
-        ])
+        ]).__dict__
         run.main(args)
         args, kwargs = m_run_tasks.call_args
         fake_ctx = kwargs["ctx"]._conf
-        assert fake_ctx['interactive_on_error'] is True
+        assert fake_ctx['config']['interactive-on-error'] is True
 
-    def test_get_teuthology_command(self):
-        doc = scripts_run.__doc__
-        args = docopt.docopt(doc, [
-            "--archive", "some/archive/dir",
-            "--description", "the_description",
-            "--lock",
-            "--block",
-            "--name", "the_name",
-            "--suite-path", "some/suite/dir",
-            "path/to/config.yml", "path/to/config2.yaml",
-        ])
-        result = run.get_teuthology_command(args)
-        result = result.split()
-        expected = [
-            "teuthology",
-            "path/to/config.yml", "path/to/config2.yaml",
-            "--suite-path", "some/suite/dir",
-            "--lock",
-            "--description", "the_description",
-            "--name", "the_name",
-            "--block",
-            "--archive", "some/archive/dir",
-        ]
-        assert len(result) == len(expected)
-        for arg in expected:
-            assert arg in result
