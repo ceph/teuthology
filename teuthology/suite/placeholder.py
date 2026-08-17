@@ -82,8 +82,7 @@ dict_templ = {
                 },
             },
             'flavor': Placeholder('flavor'),
-            'log-ignorelist': [r'\(MDS_ALL_DOWN\)',
-                              r'\(MDS_UP_LESS_THAN_MAX\)'],
+            'log-ignorelist': [],
             'sha1': Placeholder('ceph_hash'),
         },
         'install': {
