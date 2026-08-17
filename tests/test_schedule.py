@@ -1,11 +1,10 @@
 from teuthology.schedule import build_config
-from teuthology.schedule.cli import make_parser
 from teuthology.misc import get_user
 from tests.cli_test import CliTest
 
 
 class TestSchedule(CliTest):
-    script_name = 'teuthology-schedule'
+    cli_name = 'teuthology-schedule'
     argv = [
         '--name', 'NAME',
         '--owner', 'OWNER',
@@ -20,8 +19,8 @@ class TestSchedule(CliTest):
         #                '../../examples/3node_rgw.yaml'],
     ]
 
-    def test_basic(self):
-        args = make_parser().parse_args(self.argv).__dict__
+    def test_basic(self, parser):
+        args = parser.parse_args(self.argv).__dict__
         expected = {
             'description': 'DESC',
             'email': 'EMAIL',
@@ -39,13 +38,13 @@ class TestSchedule(CliTest):
         job_dict = build_config(args)
         assert job_dict == expected
 
-    def test_owner(self):
+    def test_owner(self,parser):
         argv = list(self.argv)
         if '--owner' in argv:
             idx = argv.index('--owner')
             argv.pop(idx)   # remove --owner flag
             argv.pop(idx)   # remove its value
-        args = make_parser().parse_args(argv).__dict__
+        args = parser.parse_args(argv).__dict__
         job_dict = build_config(args)
         assert job_dict['owner'] == 'scheduled_%s' % get_user()
 

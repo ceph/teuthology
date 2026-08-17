@@ -144,7 +144,7 @@ def test_expand_short_repo_name(orig, shorthand, result):
 
 
 class TestSuiteCLI(CliTest):
-    script_name = 'teuthology-suite'
+    cli_name = 'teuthology-suite'
 
 
 class TestSuiteMain(object):
