@@ -43,7 +43,14 @@ Standard arguments:
                               Search for the newest revision built on all
                               required distro/versions, starting from
                               either --ceph or --sha1, backtracking
-                              up to <newest> commits [default: 0]
+                              up to <newest> commits [default: 0].
+                              Packages are looked up using the
+                              package_source from <config_yaml> if set.
+                              A sha1 whose packages exist only on the
+                              lab-internal Pulp (e.g. a security build)
+                              is skipped with a warning unless the run
+                              selects package_source: pulp and the
+                              quay-int cephadm image.
   -k <kernel>, --kernel <kernel>
                               The kernel branch to run against,
                               use 'none' to bypass kernel task.

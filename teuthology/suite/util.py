@@ -224,17 +224,18 @@ def get_branch_info(project, branch, project_owner='ceph'):
 
 
 @functools.lru_cache()
-def package_version_for_hash(hash, flavor='default', distro='rhel',
-                             distro_version='8.0', machine_type='smithi'):
+def _builder_project_for_hash(hash, flavor='default', distro='rhel',
+                              distro_version='8.0', machine_type='smithi'):
     """
-    Does what it says on the tin. Uses gitbuilder repos.
-
-    :returns: a string.
+    Build (and cache) the builder project object used to look up packages
+    for a given ceph hash. The object caches its own search results, so
+    sharing it between package_version_for_hash() and
+    hash_only_in_pulp() avoids repeated queries.
     """
     (arch, release, _os) = get_distro_defaults(distro, machine_type)
     if distro in (None, 'None'):
         distro = _os.name
-    bp = get_builder_project()(
+    return get_builder_project()(
         'ceph',
         dict(
             flavor=flavor,
@@ -245,7 +246,19 @@ def package_version_for_hash(hash, flavor='default', distro='rhel',
         ),
     )
 
-    if (bp.distro == CONTAINER_DISTRO and bp.flavor == CONTAINER_FLAVOR and 
+
+@functools.lru_cache()
+def package_version_for_hash(hash, flavor='default', distro='rhel',
+                             distro_version='8.0', machine_type='smithi'):
+    """
+    Does what it says on the tin. Uses gitbuilder repos.
+
+    :returns: a string.
+    """
+    bp = _builder_project_for_hash(hash, flavor, distro, distro_version,
+                                   machine_type)
+
+    if (bp.distro == CONTAINER_DISTRO and bp.flavor == CONTAINER_FLAVOR and
             not bp.build_complete):
         log.info("Container build incomplete")
         return None
@@ -254,6 +267,25 @@ def package_version_for_hash(hash, flavor='default', distro='rhel',
         return bp.version
     except VersionNotFoundError:
         return None
+
+
+def hash_only_in_pulp(hash, flavor='default', distro='rhel',
+                      distro_version='8.0', machine_type='smithi'):
+    """
+    True if the configured package source (shaman) knows about this ceph hash
+    only from repos hosted on Pulp - e.g. a security build - which it cannot
+    install from. Always False for other package sources.
+
+    NOTE: depends on the cve-pipeline registering its Pulp-hosted builds in
+    shaman; see ShamanProject.pulp_only. If it stops doing so this simply
+    returns False and the sha1 is treated as not built at all.
+    """
+    bp = _builder_project_for_hash(hash, flavor, distro, distro_version,
+                                   machine_type)
+    try:
+        return bool(getattr(bp, 'pulp_only', False))
+    except (VersionNotFoundError, requests.RequestException):
+        return False
 
 
 def get_arch(machine_type):

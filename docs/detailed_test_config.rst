@@ -316,3 +316,19 @@ pulp:
   username: pulp-username
   password: pulp-password
   force_noarch: True
+
+``package_source`` may also be set in an extra job yaml passed to
+``teuthology-suite``. It then applies both to the scheduled jobs and to the
+package checks ``teuthology-suite`` performs itself (for example when
+backtracking with ``--newest``), provided the scheduling host has the Pulp
+credentials configured.
+
+Some builds (currently security builds) are published only to the lab-internal
+Pulp and Quay instances. We still register them in Shaman, but their
+``chacra_url`` points to the Pulp repo URL. When using
+``package_source: shaman``, we ignore those repos. If a given sha1 has both a
+chacra *and* a Pulp repo, the chacra build is used. If it only has a Pulp
+build, it is treated as not found; ``--newest`` then logs a warning and moves
+on to the next sha1 unless the run selects ``package_source: pulp`` and the
+internal quay cephadm image (``defaults.cephadm.containers.image:
+quay-int.front.sepia.ceph.com/ceph-ci/ceph``).
