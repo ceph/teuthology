@@ -69,20 +69,20 @@ dict_templ = {
         'ceph': {
             'conf': {
                 'mon': {
-                    'debug mon': 20,
+                    'debug mon': 5,
                     'debug ms': 1,
-                    'debug paxos': 20},
+                },
                 'mgr': {
-                    'debug mgr': 20,
-                    'debug ms': 1},
+                    'debug mgr': 10,
+                    'debug ms': 1,
+                },
                 'osd': {
                     'debug ms': 1,
-                    'debug osd': 20
-                }
+                    'debug osd': 5,
+                },
             },
             'flavor': Placeholder('flavor'),
-            'log-ignorelist': [r'\(MDS_ALL_DOWN\)',
-                              r'\(MDS_UP_LESS_THAN_MAX\)'],
+            'log-ignorelist': [],
             'sha1': Placeholder('ceph_hash'),
         },
         'install': {
