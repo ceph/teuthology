@@ -168,6 +168,62 @@ class Run(object):
                 sha1,
             )
 
+    @classmethod
+    def uses_cephadm(cls, tasks):
+        """
+        Whether a job's task list deploys a cluster with cephadm (looking
+        into sequential/parallel groups too). Only those jobs need the
+        ceph-ci container for the sha1 under test.
+        """
+        for task in tasks or []:
+            if not isinstance(task, dict):
+                continue
+            for name, conf in task.items():
+                if name == 'cephadm' or name.startswith('cephadm.'):
+                    return True
+                if name in ('sequential', 'parallel') and \
+                        cls.uses_cephadm(conf):
+                    return True
+        return False
+
+    def cephadm_container_ref(self, sha1, flavor='default'):
+        """
+        The image:tag the cephadm task will pull for this sha1, following
+        qa/tasks/cephadm.py: <image>:<sha1>, with crimson flavors appended.
+        Returns None if no image is configured, or if the configured image
+        already pins a tag/digest (then the sha1 does not matter).
+        """
+        image = self.cephadm_container_image()
+        if not image or any(c in image for c in (':', '@')):
+            return None
+        tag = sha1
+        if flavor in ('crimson-debug', 'crimson-release'):
+            tag += f'-{flavor}'
+        return f'{image}:{tag}'
+
+    def container_missing(self, sha1, flavor='default'):
+        """
+        True if the registry says the cephadm container for this sha1 does
+        not exist. False if it exists, is not applicable, or the registry
+        could not be queried (we do not hold up scheduling on a guess).
+        """
+        ref = self.cephadm_container_ref(sha1, flavor)
+        if ref is None:
+            return False
+        image, tag = ref.rsplit(':', 1)
+        return util.container_image_exists(image, tag) is False
+
+    def warn_missing_container(self, sha1, flavor='default', newest=False):
+        ref = self.cephadm_container_ref(sha1, flavor)
+        msg = (f"ceph sha1 {sha1} has packages but no container at {ref}. "
+               f"Pending release build, or failed container build of a "
+               f"passed package build?")
+        if newest:
+            msg += f" Moving on to the next sha1 of {self.base_config.branch}"
+        else:
+            msg += " cephadm jobs will fail to pull it"
+        log.warning(msg)
+
     def make_run_name(self):
         """
         Generate a run name. A run name looks like:
@@ -580,6 +636,7 @@ class Run(object):
     def collect_jobs(self, arch, configs, newest=False, limit=0):
         jobs_to_schedule = []
         jobs_missing_packages = []
+        containers_warned = set()
         for description, fragment_paths, parsed_yaml in configs:
             if limit > 0 and len(jobs_to_schedule) >= limit:
                 log.info(
@@ -653,6 +710,19 @@ class Run(object):
                     # optimization: one missing package causes backtrack in newest mode;
                     # no point in continuing the search
                     if newest:
+                        return jobs_missing_packages, []
+                elif self.uses_cephadm(parsed_yaml.get('tasks')) and \
+                        self.container_missing(sha1, flavor):
+                    # Packages exist but the ceph-ci container does not, e.g.
+                    # a release build (CI_CONTAINER=false). Warn once per
+                    # sha1/flavor; in newest mode treat it like missing
+                    # packages so we back off to the next sha1.
+                    if (sha1, flavor) not in containers_warned:
+                        containers_warned.add((sha1, flavor))
+                        self.warn_missing_container(sha1, flavor, newest)
+                    if newest:
+                        jobs_missing_packages.append(job)
+                        job['container_missing'] = True
                         return jobs_missing_packages, []
 
             jobs_to_schedule.append(job)

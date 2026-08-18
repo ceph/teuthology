@@ -332,3 +332,11 @@ build, it is treated as not found; ``--newest`` then logs a warning and moves
 on to the next sha1 unless the run selects ``package_source: pulp`` and the
 internal quay cephadm image (``defaults.cephadm.containers.image:
 quay-int.front.sepia.ceph.com/ceph-ci/ceph``).
+
+Similarly, release builds have packages but no CI container. If a job uses
+the ``cephadm`` task, ``teuthology-suite`` asks the registry of the configured
+cephadm image (``defaults.cephadm.containers.image`` in the site config, or
+``defaults``/``overrides`` in the job yaml) whether ``<image>:<sha1>`` exists.
+If it does not, a warning is logged; with ``--newest`` the sha1 is skipped and
+the next one is tried. If the registry cannot be queried, scheduling proceeds
+as if the container existed.

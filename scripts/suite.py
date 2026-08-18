@@ -50,7 +50,11 @@ Standard arguments:
                               lab-internal Pulp (e.g. a security build)
                               is skipped with a warning unless the run
                               selects package_source: pulp and the
-                              quay-int cephadm image.
+                              quay-int cephadm image. If any job uses
+                              cephadm, a sha1 with packages but no
+                              container in the configured cephadm image
+                              registry (e.g. a release build) is skipped
+                              with a warning too.
   -k <kernel>, --kernel <kernel>
                               The kernel branch to run against,
                               use 'none' to bypass kernel task.
