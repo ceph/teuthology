@@ -178,6 +178,49 @@ class TestFOG(object):
         assert req.body == '{"name": "type1_windows_xp"}'
         assert result == img_objs[0]
 
+    @mark.parametrize(
+        'images,expected_name,expected_resolved',
+        [
+            # exact major-named image wins when it exists
+            ([dict(id=1, name='type1_rocky_10', size='1:2:')],
+             'type1_rocky_10', None),
+            # otherwise the latest captured minor is used and remembered
+            ([dict(id=2, name='type1_rocky_10.1', size='1:2:'),
+              dict(id=3, name='type1_rocky_10.2', size='1:2:')],
+             'type1_rocky_10.2', '10.2'),
+            # an image without a size is a template, not a candidate
+            ([dict(id=2, name='type1_rocky_10.1', size='1:2:'),
+              dict(id=3, name='type1_rocky_10.2', size='')],
+             'type1_rocky_10.1', '10.1'),
+        ],
+    )
+    def test_get_image_data_major_only(
+            self, images, expected_name, expected_resolved):
+        exact = [i for i in images if i['name'] == 'type1_rocky_10']
+
+        def fake_json():
+            # first call: exact-name lookup; second: the search
+            call = len(self.mocks['m_requests_Session_send'].call_args_list)
+            if call <= 1:
+                return dict(count=len(exact), images=exact)
+            return dict(count=len(images), images=images)
+
+        self.mocks['m_requests_Session_send']\
+            .return_value.json.side_effect = fake_json
+        self.mocks['m_Remote_machine_type'].return_value = 'type1'
+        obj = self.klass('name.fqdn', 'rocky', '10')
+        result = obj.get_image_data()
+        assert result['name'] == expected_name
+        assert obj.resolved_os_version == expected_resolved
+
+    def test_get_image_data_major_only_none_captured(self):
+        self.mocks['m_requests_Session_send']\
+            .return_value.json.return_value = dict(count=0, images=[])
+        self.mocks['m_Remote_machine_type'].return_value = 'type1'
+        obj = self.klass('name.fqdn', 'rocky', '10')
+        with raises(RuntimeError):
+            obj.get_image_data()
+
     def test_suggest_image_names(self):
         data = {'images': [
             {'name': 'mira_rhel_9.1'},

@@ -406,3 +406,20 @@ class TestOS(object):
     def test_eq_not_equal(self):
         os = OS(name='ubuntu', codename='trusty', version='16.04')
         assert OS(name='ubuntu', codename='trusty', version='14.04') != os
+
+    def test_eq_major_only_matches_any_minor(self):
+        major = OS(name='ubuntu', version='24')
+        assert major == OS(name='ubuntu', version='24.04')
+        assert major == OS(name='ubuntu', version='24.10')
+        assert major != OS(name='ubuntu', version='22.10')
+        assert OS(name='rocky', version='10') == OS(name='rocky', version='10.2')
+        assert OS(name='rocky', version='10') != OS(name='alma', version='10.2')
+
+    def test_eq_dotted_versions_never_cross_match(self):
+        assert OS(name='ubuntu', version='24.10') != OS(name='ubuntu', version='24.04')
+        assert OS(name='rocky', version='10.1') != OS(name='rocky', version='10.2')
+
+    def test_version_codename_rocky_major_aliases(self):
+        for version in ('8', '9', '10'):
+            assert OS.version_codename('rocky', version) == (version, 'rocky')
+        assert OS.version_codename('rocky', '10.1') == ('10.1', 'rocky')

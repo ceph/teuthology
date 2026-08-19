@@ -66,6 +66,8 @@ class FOG(object):
         self.shortname = self.remote.shortname
         self.os_type = os_type
         self.os_version = os_version
+        # set when a major-only os_version gets resolved to a point release
+        self.resolved_os_version = None
         self.log = log.getChild(self.shortname)
 
     def create(self):
@@ -163,14 +165,45 @@ class FOG(object):
         name = f"{self.remote.machine_type}_{os_type}_{os_version}"
         if image := do_get(name):
             return image
-        elif os_type == 'centos' and not os_version.endswith('.stream'):
+        if os_type == 'centos' and not os_version.endswith('.stream'):
             image = do_get(f"{name}.stream")
+        elif '.' not in os_version:
+            # A major-only version means the latest minor the lab has an
+            # image for; the deploy is verified against that exact minor
+            image = self._latest_minor_image(name)
         if image:
             return image
-        else:
-            raise RuntimeError(
-                "Fog has no %s image. Available %s images: %s" %
-                (name, self.remote.machine_type, self.suggest_image_names()))
+        raise RuntimeError(
+            "Fog has no %s image. Available %s images: %s" %
+            (name, self.remote.machine_type, self.suggest_image_names()))
+
+    def _latest_minor_image(self, base_name):
+        """
+        The latest captured point-release image for a major-only version,
+        e.g. trial_rocky_10 -> trial_rocky_10.2 over trial_rocky_10.1.
+        Only images FOG has a size for (i.e. a completed capture) count.
+
+        :returns: The image dict, or None
+        """
+        resp = self.do_request(f'/image/search/{base_name}')
+        best = best_key = None
+        for image in resp.json().get('images') or []:
+            img_name = image.get('name') or ''
+            if not img_name.startswith(base_name + '.') or not image.get('size'):
+                continue
+            try:
+                key = tuple(int(p) for p in img_name[len(base_name) + 1:].split('.'))
+            except ValueError:
+                continue
+            if best_key is None or key > best_key:
+                best, best_key = image, key
+        if best:
+            self.resolved_os_version = best['name'].rsplit('_', 1)[-1]
+            self.log.info(
+                "Resolved %s %s to image %s",
+                self.os_type, self.os_version, best['name'],
+            )
+        return best
 
     def suggest_image_names(self):
         """
@@ -375,7 +408,10 @@ class FOG(object):
         )
 
     def _verify_installed_os(self):
-        wanted_os = OS(name=self.os_type, version=self.os_version)
+        wanted_os = OS(
+            name=self.os_type,
+            version=self.resolved_os_version or self.os_version,
+        )
         if self.remote.os != wanted_os:
             raise RuntimeError(
                 f"Expected {self.remote.shortname}'s OS to be {wanted_os} but "
