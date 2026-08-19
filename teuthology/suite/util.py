@@ -19,7 +19,6 @@ from teuthology.repo_utils import fetch_qa_suite, fetch_teuthology
 from teuthology.orchestra.opsys import OS, DEFAULT_OS_VERSION
 from teuthology.packaging import get_builder_project, VersionNotFoundError
 from teuthology.repo_utils import build_git_url
-from teuthology.task.install import get_flavor
 
 log = logging.getLogger(__name__)
 
@@ -287,6 +286,25 @@ def get_install_task_flavor(job_config):
     deep_merge(first_install_config, install_overrides)
     deep_merge(first_install_config, project_overrides)
     return get_flavor(first_install_config)
+
+
+def get_flavor(config):
+    """
+    Determine the flavor to use.
+    """
+    config = config or dict()
+    flavor = config.get('flavor', 'default')
+
+    if config.get('path'):
+        # local dir precludes any other flavors
+        flavor = 'local'
+    else:
+        if config.get('valgrind'):
+            flavor = 'notcmalloc'
+        else:
+            if config.get('coverage'):
+                flavor = 'gcov'
+    return flavor
 
 
 def teuthology_schedule(args, verbose, dry_run, log_prefix='', stdin=None):
