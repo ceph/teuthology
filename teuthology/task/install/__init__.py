@@ -9,8 +9,9 @@ from teuthology import contextutil, packaging
 from teuthology.parallel import parallel
 from teuthology.provision import get_reimage_types
 from teuthology.task import ansible
+from teuthology.suite.util import get_flavor
 from teuthology.task.install.util import (
-    _get_builder_project, get_flavor, ship_utilities,
+    _get_builder_project, ship_utilities,
 )
 
 from teuthology.task.install import rpm, deb, redhat
