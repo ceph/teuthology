@@ -49,6 +49,10 @@ DISTRO_CODENAME_MAP = {
         "9.8": "rocky",
         "10.1": "rocky",
         "10.2": "rocky",
+        # aliases for latest minor releases
+        "8": "rocky",
+        "9": "rocky",
+        "10": "rocky",
     },
     "centos": {
         "10": "stream",
@@ -277,7 +281,18 @@ class OS(object):
                     codename=repr(self.codename))
 
     def __eq__(self, other):
+        """
+        Equal when the names match and the versions match.  A major-only
+        version matches any minor of that major ("24" == "24.04"); two
+        dotted versions must match exactly ("24.10" != "24.04").  centos's
+        ".stream" suffix is ignored.  See commit message for the why.
+        """
         if self.name.lower() != other.name.lower():
             return False
         normalize = lambda s: s.lower().removesuffix(".stream")
-        return normalize(self.version) == normalize(other.version)
+        mine, theirs = normalize(self.version), normalize(other.version)
+        if mine == theirs:
+            return True
+        if '.' not in mine or '.' not in theirs:
+            return mine.split('.')[0] == theirs.split('.')[0]
+        return False
