@@ -1166,20 +1166,27 @@ class PulpProject(GitbuilderProject):
 
     @property
     def _result(self):
-        """Get the results from the pulp api"""
+        """
+        The Pulp distribution record for the build we are searching for.
+
+        A label search can legitimately match several distributions: the
+        same sha1 may be built under more than one branch name, and
+        rebuilding a branch at a new sha1 leaves the older builds'
+        distributions in place. When that happens, the most recently
+        created distribution is used.
+
+        :returns: a single distribution record (dict) as returned by the
+                  Pulp distributions API - the most recently created one
+                  if the label search matched more than one.
+        :raises: VersionNotFoundError if the search matched nothing.
+        """
         if getattr(self, '_result_obj', None) is None:
-            # Get the results from the pulp api.
             results = self._search().get('results', [])
 
             if not len(results):
                 log.error(f'No results found for {self._search_query}')
                 raise VersionNotFoundError(f'No results found for {self._search_query}')
             elif len(results) > 1:
-                # A label search can legitimately match several
-                # distributions: the same sha1 may be built under more than
-                # one branch name, and rebuilding a branch at a new sha1
-                # leaves the older builds' distributions in place. Use the
-                # most recently created one.
                 results = sorted(
                     results,
                     key=lambda r: r.get('pulp_created', ''),
