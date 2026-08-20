@@ -35,11 +35,11 @@ import teuthology.lock.query
 import teuthology.lock.util
 import teuthology.misc
 import teuthology.schedule
+import teuthology.schedule.cli
 import teuthology.suite
+import teuthology.suite.cli
 import teuthology.openstack
-import scripts.schedule
 import scripts.lock
-import scripts.suite
 from teuthology.config import config as teuth_config
 from teuthology.config import set_config_attr
 
@@ -123,7 +123,7 @@ class TestSuite(Integration):
                 '--archive-upload', upload,
                 '--verbose']
         logging.info("TestSuite:test_suite_noop")
-        scripts.suite.main(args)
+        teuthology.suite.cli.main(args)
         self.wait_worker()
         log = self.get_teuthology_log()
         assert "teuthology.run:pass" in log
@@ -152,7 +152,7 @@ class TestSchedule(Integration):
                 '--owner', 'test@test.com',
                 '--worker', 'openstack',
                 job]
-        scripts.schedule.main(args)
+        teuthology.schedule.cli.main(args)
         self.wait_worker()
 
     def test_schedule_noop(self):
@@ -162,7 +162,7 @@ class TestSchedule(Integration):
                 '--owner', 'test@test.com',
                 '--worker', 'openstack',
                 job]
-        scripts.schedule.main(args)
+        teuthology.schedule.cli.main(args)
         self.wait_worker()
         log = self.get_teuthology_log()
         assert "teuthology.run:pass" in log
@@ -193,7 +193,7 @@ class TestSchedule(Integration):
                 '--owner', 'test@test.com',
                 '--worker', 'openstack',
                 job]
-        scripts.schedule.main(args)
+        teuthology.schedule.cli.main(args)
         self.wait_worker()
         log = self.get_teuthology_log()
         assert "teuthology.run:pass" in log
