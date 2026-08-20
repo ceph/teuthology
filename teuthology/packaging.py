@@ -1169,15 +1169,28 @@ class PulpProject(GitbuilderProject):
         """Get the results from the pulp api"""
         if getattr(self, '_result_obj', None) is None:
             # Get the results from the pulp api.
-            self._result_obj = self._search().get('results', [])
+            results = self._search().get('results', [])
 
-            # Check if there is exactly one result.
-            if not len(self._result_obj):
+            if not len(results):
                 log.error(f'No results found for {self._search_query}')
                 raise VersionNotFoundError(f'No results found for {self._search_query}')
-            elif len(self._result_obj) > 1:
-                log.error(f'Multiple results found for {self._search_query}')
-                raise VersionNotFoundError(f'Multiple results found for {self._search_query}')
+            elif len(results) > 1:
+                # A label search can legitimately match several
+                # distributions: the same sha1 may be built under more than
+                # one branch name, and rebuilding a branch at a new sha1
+                # leaves the older builds' distributions in place. Use the
+                # most recently created one.
+                results = sorted(
+                    results,
+                    key=lambda r: r.get('pulp_created', ''),
+                    reverse=True,
+                )
+                log.warning(
+                    'Multiple results found for %s; using newest: %s',
+                    self._search_query,
+                    results[0].get('name'),
+                )
+            self._result_obj = results
 
         return self._result_obj[0]
 
