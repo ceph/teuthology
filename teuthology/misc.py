@@ -31,6 +31,8 @@ from teuthology import safepath
 from teuthology.exceptions import (CommandCrashedError, CommandFailedError,
                                    ConnectionLostError)
 from teuthology.orchestra import run
+from teuthology.orchestra.role import Role
+
 from teuthology.config import config
 from teuthology.contextutil import safe_while
 from teuthology.orchestra.opsys import DEFAULT_OS_VERSION
@@ -278,7 +280,7 @@ def get_mons(roles, ips,
     mons = {}
     mon_ports = {}
     mon_id = 0
-    is_mon = is_type('mon')
+    is_mon = Role.make_matcher('mon')
     for idx, roles in enumerate(roles):
         for role in roles:
             if not is_mon(role):
@@ -330,7 +332,7 @@ def skeleton_config(ctx, roles, ips, cluster='ceph',
         mon_cluster, _, _ = split_role(role)
         if mon_cluster != cluster:
             continue
-        name = ceph_role(role)
+        name = Role(role).short
         conf.setdefault(name, {})
         conf[name]['mon addr'] = addr
     # set up standby mds's
@@ -338,7 +340,7 @@ def skeleton_config(ctx, roles, ips, cluster='ceph',
     for roles_subset in roles:
         for role in roles_subset:
             if is_mds(role):
-                name = ceph_role(role)
+                name = Role(role).short
                 conf.setdefault(name, {})
                 if '-s-' in name:
                     standby_mds = name[name.find('-s-') + 3:]
@@ -348,22 +350,20 @@ def skeleton_config(ctx, roles, ips, cluster='ceph',
 
 def ceph_role(role):
     """
+    Deprecated by Role(role).short
     Return the ceph name for the role, without any cluster prefix, e.g. osd.0.
     """
-    _, type_, id_ = split_role(role)
-    return type_ + '.' + id_
+    return Role(role).short
 
 
 def split_role(role):
     """
+    Deprecated by Role.as_tuple(role)
+
     Return a tuple of cluster, type, and id
     If no cluster is included in the role, the default cluster, 'ceph', is used
     """
-    cluster = 'ceph'
-    if role.count('.') > 1:
-        cluster, role = role.split('.', 1)
-    type_, id_ = role.split('.', 1)
-    return cluster, type_, id_
+    return Role.as_tuple(role)
 
 
 def roles_of_type(roles_for_host, type_):
@@ -373,14 +373,19 @@ def roles_of_type(roles_for_host, type_):
     Each call returns the next possible role of the type specified.
     :param roles_for_host: list of roles possible
     :param type_: type of role
+
+    Deprecated by:
+
+      _, id_ = Role.iter_name_index(roles_for_host, type_, None)
     """
-    for role in cluster_roles_of_type(roles_for_host, type_, None):
-        _, _, id_ = split_role(role)
-        yield id_
+    for _, index in Role.iter_name_index(roles_for_host, type_, None):
+        yield index
 
 
 def cluster_roles_of_type(roles_for_host, type_, cluster):
     """
+    Deprecated. Use Role.iter_roles(roles_for_host, type_, cluster)
+
     Generator of roles.
 
     Each call returns the next possible role of the type specified.
@@ -388,35 +393,31 @@ def cluster_roles_of_type(roles_for_host, type_, cluster):
     :param type_: type of role
     :param cluster: cluster name
     """
-    is_type_in_cluster = is_type(type_, cluster)
-    for role in roles_for_host:
-        if not is_type_in_cluster(role):
-            continue
+    for role in Role.iter_roles(roles_for_host, type_, cluster):
         yield role
 
 
 def all_roles(cluster):
     """
-    Generator of role values.  Each call returns another role.
-
-    :param cluster: Cluster extracted from the ctx.
+    Deprecated c.f. teuthology.orchestra.cluster.Cluster.role_items()
     """
-    for _, roles_for_host in cluster.remotes.items():
-        for name in roles_for_host:
-            yield name
+    return cluster.role_items()
 
 
 def all_roles_of_type(cluster, type_):
     """
+    Deprecated by Cluster.iter_roles()
+
+    Use:
+        cluster.iter_roles(type_)
+
     Generator of role values.  Each call returns another role of the
     type specified.
 
     :param cluster: Cluster extracted from the ctx.
     :param type_: role type
     """
-    for _, roles_for_host in cluster.remotes.items():
-        for id_ in roles_of_type(roles_for_host, type_):
-            yield id_
+    return cluster.iter_roles(type_)
 
 
 def is_type(type_, cluster=None):
@@ -424,19 +425,10 @@ def is_type(type_, cluster=None):
     Returns a matcher function for whether role is of type given.
 
     :param cluster: cluster name to check in matcher (default to no check for cluster)
-    """
-    def _is_type(role):
-        """
-        Return type based on the starting role name.
 
-        If there is more than one period, strip the first part
-        (ostensibly a cluster name) and check the remainder for the prefix.
-        """
-        role_cluster, role_type, _ = split_role(role)
-        if cluster is not None and role_cluster != cluster:
-            return False
-        return role_type == type_
-    return _is_type
+    Deprecated: use Role.make_matcher(name:str, cluster=None)
+    """
+    return Role.make_matcher(type_, cluster)
 
 
 def num_instances_of_type(cluster, type_, ceph_cluster='ceph'):
@@ -447,11 +439,9 @@ def num_instances_of_type(cluster, type_, ceph_cluster='ceph'):
     :param type_: role
     :param ceph_cluster: filter for ceph cluster name
     """
-    remotes_and_roles = cluster.remotes.items()
-    roles = [roles for (remote, roles) in remotes_and_roles]
-    is_ceph_type = is_type(type_, ceph_cluster)
-    num = sum(sum(1 for role in hostroles if is_ceph_type(role))
-              for hostroles in roles)
+    match_role = Role.make_matcher(type_, ceph_cluster)
+    num = sum(sum(1 for role in roles if match_role(role))
+                for (remote, roles) in cluster.remotes.items())
     return num
 
 
@@ -937,7 +927,7 @@ def get_clients(ctx, roles):
     for role in roles:
         assert isinstance(role, str)
         assert 'client.' in role
-        _, _, id_ = split_role(role)
+        _, _, id_ = Role.as_tuple(role)
         (remote,) = ctx.cluster.only(role).remotes.keys()
         yield (id_, remote)
 
@@ -953,7 +943,7 @@ def get_mon_names(ctx, cluster='ceph'):
     """
     :returns: a list of monitor names
     """
-    is_mon = is_type('mon', cluster)
+    is_mon = Role.make_matcher('mon', cluster)
     host_mons = [[role for role in roles if is_mon(role)]
                  for roles in ctx.cluster.remotes.values()]
     return [mon for mons in host_mons for mon in mons]
@@ -977,12 +967,11 @@ def replace_all_with_clients(cluster, config):
     assert isinstance(config, dict), 'config must be a dict'
     if 'all' not in config:
         return config
-    norm_config = {}
     assert len(config) == 1, \
         "config cannot have 'all' and specific clients listed"
-    for client in all_roles_of_type(cluster, 'client'):
-        norm_config['client.{id}'.format(id=client)] = config['all']
-    return norm_config
+
+    return {f"client.{index}": config['all']
+                for index in cluster.iter_roles('client')}
 
 
 DeepMerge = TypeVar('DeepMerge')
@@ -1123,20 +1112,12 @@ def stop_daemons_of_type(ctx, type_, cluster='ceph', timeout=300):
 
 def get_system_type(remote, distro=False, version=False):
     """
-    If distro, return distro.
-    If version, return version
-    If both, return both.
-    If neither, return 'deb' or 'rpm' if distro is known to be one of those
+    Deprecated function, please, call directly from remote:
+
+       teuthology.orchestra.remote.Remote.get_system_type()
+
     """
-    if version:
-        version = remote.os.version
-    if distro and version:
-        return remote.os.name, version
-    if distro:
-        return remote.os.name
-    if version:
-        return version
-    return remote.os.package_type
+    return remote.get_system_type(distro, version)
 
 def get_pkg_type(os_type):
     if os_type in ('centos', 'fedora', 'opensuse', 'rhel', 'sle'):

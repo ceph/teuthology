@@ -3,6 +3,8 @@ import pytest
 
 from unittest.mock import patch, Mock, MagicMock
 
+import teuthology.monkeythreading # noqa: F401
+
 from teuthology import dispatcher
 from teuthology.config import FakeNamespace
 from teuthology.contextutil import MaxWhileTries
