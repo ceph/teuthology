@@ -1,0 +1,9 @@
+[Unit]
+Description=Teuthology Node Cleanup
+
+[Service]
+Type=simple
+User=teuthworker
+Environment=REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+ExecSearchPath=/home/teuthworker/src/teuthology_main/.venv/bin
+ExecStart=uv run teuthology-node-cleanup --machine-type %i
