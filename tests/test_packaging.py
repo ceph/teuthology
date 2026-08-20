@@ -978,6 +978,41 @@ class TestPulpProject(TestBuilderProject):
         with pytest.raises(VersionNotFoundError):
             gp.version
 
+    def test_result_multiple_uses_newest(self, caplog):
+        # The same sha1 built under two branch names produces two
+        # distributions with matching labels; the newest one wins.
+        resp = Mock()
+        resp.ok = True
+        resp.json.return_value = {
+            'results': [
+                {
+                    'name': 'dist-older',
+                    'base_url': 'a/b/older/d',
+                    'pulp_created': '2026-08-14T08:04:53.409169Z',
+                    'pulp_labels': {'sha1': 'the_sha1', 'version': '0.90.0'},
+                },
+                {
+                    'name': 'dist-newer',
+                    'base_url': 'a/b/newer/d',
+                    'pulp_created': '2026-08-14T13:40:53.710313Z',
+                    'pulp_labels': {'sha1': 'the_sha1', 'version': '0.90.0'},
+                },
+            ],
+        }
+        self.m_get.return_value = resp
+        gp = self.klass('ceph', dict(os_type='ubuntu', os_version='24.04'))
+        assert gp._result['name'] == 'dist-newer'
+        assert 'Multiple results found' in caplog.text
+
+    def test_result_none_found(self):
+        resp = Mock()
+        resp.ok = True
+        resp.json.return_value = {'results': []}
+        self.m_get.return_value = resp
+        gp = self.klass('ceph', dict(os_type='ubuntu', os_version='24.04'))
+        with pytest.raises(VersionNotFoundError, match='No results found'):
+            gp._result
+
     def test_get_package_sha1_fetched_found(self):
         resp = Mock()
         resp.ok = True
