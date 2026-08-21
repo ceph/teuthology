@@ -70,6 +70,9 @@ def main(ctx):
     if ctx.num_to_lock:
         assert ctx.machine_type, \
             'must specify machine type to lock'
+    if ctx.no_reimage:
+        assert ctx.lock or ctx.num_to_lock, \
+            '--no-reimage is only supported by --lock and --lock-many'
 
     if ctx.brief or ctx.list or ctx.list_targets:
         assert ctx.desc is None, '--desc does nothing with --list/--brief'
@@ -172,7 +175,7 @@ def main(ctx):
                 if not ctx.f:
                     return ret
             elif not query.is_vm(machine, machine_status):
-                if machine_type in reimage_types:
+                if not ctx.no_reimage and machine_type in reimage_types:
                     # Reimage in parallel just below here
                     reimage_machines.append(machine)
                 # Update keys last
@@ -210,7 +213,8 @@ def main(ctx):
                 machines_to_update.append(machine)
     elif ctx.num_to_lock:
         result = ops.lock_many(ctx, ctx.num_to_lock, ctx.machine_type, user,
-                           ctx.desc, ctx.os_type, ctx.os_version, ctx.arch)
+                           ctx.desc, ctx.os_type, ctx.os_version, ctx.arch,
+                           reimage=not ctx.no_reimage)
         if not result:
             ret = 1
         else:
