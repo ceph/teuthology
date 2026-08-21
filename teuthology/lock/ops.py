@@ -102,11 +102,14 @@ def lock_many(ctx, num, machine_type, user=None, description=None,
             machine_type=machine_type,
             description=description,
         )
-        # Only query for os_type/os_version if non-vps and non-libcloud, since
-        # in that case we just create them.
+        # Only query for os_type/os_version if the machines are not going to
+        # be created or reimaged, since in that case we just install what was
+        # asked for.
         vm_types = downburst_types + teuthology.provision.cloud.get_types()
         reimage_types = teuthology.provision.get_reimage_types()
-        if machine_type not in (vm_types + reimage_types):
+        will_provision = machine_type in vm_types or \
+            (reimage and machine_type in reimage_types)
+        if not will_provision:
             if os_type:
                 data['os_type'] = os_type
             if os_version:

@@ -26,6 +26,7 @@ def parse_args(argv):
             teuthology-lock --summary
             teuthology-lock --lock-many 1 --machine-type vps
             teuthology-lock --lock -t target.yaml
+            teuthology-lock --lock --no-reimage smithi001
             teuthology-lock --list-targets plana01
             teuthology-lock --brief
             teuthology-lock --brief --owner user@host
@@ -107,6 +108,13 @@ def parse_args(argv):
         default=False,
         help="don't exit after the first error, continue locking or " +
         "unlocking other machines",
+    )
+    parser.add_argument(
+        '--no-reimage',
+        action='store_true',
+        default=False,
+        help="when locking bare-metal machines, don't reimage them; only " +
+        "supported by --lock and --lock-many",
     )
     parser.add_argument(
         '--desc',
