@@ -58,7 +58,7 @@ def main(ctx):
         else:
             # This condition might never be hit, but it's not clear.
             assert ctx.num_to_lock or ctx.list or ctx.list_targets or \
-                ctx.summary or ctx.brief, \
+                ctx.summary or ctx.brief or ctx.list_images, \
                 'machines must be specified for that operation'
     if ctx.all:
         assert ctx.list or ctx.list_targets or ctx.brief, \
@@ -251,6 +251,11 @@ def main(ctx):
         if ctx.desc is not None or ctx.status is not None:
             for machine in machines_to_update:
                 ops.update_lock(machine, ctx.desc, ctx.status)
+
+    elif ctx.list_images:
+        assert ctx.machine_type is not None, \
+            'you must specify a machine type for list_images'
+        ops.list_images(ctx.machine_type)
 
     return ret
 
