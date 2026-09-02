@@ -24,10 +24,7 @@ def get_reimage_types():
     return pelagos.get_types() + fog.get_types() + maas.get_types()
 
 
-def reimage(ctx, machine_name, machine_type):
-    os_type = get_distro(ctx)
-    os_version = get_distro_version(ctx)
-
+def get_provisioner_object(machine_type, machine_name='', os_type='', os_version=''):
     pelagos_types = pelagos.get_types()
     fog_types = fog.get_types()
     maas_types = maas.get_types()
@@ -53,6 +50,14 @@ def reimage(ctx, machine_name, machine_type):
     else:
         raise Exception("The machine_type '%s' is not known to any "
                         "of configured provisioners" % machine_type)
+    return obj
+
+
+def reimage(ctx, machine_name, machine_type):
+    os_type = get_distro(ctx)
+    os_version = get_distro_version(ctx)
+
+    obj = get_provisioner_object(machine_type, machine_name, os_type, os_version)
     status = "fail"
     try:
         result = obj.create()

@@ -301,6 +301,17 @@ def update_lock(name, description=None, status=None, ssh_pub_key=None):
     return True
 
 
+def list_images(machine_type):
+    provobj = provision.get_provisioner_object(machine_type)
+    listfunc = getattr(provobj, 'image_names', None)
+    provname = type(provobj).__name__
+    if not listfunc:
+        print(f'Image listing not implemented for provider {provname}')
+        return
+    print(f'Images available on {provname} for {machine_type}:\n')
+    print('\n'.join(listfunc(machine_type)))
+
+
 def update_inventory(node_dict):
     """
     Like update_lock(), but takes a dict and doesn't try to do anything smart
@@ -332,6 +343,7 @@ def update_inventory(node_dict):
                 )
             if response.ok:
                 return
+
 
 def do_update_keys(machines, all_=False, _raise=True):
     reference = query.list_locks(keyed_by_name=True)

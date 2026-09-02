@@ -175,7 +175,7 @@ class FOG(object):
             return image
         raise RuntimeError(
             "Fog has no %s image. Available %s images: %s" %
-            (name, self.remote.machine_type, self.suggest_image_names()))
+            (name, self.remote.machine_type, self.image_names(self.remote.machine_type)))
 
     def _latest_minor_image(self, base_name):
         """
@@ -205,13 +205,14 @@ class FOG(object):
             )
         return best
 
-    def suggest_image_names(self):
+    def image_names(self, machine_type=None):
         """
-        Suggest available image names for this machine type.
+        Return available image names for this machine type.
 
         :returns: A list of image names.
         """
-        resp = self.do_request('/image/search/%s' % self.remote.machine_type)
+        mt = machine_type or self.remote.machine_type
+        resp = self.do_request('/image/search/%s' % mt)
         obj = resp.json()
         images = obj['images']
         return [image['name'] for image in images]

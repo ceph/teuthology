@@ -31,6 +31,7 @@ def parse_args(argv):
             teuthology-lock --brief
             teuthology-lock --brief --owner user@host
             teuthology-lock --update --status down --desc testing plana01
+            teuthology-lock --list-images --machine-type trial
         '''),
         formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument(
@@ -91,6 +92,13 @@ def parse_args(argv):
         default=False,
         help='summarize locked-machine counts by owner',
     )
+    group.add_argument(
+        '--list-images',
+        action='store_true',
+        default=False,
+        help='list available image names for --machine-type',
+    )
+
     parser.add_argument(
         '-a', '--all',
         action='store_true',
