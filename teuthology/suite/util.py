@@ -10,8 +10,6 @@ import sys
 
 from email.mime.text import MIMEText
 
-import teuthology.lock.query
-import teuthology.lock.util
 from teuthology import repo_utils
 
 from teuthology.config import config
@@ -21,7 +19,6 @@ from teuthology.repo_utils import fetch_qa_suite, fetch_teuthology
 from teuthology.orchestra.opsys import OS, DEFAULT_OS_VERSION
 from teuthology.packaging import get_builder_project, VersionNotFoundError
 from teuthology.repo_utils import build_git_url
-from teuthology.task.install import get_flavor
 
 log = logging.getLogger(__name__)
 
@@ -256,20 +253,6 @@ def package_version_for_hash(hash, flavor='default', distro='rhel',
         return None
 
 
-def get_arch(machine_type):
-    """
-    Based on a given machine_type, return its architecture by querying the lock
-    server.
-
-    :returns: A string or None
-    """
-    result = teuthology.lock.query.list_locks(machine_type=machine_type, count=1, tries=1)
-    if not result:
-        log.warning("No machines found with machine_type %s!", machine_type)
-    else:
-        return result[0]['arch']
-
-
 def strip_fragment_path(original_path):
     """
     Given a path, remove the text before '/suites/'.  Part of the fix for
@@ -303,6 +286,25 @@ def get_install_task_flavor(job_config):
     deep_merge(first_install_config, install_overrides)
     deep_merge(first_install_config, project_overrides)
     return get_flavor(first_install_config)
+
+
+def get_flavor(config):
+    """
+    Determine the flavor to use.
+    """
+    config = config or dict()
+    flavor = config.get('flavor', 'default')
+
+    if config.get('path'):
+        # local dir precludes any other flavors
+        flavor = 'local'
+    else:
+        if config.get('valgrind'):
+            flavor = 'notcmalloc'
+        else:
+            if config.get('coverage'):
+                flavor = 'gcov'
+    return flavor
 
 
 def teuthology_schedule(args, verbose, dry_run, log_prefix='', stdin=None):

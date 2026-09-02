@@ -1,6 +1,8 @@
 from subprocess import DEVNULL
 from unittest.mock import patch, Mock, MagicMock
 
+import teuthology.monkeythreading # noqa: F401
+
 from teuthology.dispatcher import supervisor
 
 

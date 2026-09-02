@@ -1,6 +1,8 @@
 import docopt
 import sys
 
+import teuthology.monkeythreading # noqa: F401
+
 import teuthology.suite
 from teuthology.suite import override_arg_defaults as defaults
 from teuthology.config import config
@@ -105,6 +107,7 @@ Standard arguments:
                               aarch64, armv7l, x86_64. Normally this
                               argument should not be provided and the arch
                               is determined from --machine-type.
+                              [default: {default_arch}]
 
 Scheduler arguments:
   --owner <owner>             Job owner
@@ -132,6 +135,12 @@ Scheduler arguments:
                               2/<outof> ... <outof>-1/<outof> will schedule all
                               jobs in the suite (many more than once). If specified,
                               this value can be found in results.log.
+  -o <path>, --output-file <path>
+                              Save all generated job configs in one file.
+  -O <path>, --output-dir <path>
+                              Save all generated job configs to a directory,
+                              create for each job separate sub-directory and
+                              dump job config to 'config.yaml'.
   -p <priority>, --priority <priority>
                               Job priority (lower is sooner)
                               [default: 1000]
@@ -216,6 +225,7 @@ Scheduler arguments:
 +-----------------+-----------------------------------------------------------------+
 
 """.format(
+    default_arch=config.default_arch,
     default_machine_type=config.default_machine_type,
     default_results_timeout=config.results_timeout,
     default_ceph_repo=defaults('--ceph-repo',

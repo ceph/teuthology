@@ -10,7 +10,6 @@ import time
 from typing import Union, Literal, Optional
 
 import teuthology.lock.query
-import teuthology.lock.util
 from teuthology.config import config
 from teuthology.contextutil import safe_while
 from teuthology.exceptions import ConsoleError
