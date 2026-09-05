@@ -1,7 +1,8 @@
 import datetime
 
 from copy import deepcopy
-from mock import patch, DEFAULT, PropertyMock
+from mock import patch, DEFAULT, Mock, PropertyMock
+from paramiko.ssh_exception import BadHostKeyException
 from pytest import raises, mark
 
 from teuthology.config import config
@@ -363,6 +364,21 @@ class TestFOG(object):
             return
         obj._wait_for_ready()
         assert len(self.mocks['m_Remote_connect'].call_args_list) == tries + 1
+
+    def test_wait_for_ready_stale_host_key(self):
+        # A freshly-imaged node has a new host key.  If ~/.ssh/known_hosts
+        # still holds the old one, the stale entry must be dropped and the
+        # connection retried instead of failing until the timeout.
+        self.mocks['m_Remote_hostname'].return_value = 'name.fqdn'
+        obj = self.klass('name.fqdn', 'type', '1.0')
+        self.mocks['m_Remote_connect'].side_effect = [
+            BadHostKeyException('name.fqdn', Mock(), Mock()),
+            True,
+        ]
+        with patch('teuthology.provision.fog.misc.ssh_keygen_remove') as m_rm:
+            obj._wait_for_ready()
+        m_rm.assert_called_once_with('name.fqdn')
+        assert len(self.mocks['m_Remote_connect'].call_args_list) == 2
 
     @mark.parametrize(
         'sentinel_present',
