@@ -11,6 +11,28 @@ from teuthology.task.install.util import _get_builder_project, _get_local_dir
 
 log = logging.getLogger(__name__)
 
+
+RELEASE_KEY_URL = os.environ.get(
+    'TEUTH_TASK_INSTALL_RELEASE_KEY_URL',
+    'https://git.ceph.com/?p=ceph.git;a=blob_plain;f=keys/autobuild.asc',
+)
+RELEASE_KEY_PATH = '/etc/apt/trusted.gpg.d/ceph-autobuild.asc'
+
+
+def _ensure_release_key(remote):
+    """
+    Install the Ceph autobuild signing key if it is not already trusted.
+
+    apt-key is deprecated since Debian 11/Ubuntu 22.04 and gone in Ubuntu
+    26.04, so drop the ASCII-armored key straight into trusted.gpg.d
+    (supported since apt 1.4) instead of piping it through apt-key.
+    """
+    remote.sh(
+        "set -o pipefail; "
+        f"test -s {RELEASE_KEY_PATH} || "
+        f"curl -sSfL '{RELEASE_KEY_URL}' | sudo tee {RELEASE_KEY_PATH} > /dev/null"
+    )
+
 def _retry_if_eagain_in_output(remote, args):
     # wait at most 5 minutes
     with safe_while(sleep=10, tries=30) as proceed:
@@ -60,25 +82,7 @@ def _update_package_list_and_install(ctx, remote, debs, config):
     :param config: the config dict
     """
 
-    # check for ceph release key
-    r = remote.run(
-        args=[
-            'sudo', 'apt-key', 'list', run.Raw('|'), 'grep', 'Ceph',
-        ],
-        stdout=StringIO(),
-        check_status=False,
-    )
-    if r.stdout.getvalue().find('Ceph automated package') == -1:
-        # if it doesn't exist, add it
-        remote.run(
-            args=[
-                'wget', '-q', '-O-',
-                'https://git.ceph.com/?p=ceph.git;a=blob_plain;f=keys/autobuild.asc',  # noqa
-                run.Raw('|'),
-                'sudo', 'apt-key', 'add', '-',
-            ],
-            stdout=StringIO(),
-        )
+    _ensure_release_key(remote)
 
     builder = _get_builder_project(ctx, remote, config)
     log.info("Installing packages: {pkglist} on remote deb {arch}".format(
@@ -201,25 +205,7 @@ def _upgrade_packages(ctx, config, remote, debs):
     :param debs: the Debian packages to be installed
     :param branch: the branch of the project to be used
     """
-    # check for ceph release key
-    r = remote.run(
-        args=[
-            'sudo', 'apt-key', 'list', run.Raw('|'), 'grep', 'Ceph',
-        ],
-        stdout=StringIO(),
-        check_status=False,
-    )
-    if r.stdout.getvalue().find('Ceph automated package') == -1:
-        # if it doesn't exist, add it
-        remote.run(
-            args=[
-                'wget', '-q', '-O-',
-                'https://git.ceph.com/?p=ceph.git;a=blob_plain;f=keys/autobuild.asc',  # noqa
-                run.Raw('|'),
-                'sudo', 'apt-key', 'add', '-',
-            ],
-            stdout=StringIO(),
-        )
+    _ensure_release_key(remote)
 
     builder = _get_builder_project(ctx, remote, config)
     base_url = builder.base_url
