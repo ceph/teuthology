@@ -6,7 +6,10 @@ import socket
 import re
 
 from paramiko import SSHException
-from paramiko.ssh_exception import NoValidConnectionsError
+from paramiko.ssh_exception import (
+    BadHostKeyException,
+    NoValidConnectionsError,
+)
 
 import teuthology.orchestra
 
@@ -348,6 +351,14 @@ class FOG(object):
                 try:
                     self.remote.connect()
                     break
+                except BadHostKeyException as e:
+                    # The node was just reimaged, so its host key is new by
+                    # definition.  A stale entry in ~/.ssh/known_hosts would
+                    # otherwise keep us failing here until the timeout.
+                    self.log.warning(
+                        f"{e}; removing stale known_hosts entry for {self.name}"
+                    )
+                    misc.ssh_keygen_remove(self.name)
                 except (
                     socket.error,
                     SSHException,

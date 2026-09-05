@@ -1,4 +1,7 @@
+import paramiko
+
 from mock import patch, Mock
+from pytest import raises
 
 from teuthology import config
 from teuthology.orchestra import connection
@@ -87,6 +90,19 @@ class TestConnection(object):
         )
         m_transport.set_keepalive.assert_called_once_with(False)
         assert got is m_ssh_instance
+
+    def test_connect_bad_host_key_not_retried(self):
+        self.clear_config()
+        m_ssh_instance = self.m_ssh.return_value = Mock()
+        m_ssh_instance.connect.side_effect = paramiko.BadHostKeyException(
+            'orchestra.test.newdream.net.invalid', Mock(), Mock())
+        with raises(paramiko.BadHostKeyException):
+            connection.connect(
+                'jdoe@orchestra.test.newdream.net.invalid',
+                _SSHClient=self.m_ssh,
+            )
+        # a mismatched host key is not transient; no point retrying
+        m_ssh_instance.connect.assert_called_once()
 
     def test_connect_override_hostkeys(self):
         self.clear_config()

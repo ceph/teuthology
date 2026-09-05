@@ -114,6 +114,13 @@ def connect(user_at_host, host_key=None, keep_alive=False, timeout=60,
                     log.error(f"{auth_err_msg}: EOFError")
                 except paramiko.AuthenticationException as e:
                     log.error(f"{auth_err_msg}: {repr(e)}")
+                except paramiko.BadHostKeyException as e:
+                    # Not transient: the server's key will not change while
+                    # we retry.  Raise so the caller can decide what to do
+                    # (e.g. the FOG provisioner, which expects a new key
+                    # after a reimage).
+                    log.error(f"{auth_err_msg}: {repr(e)}")
+                    raise
                 except paramiko.SSHException as e:
                     auth_err_msg = f"{auth_err_msg}: {repr(e)}"
                     if not key_filename:

@@ -1101,6 +1101,23 @@ def ssh_keyscan_wait(hostname):
             log.info("try ssh_keyscan again for " + str(hostname))
         return success
 
+
+def ssh_keygen_remove(hostname):
+    """
+    Remove any entries for a host from the user's ~/.ssh/known_hosts
+    (``ssh-keygen -R``).
+
+    :param hostname: The hostname
+    :returns: True if the command succeeded
+    """
+    args = ['ssh-keygen', '-R', hostname]
+    p = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    if p.returncode != 0:
+        log.warning("%s failed: %s", ' '.join(args),
+                    p.stdout.decode().strip())
+    return p.returncode == 0
+
+
 def stop_daemons_of_type(ctx, type_, cluster='ceph', timeout=300):
     """
     :param type_: type of daemons to be stopped.
