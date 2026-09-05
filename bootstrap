@@ -87,5 +87,32 @@ uv sync --quiet --frozen --all-extras
 # To avoid crashing older dispatchers
 ln -sf .venv virtualenv
 
-# Install ansible collections
-uv run ansible-galaxy install -r requirements.yml
+# Install ansible collections.  galaxy.ansible.com has regular outages
+# (504s), so retry, and before giving up fall back to whatever collections a
+# previous bootstrap already installed on this host.
+galaxy_install() {
+    local attempt attempts=3
+    for attempt in $(seq $attempts); do
+        uv run ansible-galaxy install -r requirements.yml && return 0
+        if [ $attempt -lt $attempts ]; then
+            echo "ansible-galaxy install failed (attempt $attempt/$attempts); retrying in 15s..." >&2
+            sleep 15
+        fi
+    done
+    echo "galaxy unreachable; checking for already-installed collections" >&2
+    local installed missing coll
+    installed=$(uv run ansible-galaxy collection list 2>/dev/null)
+    missing=0
+    for coll in $(uv run python3 -c "
+import yaml
+for c in yaml.safe_load(open('requirements.yml'))['collections']:
+    print(c['name'] if isinstance(c, dict) else c)
+"); do
+        if ! echo "$installed" | grep -q "^$coll "; then
+            echo "collection $coll is not installed" >&2
+            missing=1
+        fi
+    done
+    return $missing
+}
+galaxy_install
