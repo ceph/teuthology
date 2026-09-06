@@ -147,16 +147,12 @@ def add_remotes(ctx, config):
     if 'roles' not in ctx.config and 'targets' not in ctx.config:
         return
     remotes = []
-    machs = []
-    for name in ctx.config['targets'].keys():
-        machs.append(name)
-    for t, key in ctx.config['targets'].items():
-        t = misc.canonicalize_hostname(t)
-        try:
-            if ctx.config['sshkeys'] == 'ignore':
-                key = None
-        except (AttributeError, KeyError):
-            pass
+    for target, ssh_pub_key in ctx.config['targets'].items():
+        t = misc.canonicalize_hostname(target)
+        if ctx.config.get('sshkeys', None) == 'ignore':
+            key = None
+        else:
+            key = ssh_pub_key
         rem = remote.Remote(name=t, host_key=key, keep_alive=True)
         remotes.append(rem)
     if 'roles' in ctx.config:
