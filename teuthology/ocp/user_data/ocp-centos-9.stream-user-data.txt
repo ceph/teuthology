@@ -1,0 +1,14 @@
+#cloud-config
+disable_root: false
+users:
+  - name: {user_name}
+    groups: sudo
+    shell: /bin/bash
+    sudo: ["ALL=(ALL) NOPASSWD:ALL"]
+    ssh_authorized_keys:
+      - {ssh_pub_key}
+network:
+  version: 2
+  ethernets:
+    eth0:
+      dhcp4: true
