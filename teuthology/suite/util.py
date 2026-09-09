@@ -25,9 +25,6 @@ from teuthology.task.install import get_flavor
 
 log = logging.getLogger(__name__)
 
-CONTAINER_DISTRO = 'centos/9'       # the one to check for build_complete
-CONTAINER_FLAVOR = 'default'
-
 
 def fetch_repos(branch, test_name, dry_run, commit=None):
     """
@@ -245,16 +242,10 @@ def package_version_for_hash(hash, flavor='default', distro='rhel',
         ),
     )
 
-    if (bp.distro == CONTAINER_DISTRO and bp.flavor == CONTAINER_FLAVOR and 
-            not bp.build_complete):
-        log.info("Container build incomplete")
-        return None
-
     try:
         return bp.version
     except VersionNotFoundError:
         return None
-
 
 def get_arch(machine_type):
     """
