@@ -5,13 +5,14 @@ from copy import deepcopy
 from mock import patch, Mock, DEFAULT
 
 from teuthology import suite
-from scripts.suite import main
+from teuthology.suite.cli import main
 from teuthology.config import config
 
 import pytest
 import time
 
 from teuthology.exceptions import ScheduleFailError
+from tests.cli_test import CliTest
 
 def get_fake_time_and_sleep():
     # Below we set m_time.side_effect, but we also set m_time.return_value.
@@ -140,6 +141,10 @@ REPO_SHORTHAND = [
 @pytest.mark.parametrize(['orig', 'shorthand', 'result'], REPO_SHORTHAND)
 def test_expand_short_repo_name(orig, shorthand, result):
     assert suite.expand_short_repo_name(shorthand, orig) == result
+
+
+class TestSuiteCLI(CliTest):
+    cli_name = 'teuthology-suite'
 
 
 class TestSuiteMain(object):

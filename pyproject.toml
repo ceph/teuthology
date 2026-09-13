@@ -92,11 +92,11 @@ openstack = [
 [project.scripts]
 teuthology = "teuthology.run.cli:main"
 teuthology-openstack = "scripts.openstack:main"
-teuthology-suite = "scripts.suite:main"
+teuthology-suite = "teuthology.suite.cli:main"
 teuthology-ls = "scripts.ls:main"
 teuthology-worker = "scripts.worker:main"
 teuthology-lock = "scripts.lock:main"
-teuthology-schedule = "scripts.schedule:main"
+teuthology-schedule = "teuthology.schedule.cli:main"
 teuthology-updatekeys = "scripts.updatekeys:main"
 teuthology-update-inventory = "scripts.update_inventory:main"
 teuthology-results = "scripts.results:main"
