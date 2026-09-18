@@ -214,7 +214,7 @@ def main(ctx):
     elif ctx.num_to_lock:
         result = ops.lock_many(ctx, ctx.num_to_lock, ctx.machine_type, user,
                            ctx.desc, ctx.os_type, ctx.os_version, ctx.arch,
-                           reimage=not ctx.no_reimage)
+                           as_is=ctx.no_reimage)
         if not result:
             ret = 1
         else:
