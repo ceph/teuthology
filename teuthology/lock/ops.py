@@ -59,7 +59,19 @@ def lock_many_openstack(ctx, num, machine_type, user=None, description=None,
 
 
 def lock_many(ctx, num, machine_type, user=None, description=None,
-              os_type=None, os_version=None, arch=None, reimage=True):
+              os_type=None, os_version=None, arch=None, reimage=True,
+              as_is=False):
+    """
+    :param reimage: Reimage machines of a reimage type before returning them.
+                    False only means "not inside this call": the dispatcher
+                    locks with reimage=False and its supervisor reimages
+                    later.
+    :param as_is:   The machines will never be reimaged (teuthology-lock
+                    --no-reimage), so ask the lock server for ones already
+                    running os_type/os_version. Implies reimage=False.
+    """
+    if as_is:
+        reimage = False
     if user is None:
         user = misc.get_user()
 
@@ -104,11 +116,13 @@ def lock_many(ctx, num, machine_type, user=None, description=None,
         )
         # Only query for os_type/os_version if the machines are not going to
         # be created or reimaged, since in that case we just install what was
-        # asked for.
+        # asked for. Note that reimage=False does not mean that: the
+        # dispatcher locks without reimaging and lets the supervisor reimage
+        # later, so it must not be limited to nodes already running the OS.
         vm_types = downburst_types + teuthology.provision.cloud.get_types()
         reimage_types = teuthology.provision.get_reimage_types()
         will_provision = machine_type in vm_types or \
-            (reimage and machine_type in reimage_types)
+            (not as_is and machine_type in reimage_types)
         if not will_provision:
             if os_type:
                 data['os_type'] = os_type
