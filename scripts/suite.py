@@ -1,6 +1,8 @@
 import docopt
 import sys
 
+import teuthology.monkeythreading # noqa: F401
+
 import teuthology.suite
 from teuthology.suite import override_arg_defaults as defaults
 from teuthology.config import config
