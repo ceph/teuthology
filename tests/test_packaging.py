@@ -731,6 +731,89 @@ class TestShamanProject(TestBuilderProject):
         }
     ]
 
+    # A sha1 that was built both by the cve-pipeline (repos on Pulp; newest,
+    # so shaman lists it first) and by the regular pipeline (repos on chacra).
+    SHAMAN_SEARCH_RESPONSE_PULP_AND_CHACRA = [
+        {
+            "url": "https://pulp.front.sepia.ceph.com/pulp/content/repos/ceph/wip-cve-dryrun_tentacle/66f67bca/rocky/10/flavors/default/",
+            "chacra_url": "https://pulp.front.sepia.ceph.com/pulp/api/v3/repositories/rpm/rpm/019fedb6-4793-72bd-895b-d0aa8effb7ad/",
+            "ref": "wip-cve-dryrun_tentacle",
+            "sha1": "66f67bca",
+            "distro": "rocky",
+            "distro_version": "10",
+            "status": "ready",
+            "flavor": "default",
+            "project": "ceph",
+            "archs": ["x86_64", "source"],
+            "extra": {
+                "version": "20.2.3-1-g66f67bca",
+                "package_manager_version": "20.2.3-1.g66f67bca",
+                "job_name": "cve-pipeline",
+            },
+        },
+        {
+            "url": "https://3.chacra.ceph.com/r/ceph/tentacle/66f67bca/rocky/10/flavors/default/",
+            "chacra_url": "https://3.chacra.ceph.com/repos/ceph/tentacle/66f67bca/rocky/10/flavors/default/",
+            "ref": "tentacle",
+            "sha1": "66f67bca",
+            "distro": "rocky",
+            "distro_version": "10",
+            "status": "ready",
+            "flavor": "default",
+            "project": "ceph",
+            "archs": ["x86_64", "source"],
+            "extra": {
+                "version": "20.2.3-1-g66f67bca",
+                "package_manager_version": "20.2.3-1.g66f67bca",
+                "job_name": "ceph-dev-pipeline",
+            },
+        },
+    ]
+
+    def _builder_with_search_response(self, response):
+        config = dict(
+            os_type="rocky",
+            os_version="10.1",
+            sha1='66f67bca',
+            arch='x86_64',
+            flavor='default',
+        )
+        builder = self.klass("ceph", config)
+        search_resp = Mock()
+        search_resp.ok = True
+        search_resp.url = 'https://shaman.ceph.com/api/search/?...'
+        search_resp.json.return_value = response
+        self.m_get.return_value = search_resp
+        return builder
+
+    def test_pulp_hosted_results_are_skipped(self):
+        builder = self._builder_with_search_response(
+            self.SHAMAN_SEARCH_RESPONSE_PULP_AND_CHACRA)
+        # the chacra-hosted entry is used even though it is listed second
+        assert builder.repo_url == \
+            "https://3.chacra.ceph.com/repos/ceph/tentacle/66f67bca/rocky/10/flavors/default/repo"
+        assert builder.base_url == \
+            "https://3.chacra.ceph.com/r/ceph/tentacle/66f67bca/rocky/10/flavors/default/"
+        assert builder.version == "20.2.3-1.g66f67bca"
+        assert builder.sha1 == "66f67bca"
+        assert not builder.pulp_only
+
+    def test_pulp_only_results(self):
+        builder = self._builder_with_search_response(
+            self.SHAMAN_SEARCH_RESPONSE_PULP_AND_CHACRA[:1])
+        assert builder.pulp_only
+        assert not builder.build_complete
+        with pytest.raises(packaging.VersionNotFoundError):
+            builder.repo_url
+        with pytest.raises(packaging.VersionNotFoundError):
+            builder.version
+
+    def test_no_results_not_pulp_only(self):
+        builder = self._builder_with_search_response([])
+        assert not builder.pulp_only
+        with pytest.raises(packaging.VersionNotFoundError):
+            builder.version
+
     def test_build_complete_success(self):
         config = dict(
             os_type="centos",

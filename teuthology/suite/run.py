@@ -17,7 +17,9 @@ from teuthology.config import config, JobConfig
 from teuthology.exceptions import (
     BranchMismatchError, BranchNotFoundError, CommitNotFoundError,
 )
-from teuthology.misc import deep_merge, get_results_url, update_key
+from teuthology.misc import (
+    deep_merge, get_results_url, merge_configs, update_key,
+)
 from teuthology.orchestra.opsys import OS
 from teuthology.repo_utils import build_git_url
 
@@ -29,6 +31,15 @@ from teuthology.util.time import parse_offset, parse_timestamp, TIMESTAMP_FMT
 
 log = logging.getLogger(__name__)
 
+# Some builds (currently only security builds) are published exclusively to
+# the lab-internal Pulp and Quay instances rather than shaman/chacra and
+# quay.io. A run that does not opt in to both of these (via a job yaml passed
+# to teuthology-suite) cannot find those sha1s, and --newest will backtrack
+# past them.
+INTERNAL_PACKAGE_SOURCE = 'pulp'
+INTERNAL_CONTAINER_REGISTRY = 'quay-int.front.sepia.ceph.com'
+INTERNAL_CONTAINER_IMAGE = f'{INTERNAL_CONTAINER_REGISTRY}/ceph-ci/ceph'
+
 
 class Run(object):
     WAIT_MAX_JOB_TIME = 30 * 60
@@ -36,6 +47,7 @@ class Run(object):
     __slots__ = (
         'args', 'name', 'base_config', 'suite_repo_path', 'base_yaml_paths',
         'base_args', 'kernel_dict', 'config_input', 'timestamp', 'user', 'os',
+        'extra_config',
     )
 
     def __init__(self, args):
@@ -59,6 +71,158 @@ class Run(object):
         # (absolute paths are unchanged by this)
         self.base_yaml_paths = [os.path.join(self.suite_repo_path, b) for b in
                                 self.args.base_yaml_paths]
+        # The extra job yamls are normally only handed to teuthology-schedule,
+        # but scheduling needs to know about job-level settings such as
+        # package_source in order to look for packages in the right place.
+        self.extra_config = merge_configs(self.base_yaml_paths) or dict()
+        self.apply_extra_config()
+
+    def apply_extra_config(self):
+        """
+        Honor job-level settings from the extra <config_yaml> files that
+        affect scheduling itself.
+
+        Mirrors teuthology.run: a job-level ``package_source`` overrides the
+        site-wide one, so that the package checks done while scheduling
+        (--newest backtracking, verify_ceph_hash) look in the same place the
+        jobs will.
+        """
+        package_source = self.extra_config.get('package_source')
+        if not package_source or package_source == config.package_source:
+            return
+        if package_source == 'pulp':
+            pulp_cfg = dict(config.pulp or dict())
+            pulp_cfg.update(self.extra_config.get('pulp') or dict())
+            if not (pulp_cfg.get('username') and pulp_cfg.get('password')):
+                log.warning(
+                    "Job yaml selects package_source: pulp but no Pulp "
+                    "credentials are configured on this host; scheduling "
+                    "will check for packages using package_source: %s "
+                    "instead", config.package_source)
+                return
+        log.info("Using package_source '%s' from job yaml to check for "
+                 "packages while scheduling", package_source)
+        config.package_source = package_source
+
+    def cephadm_container_image(self):
+        """
+        The container image the cephadm task will use, as far as scheduling
+        can tell: job-level overrides, then job-level defaults, then the
+        site-wide defaults. Returns None if none of them set one.
+        """
+        def image_from(section):
+            section = section or dict()
+            cephadm = section.get('cephadm') or dict()
+            containers = cephadm.get('containers') or dict()
+            return containers.get('image')
+
+        for section in (
+            self.extra_config.get('overrides'),
+            self.extra_config.get('defaults'),
+            config.get('defaults'),
+        ):
+            image = image_from(section)
+            if image:
+                return image
+        return None
+
+    def missing_internal_sources(self):
+        """
+        Return descriptions of the settings this run lacks in order to find
+        builds published only to the lab-internal Pulp/Quay (see INTERNAL_*),
+        or an empty list if the run selects all of them.
+        """
+        missing = []
+        package_source = (
+            self.extra_config.get('package_source') or config.package_source
+        )
+        if package_source != INTERNAL_PACKAGE_SOURCE:
+            missing.append(f'package_source: {INTERNAL_PACKAGE_SOURCE}')
+        image = self.cephadm_container_image() or ''
+        if image.split('/')[0] != INTERNAL_CONTAINER_REGISTRY:
+            missing.append(
+                f'defaults.cephadm.containers.image: {INTERNAL_CONTAINER_IMAGE}'
+            )
+        return missing
+
+    def warn_pulp_only_sha1(self, sha1):
+        """
+        Called when --newest skips a sha1 whose packages exist only in the
+        lab-internal Pulp (e.g. a security build), so the user knows why it
+        was skipped and, if the run does not select Pulp/Quay, how to opt in.
+        """
+        missing = self.missing_internal_sources()
+        if missing:
+            log.warning(
+                "--newest: ceph sha1 %s was only built to the lab-internal "
+                "Pulp/Quay (e.g. a security build), and this run does not "
+                "select %s. To test that sha1, add that to a job yaml passed "
+                "to teuthology-suite. Moving on to the next sha1.",
+                sha1, ' and '.join(missing),
+            )
+        else:
+            log.warning(
+                "--newest: ceph sha1 %s was only built to the lab-internal "
+                "Pulp/Quay and could not be verified there from this host. "
+                "Moving on to the next sha1.",
+                sha1,
+            )
+
+    @classmethod
+    def uses_cephadm(cls, tasks):
+        """
+        Whether a job's task list deploys a cluster with cephadm (looking
+        into sequential/parallel groups too). Only those jobs need the
+        ceph-ci container for the sha1 under test.
+        """
+        for task in tasks or []:
+            if not isinstance(task, dict):
+                continue
+            for name, conf in task.items():
+                if name == 'cephadm' or name.startswith('cephadm.'):
+                    return True
+                if name in ('sequential', 'parallel') and \
+                        cls.uses_cephadm(conf):
+                    return True
+        return False
+
+    def cephadm_container_ref(self, sha1, flavor='default'):
+        """
+        The image:tag the cephadm task will pull for this sha1, following
+        qa/tasks/cephadm.py: <image>:<sha1>, with crimson flavors appended.
+        Returns None if no image is configured, or if the configured image
+        already pins a tag/digest (then the sha1 does not matter).
+        """
+        image = self.cephadm_container_image()
+        if not image or any(c in image for c in (':', '@')):
+            return None
+        tag = sha1
+        if flavor in ('crimson-debug', 'crimson-release'):
+            tag += f'-{flavor}'
+        return f'{image}:{tag}'
+
+    def container_missing(self, sha1, flavor='default'):
+        """
+        True if the registry says the cephadm container for this sha1 does
+        not exist. False if it exists, is not applicable, or the registry
+        could not be queried (we do not hold up scheduling on a guess).
+        """
+        ref = self.cephadm_container_ref(sha1, flavor)
+        if ref is None:
+            return False
+        image, tag = ref.rsplit(':', 1)
+        return util.container_image_exists(image, tag) is False
+
+    def warn_missing_container(self, sha1, flavor='default', newest=False):
+        ref = self.cephadm_container_ref(sha1, flavor)
+        msg = (f"ceph sha1 {sha1} has packages but no container at {ref}. "
+               f"Pending release build, or failed container build of a "
+               f"passed package build?")
+        if newest:
+            msg += f" Moving on to the next sha1 of {self.base_config.branch}"
+        else:
+            msg += " cephadm jobs will fail to pull it"
+        log.warning(msg)
 
     def make_run_name(self):
         """
@@ -472,6 +636,7 @@ class Run(object):
     def collect_jobs(self, arch, configs, newest=False, limit=0):
         jobs_to_schedule = []
         jobs_missing_packages = []
+        containers_warned = set()
         for description, fragment_paths, parsed_yaml in configs:
             if limit > 0 and len(jobs_to_schedule) >= limit:
                 log.info(
@@ -530,9 +695,34 @@ class Run(object):
                     jobs_missing_packages.append(job)
                     log.error(f"Packages for os_type '{os_type}', flavor {flavor} and "
                          f"ceph hash '{sha1}' not found")
+                    if util.hash_only_in_pulp(sha1, flavor, os_type,
+                                              os_version, self.args.machine_type):
+                        job['pulp_only'] = True
+                        log.error(
+                            f"ceph hash '{sha1}' was only built to the "
+                            f"lab-internal Pulp (e.g. a security build); it "
+                            f"cannot be installed with package_source: "
+                            f"{config.package_source}. Select package_source: "
+                            f"{INTERNAL_PACKAGE_SOURCE} and "
+                            f"defaults.cephadm.containers.image: "
+                            f"{INTERNAL_CONTAINER_IMAGE} in a job yaml to "
+                            f"test it")
                     # optimization: one missing package causes backtrack in newest mode;
                     # no point in continuing the search
                     if newest:
+                        return jobs_missing_packages, []
+                elif self.uses_cephadm(parsed_yaml.get('tasks')) and \
+                        self.container_missing(sha1, flavor):
+                    # Packages exist but the ceph-ci container does not, e.g.
+                    # a release build (CI_CONTAINER=false). Warn once per
+                    # sha1/flavor; in newest mode treat it like missing
+                    # packages so we back off to the next sha1.
+                    if (sha1, flavor) not in containers_warned:
+                        containers_warned.add((sha1, flavor))
+                        self.warn_missing_container(sha1, flavor, newest)
+                    if newest:
+                        jobs_missing_packages.append(job)
+                        job['container_missing'] = True
                         return jobs_missing_packages, []
 
             jobs_to_schedule.append(job)
@@ -680,6 +870,8 @@ Note: If you still want to go ahead, use --job-threshold 0'''
             jobs_missing_packages, jobs_to_schedule = \
                 self.collect_jobs(arch, configs, self.args.newest, job_limit)
             if jobs_missing_packages and self.args.newest:
+                if any(j.get('pulp_only') for j in jobs_missing_packages):
+                    self.warn_pulp_only_sha1(self.base_config.sha1)
                 if not sha1s:
                     sha1s = util.find_git_parents(
                         self.ceph_repo_name,
