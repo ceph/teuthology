@@ -1,5 +1,6 @@
 import datetime
 import pytest
+import subprocess
 
 from unittest.mock import patch, Mock, MagicMock
 
@@ -136,9 +137,53 @@ class TestDispatcher(object):
         dispatcher.main(self.ctx)
         assert len(m_run_job.call_args_list) == 0
         assert len(m_try_push_job_info.call_args_list) == len(jobs)
-        for i in range(len(jobs)):
+        for i, job in enumerate(jobs):
             push_call = m_try_push_job_info.call_args_list[i]
             assert push_call[0][1]['status'] == 'dead'
+            job.delete.assert_called_once_with()
+
+    @patch("teuthology.dispatcher.find_dispatcher_processes")
+    @patch("teuthology.repo_utils.ls_remote")
+    @patch("teuthology.dispatcher.report.try_push_job_info")
+    @patch("teuthology.dispatcher.supervisor.run_job")
+    @patch("beanstalkc.Job", autospec=True)
+    @patch("teuthology.repo_utils.fetch_qa_suite")
+    @patch("teuthology.repo_utils.fetch_teuthology")
+    @patch("teuthology.dispatcher.beanstalk.watch_tube")
+    @patch("teuthology.dispatcher.beanstalk.connect")
+    @patch("os.path.isdir", return_value=True)
+    @patch("teuthology.dispatcher.setup_log_file")
+    def test_main_loop_prep_job_unexpected_error(
+        self, m_setup_log_file, m_isdir, m_connect, m_watch_tube,
+        m_fetch_teuthology, m_fetch_qa_suite, m_job, m_run_job,
+        m_try_push_job_info, m_ls_remote, m_find_dispatcher_processes,
+                       ):
+        # An error that prep_job does not expect (here: a git command failing
+        # inside a broken checkout) must not leave the job buried in beanstalk
+        # and "queued" in paddles: it should be reported dead and deleted.
+        m_find_dispatcher_processes.return_value = {}
+        m_connection = Mock()
+        jobs = self.build_fake_jobs(
+            m_connection,
+            m_job,
+            [
+                'name: name',
+                'name: name\nstop_worker: true',
+            ],
+        )
+        m_connection.reserve.side_effect = jobs
+        m_connect.return_value = m_connection
+        m_fetch_qa_suite.side_effect = subprocess.CalledProcessError(
+            128, ['git', 'reset', '--hard'])
+        dispatcher.main(self.ctx)
+        assert len(m_run_job.call_args_list) == 0
+        assert len(m_try_push_job_info.call_args_list) == len(jobs)
+        for i, job in enumerate(jobs):
+            push_call = m_try_push_job_info.call_args_list[i]
+            assert push_call[0][1]['status'] == 'dead'
+            assert 'Error while preparing job' in push_call[0][1]['failure_reason']
+            job.bury.assert_called_once_with()
+            job.delete.assert_called_once_with()
 
     @pytest.mark.parametrize(
         ["timestamp", "expire", "skip"],

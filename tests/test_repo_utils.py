@@ -229,6 +229,32 @@ class TestRepoUtils(object):
             shutil.rmtree(bare_path, ignore_errors=True)
             shutil.rmtree(bare_path + '.lock', ignore_errors=True)
 
+    def test_enforce_worktree_recreated_when_bare_repo_replaced(self):
+        # Simulate a cleanup job removing the bare repo while the worktree
+        # created from it survives: the worktree's .git file then points at
+        # a worktrees/ entry that no longer exists.
+        bare_path = self.temp_path + '/bare_clone'
+        try:
+            repo_utils.enforce_repo_state(self.repo_url, self.dest_path, 'main',
+                                          dest_clone=bare_path)
+            assert os.path.exists(self.dest_path)
+            shutil.rmtree(bare_path)
+
+            repo_utils.enforce_repo_state(self.repo_url, self.dest_path, 'main',
+                                          dest_clone=bare_path)
+            expected = subprocess.check_output(
+                ('git', 'rev-parse', 'HEAD'),
+                cwd=self.src_path,
+            ).decode().strip()
+            actual = subprocess.check_output(
+                ('git', 'rev-parse', 'HEAD'),
+                cwd=self.dest_path,
+            ).decode().strip()
+            assert actual == expected
+        finally:
+            shutil.rmtree(bare_path, ignore_errors=True)
+            shutil.rmtree(bare_path + '.lock', ignore_errors=True)
+
     def test_simultaneous_access(self):
         count = 5
         with parallel.parallel() as p:

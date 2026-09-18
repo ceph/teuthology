@@ -128,6 +128,21 @@ def main(args):
             try:
                 job_config, teuth_bin_path = prep_job(job_config)
             except SkipJob:
+                # prep_job has already reported the job as dead
+                delete_job(job)
+                continue
+            except Exception as exc:
+                log.exception(
+                    "Unexpected error while preparing job %s; marking it dead",
+                    job_id)
+                report.try_push_job_info(
+                    job_config,
+                    dict(
+                        status='dead',
+                        failure_reason='Error while preparing job: {}'.format(exc),
+                    )
+                )
+                delete_job(job)
                 continue
 
             # lock machines but do not reimage them
@@ -150,6 +165,7 @@ def main(args):
                         )
                     )
                     # Skip this job and continue with the next one
+                    delete_job(job)
                     continue
                 except Exception as e:
                     log.exception("Unexpected exception during lock_machines for job %s", job_id)
@@ -160,6 +176,7 @@ def main(args):
                             failure_reason='Exception during machine locking: {}'.format(str(e))
                         )
                     )
+                    delete_job(job)
                     continue
 
             run_args = [
@@ -203,12 +220,7 @@ def main(args):
                     status='fail',
                     failure_reason=error_message))
 
-            # This try/except block is to keep the worker from dying when
-            # beanstalkc throws a SocketError
-            try:
-                job.delete()
-            except Exception:
-                log.exception("Saw exception while trying to delete job")
+            delete_job(job)
 
             # Successful iteration - reset loop exit counter if it was set
             if loop_exit_count > 0:
@@ -252,6 +264,23 @@ def main(args):
             continue
 
     return worst_returncode
+
+
+def delete_job(job):
+    """
+    Delete a reserved job from the queue.
+
+    The dispatcher buries every job it reserves so that a crash mid-way does
+    not put it back in the ready queue. Once we have either started the job
+    or reported it as dead, the buried copy must be deleted: otherwise it sits
+    in beanstalk forever while paddles keeps showing it as queued.
+    """
+    # This try/except block is to keep the worker from dying when
+    # beanstalkc throws a SocketError
+    try:
+        job.delete()
+    except Exception:
+        log.exception("Saw exception while trying to delete job")
 
 
 def find_dispatcher_processes() -> Dict[str, List[psutil.Process]]:

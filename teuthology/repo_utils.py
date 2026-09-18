@@ -199,8 +199,16 @@ def create_worktree(bare_dir, workspace_dir, ref='FETCH_HEAD'):
         ).stdout.strip()
         log.debug("Workspace directory %s already exists, resetting it to %s",
                   workspace_dir, sha)
-        run_subprocess(['git', 'reset', '--hard', sha], cwd=workspace_dir)
-        return
+        try:
+            run_subprocess(['git', 'reset', '--hard', sha], cwd=workspace_dir)
+            return
+        except subprocess.CalledProcessError:
+            # e.g. the bare repo was deleted and recreated behind our back,
+            # leaving this worktree's .git file pointing at nothing
+            log.warning("Existing checkout %s is unusable; recreating it",
+                        workspace_dir)
+            shutil.rmtree(workspace_dir, ignore_errors=True)
+            prune_bare_repo(bare_dir)
 
     log.debug("Adding new worktree at %s", workspace_dir)
     args = [
