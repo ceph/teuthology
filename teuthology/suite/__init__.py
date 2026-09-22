@@ -44,16 +44,14 @@ def process_args(args):
         'ceph': 'ceph_branch',
         'sha1': 'ceph_sha1',
         'kernel': 'kernel_branch',
-        '<config_yaml>': 'base_yaml_paths',
+        'config_yaml': 'base_yaml_paths',
         'filter': 'filter_in',
     }
     for (key, value) in args.items():
-        # Translate --foo-bar to foo_bar
-        key = key.lstrip('--').replace('-', '_')
         # Rename the key if necessary
         key = rename_args.get(key) or key
         if key == 'suite_branch':
-            value = value or override_arg_defaults('--suite-branch', None)
+            value = value or override_arg_defaults('suite_branch', None)
         if key == 'suite' and value is not None:
             value = normalize_suite_name(value)
         if key == 'suite_relpath' and value is None:
