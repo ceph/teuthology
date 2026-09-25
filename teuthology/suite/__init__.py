@@ -151,6 +151,8 @@ def get_rerun_conf_overrides(conf):
 
     try:
         job0 = run['jobs'][0]
+        ceph_branch = run['branch']
+        ceph_sha1 = run['sha1']
     except IndexError:
         job0 = None
 
@@ -191,6 +193,24 @@ def get_rerun_conf_overrides(conf):
     else:
         log.info('Using rerun no_nested_subset=%s', no_nested_subset)
         conf.no_nested_subset = no_nested_subset
+    if conf.ceph_branch is None:
+        conf.ceph_branch = ceph_branch
+    else:
+        if conf.ceph_branch != ceph_branch:
+            log.warning(f"--ceph specified but does not match the rerun job's branch {ceph_branch}")
+    log.info(f"Using ceph branch={conf.ceph_branch}")
+
+    # Handle sha1
+    if conf.ceph_sha1 is None:
+        conf.ceph_sha1 = ceph_sha1
+        if ceph_sha1:
+            log.info(f"Using rerun ceph sha1={ceph_sha1}")
+    else:
+        if conf.ceph_sha1 != ceph_sha1:
+            log.warning(f"--sha1 specified ({conf.ceph_sha1}) does not match rerun job's sha1 ({ceph_sha1})")
+        else:
+            log.info(f"Using ceph sha1={conf.ceph_sha1}")
+
 
     rerun_filters = get_rerun_filters(run, conf.rerun_statuses)
     if len(rerun_filters['descriptions']) == 0:
