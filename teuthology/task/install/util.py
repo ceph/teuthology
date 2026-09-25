@@ -33,24 +33,6 @@ def _get_local_dir(config, remote):
     return ldir
 
 
-def get_flavor(config):
-    """
-    Determine the flavor to use.
-    """
-    config = config or dict()
-    flavor = config.get('flavor', 'default')
-
-    if config.get('path'):
-        # local dir precludes any other flavors
-        flavor = 'local'
-    else:
-        if config.get('valgrind'):
-            flavor = 'notcmalloc'
-        else:
-            if config.get('coverage'):
-                flavor = 'gcov'
-    return flavor
-
 def _ship_utilities(ctx):
     """
     Write a copy of valgrind.supp to each of the remote sites.  Set executables

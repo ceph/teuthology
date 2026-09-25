@@ -1140,20 +1140,12 @@ def stop_daemons_of_type(ctx, type_, cluster='ceph', timeout=300):
 
 def get_system_type(remote, distro=False, version=False):
     """
-    If distro, return distro.
-    If version, return version
-    If both, return both.
-    If neither, return 'deb' or 'rpm' if distro is known to be one of those
+    Deprecated function, please, call directly from remote:
+
+       teuthology.orchestra.remote.Remote.get_system_type()
+
     """
-    if version:
-        version = remote.os.version
-    if distro and version:
-        return remote.os.name, version
-    if distro:
-        return remote.os.name
-    if version:
-        return version
-    return remote.os.package_type
+    return remote.get_system_type(distro, version)
 
 def get_pkg_type(os_type):
     if os_type in ('centos', 'fedora', 'opensuse', 'rhel', 'sle'):
