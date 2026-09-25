@@ -22,6 +22,15 @@ def get_types():
             types = list(m.get('type') for m in machine)
     return types
 
+def get_default_repos_mask(os_type):
+    mask = None
+    if os_type == 'rocky':
+        mask = '/etc/yum.repos.d/rocky*.repo'
+    elif os_type == 'centos':
+        mask = '/etc/yum.repos.d/centos*.repo'
+    elif os_type == 'opensuse':
+        mask = '/etc/zypp/repos.d/repo-*.repo'
+    return mask
 
 def downburst_executable():
     """
@@ -249,6 +258,46 @@ class Downburst(object):
                 ['passwd', '-d', self.user],
             ]
         }
+        # Ask downburst to add repos
+        repo_dict = None
+        os_type_version = f"{os_type}-{os_version}"
+        disable_repos = False
+        if isinstance(config.downburst, dict) and config.downburst.get('distro', dict):
+            distro = config.downburst.get('distro')
+            repo_a = distro.get(os_type, {})
+            repo_b = distro.get(os_type_version, {})
+            repos = repo_a.get('repo', {}) | repo_b.get('repo', {})
+            disable_default_a = repo_a.get('disable_default', True)
+            disable_repos = repo_b.get('disable_default', disable_default_a)
+        if repos and os_type in ('rocky', 'centos'):
+            # repo must be dictionary of array
+            log.debug(f"Repos for {os_type_version}: {repos}")
+            yum_repos = dict()
+            for repo_key,repo_list in repos.items():
+                for repo in repo_list:
+                    repo_id = repo.get('id')
+                    repo_dict = {
+                        'name': repo.get('name'),
+                        'baseurl': repo.get('baseurl'),
+                    }
+
+                    for repo_param, param_value in repo.items():
+                        # skip mandatory parameters
+                        if repo_param in ('id', 'name', 'baseurl'):
+                            continue
+                        # check extra parameters
+                        if repo_param in ('enabled', 'gpgcheck'):
+                            repo_dict[repo_param] = param_value
+                        else:
+                            log.error(f"Unknown repo parameter {repo_param} for repo '{repo_id}'")
+                    yum_repos |= {repo_id: repo_dict}
+            if yum_repos:
+                user_info['yum_repos'] = yum_repos
+            repo_mask = get_default_repos_mask(os_type)
+            if disable_repos and repo_mask:
+                user_info['runcmd'].extend([
+                    f'sed -i "s/enabled=1/enabled=0/g" {repo_mask}',
+                ])
         # for opensuse-15.2 we need to replace systemd-logger with rsyslog for teuthology
         if os_type == 'opensuse' and os_version == '15.2':
             user_info['runcmd'].extend([
