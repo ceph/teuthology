@@ -1,0 +1,12 @@
+[Unit]
+Description=Teuthology UDN DHCP/NAT gateway
+# NetworkManager-wait-online.service is masked by teuthology-udn-gateway.sh
+# (unreliable on dual-NIC UDN guests); don't order after it.
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/teuthology-udn-gateway.sh
+RemainAfterExit=yes
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,11 @@
+[Unit]
+Description=Teuthology UDN client (DHCP + split DNS)
+# Avoid NetworkManager-wait-online — often failed on dual-NIC UDN guests.
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/teuthology-udn-client.sh
+RemainAfterExit=yes
+[Install]
+WantedBy=multi-user.target
