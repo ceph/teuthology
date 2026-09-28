@@ -1,0 +1,31 @@
+{{- /*
+  Archive HTTP is served on the teuthology node VM (teuthology-archive.service).
+  This Service + Route target that VM; there is no separate archive Deployment.
+*/ -}}
+{{- $port := .Values.archive.port | default 8080 }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: archive
+  labels:
+    app: archive
+spec:
+  selector:
+    app: teuthology
+  ports:
+    - name: http
+      port: 80
+      targetPort: {{ $port }}
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: archive
+  labels:
+    app: archive
+spec:
+  to:
+    kind: Service
+    name: archive
+  port:
+    targetPort: http
