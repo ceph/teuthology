@@ -1,0 +1,8 @@
+{{- /*
+  Dispatcher runs on the teuthology node VM (teuthology-dispatcher.service).
+  Set dispatcher.enabled=true only if you intentionally revive a separate
+  dispatcher VirtualMachinePool (not the default).
+*/ -}}
+{{- if and (hasKey .Values.dispatcher "enabled") .Values.dispatcher.enabled }}
+{{- fail "dispatcher.enabled=true is not supported in the single-node chart; dispatcher runs on the teuthology VM. Set dispatcher.enabled=false (or omit)." }}
+{{- end }}

@@ -1,0 +1,43 @@
+# Tenant NetworkPolicy internal-1 only allows the internal-router-shard.
+# Routes in this cluster are admitted by the default ingresscontroller, so
+# allow all pods from openshift-ingress (and the standard ingress policy-group).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-openshift-ingress
+  labels:
+    app: teuthology
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: openshift-ingress
+        - namespaceSelector:
+            matchLabels:
+              network.openshift.io/policy-group: ingress
+        - namespaceSelector:
+            matchLabels:
+              name: openshift-ingress
+---
+# This chart's own pods/VMs must also reach each other (paddles -> postgres,
+# pulpito/teuthology -> paddles, teuthology -> beanstalk, etc). Some OpenShift
+# projects ship a baseline "allow traffic from the same namespace" policy by
+# default, but this chart does not assume that exists, so it creates one
+# explicitly for portability across clusters/projects.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-same-namespace
+  labels:
+    app: teuthology
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector: {}

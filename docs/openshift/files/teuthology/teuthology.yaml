@@ -1,0 +1,91 @@
+{{- $ns := .Release.Namespace }}
+{{- $domain := .Values.dispatcher.labDomain }}
+{{- $sshUser := include "teuthology.loginName" (.Values.teuthology.users | default list) }}
+{{- $ocp := .Values.openshift | default dict }}
+{{- $dispPath := .Values.dispatcher.path | default dict }}
+{{- $tRoot := .Values.teuthology.rootDisk | default dict }}
+{{- $archiveBase := .archiveBase | default .Values.archive.path | default $dispPath.archive | default (printf "/home/%s/archive" $sshUser) }}
+{{- $teuthologyPath := .teuthologyPath | default .Values.teuthology.installPath | default (printf "/home/%s/teuthology" $sshUser) }}
+{{- $srcBase := $dispPath.src | default .Values.teuthology.srcBasePath | default (printf "/home/%s/src" $sshUser) }}
+{{- $sshKey := printf "/home/%s/.ssh/id_ed25519" $sshUser }}
+{{- $rootSc := $ocp.root_storage_class | default $tRoot.storageClassName | default .Values.teuthology.storageClassName }}
+{{- $dataSc := $ocp.data_storage_class | default $rootSc }}
+{{- $dsNs := $ocp.datasource_namespace | default $ns }}
+{{- /* Guest SSH pubs: openshift.ssh_authorized_keys, else users[].sshKey.publicKey */ -}}
+{{- $sshAuthKeys := list }}
+{{- if $ocp.ssh_authorized_keys }}
+{{- $sshAuthKeys = $ocp.ssh_authorized_keys }}
+{{- else }}
+{{- range .Values.teuthology.users | default list }}
+{{- $pub := dig "sshKey" "publicKey" "" . }}
+{{- if $pub }}
+{{- $sshAuthKeys = append $sshAuthKeys $pub }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- /* Default DataSource map matches chart-local dataSources[].name (not cluster image names). */ -}}
+{{- $defaultDatasources := dict "ubuntu/22.04" "ubuntu-22.04" "ubuntu/24.04" "ubuntu-24.04" "rocky/10" "rocky-10" "centos/9.stream" "centos-9.stream" }}
+{{- $datasources := $ocp.datasources | default $defaultDatasources }}
+{{- $volumes := list }}
+{{- if hasKey $ocp "volumes" }}
+{{- $volumes = $ocp.volumes }}
+{{- end }}
+queue_host: beanstalk.{{ $ns }}.svc.cluster.local
+queue_port: 11300
+lock_server: http://paddles.{{ $ns }}.svc.cluster.local:8080
+results_server: http://paddles.{{ $ns }}.svc.cluster.local:8080
+results_ui_server: http://pulpito.{{ $ns }}.svc.cluster.local:8081/
+lab_domain: {{ $domain | quote }}
+teuthology_path: {{ $teuthologyPath | quote }}
+src_base_path: {{ $srcBase | quote }}
+archive_base: {{ $archiveBase | quote }}
+reserve_machines: 0
+verify_host_keys: false
+{{- if $sshKey }}
+ssh_key: {{ $sshKey | quote }}
+{{- end }}
+openshift:
+  namespace: {{ $ns }}
+  machine_types: ['{{ .Values.dispatcher.tube }}']
+  user_data: teuthology/ocp/user_data/ocp-{os_type}-{os_version}-user-data.txt
+  udn_name: {{ .Values.udn.name | quote }}
+  udn_binding: {{ $ocp.udn_binding | default "l2bridge" | quote }}
+  datasource_namespace: {{ $dsNs | quote }}
+  datasources:
+{{- range $key, $val := $datasources }}
+    {{ $key }}: {{ $val | quote }}
+{{- end }}
+{{- if $volumes }}
+  volumes:
+{{ $volumes | toYaml | indent 4 }}
+{{- else }}
+  volumes: []
+{{- end }}
+{{- if $sshAuthKeys }}
+  ssh_authorized_keys:
+{{- range $sshAuthKeys }}
+    - {{ . | quote }}
+{{- end }}
+{{- end }}
+  vcpus: {{ $ocp.vcpus | default 4 }}
+  ram: {{ $ocp.ram | default "8Gi" | quote }}
+  root_storage_size: {{ $ocp.root_storage_size | default "40Gi" | quote }}
+  timeout: {{ $ocp.timeout | default 900 }}
+{{- if $rootSc }}
+  root_storage_class: {{ $rootSc | quote }}
+{{- end }}
+{{- if $dataSc }}
+  data_storage_class: {{ $dataSc | quote }}
+{{- end }}
+{{- if $ocp.server }}
+  server: {{ $ocp.server | quote }}
+{{- end }}
+{{- if $ocp.token }}
+  token: {{ $ocp.token | quote }}
+{{- end }}
+{{- if $ocp.certificate_authority_data }}
+  certificate_authority_data: {{ $ocp.certificate_authority_data | quote }}
+{{- end }}
+{{- if or (eq $ocp.insecure_skip_tls_verify true) (eq (toString $ocp.insecure_skip_tls_verify | lower) "true") }}
+  insecure_skip_tls_verify: true
+{{- end }}

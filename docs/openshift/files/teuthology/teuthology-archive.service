@@ -1,0 +1,18 @@
+{{- $user := include "teuthology.loginName" (.Values.teuthology.users | default list) }}
+{{- $archivePath := .Values.archive.path | default (printf "/home/%s/archive" $user) }}
+[Unit]
+Description=teuthology job archive (HTTP)
+After=teuthology-udn-client.service
+Wants=teuthology-udn-client.service
+[Service]
+Type=simple
+User={{ $user }}
+Group={{ $user }}
+WorkingDirectory={{ $archivePath }}
+ExecStart=/usr/bin/python3 -m http.server {{ .Values.archive.port | default 8080 }} \
+  --bind 0.0.0.0 \
+  --directory {{ $archivePath }}
+Restart=on-failure
+RestartSec=5
+[Install]
+WantedBy=multi-user.target

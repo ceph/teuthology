@@ -1,0 +1,30 @@
+{{- $user := include "teuthology.loginName" (.Values.teuthology.users | default list) }}
+{{- $home := printf "/home/%s" $user }}
+{{- $dispPath := .Values.dispatcher.path | default dict }}
+{{- $archivePath := $dispPath.archive | default .Values.archive.path | default (printf "%s/archive" $home) }}
+[Unit]
+Description=teuthology-dispatcher
+# Do NOT add After=/Wants=teuthology-bootstrap.service: bootstrap.sh starts
+# this unit itself (systemctl enable --now) from inside its own ExecStart, so
+# ordering after bootstrap.service would deadlock — bootstrap.service's start
+# job can never reach "done" while its own script is blocked waiting for this
+# unit's start job, which systemd defers until bootstrap.service is "done".
+After=teuthology-udn-client.service
+Wants=teuthology-udn-client.service
+[Service]
+Type=simple
+User={{ $user }}
+Group={{ $user }}
+WorkingDirectory={{ $home }}/teuthology
+Environment=HOME={{ $home }}
+Environment=PATH={{ $home }}/teuthology/.venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=VIRTUAL_ENV={{ $home }}/teuthology/.venv
+# Wrapper in /usr/local: systemd cannot ExecStart binaries under a 0700 home.
+ExecStart=/usr/local/bin/teuthology-dispatcher -v \
+  --archive-dir {{ $archivePath }} \
+  --tube {{ .Values.dispatcher.tube }} \
+  --log-dir {{ $home }}/log
+Restart=on-failure
+RestartSec=10
+[Install]
+WantedBy=multi-user.target
