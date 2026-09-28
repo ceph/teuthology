@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: teuthology-archive
+  labels:
+    app: archive
+spec:
+  accessModes:
+    - {{ .Values.archive.accessMode }}
+  {{- if .Values.archive.storageClassName }}
+  storageClassName: {{ .Values.archive.storageClassName }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.archive.storage }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: archive
+  labels:
+    app: archive
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: archive
+  template:
+    metadata:
+      labels:
+        app: archive
+    spec:
+      containers:
+        - name: archive
+          image: {{ .Values.archive.image }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              cp /usr/local/apache2/conf/httpd.conf /tmp/httpd.conf
+              sed -i 's/^Listen 80$/Listen 8080/' /tmp/httpd.conf
+              printf '\nPidFile /tmp/httpd.pid\nErrorLog /tmp/error_log\nCustomLog /tmp/access_log common\nServerName localhost\n' >> /tmp/httpd.conf
+              exec httpd-foreground -f /tmp/httpd.conf
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: archive
+              mountPath: /usr/local/apache2/htdocs
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 30
+      volumes:
+        - name: archive
+          persistentVolumeClaim:
+            claimName: teuthology-archive
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: archive
+  labels:
+    app: archive
+spec:
+  selector:
+    app: archive
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: archive
+  labels:
+    app: archive
+spec:
+  to:
+    kind: Service
+    name: archive
+  port:
+    targetPort: 8080

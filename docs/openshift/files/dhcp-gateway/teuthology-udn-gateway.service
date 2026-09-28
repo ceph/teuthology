@@ -1,0 +1,10 @@
+[Unit]
+Description=Teuthology UDN DHCP/NAT gateway
+After=network-online.target NetworkManager-wait-online.service
+Wants=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/teuthology-udn-gateway.sh
+RemainAfterExit=yes
+[Install]
+WantedBy=multi-user.target

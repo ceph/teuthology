@@ -1,0 +1,37 @@
+{{- $ocp := .Values.openshift | default dict }}
+queue_host: beanstalk
+queue_port: 11300
+lock_server: http://paddles:8080
+results_server: http://paddles:8080
+results_ui_server: http://pulpito:8081/
+teuthology_path: /teuthology
+archive_base: /archive
+reserve_machines: 0
+lab_domain: {{ .Values.dispatcher.labDomain | quote }}
+openshift:
+  namespace: {{ .Release.Namespace }}
+  machine_types: ['{{ .Values.dispatcher.tube }}']
+  user_data: teuthology/ocp/user_data/ocp-{os_type}-{os_version}-user-data.txt
+  udn_name: {{ .Values.udn.name | quote }}
+  udn_binding: {{ $ocp.udn_binding | default "l2bridge" | quote }}
+  vcpus: {{ $ocp.vcpus | default 4 }}
+  ram: {{ $ocp.ram | default "8Gi" | quote }}
+  root_storage_size: {{ $ocp.root_storage_size | default "40Gi" | quote }}
+{{- if $ocp.root_storage_class }}
+  root_storage_class: {{ $ocp.root_storage_class | quote }}
+{{- end }}
+{{- if $ocp.data_storage_class }}
+  data_storage_class: {{ $ocp.data_storage_class | quote }}
+{{- end }}
+{{- if $ocp.datasource_namespace }}
+  datasource_namespace: {{ $ocp.datasource_namespace | quote }}
+{{- end }}
+{{- if $ocp.server }}
+  server: {{ $ocp.server | quote }}
+{{- end }}
+{{- if $ocp.token }}
+  token: {{ $ocp.token | quote }}
+{{- end }}
+{{- if $ocp.certificate_authority_data }}
+  certificate_authority_data: {{ $ocp.certificate_authority_data | quote }}
+{{- end }}

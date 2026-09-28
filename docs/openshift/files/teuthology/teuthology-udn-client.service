@@ -1,0 +1,10 @@
+[Unit]
+Description=Teuthology UDN client (DHCP + split DNS)
+After=network-online.target NetworkManager-wait-online.service
+Wants=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/teuthology-udn-client.sh
+RemainAfterExit=yes
+[Install]
+WantedBy=multi-user.target

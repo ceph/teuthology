@@ -1,0 +1,174 @@
+{{- /*
+  Dual-NIC KubeVirt VM for running teuthology CLI on the UDN.
+  Masquerade reaches paddles/beanstalk; UDN DHCP/DNS reaches target-*.<labDomain>.
+  Fedora DataSource (same as dhcp-gateway) — teuthology-dev is a container image, not a VM disk.
+*/ -}}
+{{- if .Values.teuthology.enabled | default true }}
+{{- $vmName := .Values.teuthology.name | default "teuthology" }}
+{{- $sshUser := .Values.teuthology.sshUser | default "teuthology" }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $vmName }}-cloudinit
+  labels:
+    app: teuthology
+type: Opaque
+stringData:
+  userdata: |
+    #cloud-config
+    hostname: {{ $vmName }}
+    manage_etc_hosts: true
+    disable_root: false
+    ssh_pwauth: true
+    users:
+      - name: {{ $sshUser | quote }}
+        sudo: ALL=(root) NOPASSWD:ALL
+        shell: /bin/bash
+        lock_passwd: false
+        plain_text_passwd: {{ .Values.teuthology.password | default "passwd" | quote }}
+        ssh_authorized_keys:
+{{- range .Values.teuthology.sshAuthorizedKeys }}
+          - {{ . | quote }}
+{{- end }}
+    chpasswd:
+      expire: false
+      users:
+        - name: {{ $sshUser | quote }}
+          password: {{ .Values.teuthology.password | default "passwd" | quote }}
+          type: text
+        - name: root
+          password: {{ .Values.teuthology.password | default "passwd" | quote }}
+          type: text
+    write_files:
+      - path: /etc/teuthology.yaml
+        permissions: "0644"
+        content: |
+{{ tpl (.Files.Get "files/teuthology/teuthology.yaml") . | trim | indent 10 }}
+      - path: /usr/local/sbin/teuthology-udn-client.sh
+        permissions: "0755"
+        content: |
+{{ tpl (.Files.Get "files/teuthology/teuthology-udn-client.sh") . | indent 10 }}
+      - path: /usr/local/sbin/teuthology-bootstrap.sh
+        permissions: "0755"
+        content: |
+{{ tpl (.Files.Get "files/teuthology/teuthology-bootstrap.sh") . | indent 10 }}
+      - path: /etc/systemd/system/teuthology-udn-client.service
+        permissions: "0644"
+        content: |
+{{ .Files.Get "files/teuthology/teuthology-udn-client.service" | indent 10 }}
+      - path: /etc/systemd/system/teuthology-bootstrap.service
+        permissions: "0644"
+        content: |
+{{ .Files.Get "files/teuthology/teuthology-bootstrap.service" | indent 10 }}
+    package_update: false
+    package_upgrade: false
+    runcmd:
+      - timedatectl set-timezone Etc/UTC || true
+      - systemctl daemon-reload
+      - systemctl enable --now teuthology-udn-client.service
+      - systemctl enable --now teuthology-bootstrap.service
+    final_message: "teuthology CLI VM ready (UDN client; bootstrap may still be running)"
+---
+apiVersion: pool.kubevirt.io/v1alpha1
+kind: VirtualMachinePool
+metadata:
+  name: {{ $vmName }}
+  labels:
+    app: teuthology
+spec:
+  replicas: {{ .Values.teuthology.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: teuthology
+  virtualMachineTemplate:
+    metadata:
+      labels:
+        app: teuthology
+    spec:
+      runStrategy: Always
+      dataVolumeTemplates:
+        - metadata:
+            name: {{ $vmName }}-root
+          spec:
+            sourceRef:
+              kind: DataSource
+              name: {{ .Values.teuthology.dataSource.name | default .Values.dhcpGateway.dataSource.name | default "fedora" }}
+              {{- $dsNs := .Values.teuthology.dataSource.namespace | default .Values.dhcpGateway.dataSource.namespace }}
+              {{- if $dsNs }}
+              namespace: {{ $dsNs }}
+              {{- end }}
+            storage:
+              accessModes:
+                - {{ .Values.teuthology.accessMode | default .Values.dhcpGateway.accessMode | default "ReadWriteMany" }}
+              volumeMode: Filesystem
+              {{- $sc := .Values.teuthology.storageClassName | default .Values.dhcpGateway.storageClassName }}
+              {{- if $sc }}
+              storageClassName: {{ $sc }}
+              {{- end }}
+              resources:
+                requests:
+                  storage: {{ .Values.teuthology.rootDiskSize | default "40Gi" }}
+      template:
+        metadata:
+          labels:
+            app: teuthology
+        spec:
+          domain:
+            cpu:
+              cores: {{ .Values.teuthology.cores | default 4 }}
+            memory:
+              guest: {{ .Values.teuthology.memory | default "8Gi" | quote }}
+            resources:
+              requests:
+                cpu: {{ .Values.teuthology.cores | default 4 | quote }}
+                memory: {{ .Values.teuthology.memory | default "8Gi" | quote }}
+              limits:
+                cpu: {{ .Values.teuthology.cores | default 4 | quote }}
+                memory: {{ .Values.teuthology.memory | default "8Gi" | quote }}
+            devices:
+              disks:
+                - name: rootdisk
+                  bootOrder: 1
+                  disk:
+                    bus: virtio
+                - name: cloudinitdisk
+                  disk:
+                    bus: virtio
+              interfaces:
+                - name: default
+                  masquerade: {}
+                - name: {{ .Values.udn.name }}
+                  macAddress: {{ .Values.teuthology.mac | quote }}
+                  binding:
+                    name: l2bridge
+          networks:
+            - name: default
+              pod: {}
+            - name: {{ .Values.udn.name }}
+              multus:
+                networkName: {{ .Values.udn.name }}
+          volumes:
+            - name: cloudinitdisk
+              cloudInitNoCloud:
+                secretRef:
+                  name: {{ $vmName }}-cloudinit
+            - name: rootdisk
+              dataVolume:
+                name: {{ $vmName }}-root
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $vmName }}
+  labels:
+    app: teuthology
+spec:
+  type: LoadBalancer
+  selector:
+    app: teuthology
+  ports:
+    - name: ssh
+      protocol: TCP
+      port: 22
+      targetPort: 22
+{{- end }}

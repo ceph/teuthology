@@ -1,0 +1,11 @@
+[Unit]
+Description=Clone and bootstrap teuthology
+After=network-online.target teuthology-udn-client.service
+Wants=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/teuthology-bootstrap.sh
+RemainAfterExit=yes
+TimeoutStartSec=1h
+[Install]
+WantedBy=multi-user.target
