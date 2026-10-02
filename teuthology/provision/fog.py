@@ -347,16 +347,29 @@ class FOG(object):
                     nudges += 1
                     self.log.warning(
                         "Deploy task was never picked up after %ds (host "
-                        "likely fell through PXE to local boot); power "
-                        "cycling %s again (nudge %d/2)",
+                        "likely fell through PXE to local boot); rebooting "
+                        "%s again (nudge %d/2)",
                         int(elapsed), self.shortname, nudges,
                     )
+                    # A clean OS reboot PXEs reliably where an IPMI power
+                    # cycle intermittently does not (trial162 missed three
+                    # cycles in a row, then PXE'd on the first clean
+                    # reboot), and the fallen-through host is usually up
+                    # and reachable; the power cycle is the fallback.
                     try:
-                        self.remote.console.power_off()
-                        self.remote.console.power_on()
-                    except Exception as e:
-                        self.log.error(
-                            f"power cycle failed but continuing: {e}")
+                        if self.os_type.lower() == 'windows':
+                            self.remote.run(
+                                args='shutdown /r /t 0', timeout=60)
+                        else:
+                            self.remote.run(
+                                args='sudo shutdown -r now', timeout=60)
+                    except Exception:
+                        try:
+                            self.remote.console.power_off()
+                            self.remote.console.power_on()
+                        except Exception as e:
+                            self.log.error(
+                                f"power cycle failed but continuing: {e}")
 
     def cancel_deploy_task(self,  task_id):
         """ Cancel an active deploy task """
