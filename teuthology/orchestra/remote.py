@@ -338,8 +338,28 @@ class RemoteShell(object):
             except CommandFailedError:
                 pass
 
-            lsb_release = self.sh('lsb_release -a').strip()
-            self._os = OS.from_lsb_release(lsb_release)
+            try:
+                lsb_release = self.sh('lsb_release -a').strip()
+                self._os = OS.from_lsb_release(lsb_release)
+                return self._os
+            except CommandFailedError:
+                pass
+
+            # The Windows testnode images have no os-release or
+            # lsb_release, and their default shell is PowerShell: ask the
+            # registry.  (On a Linux host with neither of the above this
+            # probe fails too, and its CommandFailedError propagates.)
+            product = self.sh(
+                '(Get-ItemProperty "HKLM:\\SOFTWARE\\Microsoft\\Windows NT'
+                '\\CurrentVersion").ProductName'
+            ).strip()
+            match = re.search(r'\b(\d{4})\b', product)
+            if 'windows' not in product.lower() or not match:
+                raise RuntimeError(
+                    f"Cannot determine OS of {self.shortname}: "
+                    f"ProductName probe answered '{product}'"
+                )
+            self._os = OS(name='windows', version=match.group(1))
         return self._os
 
     @property

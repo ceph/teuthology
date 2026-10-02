@@ -99,6 +99,12 @@ DISTRO_CODENAME_MAP = {
         "15.7": "sle",
         "16.0": "sle",
     },
+    # Windows Server has no codenames; the entry keeps OS('windows', ...)
+    # constructible (the FOG provisioner deploys <type>_windows_<version>
+    # images to bare-metal testnodes)
+    "windows": {
+        "2025": "windows",
+    },
 }
 
 DEFAULT_OS_VERSION = dict(
@@ -110,7 +116,8 @@ DEFAULT_OS_VERSION = dict(
     rhel="8.6",
     rocky="9.7",
     alma="9.7",
-    debian='8.0'
+    debian='8.0',
+    windows="2025",
 )
 
 

@@ -25,7 +25,7 @@ from teuthology.orchestra import remote
 log = logging.getLogger(__name__)
 
 
-def update_nodes(nodes, reset_os=False):
+def update_nodes(nodes, reset_os=False, os_info=None):
     for node in nodes:
         remote = teuthology.orchestra.remote.Remote(
             canonicalize_hostname(node))
@@ -35,6 +35,14 @@ def update_nodes(nodes, reset_os=False):
             inventory_info['os_type'] = ''
             inventory_info['os_version'] = ''
             inventory_info['name'] = remote.hostname
+        elif os_info:
+            # The caller knows what it just installed; used for testnodes
+            # that inventory_info cannot probe (Windows: no ubuntu user,
+            # no uname, no /etc/os-release)
+            log.info("Updating [%s]: set os type and version on server", node)
+            inventory_info = dict(os_info)
+            inventory_info['name'] = remote.hostname
+            inventory_info['up'] = True
         else:
             log.info("Updating [%s]: set os type and version on server", node)
             inventory_info = remote.inventory_info
@@ -400,7 +408,17 @@ def reimage_machines(ctx, machines, machine_type):
                         machine, machine_type)
                 reimaged[machine] = machines[machine]
     reimaged = do_update_keys(list(reimaged.keys()))[1]
-    update_nodes(reimaged)
+    os_type = misc.get_distro(ctx)
+    if os_type.lower() == 'windows':
+        # A freshly-imaged Windows node cannot be probed the way
+        # inventory_info does (ubuntu user, uname, /etc/os-release);
+        # record what was just installed instead.
+        update_nodes(reimaged, os_info=dict(
+            os_type=os_type,
+            os_version=misc.get_distro_version(ctx),
+        ))
+    else:
+        update_nodes(reimaged)
     return reimaged
 
 
