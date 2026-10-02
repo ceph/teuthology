@@ -574,7 +574,10 @@ class Remote(RemoteShell):
         if self.ssh.get_transport() is None:
             return False
         try:
-            self.run(args="true")
+            # 'exit 0' rather than 'true': it means the same thing to every
+            # POSIX shell, and the Windows testnode images' default shell is
+            # PowerShell, which has no 'true' builtin
+            self.run(args="exit 0")
         except Exception:
             return False
         return self.ssh.get_transport().is_active()
