@@ -48,7 +48,18 @@ def main(args):
     def reimage_node(ctx, machine_name, machine_type):
         ops.update_nodes([machine_name], True)
         reimage(ctx, machine_name, machine_type)
-        ops.update_nodes([machine_name])
+        if (ctx.os_type or '').lower() == 'windows':
+            # A Windows node cannot be probed the way inventory_info does
+            # (ubuntu user, uname, /etc/os-release) -- worse, the repeated
+            # failed ubuntu@ logins trip Windows OpenSSH's per-source
+            # penalties; record what was just installed instead, as
+            # lock.ops.reimage_machines does
+            ops.update_nodes([machine_name], os_info=dict(
+                os_type=ctx.os_type,
+                os_version=ctx.os_version,
+            ))
+        else:
+            ops.update_nodes([machine_name])
         log.debug("Node '%s' reimaging is complete", machine_name)
 
     with parallel() as p:
