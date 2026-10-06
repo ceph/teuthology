@@ -331,15 +331,8 @@ class RemoteShell(object):
     @property
     def os(self):
         if not hasattr(self, '_os'):
-            try:
-                os_release = self.sh('cat /etc/os-release').strip()
-                self._os = OS.from_os_release(os_release)
-                return self._os
-            except CommandFailedError:
-                pass
-
-            lsb_release = self.sh('lsb_release -a').strip()
-            self._os = OS.from_lsb_release(lsb_release)
+            os_release = self.sh('cat /etc/os-release').strip()
+            self._os = OS.from_os_release(os_release)
         return self._os
 
     @property
