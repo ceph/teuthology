@@ -474,6 +474,29 @@ class TestFOG(object):
             local_mocks['deploy_task_active'].side_effect = [True, False]
             local_mocks['deploy_task_unclaimed'].return_value = True
             obj.wait_for_deploy_task(9)
+        # clean reboot over ssh is tried first; IPMI only on ssh failure
+        assert self.mocks['m_Remote_run'].called
+        console = self.mocks['m_Remote_console'].return_value
+        assert not console.power_off.called
+
+    def test_wait_for_deploy_task_nudge_ipmi_fallback(self):
+        self.mocks['m_Remote_hostname'].return_value = 'name.fqdn'
+        obj = self.klass('name.fqdn', 'type', '1.0')
+        t0 = datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc)
+        later = t0 + datetime.timedelta(seconds=400)
+        with patch.multiple(
+            'teuthology.provision.fog.FOG',
+            deploy_task_active=DEFAULT,
+            deploy_task_unclaimed=DEFAULT,
+        ) as local_mocks, patch(
+            'teuthology.provision.fog.datetime',
+        ) as m_dt:
+            m_dt.datetime.now.side_effect = [t0, later, later, later]
+            m_dt.timezone = datetime.timezone
+            local_mocks['deploy_task_active'].side_effect = [True, False]
+            local_mocks['deploy_task_unclaimed'].return_value = True
+            self.mocks['m_Remote_run'].side_effect = Exception('ssh down')
+            obj.wait_for_deploy_task(9)
         console = self.mocks['m_Remote_console'].return_value
         assert console.power_off.called
         assert console.power_on.called
