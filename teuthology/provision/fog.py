@@ -312,16 +312,54 @@ class FOG(object):
             [task['id'] == task_id for task in host_tasks]
         )
 
+    def deploy_task_unclaimed(self, task_id):
+        """
+        :param task_id: The id of the task to query
+        :returns: True if the task is still queued and no host has ever
+                  checked in for it
+        """
+        for task in self.get_deploy_tasks():
+            if task['id'] == task_id:
+                return str(task.get('stateID')) == '1' and \
+                    str(task.get('checkInTime') or '').startswith('0000')
+        return False
+
     def wait_for_deploy_task(self, task_id):
         """
         Wait until the specified task is no longer active (i.e., it has
-        completed)
+        completed), re-power-cycling a host whose task is never picked up.
+
+        The trial sleds intermittently skip PXE on a power cycle (the NIC
+        link is not up in time for the PXE DHCP window) and boot their
+        local disk instead, leaving the deploy task queued with no
+        check-in until this wait times out; ceph-build's sepia-fog-images
+        job grew the same rescue.
         """
         self.log.info("Waiting for deploy to finish")
+        nudges = 0
+        started = datetime.datetime.now(datetime.timezone.utc)
         with safe_while(sleep=15, tries=120, timeout=config.fog_reimage_timeout) as proceed:
             while proceed():
                 if not self.deploy_task_active(task_id):
                     break
+                elapsed = (
+                    datetime.datetime.now(datetime.timezone.utc) - started
+                ).total_seconds()
+                if nudges < 2 and elapsed > 300 * (nudges + 1) and \
+                        self.deploy_task_unclaimed(task_id):
+                    nudges += 1
+                    self.log.warning(
+                        f"Deploy task was never picked up after "
+                        f"{int(elapsed)}s (host likely fell through PXE to "
+                        f"local boot); power cycling {self.shortname} "
+                        f"again (nudge {nudges}/2)"
+                    )
+                    try:
+                        self.remote.console.power_off()
+                        self.remote.console.power_on()
+                    except Exception as e:
+                        self.log.error(
+                            f"power cycle failed but continuing: {e}")
 
     def cancel_deploy_task(self,  task_id):
         """ Cancel an active deploy task """
