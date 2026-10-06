@@ -99,7 +99,20 @@ DISTRO_CODENAME_MAP = {
         "15.7": "sle",
         "16.0": "sle",
     },
+    # Windows Server has no codenames; the entry keeps OS('windows', ...)
+    # constructible (the FOG provisioner deploys <type>_windows_<version>
+    # images to bare-metal testnodes)
+    "windows": {
+        "2025": "windows",
+    },
 }
+
+# PowerShell probe for a Windows host's product name; Windows has no
+# /etc/os-release, and the lab's Windows images default to PowerShell
+WINDOWS_PRODUCT_NAME_COMMAND = (
+    '(Get-ItemProperty "HKLM:\\SOFTWARE\\Microsoft\\Windows NT'
+    '\\CurrentVersion").ProductName'
+)
 
 DEFAULT_OS_VERSION = dict(
     ubuntu="22.04",
@@ -110,7 +123,8 @@ DEFAULT_OS_VERSION = dict(
     rhel="8.6",
     rocky="9.7",
     alma="9.7",
-    debian='8.0'
+    debian='8.0',
+    windows="2025",
 )
 
 
@@ -219,6 +233,28 @@ class OS(object):
             name = 'alma'
         obj = cls(name=name, version=version)
         return obj
+
+    @classmethod
+    def from_windows_product_name(cls, product_name):
+        """
+        Parse a Windows host's registry ProductName (see
+        WINDOWS_PRODUCT_NAME_COMMAND) and populate attributes
+
+        Given a string like:
+            Windows Server 2025 Standard Evaluation
+
+        Attributes will be:
+            name = 'windows'
+            version = '2025'
+
+        :raises ValueError: when the string does not look like a Windows
+                            product name with a release year in it
+        """
+        match = re.search(r'\b(\d{4})\b', product_name)
+        if 'windows' not in product_name.lower() or not match:
+            raise ValueError(
+                f"Cannot parse a Windows version from {product_name!r}")
+        return cls(name='windows', version=match.group(1))
 
 
     @classmethod

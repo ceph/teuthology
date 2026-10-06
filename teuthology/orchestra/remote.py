@@ -8,7 +8,7 @@ from teuthology.contextutil import safe_while
 from teuthology.orchestra import run
 from teuthology.orchestra import connection
 from teuthology.orchestra import console
-from teuthology.orchestra.opsys import OS
+from teuthology.orchestra.opsys import OS, WINDOWS_PRODUCT_NAME_COMMAND
 import teuthology.provision
 from teuthology import misc
 from teuthology.exceptions import CommandFailedError, UnitTestError
@@ -338,8 +338,12 @@ class RemoteShell(object):
             except CommandFailedError:
                 pass
 
-            lsb_release = self.sh('lsb_release -a').strip()
-            self._os = OS.from_lsb_release(lsb_release)
+            try:
+                product = self.sh(WINDOWS_PRODUCT_NAME_COMMAND).strip()
+                self._os = OS.from_windows_product_name(product)
+            except (CommandFailedError, ValueError) as e:
+                raise RuntimeError(
+                    f"Cannot determine OS of {self.shortname}") from e
         return self._os
 
     @property
@@ -554,7 +558,10 @@ class Remote(RemoteShell):
         if self.ssh.get_transport() is None:
             return False
         try:
-            self.run(args="true")
+            # 'exit 0' rather than 'true': it means the same thing to every
+            # POSIX shell, and the Windows testnode images' default shell is
+            # PowerShell, which has no 'true' builtin
+            self.run(args="exit 0")
         except Exception:
             return False
         return self.ssh.get_transport().is_active()

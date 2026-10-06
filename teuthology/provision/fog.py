@@ -15,7 +15,7 @@ import teuthology.orchestra
 
 from teuthology.config import config
 from teuthology.contextutil import safe_while
-from teuthology.exceptions import MaxWhileTries
+from teuthology.exceptions import CommandFailedError, MaxWhileTries
 from teuthology.orchestra.opsys import OS
 from teuthology import misc
 
@@ -63,8 +63,17 @@ class FOG(object):
     timestamp_format = '%Y-%m-%d %H:%M:%S'
 
     def __init__(self, name, os_type, os_version):
-        self.remote = teuthology.orchestra.remote.Remote(
-            misc.canonicalize_hostname(name))
+        # Windows images carry Win32-OpenSSH with PowerShell as the default
+        # shell; the account the lab bakes keys for is Administrator, not
+        # ubuntu.  The name may arrive with ubuntu@ already embedded, which
+        # canonicalize_hostname keeps over its user argument, so strip it
+        # first.
+        if os_type == 'windows':
+            name = misc.canonicalize_hostname(
+                name.rsplit('@', 1)[-1], user='Administrator')
+        else:
+            name = misc.canonicalize_hostname(name)
+        self.remote = teuthology.orchestra.remote.Remote(name)
         self.name = self.remote.hostname
         self.shortname = self.remote.shortname
         self.os_type = os_type
@@ -93,8 +102,15 @@ class FOG(object):
         except Exception:
             self.cancel_deploy_task(task_id)
             raise
-        self._wait_for_ready()
-        self._fix_hostname()
+        if self.os_type == 'windows':
+            # No sentinel file and no _fix_hostname: the FOG client baked
+            # into the Windows images renames each deployed host to its FOG
+            # host record's name and reboots it, so coming up as itself IS
+            # the readiness signal.
+            self._wait_for_windows_ready()
+        else:
+            self._wait_for_ready()
+            self._fix_hostname()
         self._verify_installed_os()
         self.log.info("Deploy complete!")
 
@@ -296,16 +312,67 @@ class FOG(object):
             [task['id'] == task_id for task in host_tasks]
         )
 
+    def deploy_task_unclaimed(self, task_id):
+        """
+        :param task_id: The id of the task to query
+        :returns: True if the task is still queued and no host has ever
+                  checked in for it
+        """
+        for task in self.get_deploy_tasks():
+            if task['id'] == task_id:
+                return str(task.get('stateID')) == '1' and \
+                    str(task.get('checkInTime') or '').startswith('0000')
+        return False
+
     def wait_for_deploy_task(self, task_id):
         """
         Wait until the specified task is no longer active (i.e., it has
-        completed)
+        completed), re-power-cycling a host whose task is never picked up.
+
+        The trial sleds intermittently skip PXE on a power cycle (the NIC
+        link is not up in time for the PXE DHCP window) and boot their
+        local disk instead, leaving the deploy task queued with no
+        check-in until this wait times out; ceph-build's sepia-fog-images
+        job grew the same rescue.
         """
         self.log.info("Waiting for deploy to finish")
+        nudges = 0
+        started = datetime.datetime.now(datetime.timezone.utc)
         with safe_while(sleep=15, tries=120, timeout=config.fog_reimage_timeout) as proceed:
             while proceed():
                 if not self.deploy_task_active(task_id):
                     break
+                elapsed = (
+                    datetime.datetime.now(datetime.timezone.utc) - started
+                ).total_seconds()
+                if nudges < 2 and elapsed > 300 * (nudges + 1) and \
+                        self.deploy_task_unclaimed(task_id):
+                    nudges += 1
+                    self.log.warning(
+                        f"Deploy task was never picked up after "
+                        f"{int(elapsed)}s (host likely fell through PXE to "
+                        f"local boot); rebooting {self.shortname} again "
+                        f"(nudge {nudges}/2)"
+                    )
+                    # A clean OS reboot PXEs reliably where an IPMI power
+                    # cycle intermittently does not (trial162 missed three
+                    # cycles in a row, then PXE'd on the first clean
+                    # reboot), and the fallen-through host is usually up
+                    # and reachable; the power cycle is the fallback.
+                    try:
+                        if self.os_type == 'windows':
+                            self.remote.run(
+                                args='shutdown /r /t 0', timeout=60)
+                        else:
+                            self.remote.run(
+                                args='sudo shutdown -r now', timeout=60)
+                    except Exception:
+                        try:
+                            self.remote.console.power_off()
+                            self.remote.console.power_on()
+                        except Exception as e:
+                            self.log.error(
+                                f"power cycle failed but continuing: {e}")
 
     def cancel_deploy_task(self,  task_id):
         """ Cancel an active deploy task """
@@ -385,6 +452,54 @@ class FOG(object):
                         EOFError,
                     ) as e:
                         log.error(f"{e} on {self.shortname}")
+        self.log.info("Node is ready")
+
+    def _wait_for_windows_ready(self):
+        """
+        Wait for a reimaged Windows node to come up as itself.
+
+        The node first boots under the hostname of whatever host the image
+        was captured from; the FOG client's HostnameChanger then renames it
+        to its FOG host record's name and reboots, so ssh flaps once before
+        the node settles.  Keep reconnecting until `hostname` answers with
+        our shortname.
+        """
+        action = f"wait for {self.shortname} to come up as itself"
+        with safe_while(
+            sleep=10,
+            timeout=config.fog_wait_for_ssh_timeout,
+            action=action,
+        ) as proceed:
+            while proceed():
+                try:
+                    if not self.remote.reconnect(timeout=60):
+                        continue
+                    hostname = self.remote.sh('hostname').strip().lower()
+                except BadHostKeyException as e:
+                    # Reimaged node, new host key by definition; a stale
+                    # known_hosts entry would keep us failing until timeout
+                    self.log.warning(
+                        f"{e}; removing stale known_hosts entry for {self.name}"
+                    )
+                    misc.ssh_keygen_remove(self.name)
+                    continue
+                except (
+                    socket.error,
+                    SSHException,
+                    NoValidConnectionsError,
+                    MaxWhileTries,
+                    CommandFailedError,
+                    EOFError,
+                    ConnectionError,
+                ) as e:
+                    self.log.warning(e)
+                    continue
+                if hostname == self.shortname.lower():
+                    break
+                self.log.info(
+                    f"Node is up as '{hostname}'; waiting for the FOG "
+                    f"client to rename it"
+                )
         self.log.info("Node is ready")
 
     def _fix_hostname(self):
