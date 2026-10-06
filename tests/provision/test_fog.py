@@ -397,3 +397,62 @@ class TestFOG(object):
         assert len(self.mocks['m_Remote_run'].call_args_list) == 1
         assert "'/a_file'" in \
             self.mocks['m_Remote_run'].call_args_list[0][1]['args']
+
+    def test_init_windows_user(self):
+        self.mocks['m_Remote_hostname'].return_value = 'name.fqdn'
+        obj = self.klass('ubuntu@name.fqdn', 'windows', '2025')
+        assert obj.remote.name.startswith('Administrator@')
+        assert obj.remote.user == 'Administrator'
+
+    def test_create_windows(self):
+        self.mocks['m_Remote_hostname'].return_value = 'name.fqdn'
+        self.mocks['m_Remote_machine_type'].return_value = 'type1'
+        obj = self.klass('name.fqdn', 'windows', '2025')
+        with patch.multiple(
+            'teuthology.provision.fog.FOG',
+            get_host_data=DEFAULT,
+            set_image=DEFAULT,
+            schedule_deploy_task=DEFAULT,
+            wait_for_deploy_task=DEFAULT,
+            cancel_deploy_task=DEFAULT,
+            _wait_for_ready=DEFAULT,
+            _wait_for_windows_ready=DEFAULT,
+            _fix_hostname=DEFAULT,
+            _verify_installed_os=DEFAULT,
+        ) as local_mocks:
+            local_mocks['get_host_data'].return_value = dict(id='1')
+            obj.create()
+            assert local_mocks['_wait_for_windows_ready'].called
+            assert not local_mocks['_wait_for_ready'].called
+            assert not local_mocks['_fix_hostname'].called
+            assert local_mocks['_verify_installed_os'].called
+
+    def test_wait_for_windows_ready_rename(self):
+        self.mocks['m_Remote_hostname'].return_value = 'name.fqdn'
+        obj = self.klass('name.fqdn', 'windows', '2025')
+        with patch.object(obj.remote, 'reconnect', return_value=True), \
+                patch.object(
+                    obj.remote, 'sh',
+                    side_effect=['capturehost\n', 'NAME\n'],
+                ):
+            obj._wait_for_windows_ready()
+
+    @mark.parametrize('product,ok', [
+        ('Windows Server 2025 Standard Evaluation', True),
+        ('Windows Server 2025 Datacenter', True),
+        ('Windows Server 2022 Standard', False),
+    ])
+    def test_verify_installed_os_windows(self, product, ok):
+        from teuthology.orchestra.opsys import OS
+        self.mocks['m_Remote_hostname'].return_value = 'name.fqdn'
+        obj = self.klass('name.fqdn', 'windows', '2025')
+        with patch(
+            'teuthology.orchestra.remote.Remote.os',
+            new_callable=PropertyMock,
+            return_value=OS.from_windows_product_name(product),
+        ):
+            if ok:
+                obj._verify_installed_os()
+            else:
+                with raises(RuntimeError):
+                    obj._verify_installed_os()

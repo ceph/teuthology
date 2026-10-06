@@ -8,7 +8,7 @@ from teuthology.contextutil import safe_while
 from teuthology.orchestra import run
 from teuthology.orchestra import connection
 from teuthology.orchestra import console
-from teuthology.orchestra.opsys import OS
+from teuthology.orchestra.opsys import OS, WINDOWS_PRODUCT_NAME_COMMAND
 import teuthology.provision
 from teuthology import misc
 from teuthology.exceptions import CommandFailedError, UnitTestError
@@ -331,8 +331,19 @@ class RemoteShell(object):
     @property
     def os(self):
         if not hasattr(self, '_os'):
-            os_release = self.sh('cat /etc/os-release').strip()
-            self._os = OS.from_os_release(os_release)
+            try:
+                os_release = self.sh('cat /etc/os-release').strip()
+                self._os = OS.from_os_release(os_release)
+                return self._os
+            except CommandFailedError:
+                pass
+
+            try:
+                product = self.sh(WINDOWS_PRODUCT_NAME_COMMAND).strip()
+                self._os = OS.from_windows_product_name(product)
+            except (CommandFailedError, ValueError) as e:
+                raise RuntimeError(
+                    f"Cannot determine OS of {self.shortname}") from e
         return self._os
 
     @property

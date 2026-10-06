@@ -15,7 +15,7 @@ import teuthology.orchestra
 
 from teuthology.config import config
 from teuthology.contextutil import safe_while
-from teuthology.exceptions import MaxWhileTries
+from teuthology.exceptions import CommandFailedError, MaxWhileTries
 from teuthology.orchestra.opsys import OS
 from teuthology import misc
 
@@ -63,8 +63,17 @@ class FOG(object):
     timestamp_format = '%Y-%m-%d %H:%M:%S'
 
     def __init__(self, name, os_type, os_version):
-        self.remote = teuthology.orchestra.remote.Remote(
-            misc.canonicalize_hostname(name))
+        # Windows images carry Win32-OpenSSH with PowerShell as the default
+        # shell; the account the lab bakes keys for is Administrator, not
+        # ubuntu.  The name may arrive with ubuntu@ already embedded, which
+        # canonicalize_hostname keeps over its user argument, so strip it
+        # first.
+        if os_type == 'windows':
+            name = misc.canonicalize_hostname(
+                name.rsplit('@', 1)[-1], user='Administrator')
+        else:
+            name = misc.canonicalize_hostname(name)
+        self.remote = teuthology.orchestra.remote.Remote(name)
         self.name = self.remote.hostname
         self.shortname = self.remote.shortname
         self.os_type = os_type
@@ -93,8 +102,15 @@ class FOG(object):
         except Exception:
             self.cancel_deploy_task(task_id)
             raise
-        self._wait_for_ready()
-        self._fix_hostname()
+        if self.os_type == 'windows':
+            # No sentinel file and no _fix_hostname: the FOG client baked
+            # into the Windows images renames each deployed host to its FOG
+            # host record's name and reboots it, so coming up as itself IS
+            # the readiness signal.
+            self._wait_for_windows_ready()
+        else:
+            self._wait_for_ready()
+            self._fix_hostname()
         self._verify_installed_os()
         self.log.info("Deploy complete!")
 
@@ -385,6 +401,54 @@ class FOG(object):
                         EOFError,
                     ) as e:
                         log.error(f"{e} on {self.shortname}")
+        self.log.info("Node is ready")
+
+    def _wait_for_windows_ready(self):
+        """
+        Wait for a reimaged Windows node to come up as itself.
+
+        The node first boots under the hostname of whatever host the image
+        was captured from; the FOG client's HostnameChanger then renames it
+        to its FOG host record's name and reboots, so ssh flaps once before
+        the node settles.  Keep reconnecting until `hostname` answers with
+        our shortname.
+        """
+        action = f"wait for {self.shortname} to come up as itself"
+        with safe_while(
+            sleep=10,
+            timeout=config.fog_wait_for_ssh_timeout,
+            action=action,
+        ) as proceed:
+            while proceed():
+                try:
+                    if not self.remote.reconnect(timeout=60):
+                        continue
+                    hostname = self.remote.sh('hostname').strip().lower()
+                except BadHostKeyException as e:
+                    # Reimaged node, new host key by definition; a stale
+                    # known_hosts entry would keep us failing until timeout
+                    self.log.warning(
+                        f"{e}; removing stale known_hosts entry for {self.name}"
+                    )
+                    misc.ssh_keygen_remove(self.name)
+                    continue
+                except (
+                    socket.error,
+                    SSHException,
+                    NoValidConnectionsError,
+                    MaxWhileTries,
+                    CommandFailedError,
+                    EOFError,
+                    ConnectionError,
+                ) as e:
+                    self.log.warning(e)
+                    continue
+                if hostname == self.shortname.lower():
+                    break
+                self.log.info(
+                    f"Node is up as '{hostname}'; waiting for the FOG "
+                    f"client to rename it"
+                )
         self.log.info("Node is ready")
 
     def _fix_hostname(self):
