@@ -1,0 +1,80 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: teuthology-config
+  labels:
+    app: dispatcher
+data:
+  teuthology.yaml: |
+{{ tpl (.Files.Get "files/dispatcher/teuthology.yaml") . | trim | indent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dispatcher
+  labels:
+    app: dispatcher
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: dispatcher
+  template:
+    metadata:
+      labels:
+        app: dispatcher
+    spec:
+      initContainers:
+        - name: wait-for-beanstalk
+          image: busybox
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z beanstalk 11300; do
+                echo "waiting for beanstalk..."
+                sleep 2
+              done
+        - name: wait-for-paddles
+          image: curlimages/curl
+          command:
+            - sh
+            - -c
+            - |
+              until curl -sf http://paddles:8080; do
+                echo "waiting for paddles..."
+                sleep 2
+              done
+      containers:
+        - name: dispatcher
+          image: {{ .Values.dispatcher.image }}
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              export PATH="$PATH:/teuthology/.venv/bin"
+              mkdir -p /var/log/teuthology
+              exec teuthology-dispatcher -v \
+                --archive-dir /archive \
+                --tube {{ .Values.dispatcher.tube }} \
+                --log-dir /var/log/teuthology
+          volumeMounts:
+            - name: archive
+              mountPath: /archive
+            - name: config
+              mountPath: /etc/teuthology.yaml
+              subPath: teuthology.yaml
+            - name: logs
+              mountPath: /var/log/teuthology
+      volumes:
+        - name: archive
+          persistentVolumeClaim:
+            claimName: teuthology-archive
+        - name: config
+          configMap:
+            name: teuthology-config
+        - name: logs
+          emptyDir: {}

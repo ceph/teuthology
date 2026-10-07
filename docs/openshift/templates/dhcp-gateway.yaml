@@ -1,0 +1,176 @@
+{{- /*
+  DHCP/DNS/NAT gateway as a VirtualMachinePool (replicas=1).
+  No privileged pod/SCC: dnsmasq + nftables run inside the guest.
+  Deleting the VM (or VMI) causes the pool / runStrategy to recreate it;
+  cloud-init + a boot service re-apply gateway config on first boot of a new disk.
+*/ -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dhcp-hosts
+  labels:
+    app: dhcp-gateway
+data:
+  dhcp-hosts.conf: |
+{{ .Values.dhcpGateway.dhcpHosts | default "# no static leases\n" | nindent 4 }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dhcp-gateway-cloudinit
+  labels:
+    app: dhcp-gateway
+type: Opaque
+stringData:
+  userdata: |
+    #cloud-config
+    hostname: dhcp-gateway
+    manage_etc_hosts: true
+    disable_root: false
+    ssh_pwauth: true
+    users:
+      - name: {{ .Values.dhcpGateway.sshUser | quote }}
+        sudo: ALL=(root) NOPASSWD:ALL
+        shell: /bin/bash
+        lock_passwd: false
+        plain_text_passwd: {{ .Values.dhcpGateway.password | quote }}
+        ssh_authorized_keys:
+{{- range .Values.dhcpGateway.sshAuthorizedKeys }}
+          - {{ . | quote }}
+{{- end }}
+    chpasswd:
+      expire: false
+      users:
+        - name: {{ .Values.dhcpGateway.sshUser | quote }}
+          password: {{ .Values.dhcpGateway.password | quote }}
+          type: text
+        - name: root
+          password: {{ .Values.dhcpGateway.password | quote }}
+          type: text
+    write_files:
+      - path: /etc/sysctl.d/99-teuthology-udn-forward.conf
+        permissions: "0644"
+        content: |
+{{ .Files.Get "files/dhcp-gateway/99-teuthology-udn-forward.conf" | indent 10 }}
+      - path: /etc/dnsmasq.d/dhcp-hosts.conf
+        permissions: "0644"
+        content: |
+{{ .Values.dhcpGateway.dhcpHosts | default "# no static leases\n" | nindent 10 }}
+      - path: /usr/local/sbin/teuthology-udn-gateway.sh
+        permissions: "0755"
+        content: |
+{{ tpl (.Files.Get "files/dhcp-gateway/teuthology-udn-gateway.sh") . | indent 10 }}
+      - path: /etc/systemd/system/teuthology-udn-gateway.service
+        permissions: "0644"
+        content: |
+{{ .Files.Get "files/dhcp-gateway/teuthology-udn-gateway.service" | indent 10 }}
+    # nftables ships on Fedora Cloud; dnsmasq is installed by teuthology-udn-gateway.sh
+    # (direct RPM from dl.fedoraproject.org) to avoid hung dnf metalinks.
+    package_update: false
+    package_upgrade: false
+    runcmd:
+      - timedatectl set-timezone Etc/UTC || true
+      - systemctl daemon-reload
+      - systemctl enable --now teuthology-udn-gateway.service
+    final_message: "teuthology dhcp-gateway ready"
+---
+apiVersion: pool.kubevirt.io/v1alpha1
+kind: VirtualMachinePool
+metadata:
+  name: {{ .Values.dhcpGateway.name | default "dhcp-gateway" }}
+  labels:
+    app: dhcp-gateway
+spec:
+  replicas: {{ .Values.dhcpGateway.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: dhcp-gateway
+  virtualMachineTemplate:
+    metadata:
+      labels:
+        app: dhcp-gateway
+    spec:
+      runStrategy: Always
+      dataVolumeTemplates:
+        - metadata:
+            name: {{ .Values.dhcpGateway.name | default "dhcp-gateway" }}-root
+          spec:
+            sourceRef:
+              kind: DataSource
+              name: {{ .Values.dhcpGateway.dataSource.name | default "fedora" }}
+              {{- if .Values.dhcpGateway.dataSource.namespace }}
+              namespace: {{ .Values.dhcpGateway.dataSource.namespace }}
+              {{- end }}
+            storage:
+              accessModes:
+                - {{ .Values.dhcpGateway.accessMode | default "ReadWriteMany" }}
+              volumeMode: Filesystem
+              {{- if .Values.dhcpGateway.storageClassName }}
+              storageClassName: {{ .Values.dhcpGateway.storageClassName }}
+              {{- end }}
+              resources:
+                requests:
+                  storage: {{ .Values.dhcpGateway.rootDiskSize | default "20Gi" }}
+      template:
+        metadata:
+          labels:
+            app: dhcp-gateway
+        spec:
+          domain:
+            cpu:
+              cores: {{ .Values.dhcpGateway.cores | default 1 }}
+            memory:
+              guest: {{ .Values.dhcpGateway.memory | default "2Gi" | quote }}
+            resources:
+              requests:
+                cpu: {{ .Values.dhcpGateway.cores | default 1 | quote }}
+                memory: {{ .Values.dhcpGateway.memory | default "2Gi" | quote }}
+              limits:
+                cpu: {{ .Values.dhcpGateway.cores | default 1 | quote }}
+                memory: {{ .Values.dhcpGateway.memory | default "2Gi" | quote }}
+            devices:
+              disks:
+                - name: rootdisk
+                  bootOrder: 1
+                  disk:
+                    bus: virtio
+                - name: cloudinitdisk
+                  disk:
+                    bus: virtio
+              interfaces:
+                - name: default
+                  masquerade: {}
+                - name: {{ .Values.udn.name }}
+                  macAddress: {{ .Values.dhcpGateway.mac | quote }}
+                  binding:
+                    name: l2bridge
+          networks:
+            - name: default
+              pod: {}
+            - name: {{ .Values.udn.name }}
+              multus:
+                networkName: {{ .Values.udn.name }}
+          volumes:
+            - name: cloudinitdisk
+              cloudInitNoCloud:
+                secretRef:
+                  name: dhcp-gateway-cloudinit
+            - name: rootdisk
+              dataVolume:
+                name: {{ .Values.dhcpGateway.name | default "dhcp-gateway" }}-root
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.dhcpGateway.name | default "dhcp-gateway" }}
+  labels:
+    app: dhcp-gateway
+spec:
+  type: LoadBalancer
+  selector:
+    app: dhcp-gateway
+  ports:
+    - name: ssh
+      protocol: TCP
+      port: 22
+      targetPort: 22

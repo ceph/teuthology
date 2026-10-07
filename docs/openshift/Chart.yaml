@@ -1,0 +1,6 @@
+apiVersion: v2
+name: teuthology
+description: Teuthology services on OpenShift (paddles, pulpito, beanstalkd, archive, dispatcher, teuthology CLI VM, postgres, UDN, dhcp-gateway VM)
+type: application
+version: 0.1.0
+appVersion: "1.0"
