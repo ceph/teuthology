@@ -397,6 +397,13 @@ class Remote(RemoteShell):
             args['timeout'] = timeout
 
         self.ssh = connection.connect(**args)
+        if context == 'reconnect' and self.keep_alive:
+            # the reconnect args above leave keepalive off. Without it, a
+            # channel that stays silent for long (daemon output going to a
+            # file, a long-running gzip) can be dropped unnoticed, and waiting
+            # on the remote command blocks forever. Arming it only after the
+            # connection is established keeps the workaround above intact.
+            self.ssh.get_transport().set_keepalive(self.keep_alive)
         return self.ssh
 
     def reconnect(self, timeout=30, socket_timeout=None):
