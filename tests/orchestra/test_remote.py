@@ -150,6 +150,40 @@ class TestRemote(object):
         self.m_ssh.get_transport.assert_called_once_with()
         m_transport.get_remote_server_key.assert_called_once_with()
 
+    @patch('teuthology.orchestra.remote.connection.connect')
+    def test_reconnect_restores_keepalive(self, m_connect):
+        m_new_ssh = MagicMock()
+        m_connect.return_value = m_new_ssh
+        r = remote.Remote(name='jdoe@xyzzy.example.com', ssh=self.m_ssh,
+                          keep_alive=True)
+        assert r.connect(context='reconnect') is m_new_ssh
+        kwargs = m_connect.call_args.kwargs
+        # the reconnect workaround drops host_key and _create_key...
+        assert kwargs['host_key'] is None
+        assert kwargs['_create_key'] is False
+        # ...but must keep the remote's keepalive
+        assert kwargs['keep_alive'] is True
+
+    @patch('teuthology.orchestra.remote.connection.connect')
+    def test_reconnect_without_keepalive(self, m_connect):
+        m_new_ssh = MagicMock()
+        m_connect.return_value = m_new_ssh
+        r = remote.Remote(name='jdoe@xyzzy.example.com', ssh=self.m_ssh,
+                          keep_alive=False)
+        r.connect(context='reconnect')
+        assert m_connect.call_args.kwargs['keep_alive'] is False
+
+    @patch('teuthology.orchestra.remote.connection.connect')
+    def test_connect_passes_keepalive(self, m_connect):
+        m_new_ssh = MagicMock()
+        m_connect.return_value = m_new_ssh
+        r = remote.Remote(name='jdoe@xyzzy.example.com', ssh=self.m_ssh,
+                          keep_alive=True)
+        r.connect()
+        assert m_connect.call_args.kwargs['keep_alive'] is True
+        # connection.connect() arms keepalive itself on a regular connect
+        m_new_ssh.get_transport.return_value.set_keepalive.assert_not_called()
+
     def test_inventory_info(self):
         r = remote.Remote('user@host', host_key='host_key')
         r._arch = 'arch'
