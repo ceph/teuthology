@@ -265,3 +265,87 @@ class TestDistroDefaults(object):
         expected = ('x86_64', 'centos/9',
                     OS(name='centos', version='9.stream', codename='stream'))
         assert util.get_distro_defaults('rhel', 'magna') == expected
+
+
+class TestContainerImageExists(object):
+    def setup_method(self):
+        util.container_image_exists.cache_clear()
+
+    @pytest.mark.parametrize(
+        ['image', 'expected'],
+        [
+            ('quay.ceph.io/ceph-ci/ceph', ('quay.ceph.io', 'ceph-ci/ceph')),
+            ('quay-int.front.sepia.ceph.com/ceph-ci/ceph',
+             ('quay-int.front.sepia.ceph.com', 'ceph-ci/ceph')),
+            ('localhost:5000/ceph/ceph', ('localhost:5000', 'ceph/ceph')),
+            ('ceph/ceph', ('registry-1.docker.io', 'ceph/ceph')),
+            ('ceph', ('registry-1.docker.io', 'library/ceph')),
+        ]
+    )
+    def test_split_container_image(self, image, expected):
+        assert util._split_container_image(image) == expected
+
+    def _resp(self, status, headers=None):
+        resp = Mock()
+        resp.status_code = status
+        resp.headers = headers or {}
+        return resp
+
+    @patch('teuthology.suite.util.requests.head')
+    def test_exists(self, m_head):
+        m_head.return_value = self._resp(200)
+        assert util.container_image_exists('quay.ceph.io/ceph-ci/ceph', 'abc') is True
+        url = m_head.call_args.args[0]
+        assert url == 'https://quay.ceph.io/v2/ceph-ci/ceph/manifests/abc'
+        accept = m_head.call_args.kwargs['headers']['Accept']
+        assert 'application/vnd.oci.image.index.v1+json' in accept
+
+    @patch('teuthology.suite.util.requests.head')
+    def test_missing(self, m_head):
+        m_head.return_value = self._resp(404)
+        assert util.container_image_exists('quay.ceph.io/ceph-ci/ceph', 'abc') is False
+
+    @patch('teuthology.suite.util.requests.head')
+    def test_unknown_status(self, m_head):
+        m_head.return_value = self._resp(500)
+        assert util.container_image_exists('quay.ceph.io/ceph-ci/ceph', 'abc') is None
+
+    @patch('teuthology.suite.util.requests.head')
+    def test_network_error(self, m_head):
+        m_head.side_effect = util.requests.ConnectionError('nope')
+        assert util.container_image_exists('quay.ceph.io/ceph-ci/ceph', 'abc') is None
+
+    @patch('teuthology.suite.util.requests.get')
+    @patch('teuthology.suite.util.requests.head')
+    def test_bearer_token(self, m_head, m_get):
+        challenge = ('Bearer realm="https://auth.example.com/token",'
+                     'service="registry.example.com",'
+                     'scope="repository:ceph/ceph:pull"')
+        m_head.side_effect = [
+            self._resp(401, {'WWW-Authenticate': challenge}),
+            self._resp(200),
+        ]
+        token_resp = Mock()
+        token_resp.json.return_value = {'token': 'T0K3N'}
+        m_get.return_value = token_resp
+        assert util.container_image_exists('registry.example.com/ceph/ceph', 'abc') is True
+        m_get.assert_called_once_with(
+            'https://auth.example.com/token',
+            params={'service': 'registry.example.com',
+                    'scope': 'repository:ceph/ceph:pull'},
+            timeout=30,
+        )
+        second = m_head.call_args_list[1]
+        assert second.kwargs['headers']['Authorization'] == 'Bearer T0K3N'
+
+    @patch('teuthology.suite.util.requests.head')
+    def test_unauthorized_without_bearer(self, m_head):
+        m_head.return_value = self._resp(401, {'WWW-Authenticate': 'Basic realm="x"'})
+        assert util.container_image_exists('registry.example.com/ceph/ceph', 'abc') is None
+
+    @patch('teuthology.suite.util.requests.head')
+    def test_cached(self, m_head):
+        m_head.return_value = self._resp(404)
+        util.container_image_exists('quay.ceph.io/ceph-ci/ceph', 'abc')
+        util.container_image_exists('quay.ceph.io/ceph-ci/ceph', 'abc')
+        assert m_head.call_count == 1

@@ -2,6 +2,7 @@ import copy
 import functools
 import logging
 import os
+import re
 import requests
 import smtplib
 import socket
@@ -224,17 +225,18 @@ def get_branch_info(project, branch, project_owner='ceph'):
 
 
 @functools.lru_cache()
-def package_version_for_hash(hash, flavor='default', distro='rhel',
-                             distro_version='8.0', machine_type='smithi'):
+def _builder_project_for_hash(hash, flavor='default', distro='rhel',
+                              distro_version='8.0', machine_type='smithi'):
     """
-    Does what it says on the tin. Uses gitbuilder repos.
-
-    :returns: a string.
+    Build (and cache) the builder project object used to look up packages
+    for a given ceph hash. The object caches its own search results, so
+    sharing it between package_version_for_hash() and
+    hash_only_in_pulp() avoids repeated queries.
     """
     (arch, release, _os) = get_distro_defaults(distro, machine_type)
     if distro in (None, 'None'):
         distro = _os.name
-    bp = get_builder_project()(
+    return get_builder_project()(
         'ceph',
         dict(
             flavor=flavor,
@@ -245,7 +247,19 @@ def package_version_for_hash(hash, flavor='default', distro='rhel',
         ),
     )
 
-    if (bp.distro == CONTAINER_DISTRO and bp.flavor == CONTAINER_FLAVOR and 
+
+@functools.lru_cache()
+def package_version_for_hash(hash, flavor='default', distro='rhel',
+                             distro_version='8.0', machine_type='smithi'):
+    """
+    Does what it says on the tin. Uses gitbuilder repos.
+
+    :returns: a string.
+    """
+    bp = _builder_project_for_hash(hash, flavor, distro, distro_version,
+                                   machine_type)
+
+    if (bp.distro == CONTAINER_DISTRO and bp.flavor == CONTAINER_FLAVOR and
             not bp.build_complete):
         log.info("Container build incomplete")
         return None
@@ -254,6 +268,108 @@ def package_version_for_hash(hash, flavor='default', distro='rhel',
         return bp.version
     except VersionNotFoundError:
         return None
+
+
+def hash_only_in_pulp(hash, flavor='default', distro='rhel',
+                      distro_version='8.0', machine_type='smithi'):
+    """
+    True if the configured package source (shaman) knows about this ceph hash
+    only from repos hosted on Pulp - e.g. a security build - which it cannot
+    install from. Always False for other package sources.
+
+    NOTE: depends on the cve-pipeline registering its Pulp-hosted builds in
+    shaman; see ShamanProject.pulp_only. If it stops doing so this simply
+    returns False and the sha1 is treated as not built at all.
+    """
+    bp = _builder_project_for_hash(hash, flavor, distro, distro_version,
+                                   machine_type)
+    try:
+        return bool(getattr(bp, 'pulp_only', False))
+    except (VersionNotFoundError, requests.RequestException):
+        return False
+
+
+_MANIFEST_ACCEPT = ', '.join([
+    'application/vnd.docker.distribution.manifest.v2+json',
+    'application/vnd.docker.distribution.manifest.list.v2+json',
+    'application/vnd.oci.image.manifest.v1+json',
+    'application/vnd.oci.image.index.v1+json',
+])
+
+
+def _split_container_image(image):
+    """
+    Split 'registry/repo' into (registry, repo). Images without a registry
+    component (no '.' or ':' in the first path element) are assumed to be
+    on Docker Hub, e.g. 'ceph/ceph' -> ('registry-1.docker.io', 'ceph/ceph').
+    """
+    first, sep, rest = image.partition('/')
+    if sep and ('.' in first or ':' in first or first == 'localhost'):
+        return first, rest
+    repo = image if '/' in image else f'library/{image}'
+    return 'registry-1.docker.io', repo
+
+
+def _registry_bearer_token(www_authenticate, repo):
+    """
+    Given a 'Bearer realm="...",service="...",scope="..."' challenge, fetch
+    an anonymous pull token. Returns None if that does not work out.
+    """
+    if not www_authenticate or not www_authenticate.startswith('Bearer '):
+        return None
+    params = dict(
+        re.findall(r'(\w+)="([^"]*)"', www_authenticate[len('Bearer '):])
+    )
+    realm = params.get('realm')
+    if not realm:
+        return None
+    query = dict()
+    if params.get('service'):
+        query['service'] = params['service']
+    query['scope'] = params.get('scope') or f'repository:{repo}:pull'
+    try:
+        resp = requests.get(realm, params=query, timeout=30)
+        resp.raise_for_status()
+        body = resp.json()
+        return body.get('token') or body.get('access_token')
+    except (requests.RequestException, ValueError):
+        return None
+
+
+@functools.lru_cache()
+def container_image_exists(image, tag):
+    """
+    Ask the registry (OCI distribution / Docker registry v2 API) whether
+    image:tag exists.
+
+    :returns: True if it does, False if the registry says it does not (404),
+              None if that could not be determined (auth we can't satisfy,
+              unexpected status, network error) - callers should not treat
+              None as missing.
+    """
+    registry, repo = _split_container_image(image)
+    url = f'https://{registry}/v2/{repo}/manifests/{tag}'
+    headers = {'Accept': _MANIFEST_ACCEPT}
+    try:
+        resp = requests.head(url, headers=headers, timeout=30)
+        if resp.status_code == 401:
+            token = _registry_bearer_token(
+                resp.headers.get('WWW-Authenticate'), repo)
+            if token:
+                headers['Authorization'] = f'Bearer {token}'
+                resp = requests.head(url, headers=headers, timeout=30)
+    except requests.RequestException as exc:
+        log.warning("Could not query %s for %s:%s: %s",
+                    registry, repo, tag, exc)
+        return None
+    if resp.status_code == 200:
+        return True
+    if resp.status_code == 404:
+        return False
+    log.warning("Unexpected HTTP %s querying %s for %s:%s; cannot tell "
+                "whether the container exists", resp.status_code, registry,
+                repo, tag)
+    return None
 
 
 def get_arch(machine_type):

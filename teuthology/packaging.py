@@ -919,13 +919,69 @@ class ShamanProject(GitbuilderProject):
 
     def _get_base_url(self):
         self.assert_result()
-        return self._result.json()[0]['url']
+        return self._results[0]['url']
 
     @property
     def _result(self):
         if getattr(self, '_result_obj', None) is None:
             self._result_obj = self._search()
         return self._result_obj
+
+    @staticmethod
+    def _is_pulp_hosted(result):
+        """
+        Shaman also indexes builds whose repos live on a Pulp instance rather
+        than on chacra (e.g. security builds from the cve-pipeline). Those
+        entries carry Pulp URLs in ``url``/``chacra_url``.
+        """
+        return any(
+            '/pulp/' in (result.get(key) or '')
+            for key in ('url', 'chacra_url')
+        )
+
+    @property
+    def _results(self):
+        """
+        The search results this class can actually consume, newest first.
+
+        Pulp-hosted entries are skipped: they have no ``<chacra_url>/repo``
+        to fetch, so a shaman-sourced install of one of them fails with a
+        404 partway through. Anyone wanting those builds must use
+        ``package_source: pulp``.
+        """
+        if getattr(self, '_results_obj', None) is None:
+            usable, pulp_hosted = [], []
+            for result in self._result.json():
+                if self._is_pulp_hosted(result):
+                    pulp_hosted.append(result)
+                else:
+                    usable.append(result)
+            if pulp_hosted:
+                refs = sorted({r.get('ref') for r in pulp_hosted})
+                log.info(
+                    "Ignoring %d shaman result(s) for %s hosted on Pulp "
+                    "(ref %s); not usable with package_source: shaman",
+                    len(pulp_hosted), self._result.url, ', '.join(refs),
+                )
+            self._results_obj = usable
+            self._pulp_hosted_results = pulp_hosted
+        return self._results_obj
+
+    @property
+    def pulp_only(self):
+        """
+        True if shaman knows this build only from repos hosted on Pulp, i.e.
+        it exists but cannot be installed with package_source: shaman.
+
+        NOTE: this detection relies on ceph-build's cve-pipeline continuing to
+        register its Pulp-hosted builds in shaman with Pulp URLs in the
+        ``chacra_url`` (and ``url``) fields of the search results, as it does
+        today. If that ever stops, Pulp-only sha1s will simply look "not
+        found" here: no false positives, but teuthology-suite loses the hint
+        that the sha1 exists on Pulp and --newest will backtrack past it
+        without the explanatory warning.
+        """
+        return bool(not self._results and self._pulp_hosted_results)
 
     def _search(self):
         uri = self._search_uri
@@ -998,7 +1054,7 @@ class ShamanProject(GitbuilderProject):
         return result
 
     def assert_result(self):
-        if len(self._result.json()) == 0:
+        if not self._results:
             raise VersionNotFoundError(self._result.url)
 
     _get_distro = GitbuilderProject._get_distro_numeric
@@ -1006,25 +1062,25 @@ class ShamanProject(GitbuilderProject):
     def _get_package_sha1(self):
         # This doesn't raise because GitbuilderProject._get_package_sha1()
         # doesn't either.
-        if not len(self._result.json()):
+        if not self._results:
             log.error("sha1 not found: %s", self._result.url)
         else:
-            return self._result.json()[0]['sha1']
+            return self._results[0]['sha1']
 
     def _get_package_version(self):
         self.assert_result()
-        return self._result.json()[0]['extra']['package_manager_version']
+        return self._results[0]['extra']['package_manager_version']
 
     @property
     def scm_version(self):
         self.assert_result()
-        return self._result.json()[0]['extra']['version']
+        return self._results[0]['extra']['version']
 
     @property
     def repo_url(self):
         self.assert_result()
         return urljoin(
-            self._result.json()[0]['chacra_url'],
+            self._results[0]['chacra_url'],
             'repo',
         )
 
@@ -1040,7 +1096,7 @@ class ShamanProject(GitbuilderProject):
         # self._result has status, project, flavor, distros, arch, and sha1
         # restrictions, so the only reason for multiples should be "multiple
         # builds of the same sha1 etc."; the first entry is the newest
-        search_result = self._result.json()[0]
+        search_result = self._results[0]
 
         # now look for the build complete status
         path = '/'.join(

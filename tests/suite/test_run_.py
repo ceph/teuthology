@@ -260,6 +260,15 @@ class TestScheduleSuite(object):
             base_yaml_paths=list(),
         )
         self.args = YamlConfig.from_dict(self.args_dict)
+        # package_version_for_hash is mocked in these tests, so the cached
+        # builder project is never populated; keep hash_only_in_pulp() from
+        # going to the network to fill it.
+        self.p_hash_only_in_pulp = patch(
+            'teuthology.suite.util.hash_only_in_pulp', return_value=False)
+        self.p_hash_only_in_pulp.start()
+
+    def teardown_method(self):
+        self.p_hash_only_in_pulp.stop()
 
     @patch('teuthology.suite.run.Run.schedule_jobs')
     @patch('teuthology.suite.run.Run.write_rerun_memo')
@@ -640,3 +649,419 @@ class TestScheduleSuite(object):
                 job_yaml = yaml.safe_load(job['stdin'])
                 assert job_yaml.get('sha1') == working_sha1
                 assert job_yaml.get('suite_sha1') == sha1_side_effect[1]
+
+
+class TestInternalSources(object):
+    """
+    --newest: warn when a sha1 is skipped and the run does not select the
+    lab-internal pulp / quay-int, where e.g. security builds are published
+    exclusively.
+    """
+    klass = run.Run
+
+    def setup_method(self):
+        self.args_dict = dict(
+            suite='suite',
+            suite_relpath='',
+            suite_dir='suite_dir',
+            suite_branch='main',
+            suite_repo='ceph',
+            ceph_repo='ceph',
+            ceph_branch='main',
+            ceph_sha1='ceph_sha1',
+            teuthology_branch='main',
+            kernel_branch=None,
+            flavor='flavor',
+            distro='ubuntu',
+            distro_version='14.04',
+            machine_type='machine_type',
+            base_yaml_paths=list(),
+            newest=10,
+        )
+        self.args = YamlConfig.from_dict(self.args_dict)
+        self.orig_package_source = config.package_source
+        self.orig_pulp = config.get('pulp')
+        self.orig_defaults = config.get('defaults')
+        config.package_source = 'shaman'
+        config.pulp = dict()
+        config.defaults = dict()
+
+    def teardown_method(self):
+        config.package_source = self.orig_package_source
+        config.pulp = self.orig_pulp
+        config.defaults = self.orig_defaults
+
+    def write_yaml(self, tmp_path, contents):
+        path = tmp_path / 'extra.yaml'
+        path.write_text(yaml.safe_dump(contents))
+        self.args.base_yaml_paths = [str(path)]
+
+    @contextlib.contextmanager
+    def make_run(self):
+        with patch('teuthology.suite.util.fetch_repos'), \
+             patch('teuthology.suite.util.git_ls_remote',
+                   return_value='a_sha1'), \
+             patch('teuthology.suite.util.git_validate_sha1',
+                   return_value=self.args.ceph_sha1):
+            yield self.klass(self.args)
+
+    def test_missing_both(self):
+        with self.make_run() as runobj:
+            missing = runobj.missing_internal_sources()
+        assert missing == [
+            'package_source: pulp',
+            'defaults.cephadm.containers.image: '
+            'quay-int.front.sepia.ceph.com/ceph-ci/ceph',
+        ]
+
+    def test_selected_both_in_job_yaml(self, tmp_path):
+        self.write_yaml(tmp_path, dict(
+            package_source='pulp',
+            pulp=dict(username='u', password='p'),
+            defaults=dict(cephadm=dict(containers=dict(
+                image='quay-int.front.sepia.ceph.com/ceph-ci/ceph'))),
+        ))
+        with self.make_run() as runobj:
+            assert runobj.missing_internal_sources() == []
+            # job-level package_source is honored for schedule-time checks
+            assert config.package_source == 'pulp'
+
+    def test_selected_image_via_overrides_and_site_pulp(self, tmp_path):
+        config.package_source = 'pulp'
+        self.write_yaml(tmp_path, dict(
+            overrides=dict(cephadm=dict(containers=dict(
+                image='quay-int.front.sepia.ceph.com/ceph-ci/ceph:sometag'))),
+        ))
+        with self.make_run() as runobj:
+            assert runobj.missing_internal_sources() == []
+
+    def test_selected_pulp_only(self, tmp_path):
+        self.write_yaml(tmp_path, dict(
+            package_source='pulp',
+            pulp=dict(username='u', password='p'),
+            defaults=dict(cephadm=dict(containers=dict(
+                image='quay.io/ceph-ci/ceph'))),
+        ))
+        with self.make_run() as runobj:
+            assert runobj.missing_internal_sources() == [
+                'defaults.cephadm.containers.image: '
+                'quay-int.front.sepia.ceph.com/ceph-ci/ceph',
+            ]
+
+    def test_pulp_without_credentials_not_applied(self, tmp_path):
+        self.write_yaml(tmp_path, dict(package_source='pulp'))
+        with self.make_run() as runobj:
+            # No creds on this "host": keep checking shaman while scheduling
+            assert config.package_source == 'shaman'
+            # ...but the run itself does select pulp, so don't nag about it
+            assert 'package_source: pulp' not in runobj.missing_internal_sources()
+
+    def test_warns_when_pulp_only_and_not_selected(self, caplog):
+        with self.make_run() as runobj:
+            with caplog.at_level(logging.WARNING, logger='teuthology.suite.run'):
+                runobj.warn_pulp_only_sha1('sha_a')
+        warnings = [r.getMessage() for r in caplog.records
+                    if r.levelno == logging.WARNING]
+        assert len(warnings) == 1
+        assert 'sha_a' in warnings[0]
+        assert 'only built to the lab-internal Pulp/Quay' in warnings[0]
+        assert 'package_source: pulp' in warnings[0]
+        assert 'quay-int.front.sepia.ceph.com/ceph-ci/ceph' in warnings[0]
+        assert 'Moving on to the next sha1' in warnings[0]
+
+    def test_warns_when_pulp_only_and_selected(self, tmp_path, caplog):
+        # Both selected but (in this test) no pulp creds on the scheduling
+        # host, so the check fell back to shaman and found the sha1 pulp-only.
+        self.write_yaml(tmp_path, dict(
+            package_source='pulp',
+            defaults=dict(cephadm=dict(containers=dict(
+                image='quay-int.front.sepia.ceph.com/ceph-ci/ceph'))),
+        ))
+        with self.make_run() as runobj:
+            with caplog.at_level(logging.WARNING, logger='teuthology.suite.run'):
+                runobj.warn_pulp_only_sha1('sha_a')
+        warnings = [r.getMessage() for r in caplog.records
+                    if r.levelno == logging.WARNING and '--newest' in r.getMessage()]
+        assert len(warnings) == 1
+        assert 'could not be verified' in warnings[0]
+        assert 'does not select' not in warnings[0]
+
+    @patch('teuthology.suite.util.find_git_parents')
+    @patch('teuthology.suite.run.Run.schedule_jobs')
+    @patch('teuthology.suite.run.Run.write_rerun_memo')
+    @patch('teuthology.suite.util.get_install_task_flavor')
+    @patch('teuthology.suite.run.config_merge')
+    @patch('teuthology.suite.run.build_matrix')
+    @patch('teuthology.suite.util.hash_only_in_pulp')
+    @patch('teuthology.suite.util.package_version_for_hash')
+    @patch('teuthology.suite.util.get_arch')
+    def test_newest_skips_pulp_only_sha1_with_warning(
+        self,
+        m_get_arch,
+        m_package_version_for_hash,
+        m_hash_only_in_pulp,
+        m_build_matrix,
+        m_config_merge,
+        m_get_install_task_flavor,
+        m_write_rerun_memo,
+        m_schedule_jobs,
+        m_find_git_parents,
+        caplog,
+    ):
+        """
+        End to end: first sha1 is only in pulp -> warning about missing
+        pulp/quay-int -> second sha1 is simply not built (no warning) ->
+        third sha1 is used.
+        """
+        m_get_arch.return_value = 'x86_64'
+        build_matrix_output = [('desc', ['frag.yml'])]
+        m_build_matrix.return_value = build_matrix_output
+        m_config_merge.return_value = [(a, b, {}) for a, b in build_matrix_output]
+        m_get_install_task_flavor.return_value = 'default'
+        m_package_version_for_hash.side_effect = [None, None, 'ceph_version']
+        m_hash_only_in_pulp.side_effect = [True, False]
+        m_find_git_parents.return_value = ['ceph_sha1_p1', 'ceph_sha1_p2']
+
+        with self.make_run() as runobj:
+            runobj.base_args = list()
+            with caplog.at_level(logging.WARNING, logger='teuthology.suite.run'):
+                count = runobj.schedule_suite()
+        assert count == 1
+        assert runobj.base_config.sha1 == 'ceph_sha1_p2'
+        m_hash_only_in_pulp.assert_has_calls([
+            call('ceph_sha1', 'default', 'ubuntu', '14.04', 'machine_type'),
+            call('ceph_sha1_p1', 'default', 'ubuntu', '14.04', 'machine_type'),
+        ])
+        warnings = [r.getMessage() for r in caplog.records
+                    if r.levelno == logging.WARNING and '--newest' in r.getMessage()]
+        assert len(warnings) == 1
+        assert 'ceph_sha1 ' in warnings[0]
+        assert 'package_source: pulp' in warnings[0]
+        # the pulp-only job was flagged in the schedule-time error log too
+        errors = [r.getMessage() for r in caplog.records
+                  if r.levelno == logging.ERROR and 'lab-internal Pulp' in r.getMessage()]
+        assert len(errors) == 1
+        assert "'ceph_sha1'" in errors[0]
+
+
+class TestContainerCheck(object):
+    """
+    --newest: a sha1 with packages but no cephadm container (e.g. a release
+    build, CI_CONTAINER=false) is skipped with a warning.
+    """
+    klass = run.Run
+
+    def setup_method(self):
+        self.args_dict = dict(
+            suite='suite',
+            suite_relpath='',
+            suite_dir='suite_dir',
+            suite_branch='main',
+            suite_repo='ceph',
+            ceph_repo='ceph',
+            ceph_branch='tentacle',
+            ceph_sha1='ceph_sha1',
+            teuthology_branch='main',
+            kernel_branch=None,
+            flavor='default',
+            distro='ubuntu',
+            distro_version='14.04',
+            machine_type='machine_type',
+            base_yaml_paths=list(),
+            newest=10,
+        )
+        self.args = YamlConfig.from_dict(self.args_dict)
+        self.orig_defaults = config.get('defaults')
+        config.defaults = dict(cephadm=dict(containers=dict(
+            image='quay.ceph.io/ceph-ci/ceph')))
+        self.p_hash_only_in_pulp = patch(
+            'teuthology.suite.util.hash_only_in_pulp', return_value=False)
+        self.p_hash_only_in_pulp.start()
+
+    def teardown_method(self):
+        config.defaults = self.orig_defaults
+        self.p_hash_only_in_pulp.stop()
+
+    @contextlib.contextmanager
+    def make_run(self):
+        with patch('teuthology.suite.util.fetch_repos'), \
+             patch('teuthology.suite.util.git_ls_remote',
+                   return_value='a_sha1'), \
+             patch('teuthology.suite.util.git_validate_sha1',
+                   return_value=self.args.ceph_sha1):
+            yield self.klass(self.args)
+
+    @pytest.mark.parametrize(
+        ['tasks', 'expected'],
+        [
+            (None, False),
+            ([], False),
+            ([{'install': None}, {'ceph': None}], False),
+            ([{'install': None}, {'cephadm': {'roleless': True}}], True),
+            ([{'cephadm.shell': {'host.a': ['ls']}}], True),
+            ([{'sequential': [{'install': None}, {'cephadm': None}]}], True),
+            ([{'parallel': [{'sequential': [{'cephadm': None}]}]}], True),
+            (['not-a-dict', {'ceph': None}], False),
+        ]
+    )
+    def test_uses_cephadm(self, tasks, expected):
+        assert run.Run.uses_cephadm(tasks) is expected
+
+    def test_container_ref(self):
+        with self.make_run() as runobj:
+            assert runobj.cephadm_container_ref('abc') == \
+                'quay.ceph.io/ceph-ci/ceph:abc'
+            assert runobj.cephadm_container_ref('abc', 'crimson-debug') == \
+                'quay.ceph.io/ceph-ci/ceph:abc-crimson-debug'
+            # a pinned tag or digest means the sha1 is irrelevant
+            config.defaults['cephadm']['containers']['image'] = \
+                'quay.ceph.io/ceph-ci/ceph:latest'
+            assert runobj.cephadm_container_ref('abc') is None
+            config.defaults['cephadm']['containers']['image'] = \
+                'quay.ceph.io/ceph-ci/ceph@sha256:0123'
+            assert runobj.cephadm_container_ref('abc') is None
+            # no image configured anywhere: nothing to check
+            config.defaults = dict()
+            assert runobj.cephadm_container_ref('abc') is None
+            assert runobj.container_missing('abc') is False
+
+    @pytest.mark.parametrize(
+        ['exists', 'missing'],
+        [(True, False), (False, True), (None, False)]
+    )
+    def test_container_missing(self, exists, missing):
+        with self.make_run() as runobj, \
+             patch('teuthology.suite.util.container_image_exists',
+                   return_value=exists) as m_exists:
+            assert runobj.container_missing('abc') is missing
+            m_exists.assert_called_once_with('quay.ceph.io/ceph-ci/ceph', 'abc')
+
+    def test_warning_text(self, caplog):
+        with self.make_run() as runobj:
+            with caplog.at_level(logging.WARNING, logger='teuthology.suite.run'):
+                runobj.warn_missing_container('abc', newest=True)
+                runobj.warn_missing_container('abc', newest=False)
+        warnings = [r.getMessage() for r in caplog.records
+                    if r.levelno == logging.WARNING]
+        assert warnings[0] == (
+            "ceph sha1 abc has packages but no container at "
+            "quay.ceph.io/ceph-ci/ceph:abc. Pending release build, or failed "
+            "container build of a passed package build? Moving on to the next "
+            "sha1 of tentacle")
+        assert warnings[1].startswith(
+            "ceph sha1 abc has packages but no container at "
+            "quay.ceph.io/ceph-ci/ceph:abc. Pending release build, or failed "
+            "container build of a passed package build?")
+        assert 'Moving on' not in warnings[1]
+
+    def _schedule(self, caplog, m_config_merge, jobs):
+        m_config_merge.return_value = jobs
+        with self.make_run() as runobj:
+            runobj.base_args = list()
+            with caplog.at_level(logging.WARNING, logger='teuthology.suite.run'):
+                count = runobj.schedule_suite()
+        return runobj, count
+
+    @patch('teuthology.suite.util.find_git_parents')
+    @patch('teuthology.suite.run.Run.schedule_jobs')
+    @patch('teuthology.suite.run.Run.write_rerun_memo')
+    @patch('teuthology.suite.util.get_install_task_flavor')
+    @patch('teuthology.suite.run.config_merge')
+    @patch('teuthology.suite.run.build_matrix')
+    @patch('teuthology.suite.util.container_image_exists')
+    @patch('teuthology.suite.util.package_version_for_hash')
+    @patch('teuthology.suite.util.get_arch')
+    def test_newest_skips_sha1_without_container(
+        self,
+        m_get_arch,
+        m_package_version_for_hash,
+        m_container_image_exists,
+        m_build_matrix,
+        m_config_merge,
+        m_get_install_task_flavor,
+        m_write_rerun_memo,
+        m_schedule_jobs,
+        m_find_git_parents,
+        caplog,
+    ):
+        """
+        End to end: first sha1 has packages but no container -> warning ->
+        parent sha1 has both -> used. Non-cephadm jobs never trigger the
+        registry lookup.
+        """
+        m_get_arch.return_value = 'x86_64'
+        m_get_install_task_flavor.return_value = 'default'
+        m_package_version_for_hash.return_value = 'ceph_version'
+        # (the real function is lru_cached; the mock is asked per job)
+        m_container_image_exists.side_effect = lambda image, tag: {
+            'ceph_sha1': False, 'ceph_sha1_p1': True}[tag]
+        m_find_git_parents.return_value = ['ceph_sha1_p1']
+        jobs = [
+            ('plain', ['a.yml'], {'tasks': [{'install': None}, {'ceph': None}]}),
+            ('cephadm', ['b.yml'], {'tasks': [{'cephadm': None}]}),
+            ('cephadm2', ['c.yml'], {'tasks': [{'cephadm': None}]}),
+        ]
+        m_build_matrix.return_value = [(d, f) for d, f, _ in jobs]
+
+        runobj, count = self._schedule(caplog, m_config_merge, jobs)
+        assert count == 3
+        assert runobj.base_config.sha1 == 'ceph_sha1_p1'
+        # only cephadm jobs ask the registry: 1 for the first sha1 (then we
+        # bail out), 2 for the parent
+        assert m_container_image_exists.call_args_list == [
+            call('quay.ceph.io/ceph-ci/ceph', 'ceph_sha1'),
+            call('quay.ceph.io/ceph-ci/ceph', 'ceph_sha1_p1'),
+            call('quay.ceph.io/ceph-ci/ceph', 'ceph_sha1_p1'),
+        ]
+        warnings = [r.getMessage() for r in caplog.records
+                    if r.levelno == logging.WARNING and 'no container' in r.getMessage()]
+        assert warnings == [
+            "ceph sha1 ceph_sha1 has packages but no container at "
+            "quay.ceph.io/ceph-ci/ceph:ceph_sha1. Pending release build, or "
+            "failed container build of a passed package build? Moving on to "
+            "the next sha1 of tentacle",
+        ]
+
+    @patch('teuthology.suite.run.Run.schedule_jobs')
+    @patch('teuthology.suite.run.Run.write_rerun_memo')
+    @patch('teuthology.suite.util.get_install_task_flavor')
+    @patch('teuthology.suite.run.config_merge')
+    @patch('teuthology.suite.run.build_matrix')
+    @patch('teuthology.suite.util.container_image_exists')
+    @patch('teuthology.suite.util.package_version_for_hash')
+    @patch('teuthology.suite.util.get_arch')
+    def test_no_newest_warns_but_schedules(
+        self,
+        m_get_arch,
+        m_package_version_for_hash,
+        m_container_image_exists,
+        m_build_matrix,
+        m_config_merge,
+        m_get_install_task_flavor,
+        m_write_rerun_memo,
+        m_schedule_jobs,
+        caplog,
+    ):
+        self.args.newest = 0
+        m_get_arch.return_value = 'x86_64'
+        m_get_install_task_flavor.return_value = 'default'
+        m_package_version_for_hash.return_value = 'ceph_version'
+        m_container_image_exists.return_value = False
+        jobs = [
+            ('cephadm', ['b.yml'], {'tasks': [{'cephadm': None}]}),
+            ('cephadm2', ['c.yml'], {'tasks': [{'cephadm': None}]}),
+        ]
+        m_build_matrix.return_value = [(d, f) for d, f, _ in jobs]
+
+        runobj, count = self._schedule(caplog, m_config_merge, jobs)
+        assert count == 2
+        assert runobj.base_config.sha1 == 'ceph_sha1'
+        # nothing marked missing: schedule_jobs must not fail the run
+        missing, to_schedule = m_schedule_jobs.call_args.args[:2]
+        assert missing == []
+        assert len(to_schedule) == 2
+        warnings = [r.getMessage() for r in caplog.records
+                    if r.levelno == logging.WARNING and 'no container' in r.getMessage()]
+        # warned once, not once per job
+        assert len(warnings) == 1
+        assert 'cephadm jobs will fail to pull it' in warnings[0]
