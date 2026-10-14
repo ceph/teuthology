@@ -186,3 +186,17 @@ def node_active_job(name: str, status: Union[dict, None] = None, grace_time: int
                 log.debug(f"Error {resp.status_code} listing job {run_name}/{job_id} for {name}: {resp.text}")
     if active:
         return description
+
+
+def get_arch(machine_type):
+    """
+    Based on a given machine_type, return its architecture by querying the lock
+    server.
+
+    :returns: A string or None
+    """
+    result = list_locks(machine_type=machine_type, count=1, tries=1)
+    if not result:
+        log.warning("No machines found with machine_type %s!", machine_type)
+    else:
+        return result[0]['arch']

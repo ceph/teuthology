@@ -1,6 +1,5 @@
 import docopt
 
-import teuthology.misc
 import teuthology.schedule
 import sys
 

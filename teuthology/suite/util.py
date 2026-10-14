@@ -10,8 +10,6 @@ import sys
 
 from email.mime.text import MIMEText
 
-import teuthology.lock.query
-import teuthology.lock.util
 from teuthology import repo_utils
 
 from teuthology.config import config
@@ -254,20 +252,6 @@ def package_version_for_hash(hash, flavor='default', distro='rhel',
         return bp.version
     except VersionNotFoundError:
         return None
-
-
-def get_arch(machine_type):
-    """
-    Based on a given machine_type, return its architecture by querying the lock
-    server.
-
-    :returns: A string or None
-    """
-    result = teuthology.lock.query.list_locks(machine_type=machine_type, count=1, tries=1)
-    if not result:
-        log.warning("No machines found with machine_type %s!", machine_type)
-    else:
-        return result[0]['arch']
 
 
 def strip_fragment_path(original_path):
