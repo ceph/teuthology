@@ -11,6 +11,7 @@ from teuthology.provision import fog
 from teuthology.provision import maas
 from teuthology.provision import openstack
 from teuthology.provision import pelagos
+from teuthology.provision import openshift
 
 log = logging.getLogger(__name__)
 
@@ -21,18 +22,20 @@ def _logfile(shortname: str, archive_path: str = ""):
 
 
 def get_reimage_types():
-    return pelagos.get_types() + fog.get_types() + maas.get_types()
+    return pelagos.get_types() + fog.get_types() + maas.get_types() + openshift.get_types()
 
 
 def get_provisioner_object(machine_type, machine_name='', os_type='', os_version=''):
     pelagos_types = pelagos.get_types()
     fog_types = fog.get_types()
     maas_types = maas.get_types()
+    openshift_types = openshift.get_types()
     machine_provisioners = {
         p: provision_types for (p, provision_types) in {
             'fog': fog_types,
             'maas': maas_types,
             'pelagos': pelagos_types,
+            'openshift': openshift_types,
         }.items() if machine_type in provision_types
     }
 
@@ -47,6 +50,8 @@ def get_provisioner_object(machine_type, machine_name='', os_type='', os_version
         obj = fog.FOG(machine_name, os_type, os_version)
     elif machine_type in maas_types:
         obj = maas.MAAS(machine_name, os_type, os_version)
+    elif machine_type in openshift_types:
+        obj = openshift.OpenShift(machine_name, os_type, os_version)
     else:
         raise Exception("The machine_type '%s' is not known to any "
                         "of configured provisioners" % machine_type)
