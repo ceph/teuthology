@@ -8,6 +8,7 @@ import logging
 from teuthology.config import config
 from teuthology.contextutil import safe_while
 from paramiko.hostkeys import HostKeyEntry
+import sshtunnel
 
 log = logging.getLogger(__name__)
 
@@ -50,7 +51,20 @@ def connect(user_at_host, host_key=None, keep_alive=False, timeout=60,
     :param retry:       Whether or not to retry failed connection attempts
                         (eventually giving up if none succeed). Default is True
     :param key_filename:  Optionally override which private key to use.
+
     :return: ssh connection.
+
+    The connection is going to be established via tunnel if corresponding options
+    are provided in teuthology configuration file. For example:
+
+    tunnel:
+      - hosts: ['hostname1.domain', 'hostname2.domain']
+        bastion:
+          host: ssh_host_name
+          user: ssh_user_name
+          port: 22
+          identity: ~/.ssh/id_ed25519
+
     """
     user, host = split_user(user_at_host)
     if _SSHClient is None:
@@ -78,6 +92,29 @@ def connect(user_at_host, host_key=None, keep_alive=False, timeout=60,
         username=user,
         timeout=timeout
     )
+
+    if config.tunnel:
+        for tunnel in config.tunnel:
+            if host in tunnel.get('hosts'):
+                bastion = tunnel.get('bastion')
+                if not bastion:
+                    log.error("The 'tunnel' config must include 'bastion' entry")
+                    continue
+                bastion_host = bastion.get('host')
+                server = sshtunnel.SSHTunnelForwarder(
+                    bastion_host,
+                    ssh_username=bastion.get('user', None),
+                    ssh_password=bastion.get('word', None),
+                    ssh_pkey=bastion.get('identity'),
+                    remote_bind_address=(host, 22))
+                log.info(f'Starting tunnel to {bastion_host} for host {host}')
+                server.start()
+                local_port = server.local_bind_port
+                log.debug(f"Local port for host {host} is {local_port}")
+                connect_args['hostname'] = '127.0.0.1'
+                connect_args['port'] = local_port
+                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                break
 
     key_filename = key_filename or config.ssh_key
     ssh_config_path = config.ssh_config_path or "~/.ssh/config"
