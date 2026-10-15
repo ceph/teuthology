@@ -1,0 +1,52 @@
+{{- $ns := .Release.Namespace }}
+{{- $domain := .Values.dispatcher.labDomain }}
+{{- $sshUser := include "teuthology.loginName" (.Values.teuthology.users | default list) }}
+{{- $ocp := .Values.openshift | default dict }}
+{{- $dispPath := .Values.dispatcher.path | default dict }}
+{{- $archiveBase := .archiveBase | default .Values.archive.path | default $dispPath.archive | default (printf "/home/%s/archive" $sshUser) }}
+{{- $teuthologyPath := .teuthologyPath | default .Values.teuthology.installPath | default (printf "/home/%s/teuthology" $sshUser) }}
+{{- $srcBase := $dispPath.src | default .Values.teuthology.srcBasePath | default (printf "/home/%s/src" $sshUser) }}
+{{- $sshKey := printf "/home/%s/.ssh/id_ed25519" $sshUser }}
+{{- if hasKey . "sshKey" }}
+{{- $sshKey = .sshKey }}
+{{- end }}
+queue_host: beanstalk.{{ $ns }}.svc.cluster.local
+queue_port: 11300
+lock_server: http://paddles.{{ $ns }}.svc.cluster.local:8080
+results_server: http://paddles.{{ $ns }}.svc.cluster.local:8080
+results_ui_server: http://pulpito.{{ $ns }}.svc.cluster.local:8081/
+lab_domain: {{ $domain | quote }}
+teuthology_path: {{ $teuthologyPath | quote }}
+src_base_path: {{ $srcBase | quote }}
+archive_base: {{ $archiveBase | quote }}
+reserve_machines: 0
+{{- if $sshKey }}
+ssh_key: {{ $sshKey | quote }}
+{{- end }}
+openshift:
+  namespace: {{ $ns }}
+  machine_types: ['{{ .Values.dispatcher.tube }}']
+  user_data: teuthology/ocp/user_data/ocp-{os_type}-{os_version}-user-data.txt
+  udn_name: {{ .Values.udn.name | quote }}
+  udn_binding: {{ $ocp.udn_binding | default "l2bridge" | quote }}
+  vcpus: {{ $ocp.vcpus | default 4 }}
+  ram: {{ $ocp.ram | default "8Gi" | quote }}
+  root_storage_size: {{ $ocp.root_storage_size | default "40Gi" | quote }}
+{{- if $ocp.root_storage_class }}
+  root_storage_class: {{ $ocp.root_storage_class | quote }}
+{{- end }}
+{{- if $ocp.data_storage_class }}
+  data_storage_class: {{ $ocp.data_storage_class | quote }}
+{{- end }}
+{{- if $ocp.datasource_namespace }}
+  datasource_namespace: {{ $ocp.datasource_namespace | quote }}
+{{- end }}
+{{- if $ocp.server }}
+  server: {{ $ocp.server | quote }}
+{{- end }}
+{{- if $ocp.token }}
+  token: {{ $ocp.token | quote }}
+{{- end }}
+{{- if $ocp.certificate_authority_data }}
+  certificate_authority_data: {{ $ocp.certificate_authority_data | quote }}
+{{- end }}
