@@ -3,6 +3,7 @@ Parallel contextmanager test
 """
 import contextlib
 import logging
+from typing import Generator, Iterable, List, Optional, Union
 
 from teuthology import misc as teuthology
 from teuthology import contextutil
@@ -20,7 +21,7 @@ def sequential_test(ctx, config):
     yield
 
 @contextlib.contextmanager
-def parallel_test(ctx, config):
+def parallel_test(ctx, config: Iterable[str]) -> Generator[None, None, None]:
     """Example contextmanager that executes a command on remote hosts in parallel."""
     for role in config:
         """Create a cluster composed of all hosts with the given role, and run the command on them concurrently."""
@@ -37,7 +38,7 @@ def parallel_test(ctx, config):
     yield
 
 @contextlib.contextmanager
-def task(ctx, config):
+def task(ctx, config: Optional[Union[List[str], dict]]) -> Generator[None, None, None]:
     """This is the main body of the task that gets run."""
 
     """Take car of some yaml parsing here"""

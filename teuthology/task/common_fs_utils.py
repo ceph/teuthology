@@ -5,6 +5,7 @@ could be used by other modules (tgt.py and iscsi.py for instance).
 """
 import logging
 import contextlib
+from typing import Callable, Dict, Generator, Iterable, List, Optional, Union
 from teuthology import misc as teuthology
 
 log = logging.getLogger(__name__)
@@ -18,7 +19,7 @@ def default_image_name(role):
 
 
 @contextlib.contextmanager
-def generic_mkfs(ctx, config, devname_rtn):
+def generic_mkfs(ctx, config: Union[List[str], dict], devname_rtn: Callable) -> Generator[None, None, None]:
     """
     Create a filesystem (either rbd or tgt, depending on devname_rtn)
 
@@ -33,7 +34,7 @@ def generic_mkfs(ctx, config, devname_rtn):
     assert isinstance(config, list) or isinstance(config, dict), \
         "task mkfs must be configured with a list or dictionary"
     if isinstance(config, dict):
-        images = config.items()
+        images: Iterable[tuple[str, Optional[dict]]] = config.items()
     else:
         images = [(role, None) for role in config]
 
@@ -55,7 +56,7 @@ def generic_mkfs(ctx, config, devname_rtn):
 
 
 @contextlib.contextmanager
-def generic_mount(ctx, config, devname_rtn):
+def generic_mount(ctx, config: Union[List[str], Dict[str, Optional[str]]], devname_rtn: Callable) -> Generator[None, None, None]:
     """
     Generic Mount an rbd or tgt image.
 
@@ -70,7 +71,7 @@ def generic_mount(ctx, config, devname_rtn):
     assert isinstance(config, list) or isinstance(config, dict), \
         "task mount must be configured with a list or dictionary"
     if isinstance(config, dict):
-        role_images = config.items()
+        role_images: Iterable[tuple[str, Optional[str]]] = config.items()
     else:
         role_images = [(role, None) for role in config]
 

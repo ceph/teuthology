@@ -15,6 +15,7 @@ import subprocess
 import tempfile
 import re
 import humanfriendly
+from typing import Generator
 
 import teuthology.lock.ops
 from teuthology import misc, packaging
@@ -32,7 +33,7 @@ log = logging.getLogger(__name__)
 
 
 @contextlib.contextmanager
-def base(ctx, config):
+def base(ctx, config) -> Generator[None, None, None]:
     """
     Create the test directory that we will be using on the remote system
     """
@@ -60,7 +61,7 @@ def base(ctx, config):
         )
 
 
-def save_config(ctx, config):
+def save_config(ctx, config) -> None:
     """
     Store the config in a yaml file
     """
@@ -70,7 +71,7 @@ def save_config(ctx, config):
             yaml.safe_dump(ctx.config, f, default_flow_style=False)
 
 
-def check_packages(ctx, config):
+def check_packages(ctx, config) -> None:
     """
     Checks gitbuilder to determine if there are missing packages for this job.
 
@@ -124,7 +125,7 @@ def check_packages(ctx, config):
 
 
 @contextlib.contextmanager
-def timer(ctx, config):
+def timer(ctx, config) -> Generator[None, None, None]:
     """
     Start the timer used by teuthology
     """
@@ -138,7 +139,7 @@ def timer(ctx, config):
         ctx.summary['duration'] = duration
 
 
-def add_remotes(ctx, config):
+def add_remotes(ctx, config) -> None:
     """
     Create a ctx.cluster object populated with remotes mapped to roles
     """
@@ -170,7 +171,7 @@ def add_remotes(ctx, config):
             ctx.cluster.add(rem, rem.name)
 
 
-def connect(ctx, config):
+def connect(ctx, config) -> None:
     """
     Connect to all remotes in ctx.cluster
     """
@@ -180,7 +181,7 @@ def connect(ctx, config):
         rem.connect()
 
 
-def push_inventory(ctx, config):
+def push_inventory(ctx, config) -> None:
     if not teuth_config.lock_server:
         return
 
@@ -198,7 +199,7 @@ BUILDPACKAGES_OK = 1
 BUILDPACKAGES_REMOVED = 2
 BUILDPACKAGES_NOTHING = 3
 
-def buildpackages_prep(ctx, config):
+def buildpackages_prep(ctx, config) -> int:
     """
     Make sure the 'buildpackages' task happens before
     the 'install' task.
@@ -245,7 +246,7 @@ def buildpackages_prep(ctx, config):
         return BUILDPACKAGES_NOTHING
 
 
-def serialize_remote_roles(ctx, config):
+def serialize_remote_roles(ctx, config) -> None:
     """
     Provides an explicit mapping for which remotes have been assigned what roles
     So that other software can be loosely coupled to teuthology
@@ -258,7 +259,7 @@ def serialize_remote_roles(ctx, config):
             yaml.safe_dump(info_yaml, info_file, default_flow_style=False)
 
 
-def check_ceph_data(ctx, config):
+def check_ceph_data(ctx, config) -> None:
     """
     Check for old /var/lib/ceph subdirectories and detect staleness.
     """
@@ -278,7 +279,7 @@ def check_ceph_data(ctx, config):
         raise RuntimeError('Stale /var/lib/ceph detected, aborting.')
 
 
-def check_conflict(ctx, config):
+def check_conflict(ctx, config) -> None:
     """
     Note directory use conflicts and stale directories.
     """
@@ -299,7 +300,7 @@ def check_conflict(ctx, config):
         raise RuntimeError('Stale jobs detected, aborting.')
 
 
-def fetch_binaries_for_coredumps(path, remote):
+def fetch_binaries_for_coredumps(path: str, remote) -> None:
     """
     Pul ELFs (debug and stripped) for each coredump found
     """
@@ -364,7 +365,7 @@ def fetch_binaries_for_coredumps(path, remote):
             remote.get_file(debug_path, coredump_path)
 
 
-def gzip_if_too_large(compress_min_size, src, tarinfo, local_path):
+def gzip_if_too_large(compress_min_size: int, src, tarinfo, local_path: str) -> None:
     if tarinfo.size >= compress_min_size:
         with gzip.open(local_path + '.gz', 'wb') as dest:
             shutil.copyfileobj(src, dest)
@@ -373,7 +374,7 @@ def gzip_if_too_large(compress_min_size, src, tarinfo, local_path):
 
 
 @contextlib.contextmanager
-def archive(ctx, config):
+def archive(ctx, config) -> Generator[None, None, None]:
     """
     Handle the creation and deletion of the archive directory.
     """
@@ -430,7 +431,7 @@ def archive(ctx, config):
 
 
 @contextlib.contextmanager
-def sudo(ctx, config):
+def sudo(ctx, config) -> Generator[None, None, None]:
     """
     Enable use of sudo
     """
@@ -461,7 +462,7 @@ def sudo(ctx, config):
 
 
 @contextlib.contextmanager
-def coredump(ctx, config):
+def coredump(ctx, config) -> Generator[None, None, None]:
     """
     Stash a coredump of this system if an error occurs.
     """
@@ -524,7 +525,7 @@ def coredump(ctx, config):
 
 
 @contextlib.contextmanager
-def archive_upload(ctx, config):
+def archive_upload(ctx, config) -> Generator[None, None, None]:
     """
     Upload the archive directory to a designated location
     """

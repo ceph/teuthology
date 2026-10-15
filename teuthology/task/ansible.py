@@ -7,6 +7,7 @@ import pathlib
 import pexpect
 import yaml
 import shutil
+from typing import IO, List, Optional
 
 from tempfile import mkdtemp, NamedTemporaryFile
 
@@ -90,7 +91,7 @@ class FailureAnalyzer:
                     lines.add(line)
         return list(lines)
 
-    def analyze_line(self, line):
+    def analyze_line(self, line: str) -> str:
         if line.startswith("W: ") or line.endswith("?"):
             return ""
         drop_phrases = [
@@ -203,7 +204,7 @@ class Ansible(Task):
     # assign hosts to for dynamic inventory creation
     inventory_group = None
 
-    def __init__(self, ctx, config):
+    def __init__(self, ctx, config: dict) -> None:
         super(Ansible, self).__init__(ctx, config)
         self.generated_inventory = False
         self.generated_playbook = False
@@ -212,7 +213,7 @@ class Ansible(Task):
             self.log.addHandler(logging.FileHandler(
                 os.path.join(ctx.archive, "ansible.log")))
 
-    def setup(self):
+    def setup(self) -> None:
         super(Ansible, self).setup()
         self.find_repo()
         self.get_playbook()
@@ -229,7 +230,7 @@ class Ansible(Task):
             )
         return self._failure_log
 
-    def find_repo(self):
+    def find_repo(self) -> None:
         """
         Locate the repo we're using; cloning it from a remote repo if necessary
         """
@@ -243,7 +244,7 @@ class Ansible(Task):
             repo_path = os.path.abspath(os.path.expanduser(repo))
         self.repo_path = repo_path
 
-    def get_playbook(self):
+    def get_playbook(self) -> None:
         """
         If necessary, fetch and read the playbook file
         """
@@ -277,7 +278,7 @@ class Ansible(Task):
                 "playbook value must either be a list, URL or a filename")
         log.info("Playbook: %s", self.playbook)
 
-    def get_inventory(self):
+    def get_inventory(self) -> Optional[str]:
         """
         Determine whether or not we're using an existing inventory file
         """
@@ -289,7 +290,7 @@ class Ansible(Task):
             self.inventory = etc_ansible_hosts
         return self.inventory
 
-    def generate_inventory(self):
+    def generate_inventory(self) -> None:
         """
         Generate a hosts (inventory) file to use. This should not be called if
         we're using an existing file.
@@ -305,7 +306,7 @@ class Ansible(Task):
         self.inventory = self._write_inventory_files(hosts_str)
         self.generated_inventory = True
 
-    def _write_inventory_files(self, inventory, inv_suffix=''):
+    def _write_inventory_files(self, inventory: str, inv_suffix: str = '') -> str:
         """
         Actually write the inventory files. Writes out group_vars files as
         necessary based on configuration.
@@ -339,7 +340,7 @@ class Ansible(Task):
 
         return inventory_dir
 
-    def generate_playbook(self):
+    def generate_playbook(self) -> None:
         """
         Generate a playbook file to use. This should not be called if we're
         using an existing file.
@@ -354,14 +355,14 @@ class Ansible(Task):
         self.playbook_file = playbook_file
         self.generated_playbook = True
 
-    def begin(self):
+    def begin(self) -> None:
         super(Ansible, self).begin()
         if len(self.cluster.remotes) > 0:
             self.execute_playbook()
         else:
             log.info("There are no remotes; skipping playbook execution")
 
-    def execute_playbook(self, _logfile=None):
+    def execute_playbook(self, _logfile: Optional[IO[str]] = None) -> None:
         """
         Execute ansible-playbook
 
@@ -397,7 +398,7 @@ class Ansible(Task):
             for remote in remotes:
                 remote.reconnect()
 
-    def _handle_failure(self, command, status):
+    def _handle_failure(self, command: str, status: int) -> None:
         self._set_status('dead')
         failures = None
         with open(self.failure_log.name, 'r') as fail_log_file:
@@ -420,13 +421,13 @@ class Ansible(Task):
             raise AnsibleFailedError(failures)
         raise CommandFailedError(command, status)
 
-    def _set_status(self, status):
+    def _set_status(self, status: str) -> None:
         """
         Not implemented in the base class
         """
         pass
 
-    def _archive_failures(self):
+    def _archive_failures(self) -> None:
         if self.ctx.archive:
             archive_path = os.path.join(self.ctx.archive, FAILURE_LOG_NAME)
             log.info("Archiving ansible failure log at: {0}".format(
@@ -438,7 +439,7 @@ class Ansible(Task):
             )
             os.chmod(archive_path, 0o664)
 
-    def _build_args(self):
+    def _build_args(self) -> List[str]:
         """
         Assemble the list of args to be executed
         """
@@ -462,7 +463,7 @@ class Ansible(Task):
             args.extend(['--skip-tags', skip_tags])
         return args
 
-    def teardown(self):
+    def teardown(self) -> None:
         self._cleanup()
         if self.generated_inventory:
             shutil.rmtree(self.inventory)
@@ -470,7 +471,7 @@ class Ansible(Task):
             os.remove(self.playbook_file.name)
         super(Ansible, self).teardown()
 
-    def _cleanup(self):
+    def _cleanup(self) -> None:
         """
         If the ``cleanup`` key exists in config the same playbook will be
         run again during the teardown step with the var ``cleanup`` given with
@@ -507,7 +508,7 @@ class CephLab(Ansible):
     name = 'ansible.cephlab'
     inventory_group = 'testnodes'
 
-    def __init__(self, ctx, config):
+    def __init__(self, ctx, config: Optional[dict]) -> None:
         config = config or dict()
         if 'playbook' not in config:
             config['playbook'] = 'cephlab.yml'
@@ -515,7 +516,7 @@ class CephLab(Ansible):
             config['repo'] = teuth_config.get_ceph_cm_ansible_git_url()
         super(CephLab, self).__init__(ctx, config)
 
-    def begin(self):
+    def begin(self) -> None:
         # Write foo to ~/.vault_pass.txt if it's missing.
         # In almost all cases we don't need the actual vault password.
         # Touching an empty file broke as of Ansible 2.4
@@ -525,7 +526,7 @@ class CephLab(Ansible):
                 f.write('foo')
         super(CephLab, self).begin()
 
-    def _set_status(self, status):
+    def _set_status(self, status: str) -> None:
         set_status(self.ctx.summary, status)
 
 

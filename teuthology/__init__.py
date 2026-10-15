@@ -75,7 +75,7 @@ log = logging.getLogger(__name__)
 log.debug('teuthology version: %s', __version__)
 
 
-def setup_log_file(log_path):
+def setup_log_file(log_path: str) -> None:
     root_logger = logging.getLogger()
     handlers = root_logger.handlers
     for handler in handlers:
@@ -93,12 +93,12 @@ def setup_log_file(log_path):
     root_logger.info('teuthology version: %s', __version__)
 
 
-def install_except_hook():
+def install_except_hook() -> None:
     """
     Install an exception hook that first logs any uncaught exception, then
     raises it.
     """
-    def log_exception(exc_type, exc_value, exc_traceback):
+    def log_exception(exc_type, exc_value, exc_traceback) -> None:
         if not issubclass(exc_type, KeyboardInterrupt):
             log.critical("Uncaught exception", exc_info=(exc_type, exc_value,
                                                          exc_traceback))
@@ -106,10 +106,10 @@ def install_except_hook():
     sys.excepthook = log_exception
 
 
-def patch_gevent_hub_error_handler():
+def patch_gevent_hub_error_handler() -> None:
     Hub._origin_handle_error = Hub.handle_error
 
-    def custom_handle_error(self, context, type, value, tb):
+    def custom_handle_error(self, context, type, value, tb) -> None:
         if context is None or issubclass(type, Hub.SYSTEM_ERROR):
             self.handle_system_error(type, value)
         elif issubclass(type, Hub.NOT_ERROR):

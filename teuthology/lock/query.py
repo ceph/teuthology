@@ -3,7 +3,7 @@ import logging
 import os
 import requests
 
-from typing import Dict, List, Union
+from typing import Dict, List, Literal, Union, overload
 
 from teuthology import misc
 from teuthology.config import config
@@ -56,7 +56,11 @@ def is_vm(name=None, status=None):
     return status.get('is_vm', False)
 
 
-def list_locks(keyed_by_name=False, tries=10, **kwargs):
+@overload
+def list_locks(keyed_by_name: Literal[False] = ..., tries: int = ..., **kwargs) -> list[dict]: ...
+@overload
+def list_locks(keyed_by_name: Literal[True], tries: int = ..., **kwargs) -> dict[str, dict]: ...
+def list_locks(keyed_by_name: bool = False, tries: int = 10, **kwargs) -> Union[list[dict], dict[str, dict]]:
     uri = os.path.join(config.lock_server, 'nodes', '')
     for key, value in kwargs.items():
         if kwargs[key] is False:
