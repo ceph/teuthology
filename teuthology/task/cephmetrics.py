@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 
 
 class CephMetrics(Ansible):
-    def __init__(self, ctx, config):
+    def __init__(self, ctx, config: dict) -> None:
         super(CephMetrics, self).__init__(ctx, config)
         if 'repo' not in self.config:
             self.config['repo'] = os.path.join(
@@ -69,7 +69,7 @@ class CephMetrics(Ansible):
         self.inventory = self._write_inventory_files(hosts_str)
         self.generated_inventory = True
 
-    def begin(self):
+    def begin(self) -> None:
         super(CephMetrics, self).begin()
         wait_time = 5 * 60
         self.log.info(
@@ -79,7 +79,7 @@ class CephMetrics(Ansible):
         time.sleep(wait_time)
         self.run_tests()
 
-    def run_tests(self):
+    def run_tests(self) -> None:
         self.log.info("Running tests...")
         command = "tox -e integration %s" % self.inventory
         out, status = pexpect.run(

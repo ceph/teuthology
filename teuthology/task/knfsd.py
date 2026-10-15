@@ -4,6 +4,7 @@ Export/Unexport a ``nfs server`` client.
 import contextlib
 import logging
 import os
+from collections.abc import Generator
 
 from teuthology import misc as teuthology
 
@@ -21,7 +22,7 @@ def get_nfsd_args(remote, cmd):
     return args
 
 @contextlib.contextmanager
-def task(ctx, config):
+def task(ctx, config: list[str] | dict | None) -> Generator[None, None, None]:
     """
     Export/Unexport a ``nfs server`` client.
 

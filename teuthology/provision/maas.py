@@ -5,7 +5,7 @@ import logging
 from oauthlib.oauth1 import SIGNATURE_PLAINTEXT
 from requests import Response
 from requests_oauthlib import OAuth1Session
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import teuthology.orchestra
 
@@ -26,7 +26,7 @@ def enabled(warn: bool = False) -> bool:
     :returns: True if all required settings are present; False otherwise
     """
     maas_conf = config.get("maas", {})
-    params: List[str] = ["api_url", "api_key", "machine_types"]
+    params: list[str] = ["api_url", "api_key", "machine_types"]
     unset = [param for param in params if not maas_conf.get(param)]
 
     if unset and warn:
@@ -51,7 +51,7 @@ def enabled(warn: bool = False) -> bool:
 
     return True
 
-def get_types() -> List[str]:
+def get_types() -> list[str]:
     """Fetch and parse MAAS machine_types config.
 
     :returns: The list of MAAS-configured machine types.
@@ -116,9 +116,9 @@ class MAAS(object):
         self,
         path: str,
         method: str = "GET",
-        params: Optional[Dict[str, Any]] = None,
-        data: Optional[Union[Dict[str, Any], list]] = None,
-        files: Optional[Dict[str, Any]] = None,
+        params: dict[str, Any] | None = None,
+        data: dict[str, Any] | list | None = None,
+        files: dict[str, Any] | None = None,
         raise_on_error: bool = True
     ) -> Response:
         """Submit a request to the MAAS server
@@ -133,12 +133,12 @@ class MAAS(object):
 
         :returns: A Response object from the requests library.
         """
-        args: Dict[str, Any] = {"url": f"{config.maas['api_url'].strip('/')}/{path}"}
+        args: dict[str, Any] = {"url": f"{config.maas['api_url'].strip('/')}/{path}"}
         args["data"] = json.dumps(data) if data else None
         args["params"] = params if params else None
         args["files"] = files if files else None
 
-        resp: Optional[Response] = None
+        resp: Response | None = None
         method_upper = method.upper()
 
         if method_upper == "GET":
@@ -160,7 +160,7 @@ class MAAS(object):
 
         return resp
 
-    def get_machines_data(self, interval: int = 3, timeout: int = 30) -> Dict[str, Any]:
+    def get_machines_data(self, interval: int = 3, timeout: int = 30) -> dict[str, Any]:
         """Locate the machine we want to use
 
         :param interval: Time to wait between retries, in seconds (default: 3)
@@ -203,7 +203,7 @@ class MAAS(object):
                 return f"{self.os_type}/{self.os_type}{os_version}"
         return f"{self.os_type}/{self.os_version}"
 
-    def get_image_data(self) -> Dict[str, Any]:
+    def get_image_data(self) -> dict[str, Any]:
         """Locate the image we want to use
 
         :returns: The image data as a dictionary
@@ -252,7 +252,7 @@ class MAAS(object):
 
     def deploy_machine(self) -> None:
         """Deploy the machine"""
-        image_data: Dict[str, Any] = self.get_image_data()
+        image_data: dict[str, Any] = self.get_image_data()
         if image_data.get("type", "").lower() not in ["synced", "uploaded"]:
             raise RuntimeError(
                 f"MaaS image {image_data.get('name')} is not synced, "
@@ -267,7 +267,7 @@ class MAAS(object):
             "distro_series": (None, image_data.get("name")),
             "user_data": (None, self._get_user_data()),
         }
-        data: Dict[str, Any] = self.do_request(
+        data: dict[str, Any] = self.do_request(
             f"/machines/{self.system_id}/op-deploy", method="POST", files=files
         ).json()
         if data.get("status_name", "").lower() != "deploying":
@@ -282,8 +282,8 @@ class MAAS(object):
         :param erase: Optional parameter to indicate whether to erase disks
                         (default: False)
         """
-        data: Dict[str, bool] = {"erase": erase}
-        resp: Dict[str, Any] = self.do_request(
+        data: dict[str, bool] = {"erase": erase}
+        resp: dict[str, Any] = self.do_request(
             f"/machines/{self.system_id}/op-release", method="POST", data=data
         ).json()
         if resp.get("status_name", "").lower() not in ["disk erasing", "releasing", "ready"]:
@@ -347,7 +347,7 @@ class MAAS(object):
 
     def release(self) -> None:
         """Release the machine"""
-        machine_data: Dict[str, Any] = self.get_machines_data()
+        machine_data: dict[str, Any] = self.get_machines_data()
         status_name = machine_data.get("status_name", "").lower()
 
         if status_name in ["new", "allocated", "ready"]:
@@ -373,7 +373,7 @@ class MAAS(object):
         self.log.info(f"Releasing machine '{self.shortname}'")
         self.release_machine()
 
-    def _get_user_data(self) -> Optional[io.BytesIO]:
+    def _get_user_data(self) -> io.BufferedReader | None:
         """Get user data for cloud-init
 
         :returns: BytesIO object containing formatted user data, or None if no template
@@ -404,7 +404,7 @@ class MAAS(object):
             sleep=interval, timeout=int(config.maas.get("timeout", timeout))
         ) as proceed:
             while proceed():
-                maas_machine: Dict[str, Any] = self.get_machines_data()
+                maas_machine: dict[str, Any] = self.get_machines_data()
                 status_name = maas_machine["status_name"]
                 if status_name.lower() == status.lower():
                     log.info(

@@ -24,7 +24,7 @@ GRAPHITE_DOWNLOAD_TIMEOUT = 60
 
 
 class PCPDataSource(object):
-    def __init__(self, hosts, time_from, time_until='now'):
+    def __init__(self, hosts: list[str], time_from: int | str, time_until: int | str = 'now') -> None:
         self.hosts = hosts
         self.time_from = time_from
         self.time_until = time_until
@@ -34,13 +34,13 @@ class PCPArchive(PCPDataSource):
     archive_base_path = '/var/log/pcp/pmlogger'
     archive_file_extensions = ('0', 'index', 'meta')
 
-    def get_archive_input_dir(self, host):
+    def get_archive_input_dir(self, host: str) -> str:
         return os.path.join(
             self.archive_base_path,
             host,
         )
 
-    def get_pmlogextract_cmd(self, host):
+    def get_pmlogextract_cmd(self, host: str) -> list:
         cmd = [
             'pmlogextract',
             '-S', self._format_time(self.time_from),
@@ -52,7 +52,7 @@ class PCPArchive(PCPDataSource):
         return cmd
 
     @staticmethod
-    def _format_time(seconds):
+    def _format_time(seconds: int | str) -> str:
         if isinstance(seconds, str):
             return seconds
         return "@ %s" % time.asctime(time.gmtime(seconds))
@@ -61,7 +61,7 @@ class PCPArchive(PCPDataSource):
 class PCPGrapher(PCPDataSource):
     _endpoint = '/'
 
-    def __init__(self, hosts, time_from, time_until='now'):
+    def __init__(self, hosts: list[str], time_from: int | str, time_until: int | str = 'now') -> None:
         super(PCPGrapher, self).__init__(hosts, time_from, time_until)
         self.base_url = urljoin(
             teuth_config.pcp_host,
@@ -71,11 +71,11 @@ class PCPGrapher(PCPDataSource):
 class GrafanaGrapher(PCPGrapher):
     _endpoint = '/grafana/index.html#/dashboard/script/index.js'
 
-    def __init__(self, hosts, time_from, time_until='now', job_id=None):
+    def __init__(self, hosts: list[str], time_from: int | str, time_until: int | str = 'now', job_id: str | None = None) -> None:
         super(GrafanaGrapher, self).__init__(hosts, time_from, time_until)
         self.job_id = job_id
 
-    def build_graph_url(self):
+    def build_graph_url(self) -> str:
         config = dict(
             hosts=','.join(self.hosts),
             time_from=self._format_time(self.time_from),
@@ -87,7 +87,7 @@ class GrafanaGrapher(PCPGrapher):
         return template.format(base_url=self.base_url, args=args)
 
     @staticmethod
-    def _format_time(seconds):
+    def _format_time(seconds: int | str) -> str:
         if isinstance(seconds, str):
             return seconds
         seconds = int(seconds)
@@ -113,13 +113,13 @@ class GraphiteGrapher(PCPGrapher):
     )
     _endpoint = '/graphite/render'
 
-    def __init__(self, hosts, time_from, time_until='now', dest_dir=None,
-                 job_id=None):
+    def __init__(self, hosts: list[str], time_from: int | str, time_until: int | str = 'now', dest_dir: str | None = None,
+                 job_id: str | None = None) -> None:
         super(GraphiteGrapher, self).__init__(hosts, time_from, time_until)
         self.dest_dir = dest_dir
         self.job_id = job_id
 
-    def build_graph_urls(self):
+    def build_graph_urls(self) -> None:
         if not hasattr(self, 'graphs'):
             self.graphs = dict()
         for metric in self.metrics:
@@ -127,18 +127,18 @@ class GraphiteGrapher(PCPGrapher):
             metric_dict['url'] = self.get_graph_url(metric)
             self.graphs[metric] = metric_dict
 
-    def _check_dest_dir(self):
+    def _check_dest_dir(self) -> None:
         if not self.dest_dir:
             raise RuntimeError("Must provide a dest_dir!")
 
-    def write_html(self, mode='dynamic'):
+    def write_html(self, mode: str = 'dynamic') -> None:
         self._check_dest_dir()
         generated_html = self.generate_html(mode=mode)
         html_path = os.path.join(self.dest_dir, 'pcp.html')
         with open(html_path, 'w') as f:
             f.write(generated_html)
 
-    def generate_html(self, mode='dynamic'):
+    def generate_html(self, mode: str = 'dynamic') -> str:
         self.build_graph_urls()
         cwd = os.path.dirname(__file__)
         loader = jinja2.loaders.FileSystemLoader(cwd)
@@ -151,7 +151,7 @@ class GraphiteGrapher(PCPGrapher):
         )
         return data
 
-    def download_graphs(self):
+    def download_graphs(self) -> None:
         self._check_dest_dir()
         self.build_graph_urls()
         for metric in self.graphs.keys():
@@ -173,8 +173,8 @@ class GraphiteGrapher(PCPGrapher):
             with open(graph_path, 'wb') as f:
                 f.write(resp.content)
 
-    def get_graph_url(self, metric):
-        config = dict(self.graph_defaults)
+    def get_graph_url(self, metric: str) -> str:
+        config: dict[str, str | int | list[str]] = dict(self.graph_defaults)
         config.update({
             'from': self.time_from,
             'until': self.time_until,
@@ -186,14 +186,14 @@ class GraphiteGrapher(PCPGrapher):
         template = "{base_url}?{args}"
         return template.format(base_url=self.base_url, args=args)
 
-    def get_target_globs(self, metric=''):
+    def get_target_globs(self, metric: str = '') -> list[str]:
         globs = ['*{}*'.format(host) for host in self.hosts]
         if metric:
             globs = ['{}.{}'.format(glob, metric) for glob in globs]
         return globs
 
     @staticmethod
-    def _sanitize_metric_name(metric):
+    def _sanitize_metric_name(metric: str) -> str:
         result = metric
         replacements = [
             (' ', '_'),
@@ -220,7 +220,7 @@ class PCP(Task):
     """
     enabled = True
 
-    def __init__(self, ctx, config):
+    def __init__(self, ctx, config: dict) -> None:
         super(PCP, self).__init__(ctx, config)
         if teuth_config.get('pcp_host') is None:
             self.enabled = False
@@ -235,7 +235,7 @@ class PCP(Task):
         # pmlogextract
         self.fetch_archives = self.config.get('fetch_archives', False)
 
-    def setup(self):
+    def setup(self) -> None:
         if not self.enabled:
             return
         super(PCP, self).setup()
@@ -243,14 +243,14 @@ class PCP(Task):
         log.debug("start_time: %s", self.start_time)
         self.setup_collectors()
 
-    def setup_collectors(self):
+    def setup_collectors(self) -> None:
         log.debug("cluster: %s", self.cluster)
         hosts = [rem.shortname for rem in self.cluster.remotes.keys()]
         self.setup_grafana(hosts)
         self.setup_graphite(hosts)
         self.setup_archive(hosts)
 
-    def setup_grafana(self, hosts):
+    def setup_grafana(self, hosts: list[str]) -> None:
         if self.use_grafana:
             self.grafana = GrafanaGrapher(
                 hosts=hosts,
@@ -259,7 +259,7 @@ class PCP(Task):
                 job_id=self.job_id,
             )
 
-    def setup_graphite(self, hosts):
+    def setup_graphite(self, hosts: list[str]) -> None:
         if not getattr(self.ctx, 'archive', None):
             self.use_graphite = False
         if self.use_graphite:
@@ -278,7 +278,7 @@ class PCP(Task):
                 job_id=self.job_id,
             )
 
-    def setup_archive(self, hosts):
+    def setup_archive(self, hosts: list[str]) -> None:
         if not getattr(self.ctx, 'archive', None):
             self.fetch_archives = False
         if self.fetch_archives:
@@ -288,7 +288,7 @@ class PCP(Task):
                 time_until=self.stop_time,
             )
 
-    def begin(self):
+    def begin(self) -> None:
         if not self.enabled:
             return
         if self.use_grafana:
@@ -299,7 +299,7 @@ class PCP(Task):
         if self.use_graphite:
             self.graphite.write_html()
 
-    def end(self):
+    def end(self) -> None:
         if not self.enabled:
             return
         self.stop_time = int(time.time())

@@ -54,7 +54,7 @@ class CephAnsible(Task):
         nfss='nfs',
     )
 
-    def __init__(self, ctx, config):
+    def __init__(self, ctx, config: dict) -> None:
         super(CephAnsible, self).__init__(ctx, config)
         config = self.config or dict()
         self.playbook = None
@@ -76,7 +76,7 @@ class CephAnsible(Task):
             vars['ceph_dev_branch'] = ctx.config.get('branch', 'main')
         self.cluster_name = vars.get('cluster', 'ceph')
 
-    def setup(self):
+    def setup(self) -> None:
         super(CephAnsible, self).setup()
         # generate hosts file based on test config
         self.generate_hosts_file()
@@ -97,7 +97,7 @@ class CephAnsible(Task):
         self.extra_vars_file = self._write_hosts_file(prefix='teuth_ansible_gvar',
                                                       content=gvar)
 
-    def execute_playbook(self):
+    def execute_playbook(self) -> None:
         """
         Execute ansible-playbook
 
@@ -129,7 +129,7 @@ class CephAnsible(Task):
         else:
             self.run_playbook()
 
-    def generate_hosts_file(self):
+    def generate_hosts_file(self) -> None:
         hosts_dict = dict()
         for group in sorted(self.groups_to_roles.keys()):
             role_prefix = self.groups_to_roles[group]
@@ -165,11 +165,11 @@ class CephAnsible(Task):
                                                 content=hosts_content.strip())
         self.generated_inventory = True
 
-    def begin(self):
+    def begin(self) -> None:
         super(CephAnsible, self).begin()
         self.execute_playbook()
 
-    def _write_hosts_file(self, prefix, content):
+    def _write_hosts_file(self, prefix: str, content: str) -> str:
         """
         Actually write the hosts file
         """
@@ -179,7 +179,7 @@ class CephAnsible(Task):
         hosts_file.flush()
         return hosts_file.name
 
-    def teardown(self):
+    def teardown(self) -> None:
         log.info("Cleaning up temporary files")
         os.remove(self.inventory)
         if self.playbook is not None:
@@ -249,7 +249,7 @@ class CephAnsible(Task):
                         'python-dev'
                     ])
 
-    def collect_logs(self):
+    def collect_logs(self) -> None:
         ctx = self.ctx
         if ctx.archive is not None and \
                 not (ctx.config.get('archive-on-error') and ctx.summary['success']):
@@ -270,7 +270,7 @@ class CephAnsible(Task):
                 misc.pull_directory(remote, '/var/log/ceph',
                                     os.path.join(sub, 'log'))
 
-    def wait_for_ceph_health(self):
+    def wait_for_ceph_health(self) -> None:
         with contextutil.safe_while(sleep=15, tries=6,
                                     action='check health') as proceed:
             (remote,) = self.ctx.cluster.only('mon.a').remotes
@@ -289,7 +289,7 @@ class CephAnsible(Task):
                 if state in ('HEALTH_OK', 'HEALTH_WARN'):
                     break
 
-    def get_host_vars(self, remote):
+    def get_host_vars(self, remote) -> dict:
         extra_vars = self.config.get('vars', dict())
         host_vars = dict()
         if not extra_vars.get('osd_auto_discovery', False):
@@ -323,7 +323,7 @@ class CephAnsible(Task):
             host_vars['public_network'] = remote.cidr
         return host_vars
 
-    def run_rh_playbook(self):
+    def run_rh_playbook(self) -> None:
         ceph_installer = self.ceph_installer
         args = self.args
         ceph_installer.run(args=[
@@ -350,7 +350,7 @@ class CephAnsible(Task):
             raise CephAnsibleError("Failed during ceph-ansible execution")
         self._create_rbd_pool()
 
-    def run_playbook(self):
+    def run_playbook(self) -> None:
         # setup ansible on first mon node
         ceph_installer = self.ceph_installer
         args = self.args
@@ -444,7 +444,7 @@ class CephAnsible(Task):
         self._create_rbd_pool()
         self.fix_keyring_permission()
 
-    def _copy_and_print_config(self):
+    def _copy_and_print_config(self) -> None:
             ceph_installer = self.ceph_installer
             # copy the inventory file to installer node
             ceph_installer.put_file(self.inventory, 'ceph-ansible/inven.yml')
@@ -467,7 +467,7 @@ class CephAnsible(Task):
             ceph_installer.run(args=['cat', 'ceph-ansible/site.yml'])
             ceph_installer.run(args=['cat', 'ceph-ansible/group_vars/all'])
 
-    def _create_rbd_pool(self):
+    def _create_rbd_pool(self) -> None:
         mon_node = self.ceph_first_mon
         log.info('Creating RBD pool')
         mon_node.run(
@@ -483,7 +483,7 @@ class CephAnsible(Task):
                 ],
             check_status=False)
 
-    def fix_keyring_permission(self):
+    def fix_keyring_permission(self) -> None:
         clients_only = lambda role: role.startswith('client')
         for client in self.cluster.only(clients_only).remotes.keys():
             client.run(args=[

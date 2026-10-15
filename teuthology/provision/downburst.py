@@ -15,7 +15,7 @@ from teuthology.lock import query
 log = logging.getLogger(__name__)
 
 
-def get_types():
+def get_types() -> list[str]:
     types = ['vps']
     if 'downburst' in config and 'machine' in config.downburst:
         machine = config.downburst.get('machine')
@@ -43,7 +43,7 @@ def get_disable_default_repos_cmds(os_type):
         return [f'sed -i "s/enabled=1/enabled=0/g" {mask}']
     return []
 
-def downburst_executable():
+def downburst_executable() -> str:
     """
     First check for downburst in the user's path.
     Then check in ~/src, ~ubuntu/src, and ~teuthology/src.
@@ -71,8 +71,8 @@ def downburst_executable():
     return ''
 
 
-def downburst_environment():
-    env = dict()
+def downburst_environment() -> dict[str, str | None]:
+    env: dict[str, str | None] = dict()
     env['PATH'] = os.environ.get('PATH')
     discover_url = os.environ.get('DOWNBURST_DISCOVER_URL')
     if config.downburst and not discover_url:
@@ -103,7 +103,7 @@ class Downburst(object):
         self.executable = downburst_executable()
         self.environment = downburst_environment()
 
-    def create(self):
+    def create(self) -> bool | None:
         """
         Launch a virtual machine instance.
 
@@ -142,7 +142,7 @@ class Downburst(object):
                         break
             return success
 
-    def _run_create(self):
+    def _run_create(self) -> tuple[int, str, str]:
         """
         Used by create(), this method is what actually calls downburst when
         creating a virtual machine instance.
@@ -174,7 +174,7 @@ class Downburst(object):
         out, err = proc.communicate()
         return (proc.returncode, out, err)
 
-    def destroy(self):
+    def destroy(self) -> bool:
         """
         Destroy (shutdown and delete) a virtual machine instance.
         """
@@ -376,7 +376,7 @@ class Downburst(object):
             return True
         return False
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.remove_config()
 
 
@@ -402,7 +402,7 @@ _known_downburst_distros = {
         ],
 }
 
-def get_distro_from_downburst():
+def get_distro_from_downburst() -> dict[str, list[str]]:
     """
     Return a table of valid distros.
 

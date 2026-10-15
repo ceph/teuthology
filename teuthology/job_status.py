@@ -1,3 +1,5 @@
+
+
 def get_status(summary):
     """
     :param summary: The job summary dict. Normally ctx.summary
@@ -17,7 +19,7 @@ def get_status(summary):
     return status
 
 
-def set_status(summary, status):
+def set_status(summary: dict, status: str | None) -> None:
     """
     Sets summary['status'] to status, and summary['success'] to True if status
     is 'pass'. If status is not 'pass', then 'success' is False.

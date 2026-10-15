@@ -14,7 +14,7 @@ from humanfriendly import format_timespan
 from teuthology import repo_utils, schedule
 import teuthology.beanstalk
 
-from teuthology.config import config, JobConfig
+from teuthology.config import config, JobConfig, YamlConfig
 from teuthology.exceptions import (
     BranchMismatchError, BranchNotFoundError, CommitNotFoundError,
 )
@@ -39,7 +39,7 @@ class Run(object):
         'kernel_dict', 'config_input', 'timestamp', 'user', 'os',
     )
 
-    def __init__(self, args):
+    def __init__(self, args: YamlConfig) -> None:
         """
         args must be a config.YamlConfig object
         """
@@ -61,7 +61,7 @@ class Run(object):
         self.base_yaml_paths = [os.path.join(self.suite_repo_path, b) for b in
                                 self.args.base_yaml_paths]
 
-    def make_run_name(self):
+    def make_run_name(self) -> str:
         """
         Generate a run name. A run name looks like:
             teuthology-2014-06-23_19:00:37-rados-dumpling-testing-basic-plana
@@ -78,7 +78,7 @@ class Run(object):
             ]
         ).replace('/', ':')
 
-    def create_initial_config(self):
+    def create_initial_config(self) -> JobConfig:
         """
         Put together the config file used as the basis for each job in the run.
         Grabs hashes for the latest ceph, kernel and teuthology versions in the
@@ -156,7 +156,7 @@ class Run(object):
             expires = _base_time + parse_offset(expires_str)
         return expires
 
-    def choose_os(self):
+    def choose_os(self) -> OS:
         os_type = self.args.distro
         os_version = self.args.distro_version
         if not (os_type and os_version):
@@ -166,7 +166,7 @@ class Run(object):
             os_ = OS(os_type, os_version)
         return os_
 
-    def choose_kernel(self):
+    def choose_kernel(self) -> dict:
         # Put together a stanza specifying the kernel hash
         if self.args.kernel_branch == 'distro':
             kernel_hash = 'distro'
@@ -202,7 +202,7 @@ class Run(object):
             kernel_dict = dict()
         return kernel_dict
 
-    def choose_ceph_hash(self):
+    def choose_ceph_hash(self) -> str | None:
         """
         Get the ceph hash: if --sha1/-S is supplied, use it if it is valid, and
         just keep the ceph_branch around.  Otherwise use the current git branch
@@ -352,7 +352,7 @@ class Run(object):
                 suite_branch = 'main'
         return suite_branch
 
-    def choose_suite_hash(self, suite_branch):
+    def choose_suite_hash(self, suite_branch: str) -> str:
         suite_repo_name = self.suite_repo_name
         suite_hash = None
         if self.args.suite_sha1:
@@ -399,7 +399,7 @@ class Run(object):
             job_config.rocketchat = self.args.rocketchat
         return job_config
 
-    def build_job_config(self, conf_dict, description=None, **kwargs):
+    def build_job_config(self, conf_dict: dict, description: str | None = None, **kwargs) -> dict:
         return schedule.build_config(
             conf_dict,
             name=self.name,
@@ -412,8 +412,8 @@ class Run(object):
             **kwargs
         )
 
-    def queue_job(self, job_config, num=1, report_status=True,
-                  log_prefix='', connection=None):
+    def queue_job(self, job_config: dict, num: int = 1, report_status: bool = True,
+                  log_prefix: str = '', connection=None) -> None:
         """
         Queue a job, or with --dry-run, just log its config (and print it
         if --verbose was passed more than once).
@@ -428,7 +428,7 @@ class Run(object):
                            num, report_status, connection=connection)
 
 
-    def write_rerun_memo(self):
+    def write_rerun_memo(self) -> None:
         subset = None
         if self.args.subset:
             subset = '/'.join(str(i) for i in self.args.subset)
@@ -442,7 +442,7 @@ class Run(object):
         self.queue_job(job_config, report_status=False, log_prefix="Memo: ")
 
 
-    def write_result(self):
+    def write_result(self) -> None:
         job_config = self.build_job_config(
             {},
             last_in_suite=True,
@@ -456,7 +456,7 @@ class Run(object):
             log.info("Test results viewable at %s", results_url)
 
 
-    def prepare_and_schedule(self):
+    def prepare_and_schedule(self) -> None:
         """
         Calls schedule_suite() to schedule each job. Finally, schedules a
         "last-in-suite" job that sends an email to the specified address (if
@@ -473,7 +473,7 @@ class Run(object):
         if num_jobs:
             self.write_result()
 
-    def collect_jobs(self, arch, configs, newest=False, limit=0):
+    def collect_jobs(self, arch: str|None, configs: list[tuple[str, list[str], dict]], newest: bool = False, limit: int = 0) -> tuple[list[dict], list[dict]]:
         jobs_to_schedule = []
         jobs_missing_packages = []
         for description, fragment_paths, parsed_yaml in configs:
@@ -528,7 +528,7 @@ class Run(object):
             jobs_to_schedule.append(job)
         return jobs_missing_packages, jobs_to_schedule
 
-    def schedule_jobs(self, jobs_missing_packages, jobs_to_schedule, name):
+    def schedule_jobs(self, jobs_missing_packages: list[dict], jobs_to_schedule: list[dict], name: str) -> None:
         # In order overriding with extra yaml paths could possibly work,
         # merge base_yaml_paths over the parsed yaml
         base_yaml_conf = merge_configs(self.base_yaml_paths)
@@ -570,7 +570,7 @@ class Run(object):
             if connection:
                 connection.close()
 
-    def check_priority(self, jobs_to_schedule):
+    def check_priority(self, jobs_to_schedule: int) -> None:
         priority = self.args.priority
         msg=f'''Unable to schedule {jobs_to_schedule} jobs with priority {priority}.
 
@@ -589,7 +589,7 @@ Note: To force run, use --force-priority'''
         elif priority < 150 and jobs_to_schedule > 100:
             util.schedule_fail(msg, dry_run=self.args.dry_run)
 
-    def check_num_jobs(self, jobs_to_schedule):
+    def check_num_jobs(self, jobs_to_schedule: int) -> None:
         """
         Fail schedule if number of jobs exceeds job threshold.
         """
@@ -600,7 +600,7 @@ Note: If you still want to go ahead, use --job-threshold 0'''
         if threshold and jobs_to_schedule > threshold:
             util.schedule_fail(msg, dry_run=self.args.dry_run)
 
-    def schedule_suite(self):
+    def schedule_suite(self) -> int:
         """
         Schedule the suite-run. Returns the number of jobs scheduled.
         """
@@ -678,8 +678,8 @@ Note: If you still want to go ahead, use --job-threshold 0'''
         backtrack = 0
         limit = self.args.newest
         sha1s = []
-        jobs_to_schedule = []
-        jobs_missing_packages = []
+        jobs_to_schedule: list[dict] = []
+        jobs_missing_packages: list[dict] = []
         while backtrack <= limit:
             jobs_missing_packages, jobs_to_schedule = \
                 self.collect_jobs(arch, configs, self.args.newest, job_limit)

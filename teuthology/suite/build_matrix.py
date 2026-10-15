@@ -167,7 +167,7 @@ def _build_matrix(path, mincyclicity=0, no_nested_subset=False, item=''):
     return None
 
 
-def generate_combinations(path, mat, generate_from, generate_to):
+def generate_combinations(path: str, mat: matrix.Matrix, generate_from: int, generate_to: int) -> list[tuple[str, list[str]]]:
     """
     Return a list of items describe by path
 
@@ -200,7 +200,7 @@ def generate_combinations(path, mat, generate_from, generate_to):
     return ret
 
 
-def combine_path(left, right):
+def combine_path(left: str, right: str | None) -> str:
     """
     os.path.join(a, b) doesn't like it when b is None
     """

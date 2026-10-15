@@ -3,7 +3,7 @@ import logging
 import os
 import requests
 
-from typing import Dict, List, Union
+from typing import Literal, overload
 
 from teuthology import misc
 from teuthology.config import config
@@ -56,7 +56,11 @@ def is_vm(name=None, status=None):
     return status.get('is_vm', False)
 
 
-def list_locks(keyed_by_name=False, tries=10, **kwargs):
+@overload
+def list_locks(keyed_by_name: Literal[False] = ..., tries: int = ..., **kwargs) -> list[dict]: ...
+@overload
+def list_locks(keyed_by_name: Literal[True], tries: int = ..., **kwargs) -> dict[str, dict]: ...
+def list_locks(keyed_by_name: bool = False, tries: int = 10, **kwargs) -> list[dict] | dict[str, dict]:
     uri = os.path.join(config.lock_server, 'nodes', '')
     for key, value in kwargs.items():
         if kwargs[key] is False:
@@ -91,7 +95,7 @@ def list_locks(keyed_by_name=False, tries=10, **kwargs):
     return dict()
 
 
-def find_stale_locks(owner: str | None = None, machine_type: str | None = None) -> List[Dict]:
+def find_stale_locks(owner: str | None = None, machine_type: str | None = None) -> list[dict]:
     """
     Return a list of node dicts corresponding to nodes that were locked to run
     a job, but the job is no longer running. The purpose of this is to enable
@@ -136,7 +140,7 @@ def find_stale_locks(owner: str | None = None, machine_type: str | None = None) 
         result.append(node)
     return result
 
-def node_active_job(name: str, status: Union[dict, None] = None, grace_time: int = 0) -> Union[str, None]:
+def node_active_job(name: str, status: dict | None = None, grace_time: int = 0) -> str | None:
     """
     Is this node's job active (e.g. running or waiting)?
 

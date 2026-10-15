@@ -1,6 +1,5 @@
 import logging
 import yaml
-from typing import Optional, Tuple
 from collections import defaultdict
 from lxml import etree
 
@@ -12,7 +11,7 @@ class Scanner():
         self.summary_data = []
         self.remote = remote
 
-    def _parse(self, file_content) -> Tuple[str, dict]:
+    def _parse(self, file_content) -> tuple[str, dict]:
         """
         This parses file_content and returns:
         :returns: a message string 
@@ -23,7 +22,7 @@ class Scanner():
         """
         raise NotImplementedError
     
-    def scan_file(self, path: str) -> Optional[str]:
+    def scan_file(self, path: str) -> str | None:
         if not path:
             return None
         try:
@@ -38,7 +37,7 @@ class Scanner():
         except Exception as exc:
             log.error(str(exc))
 
-    def scan_all_files(self, path_regex: str) -> [str]:
+    def scan_all_files(self, path_regex: str) -> list[str]:
         """
         Scans all files matching path_regex
         and collect additional data in self.summary_data 
@@ -73,7 +72,7 @@ class UnitTestScanner(Scanner):
     def __init__(self, remote=None) -> None:
         super().__init__(remote)
 
-    def _parse(self, file_content: str) -> Tuple[Optional[str], Optional[dict]]:
+    def _parse(self, file_content: str) -> tuple[str | None, dict | None]:
         xml_tree = etree.fromstring(file_content)
 
         failed_testcases = xml_tree.xpath('.//failure/.. | .//error/..')
@@ -101,7 +100,7 @@ class UnitTestScanner(Scanner):
         return exception_txt, { "failed_testsuites": dict(error_data), "num_of_failures": len(failed_testcases) }
 
     @property
-    def num_of_total_failures(self):
+    def num_of_total_failures(self) -> int:
         total_failed_testcases = 0
         if self.summary_data:
             for file_data in self.summary_data:
@@ -109,7 +108,7 @@ class UnitTestScanner(Scanner):
                 total_failed_testcases += failed_tests
         return total_failed_testcases
 
-    def scan_and_write(self, path_regex: str, summary_path: str) -> Optional[str]:
+    def scan_and_write(self, path_regex: str, summary_path: str) -> str | None:
         """
         Scan all files matching 'path_regex'
         and write summary in 'summary_path'.
@@ -128,7 +127,7 @@ class ValgrindScanner(Scanner):
     def __init__(self, remote=None) -> None:
         super().__init__(remote)
 
-    def _parse(self, file_content: str) -> Tuple[Optional[str], Optional[dict]]:
+    def _parse(self, file_content: str) -> tuple[str | None, dict | None]:
         xml_tree = etree.fromstring(file_content)
         if xml_tree is None:
             return None, None

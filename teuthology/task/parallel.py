@@ -10,7 +10,7 @@ from teuthology import parallel
 log = logging.getLogger(__name__)
 
 
-def task(ctx, config):
+def task(ctx, config: list) -> None:
     """
     Run a group of tasks in parallel.
 
@@ -56,7 +56,7 @@ def task(ctx, config):
             p.spawn(_run_spawned, ctx, confg, taskname)
 
 
-def _run_spawned(ctx, config, taskname):
+def _run_spawned(ctx, config, taskname: str) -> None:
     """Run one of the tasks (this runs in parallel with others)"""
     mgr = {}
     try:
