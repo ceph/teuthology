@@ -1,5 +1,7 @@
 import argparse
 
+import teuthology.monkeythreading # noqa: F401
+
 import teuthology
 import teuthology.run
 
