@@ -93,7 +93,7 @@ ln -sf .venv virtualenv
 galaxy_install() {
     local attempt attempts=3
     for attempt in $(seq $attempts); do
-        uv run ansible-galaxy install -r requirements.yml && return 0
+        uv run --no-sync ansible-galaxy install -r requirements.yml && return 0
         if [ $attempt -lt $attempts ]; then
             echo "ansible-galaxy install failed (attempt $attempt/$attempts); retrying in 15s..." >&2
             sleep 15
@@ -101,9 +101,9 @@ galaxy_install() {
     done
     echo "galaxy unreachable; checking for already-installed collections" >&2
     local installed missing coll
-    installed=$(uv run ansible-galaxy collection list 2>/dev/null)
+    installed=$(uv run --no-sync ansible-galaxy collection list 2>/dev/null)
     missing=0
-    for coll in $(uv run python3 -c "
+    for coll in $(uv run --no-sync python3 -c "
 import yaml
 for c in yaml.safe_load(open('requirements.yml'))['collections']:
     print(c['name'] if isinstance(c, dict) else c)
