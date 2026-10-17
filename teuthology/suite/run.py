@@ -17,7 +17,7 @@ from teuthology.config import config, JobConfig
 from teuthology.exceptions import (
     BranchMismatchError, BranchNotFoundError, CommitNotFoundError,
 )
-from teuthology.misc import deep_merge, get_results_url, update_key
+from teuthology.misc import deep_merge, get_results_url, merge_configs, update_key
 from teuthology.orchestra.opsys import OS
 from teuthology.repo_utils import build_git_url
 
@@ -539,32 +539,75 @@ class Run(object):
         return jobs_missing_packages, jobs_to_schedule
 
     def schedule_jobs(self, jobs_missing_packages, jobs_to_schedule, name):
-        for job in jobs_to_schedule:
-            log.info(
-                'Scheduling %s', job['desc']
-            )
+        from teuthology.schedule import (
+            schedule_job, dump_job_to_file, build_config,
+        )
 
-            log_prefix = ''
-            if job in jobs_missing_packages:
-                log_prefix = "Missing Packages: "
-                if not config.suite_allow_missing_packages:
-                    util.schedule_fail(
-                        "At least one job needs packages that don't exist "
-                        f"for hash {self.base_config.sha1}.",
-                        name,
-                        dry_run=self.args.dry_run,
-                    )
-            util.teuthology_schedule(
-                args=job['args'],
-                dry_run=self.args.dry_run,
-                verbose=self.args.verbose,
-                log_prefix=log_prefix,
-                stdin=job['stdin'],
-            )
-            throttle = self.args.throttle
-            if not self.args.dry_run and throttle:
-                log.info("pause between jobs : --throttle " + str(throttle))
-                time.sleep(int(throttle))
+        worker = util.get_worker(self.args.machine_type)
+        backend = self.args.queue_backend or 'beanstalk'
+
+        base_yaml_conf = merge_configs(self.base_yaml_paths)
+
+        connection = None
+        if not self.args.dry_run and backend == 'beanstalk':
+            import teuthology.beanstalk
+            connection = teuthology.beanstalk.connect()
+
+        try:
+            for job in jobs_to_schedule:
+                log.info(
+                    'Scheduling %s', job['desc']
+                )
+
+                log_prefix = ''
+                if job in jobs_missing_packages:
+                    log_prefix = "Missing Packages: "
+                    if not config.suite_allow_missing_packages:
+                        util.schedule_fail(
+                            "At least one job needs packages that don't exist "
+                            f"for hash {self.base_config.sha1}.",
+                            name,
+                            dry_run=self.args.dry_run,
+                        )
+
+                conf_dict = copy.deepcopy(job['yaml'])
+                if base_yaml_conf:
+                    deep_merge(conf_dict, copy.deepcopy(base_yaml_conf))
+
+                job_config = build_config(
+                    conf_dict=conf_dict,
+                    name=self.name,
+                    description=job['desc'],
+                    owner=self.args.owner,
+                    worker=worker,
+                    priority=(self.args.priority
+                              if self.args.priority is not None else 1000),
+                    verbose=bool(self.args.verbose),
+                )
+
+                if self.args.dry_run:
+                    log.debug('%s job config:\n%s',
+                              log_prefix, yaml.safe_dump(job_config))
+                    if self.args.verbose and self.args.verbose > 1:
+                        print('---\n' + yaml.safe_dump(job_config))
+                elif backend == 'beanstalk':
+                    schedule_job(job_config, self.args.num, True,
+                                connection=connection)
+                elif backend.startswith('@'):
+                    dump_job_to_file(backend.lstrip('@'), job_config,
+                                    self.args.num)
+                else:
+                    raise ValueError(
+                        "Provided schedule backend '%s' is not supported. "
+                        "Try 'beanstalk' or '@path-to-a-file'" % backend)
+
+                throttle = self.args.throttle
+                if not self.args.dry_run and throttle:
+                    log.info("pause between jobs : --throttle " + str(throttle))
+                    time.sleep(int(throttle))
+        finally:
+            if connection:
+                connection.close()
 
     def check_priority(self, jobs_to_schedule):
         priority = self.args.priority
