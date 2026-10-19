@@ -1,7 +1,8 @@
 """
 Null task
 """
-def task(ctx, config):
+
+def task(ctx, config) -> None:
     """
     This task does nothing.
 

@@ -6,7 +6,7 @@ import time
 import yaml
 import requests
 
-from typing import List, Union
+from typing import Dict, Iterable, List, Optional, Union
 
 import teuthology.orchestra.remote
 import teuthology.parallel
@@ -25,7 +25,7 @@ from teuthology.orchestra import remote
 log = logging.getLogger(__name__)
 
 
-def update_nodes(nodes, reset_os=False):
+def update_nodes(nodes: Iterable[str], reset_os: bool = False) -> None:
     for node in nodes:
         remote = teuthology.orchestra.remote.Remote(
             canonicalize_hostname(node))
@@ -41,8 +41,8 @@ def update_nodes(nodes, reset_os=False):
         update_inventory(inventory_info)
 
 
-def lock_many_openstack(ctx, num, machine_type, user=None, description=None,
-                        arch=None):
+def lock_many_openstack(ctx, num: int, machine_type: str, user: Optional[str] = None,
+                        description: Optional[str] = None, arch: Optional[str] = None) -> Dict[str, None]:
     os_type = teuthology.provision.get_distro(ctx)
     os_version = teuthology.provision.get_distro_version(ctx)
     if hasattr(ctx, 'config'):
@@ -177,7 +177,7 @@ def lock_many(ctx, num, machine_type, user=None, description=None,
     return []
 
 
-def lock_one(name, user=None, description=None):
+def lock_one(name: str, user: Optional[str] = None, description: Optional[str] = None) -> requests.Response:
     name = misc.canonicalize_hostname(name, user=None)
     if user is None:
         user = misc.get_user()
@@ -227,7 +227,7 @@ def unlock_one_safe(name: str, owner: str, run_name: str = "", job_id: str = "")
         return False
 
 
-def unlock_many(names, user):
+def unlock_many(names: Iterable[str], user: str) -> bool:
     fixed_names = [misc.canonicalize_hostname(name, user=None) for name in
                    names]
     names = fixed_names
@@ -290,9 +290,9 @@ def unlock_one(name, user, description=None, status: Union[dict, None] = None) -
     return False
 
 
-def update_lock(name, description=None, status=None, ssh_pub_key=None):
+def update_lock(name: str, description: Optional[str] = None, status: Optional[str] = None, ssh_pub_key: Optional[str] = None) -> bool:
     name = misc.canonicalize_hostname(name, user=None)
-    updated = {}
+    updated: Dict[str, Union[str, bool]] = {}
     if description is not None:
         updated['description'] = description
     if status is not None:
@@ -359,7 +359,7 @@ def update_inventory(node_dict):
                 return
 
 
-def do_update_keys(machines, all_=False, _raise=True):
+def do_update_keys(machines: Iterable[str], all_: bool = False, _raise: bool = True) -> tuple[int, dict[str, str]]:
     reference = query.list_locks(keyed_by_name=True)
     if all_:
         machines = reference.keys()
@@ -367,7 +367,7 @@ def do_update_keys(machines, all_=False, _raise=True):
     return push_new_keys(keys_dict, reference), keys_dict
 
 
-def push_new_keys(keys_dict, reference):
+def push_new_keys(keys_dict: dict[str, str], reference: dict[str, dict]) -> int:
     ret = 0
     for hostname, pubkey in keys_dict.items():
         log.info('Checking %s', hostname)
@@ -379,7 +379,7 @@ def push_new_keys(keys_dict, reference):
     return ret
 
 
-def reimage_machines(ctx, machines, machine_type):
+def reimage_machines(ctx, machines: dict, machine_type: str) -> dict[str, str]:
     reimage_types = teuthology.provision.get_reimage_types()
     if machine_type not in reimage_types:
         log.info(f"Skipping reimage of {machines.keys()} because {machine_type} is not in {reimage_types}")

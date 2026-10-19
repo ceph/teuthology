@@ -6,12 +6,12 @@ class Placeholder(object):
     A placeholder for use with substitute_placeholders. Simply has a 'name'
     attribute.
     """
-    def __init__(self, name, required=True):
+    def __init__(self, name: str, required: bool = True) -> None:
         self.name = name
         self.required = required
 
 
-def substitute_placeholders(input_dict, values_dict):
+def substitute_placeholders(input_dict: dict, values_dict: dict) -> dict:
     """
     Replace any Placeholder instances with values named in values_dict. In the
     case of None values, the key is omitted from the result.

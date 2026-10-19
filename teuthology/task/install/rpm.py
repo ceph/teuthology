@@ -1,6 +1,7 @@
 import logging
 import os.path
 from io import StringIO
+from typing import List
 
 from teuthology.config import config as teuth_config
 from teuthology.contextutil import safe_while
@@ -66,7 +67,7 @@ def _remove(ctx, config, remote, rpm):
         remote.run(args='sudo yum clean expire-cache')
 
 
-def _zypper_addrepo(remote, repo_list):
+def _zypper_addrepo(remote, repo_list: List[dict]) -> None:
     """
     Add zypper repos to the remote system.
 
@@ -90,7 +91,7 @@ def _zypper_addrepo(remote, repo_list):
         # is invalid
         remote.run(args='sudo zypper ref ' + repo['name'])
 
-def _zypper_removerepo(remote, repo_list):
+def _zypper_removerepo(remote, repo_list: List[dict]) -> None:
     """
     Remove zypper repos on the remote system.
 
@@ -103,7 +104,7 @@ def _zypper_removerepo(remote, repo_list):
             'sudo', 'zypper', '-n', 'removerepo', repo['name'],
         ])
 
-def _zypper_wipe_all_repos(remote):
+def _zypper_wipe_all_repos(remote) -> None:
     """
     Completely "wipe" (remove) all zypper repos
 
@@ -116,7 +117,7 @@ def _zypper_wipe_all_repos(remote):
               'true')
 
 
-def _yum_addrepo(remote, repo_list):
+def _yum_addrepo(remote, repo_list: List[dict]) -> None:
     """
     Add dnf repos to the remote system.
 
@@ -138,7 +139,7 @@ def _yum_addrepo(remote, repo_list):
         remote.sudo_write_file(repo_path, "\n".join(repo_lines))
 
 
-def _yum_removerepo(remote, repo_list):
+def _yum_removerepo(remote, repo_list: List[dict]) -> None:
     """
     Remove yum repos on the remote system.
 
@@ -151,7 +152,7 @@ def _yum_removerepo(remote, repo_list):
         remote.run(args=['sudo', 'rm', repo_path])
 
 
-def _yum_wipe_all_repos(remote):
+def _yum_wipe_all_repos(remote) -> None:
     """
     Completely "wipe" (remove) all yum repos
 
@@ -163,7 +164,7 @@ def _yum_wipe_all_repos(remote):
               'true')
 
 
-def _downgrade_packages(ctx, remote, pkgs, pkg_version, config):
+def _downgrade_packages(ctx, remote, pkgs: List[str], pkg_version: str, config: dict) -> List[str]:
     """
     Downgrade packages listed by 'downgrade_packages'
 
@@ -194,7 +195,7 @@ def _downgrade_packages(ctx, remote, pkgs, pkg_version, config):
     remote.run(args='sudo yum -y downgrade {}'.format(' '.join(pkgs_opt)))
     return [pkg for pkg in pkgs if pkg not in downgrade_pkgs]
 
-def _retry_if_failures_are_recoverable(remote, args):
+def _retry_if_failures_are_recoverable(remote, args: str):
     # wait at most 5 minutes
     with safe_while(sleep=10, tries=30) as proceed:
         while proceed():
@@ -210,7 +211,7 @@ def _retry_if_failures_are_recoverable(remote, args):
                 else:
                     raise
 
-def _update_package_list_and_install(ctx, remote, rpm, config):
+def _update_package_list_and_install(ctx, remote, rpm: List[str], config: dict) -> None:
     """
     Installs the repository for the relevant branch, then installs
     the requested packages on the remote system.
@@ -330,7 +331,7 @@ def _update_package_list_and_install(ctx, remote, rpm, config):
                          .format(install_cmd=install_cmd, cpack=cpack)
                     )
 
-def _yum_fix_repo_priority(remote, project, uri):
+def _yum_fix_repo_priority(remote, project: str, uri: str) -> None:
     """
     On the remote, add 'priority=1' lines to each enabled repo in:
 
@@ -350,7 +351,7 @@ def _yum_fix_repo_priority(remote, project, uri):
     )
 
 
-def _yum_fix_repo_host(remote, project):
+def _yum_fix_repo_host(remote, project: str) -> None:
     """
     Update the hostname to reflect the gitbuilder_host setting.
     """
@@ -372,7 +373,7 @@ def _yum_fix_repo_host(remote, project):
     )
 
 
-def _yum_set_check_obsoletes(remote):
+def _yum_set_check_obsoletes(remote) -> None:
     """
     Set check_obsoletes = 1 in /etc/yum/pluginconf.d/priorities.conf
 
@@ -396,7 +397,7 @@ def _yum_set_check_obsoletes(remote):
     remote.run(args=cmd)
 
 
-def _yum_unset_check_obsoletes(remote):
+def _yum_unset_check_obsoletes(remote) -> None:
     """
     Restore the /etc/yum/pluginconf.d/priorities.conf backup
     """
@@ -406,7 +407,7 @@ def _yum_unset_check_obsoletes(remote):
                check_status=False)
 
 
-def _remove_sources_list(ctx, config, remote):
+def _remove_sources_list(ctx, config: dict, remote) -> None:
     """
     Removes /etc/yum.repos.d/{proj}.repo
 
@@ -421,7 +422,7 @@ def _remove_sources_list(ctx, config, remote):
     for copr in config.get('enable_coprs', []):
         remote.run(args=['sudo', 'dnf', '-y', 'copr', 'disable', copr])
 
-def _upgrade_packages(ctx, config, remote, pkgs):
+def _upgrade_packages(ctx, config: dict, remote, pkgs: List[str]) -> None:
     """
     Upgrade project's packages on remote RPM-based host
     Before doing so, it makes sure the project's repository is installed -
