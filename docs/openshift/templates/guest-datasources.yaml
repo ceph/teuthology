@@ -1,0 +1,55 @@
+{{- /*
+  Guest OS cloud images for teuthology-lock / reimage. Each entry imports a
+  disk over HTTP into a DataVolume PVC, then exposes it as a DataSource that
+  the OpenShift provisioner clones onto the guest root disk.
+*/ -}}
+{{- range .Values.dataSources }}
+{{- if ne .enabled false }}
+{{- $ocp := $.Values.openshift | default dict }}
+{{- $tRoot := $.Values.teuthology.rootDisk | default dict }}
+{{- $gRoot := $.Values.dhcpGateway.rootDisk | default dict }}
+{{- $sc := .storageClassName | default $ocp.root_storage_class | default $tRoot.storageClassName | default $.Values.teuthology.storageClassName | default $gRoot.storageClassName | default $.Values.dhcpGateway.storageClassName }}
+{{- $accessMode := .accessMode | default "ReadWriteMany" }}
+{{- $size := .size | default "15Gi" }}
+apiVersion: cdi.kubevirt.io/v1beta1
+kind: DataVolume
+metadata:
+  name: {{ .name }}
+  labels:
+    app: teuthology-guest-datasource
+    teuthology.ceph.com/guest-os: {{ .name | quote }}
+  annotations:
+    cdi.kubevirt.io/storage.bind.immediate.requested: "true"
+spec:
+  source:
+    http:
+      url: {{ .url | quote }}
+      {{- if .certConfigMap }}
+      certConfigMap: {{ .certConfigMap | quote }}
+      {{- end }}
+  storage:
+    accessModes:
+      - {{ $accessMode }}
+    volumeMode: Filesystem
+    {{- if $sc }}
+    storageClassName: {{ $sc }}
+    {{- end }}
+    resources:
+      requests:
+        storage: {{ $size }}
+---
+apiVersion: cdi.kubevirt.io/v1beta1
+kind: DataSource
+metadata:
+  name: {{ .name }}
+  labels:
+    app: teuthology-guest-datasource
+    teuthology.ceph.com/guest-os: {{ .name | quote }}
+spec:
+  source:
+    pvc:
+      name: {{ .name }}
+      namespace: {{ $.Release.Namespace }}
+---
+{{- end }}
+{{- end }}

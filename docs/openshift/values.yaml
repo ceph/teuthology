@@ -1,0 +1,160 @@
+# Environment-specific settings. Copy or edit before deploy.
+#
+# Single teuthology node VM runs: CLI + teuthology-dispatcher + archive HTTP.
+# Pods remaining: paddles, pulpito, beanstalk, postgres.
+
+# App images default to quay.io/ceph-infra.
+# Override any *.image to use a different registry, tag, or locally built image.
+
+# All disks/DataVolumes in this file (dataSources, rootDisk, dataVolumes) need
+# a StorageClass that supports ReadWriteMany. Set an explicit storageClassName
+# per entry (or on teuthology.rootDisk / dhcpGateway.rootDisk as a shared
+# fallback) if the cluster has no default RWX class.
+dataSources:
+  - name: fedora
+    url: https://dl.fedoraproject.org/pub/fedora/linux/releases/44/Cloud/x86_64/images/Fedora-Cloud-Base-Generic-44-1.7.x86_64.qcow2
+    size: 15Gi
+    accessMode: ReadWriteMany
+    # storageClassName: <rwx-storage-class>
+  - name: centos-9.stream
+    url: https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2
+    size: 15Gi
+    accessMode: ReadWriteMany
+  - name: rocky-10
+    url: https://dl.rockylinux.org/pub/rocky/10/images/x86_64/Rocky-10-GenericCloud-Base.latest.x86_64.qcow2
+    size: 15Gi
+    accessMode: ReadWriteMany
+  - name: ubuntu-22.04
+    url: https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img
+    size: 15Gi
+    accessMode: ReadWriteMany
+  - name: ubuntu-24.04
+    url: https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img
+    size: 15Gi
+    accessMode: ReadWriteMany
+
+udn:
+  name: teuthology-net
+  subnet: 192.168.0.0/20
+  gateway: 192.168.0.8
+  prefix: 20
+  netmask: 255.255.240.0
+  dhcpRangeStart: 192.168.14.10
+  dhcpRangeEnd: 192.168.15.253
+
+dhcpGateway:
+  name: dhcp-gateway
+  dataSource:
+    name: fedora
+  replicas: 1
+  cores: 1
+  memory: 2Gi
+  rootDisk:
+    # name defaults to "<dhcpGateway.name>-root" when omitted.
+    size: 20Gi
+    accessMode: ReadWriteMany
+    # storageClassName: <rwx-storage-class>  # defaults to teuthology.rootDisk.storageClassName, then the cluster default
+  users:
+    - name: teuthology
+      sshUser: teuthology
+      password: passwd
+      authorizedKeys:
+        - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINJCftd/vE1dq39ksssXR9RJOxXdOcRWpiZsdDzoJDYf teuthology-user
+  # mac is this VM's own UDN NIC address; its IP comes from udn.gateway, not a
+  # separate dhcpGateway.ip field (there is none — the gateway *is* the DHCP server).
+  mac: "52:54:00:d4:c9:08"
+  # Extra static leases beyond the teuthology node (which is reserved
+  # automatically from teuthology.mac/teuthology.ip below). Infra only — do not
+  # add target-* leases here.
+  # dhcpHosts: |
+  #   dhcp-host=<mac>,<ip>,<hostname>
+
+postgres:
+  image: quay.io/ceph-infra/teuthology-postgresql:latest
+  password: secret
+  storage: 100Gi
+
+paddles:
+  image: quay.io/ceph-infra/paddles:latest
+  workerCount: "4"
+  # In-cluster Service DNS works for paddles→archive (Service → teuthology VM).
+  jobLogHrefTempl: http://archive/{run_name}/{job_id}/teuthology.log
+
+pulpito:
+  image: quay.io/ceph-infra/pulpito:latest
+
+beanstalk:
+  image: quay.io/ceph-infra/teuthology-beanstalkd:latest
+  serviceType: LoadBalancer
+
+# Archive HTTP runs on the teuthology node (python http.server).
+archive:
+  port: 8080
+  path: /home/teuthology/archive
+
+# Queue / lab settings used by teuthology.yaml and teuthology-dispatcher on the node.
+# Do not set enabled=true — dispatcher runs on the teuthology VM, not a separate Deployment.
+dispatcher:
+  tube: ocpvirt
+  labDomain: ocpvirt.local
+  path:
+    src: /home/teuthology/src
+    archive: /home/teuthology/archive
+
+# Single node: CLI + dispatcher + archive.
+teuthology:
+  name: teuthology-dev
+  dataSource:
+    name: fedora
+  replicas: 1
+  cores: 4
+  memory: 8Gi
+  rootDisk:
+    # name defaults to "<teuthology.name>-root" when omitted.
+    size: 40Gi
+    accessMode: ReadWriteMany
+    # storageClassName: <rwx-storage-class>  # defaults to dhcpGateway.rootDisk.storageClassName, then the cluster default
+  dataVolumes:
+    - name: teuthology-dev
+      size: 100Gi
+      accessMode: ReadWriteMany
+      path: /home/teuthology
+      # storageClassName: <rwx-storage-class>  # defaults to rootDisk.storageClassName chain above
+  # mac/ip reserve this node's DHCP lease (auto-added to dhcp-hosts.conf —
+  # see dhcpGateway.dhcpHosts for additional entries).
+  mac: "52:54:00:d4:c9:09"
+  ip: 192.168.14.9
+  # Lab keypair (users[].sshKey) is what the teuthology node uses to reach
+  # target-* guests. Do NOT commit a real private key here. Leave sshKey unset
+  # to let teuthology-udn-client.sh generate one on first boot, or generate
+  # your own and paste it in (never reuse this chart's git history for keys):
+  #   ssh-keygen -t ed25519 -N '' -f ./lab_id_ed25519
+  users:
+    - name: teuthology
+      sshUser: teuthology
+      password: passwd
+      # sshKey:
+      #   publicKey: ssh-ed25519 AAAA... teuthology@lab
+      #   privateKey: |
+      #     -----BEGIN OPENSSH PRIVATE KEY-----
+      #     ...
+      #     -----END OPENSSH PRIVATE KEY-----
+      authorizedKeys:
+        - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINJCftd/vE1dq39ksssXR9RJOxXdOcRWpiZsdDzoJDYf teuthology-user
+  git:
+    url: https://github.com/ceph/teuthology.git
+    branch: main
+
+# Written into /etc/teuthology.yaml on the teuthology node. Set API auth for
+# lock/reimage; do not commit tokens. Optional storage classes for guests.
+openshift:
+  # server: https://api.example.com:6443
+  # token: ""
+  # certificate_authority_data: ""
+  # root_storage_class: <rwx-storage-class>
+  # data_storage_class: <rwx-storage-class>
+  # datasource_namespace: openshift-virtualization-os-images
+  # udn_binding: l2bridge
+  # vcpus: 4
+  # ram: 8Gi
+  # root_storage_size: 40Gi

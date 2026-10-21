@@ -1,0 +1,26 @@
+{{- /*
+  Extra disks for the teuthology node from teuthology.dataVolumes.
+  Each PVC is attached to the VM and mounted at the entry's path in-guest.
+*/ -}}
+{{- range .Values.teuthology.dataVolumes | default list }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .name | trim }}
+  labels:
+    app: teuthology
+    teuthology.ceph.io/data-volume: {{ .name | trim | quote }}
+spec:
+  accessModes:
+    - {{ .accessMode | default "ReadWriteMany" }}
+  {{- $tRoot := $.Values.teuthology.rootDisk | default dict }}
+  {{- $gRoot := $.Values.dhcpGateway.rootDisk | default dict }}
+  {{- $sc := .storageClassName | default $tRoot.storageClassName | default $.Values.teuthology.storageClassName | default $gRoot.storageClassName | default $.Values.dhcpGateway.storageClassName }}
+  {{- if $sc }}
+  storageClassName: {{ $sc }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ required (printf "teuthology.dataVolumes entry %q needs size" (.name | trim)) .size }}
+{{- end }}
