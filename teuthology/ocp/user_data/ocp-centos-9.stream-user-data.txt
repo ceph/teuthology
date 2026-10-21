@@ -1,0 +1,30 @@
+#cloud-config
+disable_root: false
+users:
+  - name: ubuntu
+    groups: wheel
+    shell: /bin/bash
+    sudo: ["ALL=(ALL) NOPASSWD:ALL"]
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKciUXrSK8oSp/zkAYZ4VXFZNnX/y4yPx3GYUbbOTVsq teuthology@teuthology-0
+
+# UserDefined network
+network:
+  version: 2
+  ethernets:
+    all-en:
+      match:
+        name: en*
+      dhcp4: true
+
+# Additional disks
+volumes:
+  - count: 3
+    size: 15  # Gi
+  - count: 2
+    size: 20  # Gi
+
+# DataSource for the root disk
+datasource:
+  name: centos-stream9
+  namespace: openshift-virtualization-os-images
