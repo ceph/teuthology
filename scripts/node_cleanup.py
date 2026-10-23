@@ -15,10 +15,12 @@ def main():
         teuthology.log.setLevel(logging.DEBUG)
     else:
         teuthology.log.setLevel(100)
+    # regardless of verbosity we do not want to log console stuff
+    logging.getLogger("teuthology.orchestra.console").setLevel(logging.WARNING)
     logger = logging.getLogger()
     for handler in logger.handlers:
         handler.setFormatter(
-            logging.Formatter('%(message)s')
+            logging.Formatter("%(asctime)s %(message)s", datefmt="%Y-%m-%dT%H:%M:%S")
         )
     try:
         stale = query.find_stale_locks(
@@ -28,8 +30,8 @@ def main():
     except Exception:
         log.exception(f"Error while check for stale locks held by {args.owner}")
         return
+    log.debug(f"Stale nodes: {len(stale)}")
     if not stale:
-        log.debug("No stale nodes found.")
         return
     by_owner = {}
     for node in stale:
@@ -50,7 +52,7 @@ def main():
     else:
         for owner, nodes in by_owner.items():
             ops.unlock_safe([node["name"] for node in nodes], owner)
-    log.info(f"unlocked {len(stale)} nodes")
+    log.info(f"Unlocked {len(stale)} nodes")
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(
