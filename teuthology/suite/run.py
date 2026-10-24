@@ -7,6 +7,7 @@ import yaml
 import re
 import time
 
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from humanfriendly import format_timespan
@@ -28,6 +29,14 @@ from teuthology.suite.placeholder import substitute_placeholders, dict_templ
 from teuthology.util.time import parse_offset, parse_timestamp, TIMESTAMP_FMT
 
 log = logging.getLogger(__name__)
+
+
+@dataclass
+class CollectedJobs:
+    suite_path: str
+    generated: int
+    jobs_to_schedule: list = field(default_factory=list)
+    jobs_missing_packages: list = field(default_factory=list)
 
 
 class Run(object):
@@ -64,13 +73,20 @@ class Run(object):
         """
         Generate a run name. A run name looks like:
             teuthology-2014-06-23_19:00:37-rados-dumpling-testing-basic-plana
+
+        If run_name_suffix is set, it is appended to the suite part of the
+        name (e.g. 'rados.2') to tell apart runs of the same suite scheduled
+        together.
         """
         worker = util.get_worker(self.args.machine_type)
+        suite = self.args.suite
+        if self.args.run_name_suffix:
+            suite = f"{suite}.{self.args.run_name_suffix}"
         return '-'.join(
             [
                 self.user,
                 str(self.timestamp),
-                self.args.suite,
+                suite,
                 self.args.ceph_branch,
                 self.args.kernel_branch or '-',
                 self.args.flavor, worker
@@ -290,17 +306,16 @@ class Run(object):
                 )
             if not teuthology_branch:
                 teuthology_branch = actual_branch
-            teuthology_sha1 = util.git_ls_remote(
-                f"file://{Path(config.teuthology_path).resolve()}",
-                teuthology_branch
-            )
+            teuthology_repo = f"file://{Path(config.teuthology_path).resolve()}"
         else:
             if not teuthology_branch:
                 teuthology_branch = 'main'
-            teuthology_sha1 = util.git_ls_remote(
-                'teuthology',
-                teuthology_branch
-            )
+            teuthology_repo = 'teuthology'
+        # Set when scheduling several runs that must use the same revision
+        teuthology_sha1 = self.args.teuthology_sha1 or util.git_ls_remote(
+            teuthology_repo,
+            teuthology_branch
+        )
         if not teuthology_sha1:
             exc = BranchNotFoundError(teuthology_branch, build_git_url('teuthology'))
             util.schedule_fail(message=str(exc), name=self.name, dry_run=self.args.dry_run)
@@ -396,6 +411,8 @@ class Run(object):
             job_config.sleep_before_teardown = int(self.args.sleep_before_teardown)
         if self.args.rocketchat:
             job_config.rocketchat = self.args.rocketchat
+        if self.args.testplan:
+            job_config.testplan = self.args.testplan
         return job_config
 
     def build_base_args(self):
@@ -456,6 +473,18 @@ class Run(object):
         to schedule_suite(). Finally, schedules a "last-in-suite" job that
         sends an email to the specified address (if one is configured).
         """
+        self.prepare()
+
+        num_jobs = self.schedule_suite()
+
+        if num_jobs:
+            self.write_result()
+
+    def prepare(self):
+        """
+        Build the base arguments for teuthology-schedule and check that the
+        extra yaml paths exist. Must be called before collect_suite_jobs().
+        """
         self.base_args = self.build_base_args()
 
         # Make sure the yaml paths are actually valid
@@ -463,11 +492,6 @@ class Run(object):
             full_yaml_path = os.path.join(self.suite_repo_path, yaml_path)
             if not os.path.exists(full_yaml_path):
                 raise IOError("File not found: " + full_yaml_path)
-
-        num_jobs = self.schedule_suite()
-
-        if num_jobs:
-            self.write_result()
 
     def collect_jobs(self, arch, configs, newest=False, limit=0):
         jobs_to_schedule = []
@@ -596,9 +620,25 @@ Note: If you still want to go ahead, use --job-threshold 0'''
         if threshold and jobs_to_schedule > threshold:
             util.schedule_fail(msg, dry_run=self.args.dry_run)
 
+    def check_limits(self, jobs_to_schedule):
+        """
+        Fail schedule if the number of jobs is too high for the priority or
+        exceeds the job threshold.
+        """
+        if self.args.priority and jobs_to_schedule and not self.args.force_priority:
+            self.check_priority(jobs_to_schedule)
+        self.check_num_jobs(jobs_to_schedule)
+
     def schedule_suite(self):
         """
         Schedule the suite-run. Returns the number of jobs scheduled.
+        """
+        return self.schedule_collected(self.collect_suite_jobs())
+
+    def collect_suite_jobs(self) -> CollectedJobs:
+        """
+        Build, filter and package-check the jobs for the suite-run without
+        scheduling anything.
         """
         name = self.name
         if self.args.arch:
@@ -709,15 +749,34 @@ Note: If you still want to go ahead, use --job-threshold 0'''
                     name,
                     dry_run=self.args.dry_run,
                 )
+        return CollectedJobs(
+            suite_path=suite_path,
+            generated=generated,
+            jobs_to_schedule=jobs_to_schedule,
+            jobs_missing_packages=jobs_missing_packages,
+        )
+
+    def schedule_collected(self, collected: CollectedJobs,
+                           check_limits: bool = True) -> int:
+        """
+        Schedule jobs returned by collect_suite_jobs(). Returns the number of
+        jobs scheduled.
+
+        :param check_limits: Apply the priority and job threshold checks. Pass
+                             False if the caller has already checked them.
+        """
+        name = self.name
+        suite_name = self.base_config.suite
+        suite_path = collected.suite_path
+        generated = collected.generated
+        jobs_to_schedule = collected.jobs_to_schedule
+        jobs_missing_packages = collected.jobs_missing_packages
 
         if jobs_to_schedule:
             self.write_rerun_memo()
 
-        # Before scheduling jobs, check the priority
-        if self.args.priority and jobs_to_schedule and not self.args.force_priority:
-            self.check_priority(len(jobs_to_schedule))
-
-        self.check_num_jobs(len(jobs_to_schedule))
+        if check_limits:
+            self.check_limits(len(jobs_to_schedule))
 
         self.schedule_jobs(jobs_missing_packages, jobs_to_schedule, name)
 

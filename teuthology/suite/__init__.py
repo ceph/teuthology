@@ -113,6 +113,27 @@ def main(args):
     if conf.verbose:
         teuthology.log.setLevel(logging.DEBUG)
 
+    apply_common_args(conf)
+
+    if conf.rerun:
+        get_rerun_conf_overrides(conf)
+    if conf.seed < 0:
+        conf.seed = random.randint(0, 9999)
+        log.info('Using random seed=%s', conf.seed)
+
+    run = Run(conf)
+    name = run.name
+    run.prepare_and_schedule()
+    if not conf.dry_run and conf.wait:
+        return wait(name, config.max_job_time,
+                    conf.archive_upload_url)
+
+
+def apply_common_args(conf):
+    """
+    Fill in the default machine type and apply the options that affect global
+    configuration (results email, archive upload).
+    """
     dry_run = conf.dry_run
     if not conf.machine_type or conf.machine_type == 'None':
         if not config.default_machine_type or config.default_machine_type == 'None':
@@ -128,19 +149,6 @@ def main(args):
     if conf.archive_upload:
         config.archive_upload = conf.archive_upload
         log.info('Will upload archives to ' + conf.archive_upload)
-
-    if conf.rerun:
-        get_rerun_conf_overrides(conf)
-    if conf.seed < 0:
-        conf.seed = random.randint(0, 9999)
-        log.info('Using random seed=%s', conf.seed)
-
-    run = Run(conf)
-    name = run.name
-    run.prepare_and_schedule()
-    if not conf.dry_run and conf.wait:
-        return wait(name, config.max_job_time,
-                    conf.archive_upload_url)
 
 
 def get_rerun_conf_overrides(conf):
