@@ -1,0 +1,4 @@
+name: empty-filter
+runs:
+- suite: alpha
+  filter: nomatch

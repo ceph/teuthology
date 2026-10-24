@@ -1,0 +1,16 @@
+name: smoke
+description: |
+  Small plan used by the testplan tests.
+  Second line of the description.
+defaults:
+  limit: 10
+runs:
+- suite: alpha
+  filter: x
+- suite: alpha
+  label: second
+  filter_out: [x]
+  seed: 42
+- suite: beta
+  distro: ubuntu
+  distro_version: "22.04"

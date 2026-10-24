@@ -1,0 +1,4 @@
+name: broken
+runs:
+- suite: alpha
+  machine_type: smithi
