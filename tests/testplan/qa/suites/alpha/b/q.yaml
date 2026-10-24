@@ -1,0 +1,3 @@
+tasks:
+- exec:
+    all: [echo b/q]
