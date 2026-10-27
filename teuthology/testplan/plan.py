@@ -83,9 +83,9 @@ FORBIDDEN_KEYS = {
 }
 
 NAME_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._-]*$')
-# Labels end up in run names, where paddles splits fields on '-'. They must
-# start with a letter so they can't clash with the run numbers used for
-# unlabeled runs.
+# Labels end up in run names, whose fields are separated by '-', so a '-' in
+# a label would make names ambiguous to read. They must start with a letter
+# so they can't clash with the run numbers used for unlabeled runs.
 LABEL_RE = re.compile(r'^[A-Za-z][A-Za-z0-9._]*$')
 SUBSET_RE = re.compile(r'^(\d+)/(\d+)$')
 
