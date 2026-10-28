@@ -29,6 +29,8 @@ jobs:
         run: pipx install uv
       - name: Run pipx ensurepath
         run: pipx ensurepath
+      - name: Check uv.lock is up to date
+        run: uv lock --check
       - name: Lint
         run: uv tool run ruff check
       - name: Run tests
