@@ -8,5 +8,6 @@ collections:
     version: "<3.0.0"  # 3.0 requires ansible-core >= 2.14
   - community.docker
   - community.general
-  - community.postgresql
+  - name: community.postgresql
+    version: "<5.0.0"
 
