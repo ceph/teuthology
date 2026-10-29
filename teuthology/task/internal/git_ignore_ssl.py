@@ -1,5 +1,6 @@
 import contextlib
 import logging
+from typing import Generator
 
 from teuthology.orchestra import run
 
@@ -7,7 +8,7 @@ log = logging.getLogger(__name__)
 
 
 @contextlib.contextmanager
-def git_ignore_ssl(ctx, config):
+def git_ignore_ssl(ctx, config) -> Generator[None, None, None]:
     """
     Ignore ssl error's while cloning from untrusted http
     """

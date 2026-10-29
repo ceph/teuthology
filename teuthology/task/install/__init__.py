@@ -3,6 +3,7 @@ import copy
 import logging
 import os
 import yaml
+from typing import Dict, Generator, List, Optional
 
 from teuthology import misc as teuthology
 from teuthology import contextutil, packaging
@@ -54,7 +55,7 @@ def verify_package_version(ctx, config, remote):
         )
 
 
-def install_packages(ctx, pkgs, config):
+def install_packages(ctx, pkgs: Dict[str, List[str]], config: dict) -> None:
     """
     Installs packages on each remote in ctx.
 
@@ -78,7 +79,7 @@ def install_packages(ctx, pkgs, config):
         verify_package_version(ctx, config, remote)
 
 
-def remove_packages(ctx, config, pkgs):
+def remove_packages(ctx, config: dict, pkgs: Dict[str, List[str]]) -> None:
     """
     Removes packages from each remote in ctx.
 
@@ -99,7 +100,7 @@ def remove_packages(ctx, config, pkgs):
                         system_type], ctx, config, remote, pkgs[system_type])
 
 
-def remove_sources(ctx, config):
+def remove_sources(ctx, config: dict) -> None:
     """
     Removes repo source files from each remote in ctx.
 
@@ -121,7 +122,7 @@ def remove_sources(ctx, config):
                 p.spawn(remove_fn, ctx, config, remote)
 
 
-def get_package_list(ctx, config):
+def get_package_list(ctx, config: dict) -> Dict[str, List[str]]:
     debug = config.get('debuginfo', False)
     project = config.get('project', 'ceph')
     yaml_path = None
@@ -171,7 +172,7 @@ def get_package_list(ctx, config):
 
 
 @contextlib.contextmanager
-def install(ctx, config):
+def install(ctx, config: dict) -> Generator[None, None, None]:
     """
     The install task. Installs packages for a given project on all hosts in
     ctx. May work for projects besides ceph, but may not. Patches welcomed!
@@ -203,7 +204,7 @@ def install(ctx, config):
         remove_sources(ctx, config)
 
 
-def upgrade_old_style(ctx, node, remote, pkgs, system_type):
+def upgrade_old_style(ctx, node: dict, remote, pkgs: List[str], system_type: str) -> None:
     """
     Handle the upgrade using methods in use prior to deploy.
     """
@@ -213,7 +214,7 @@ def upgrade_old_style(ctx, node, remote, pkgs, system_type):
         rpm._upgrade_packages(ctx, node, remote, pkgs)
 
 
-def upgrade_remote_to_config(ctx, config):
+def upgrade_remote_to_config(ctx, config: dict) -> dict:
     assert config is None or isinstance(config, dict), \
         "install.upgrade only supports a dictionary for configuration"
 
@@ -264,12 +265,12 @@ def upgrade_remote_to_config(ctx, config):
 
     return result
 
-def _upgrade_is_downgrade(installed_version, upgrade_version):
+def _upgrade_is_downgrade(installed_version: str, upgrade_version: str) -> bool:
     assert installed_version, "installed_version is empty"
     assert upgrade_version, "upgrade_version is empty"
     return LooseVersion(installed_version) > LooseVersion(upgrade_version)
 
-def upgrade_common(ctx, config, deploy_style):
+def upgrade_common(ctx, config: dict, deploy_style) -> int:
     """
     Common code for upgrading
     """
@@ -356,14 +357,14 @@ docstring_for_upgrade = """"
 
 
 @contextlib.contextmanager
-def upgrade(ctx, config):
+def upgrade(ctx, config: dict) -> Generator[None, None, None]:
     upgrade_common(ctx, config, upgrade_old_style)
     yield
 
 upgrade.__doc__ = docstring_for_upgrade.format(cmd_parameter='upgrade')
 
 
-def _override_extra_system_packages(config, project, install_overrides):
+def _override_extra_system_packages(config: dict, project: str, install_overrides: dict) -> None:
     teuthology.deep_merge(config, install_overrides.get(project, {}))
     extra_overrides = install_overrides.get('extra_system_packages')
     if extra_overrides:
@@ -381,7 +382,7 @@ def _override_extra_system_packages(config, project, install_overrides):
         config['extra_system_packages'] = teuthology.deep_merge(e, extra_overrides)
 
 @contextlib.contextmanager
-def task(ctx, config):
+def task(ctx, config: Optional[dict]) -> Generator[None, None, None]:
     """
     Install packages for a given project.
 

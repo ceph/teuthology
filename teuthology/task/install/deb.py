@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import List, Sequence, Union
 
 from io import StringIO
 
@@ -33,7 +34,7 @@ def _ensure_release_key(remote):
         f"curl -sSfL '{RELEASE_KEY_URL}' | sudo tee {RELEASE_KEY_PATH} > /dev/null"
     )
 
-def _retry_if_eagain_in_output(remote, args):
+def _retry_if_eagain_in_output(remote, args: Sequence[Union[str, run.Raw]]):
     # wait at most 5 minutes
     with safe_while(sleep=10, tries=30) as proceed:
         while proceed():
@@ -66,10 +67,10 @@ def _retry_if_eagain_in_output(remote, args):
                 else:
                     raise
 
-def install_dep_packages(remote, args):
+def install_dep_packages(remote, args: Sequence[Union[str, run.Raw]]) -> None:
     _retry_if_eagain_in_output(remote, args)
 
-def _update_package_list_and_install(ctx, remote, debs, config):
+def _update_package_list_and_install(ctx, remote, debs: List[str], config: dict) -> None:
     """
     Runs ``apt-get update`` first, then runs ``apt-get install``, installing
     the requested packages on the remote system.
@@ -104,7 +105,7 @@ def _update_package_list_and_install(ctx, remote, debs, config):
     builder.install_repo()
 
     remote.run(args=['sudo', 'apt-get', 'update'], check_status=False)
-    install_cmd = [
+    install_cmd: List[Union[str, run.Raw]] = [
             'sudo', 'DEBIAN_FRONTEND=noninteractive', 'apt-get', '-y',
             '--force-yes',
             '-o', run.Raw('Dpkg::Options::="--force-confdef"'), '-o', run.Raw(
@@ -125,7 +126,7 @@ def _update_package_list_and_install(ctx, remote, debs, config):
             remote.run(args=['sudo', 'dpkg', '-i', fname],)
 
 
-def _remove(ctx, config, remote, debs):
+def _remove(ctx, config: dict, remote, debs: List[str]) -> None:
     """
     Removes Debian packages from remote, rudely
 
@@ -182,7 +183,7 @@ def _remove(ctx, config, remote, debs):
     )
 
 
-def _remove_sources_list(ctx, config, remote):
+def _remove_sources_list(ctx, config: dict, remote) -> None:
     builder = _get_builder_project(ctx, remote, config)
     builder.remove_repo()
     remote.run(
@@ -193,7 +194,7 @@ def _remove_sources_list(ctx, config, remote):
     )
 
 
-def _upgrade_packages(ctx, config, remote, debs):
+def _upgrade_packages(ctx, config: dict, remote, debs: List[str]) -> None:
     """
     Upgrade project's packages on remote Debian host
     Before doing so, installs the project's GPG key, writes a sources.list

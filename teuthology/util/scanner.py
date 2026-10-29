@@ -38,7 +38,7 @@ class Scanner():
         except Exception as exc:
             log.error(str(exc))
 
-    def scan_all_files(self, path_regex: str) -> [str]:
+    def scan_all_files(self, path_regex: str) -> list[str]:
         """
         Scans all files matching path_regex
         and collect additional data in self.summary_data 
@@ -101,7 +101,7 @@ class UnitTestScanner(Scanner):
         return exception_txt, { "failed_testsuites": dict(error_data), "num_of_failures": len(failed_testcases) }
 
     @property
-    def num_of_total_failures(self):
+    def num_of_total_failures(self) -> int:
         total_failed_testcases = 0
         if self.summary_data:
             for file_data in self.summary_data:

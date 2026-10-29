@@ -3,11 +3,12 @@ import logging
 import requests
 import re
 import time
+from typing import List
 
 from teuthology.config import config
 from teuthology.contextutil import safe_while
 from teuthology.misc import canonicalize_hostname
-from teuthology.util.compat import  HTTPError
+from teuthology.util.compat import HTTPError
 
 log = logging.getLogger(__name__)
 config_section = 'pelagos'
@@ -15,7 +16,7 @@ config_section = 'pelagos'
 # Provisioner configuration section description see in
 # docs/siteconfig.rst
 
-def enabled(warn=False):
+def enabled(warn: bool = False) -> bool:
     """
     Check for required Pelagos settings
 
@@ -33,7 +34,7 @@ def enabled(warn=False):
     return (unset == [])
 
 
-def get_types():
+def get_types() -> List[str]:
     """
     Fetch and parse config.pelagos['machine_types']
 
@@ -48,14 +49,14 @@ def get_types():
         types = [_ for _ in types.split(',') if _]
     return [_ for _ in types if _]
 
-def park_node(name):
+def park_node(name: str) -> None:
     p = Pelagos(name, "maintenance_image")
     p.create(wait=False)
 
 
 class Pelagos(object):
 
-    def __init__(self, name, os_type, os_version=""):
+    def __init__(self, name: str, os_type: str, os_version: str = "") -> None:
         #for service should be a hostname, not a user@host
         split_uri = re.search(r'(\w*)@(.+)', canonicalize_hostname(name))
         if split_uri is not None:
@@ -71,7 +72,7 @@ class Pelagos(object):
             self.os_name = os_type
         self.log = log.getChild(self.name)
 
-    def create(self, wait=True):
+    def create(self, wait: bool = True):
         """
         Initiate deployment via REST requests and wait until completion
          :param wait: optional, by default is True, if set to False, function
@@ -167,7 +168,7 @@ class Pelagos(object):
             resp.raise_for_status()
         return resp
 
-    def destroy(self):
+    def destroy(self) -> None:
         """A no-op; we just leave idle nodes as-is"""
         pass
 

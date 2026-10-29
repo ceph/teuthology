@@ -1,9 +1,15 @@
 import logging
 import os
+from typing import TYPE_CHECKING, Optional
 
 from teuthology.orchestra.cluster import Cluster
 from teuthology.exit import exiter
 from teuthology.task import Task
+
+if TYPE_CHECKING:
+    import psutil
+
+    from teuthology.exit import Handler
 
 log = logging.getLogger(__name__)
 
@@ -13,7 +19,7 @@ class ConsoleLog(Task):
     name = 'console_log'
     logfile_name = '{shortname}.log'
 
-    def __init__(self, ctx=None, config=None):
+    def __init__(self, ctx=None, config: Optional[dict] = None) -> None:
         super(ConsoleLog, self).__init__(ctx, config)
         if self.config.get('enabled') is False:
             self.enabled = False
@@ -24,7 +30,7 @@ class ConsoleLog(Task):
         if 'remotes' in self.config:
             self.remotes = self.config['remotes']
 
-    def filter_hosts(self):
+    def filter_hosts(self) -> Optional[Cluster]:
         super(ConsoleLog, self).filter_hosts()
         if not hasattr(self.ctx, 'cluster'):
             return
@@ -44,15 +50,15 @@ class ConsoleLog(Task):
         self.remotes = self.cluster.remotes.keys()
         return self.cluster
 
-    def setup(self):
+    def setup(self) -> None:
         if not self.enabled:
             return
         super(ConsoleLog, self).setup()
-        self.processes = dict()
-        self.signal_handlers = list()
+        self.processes: dict[str, 'psutil.Popen'] = dict()
+        self.signal_handlers: list['Handler'] = list()
         self.setup_archive()
 
-    def setup_archive(self):
+    def setup_archive(self) -> None:
         self.archive_dir = os.path.join(
             self.ctx.archive,
             'console_logs',
@@ -60,13 +66,13 @@ class ConsoleLog(Task):
         if not os.path.isdir(self.archive_dir):
             os.makedirs(self.archive_dir)
 
-    def begin(self):
+    def begin(self) -> None:
         if not self.enabled:
             return
         super(ConsoleLog, self).begin()
         self.start_logging()
 
-    def start_logging(self):
+    def start_logging(self) -> None:
         for remote in self.remotes:
             log_path = os.path.join(
                 self.archive_dir,
@@ -83,13 +89,13 @@ class ConsoleLog(Task):
                 proc.terminate()
         exiter.add_handler(15, kill_console_loggers)
 
-    def end(self):
+    def end(self) -> None:
         if not self.enabled:
             return
         super(ConsoleLog, self).end()
         self.stop_logging()
 
-    def stop_logging(self, force=False):
+    def stop_logging(self, force: bool = False) -> None:
         for proc in self.processes.values():
             if proc.poll() is not None:
                 continue
@@ -102,7 +108,7 @@ class ConsoleLog(Task):
         for handler in self.signal_handlers:
             handler.remove()
 
-    def teardown(self):
+    def teardown(self) -> None:
         if not self.enabled:
             return
         self.stop_logging(force=True)
