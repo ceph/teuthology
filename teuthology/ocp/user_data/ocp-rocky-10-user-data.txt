@@ -1,0 +1,32 @@
+#cloud-config
+disable_root: false
+users:
+  - name: ubuntu
+    groups: wheel
+    shell: /bin/bash
+    sudo: ["ALL=(ALL) NOPASSWD:ALL"]
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKciUXrSK8oSp/zkAYZ4VXFZNnX/y4yPx3GYUbbOTVsq teuthology@teuthology-0
+
+# UserDefined network
+network:
+  version: 2
+  ethernets:
+    all-en:
+      match:
+        name: en*
+      dhcp4: true
+
+# Extra blank disks
+volumes:
+  - count: 3
+    size: 15  # Gi
+  - count: 2
+    size: 20  # Gi
+
+# DataSource for the root disk. This image is a custom build that lives in
+# the project namespace, not openshift.datasource_namespace (which only has
+# vendor-provided images), so the namespace must be given explicitly.
+datasource:
+  name: rocky-10
+  namespace: ceph-teuthology--runtime-int
