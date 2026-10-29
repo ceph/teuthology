@@ -423,3 +423,27 @@ class TestOS(object):
         for version in ('8', '9', '10'):
             assert OS.version_codename('rocky', version) == (version, 'rocky')
         assert OS.version_codename('rocky', '10.1') == ('10.1', 'rocky')
+
+
+class TestWindows(object):
+    def test_windows_os_constructible(self):
+        from teuthology.orchestra.opsys import OS, DEFAULT_OS_VERSION
+        os_ = OS(name='windows', version='2025')
+        assert os_.name == 'windows'
+        assert os_.version == '2025'
+        assert DEFAULT_OS_VERSION['windows'] == '2025'
+
+    def test_from_windows_product_name(self):
+        from teuthology.orchestra.opsys import OS
+        os_ = OS.from_windows_product_name(
+            'Windows Server 2025 Standard Evaluation')
+        assert os_.name == 'windows'
+        assert os_.version == '2025'
+        assert os_ == OS(name='windows', version='2025')
+
+    def test_from_windows_product_name_unparseable(self):
+        from teuthology.orchestra.opsys import OS
+        import pytest
+        for bad in ('Ubuntu 22.04.4 LTS', 'Windows 11 Pro', ''):
+            with pytest.raises(ValueError):
+                OS.from_windows_product_name(bad)
