@@ -269,7 +269,7 @@ class TestScheduleSuite(object):
     @patch('teuthology.suite.util.git_ls_remote')
     @patch('teuthology.suite.util.package_version_for_hash')
     @patch('teuthology.suite.util.git_validate_sha1')
-    @patch('teuthology.suite.util.get_arch')
+    @patch('teuthology.lock.query.get_arch')
     def test_successful_schedule(
         self,
         m_get_arch,
@@ -355,7 +355,6 @@ class TestScheduleSuite(object):
                 '--',
                 '-'
             ],
-            stdin=ANY,
             desc=os.path.join(self.args.suite, build_matrix_desc),
         )
 
@@ -365,7 +364,7 @@ class TestScheduleSuite(object):
         args = m_schedule_jobs.call_args.args
         log.debug("args =\n%s", args)
         jobargs  = args[1][0]
-        stdin_yaml = yaml.safe_load(jobargs['stdin'])
+        stdin_yaml = jobargs['yaml']
         for k in y:
             assert y[k] == stdin_yaml[k]
         for k in teuthology_keys:
@@ -380,7 +379,7 @@ class TestScheduleSuite(object):
     @patch('teuthology.suite.util.git_ls_remote')
     @patch('teuthology.suite.util.package_version_for_hash')
     @patch('teuthology.suite.util.git_validate_sha1')
-    @patch('teuthology.suite.util.get_arch')
+    @patch('teuthology.lock.query.get_arch')
     def test_newest_failure(
         self,
         m_get_arch,
@@ -427,7 +426,7 @@ class TestScheduleSuite(object):
     @patch('teuthology.suite.util.git_ls_remote')
     @patch('teuthology.suite.util.package_version_for_hash')
     @patch('teuthology.suite.util.git_validate_sha1')
-    @patch('teuthology.suite.util.get_arch')
+    @patch('teuthology.lock.query.get_arch')
     def test_newest_success_same_branch_same_repo(
         self,
         m_get_arch,
@@ -535,7 +534,7 @@ class TestScheduleSuite(object):
     @patch('teuthology.suite.util.git_ls_remote')
     @patch('teuthology.suite.util.package_version_for_hash')
     @patch('teuthology.suite.util.git_validate_sha1')
-    @patch('teuthology.suite.util.get_arch')
+    @patch('teuthology.lock.query.get_arch')
     def test_newest_success_diff_branch_diff_repo(
         self,
         m_get_arch,
