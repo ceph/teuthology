@@ -49,11 +49,6 @@ from teuthology import misc
 
 from yaml.representer import SafeRepresenter
 
-try:
-    from openstack import connection as openstack_connection
-except ImportError:
-    openstack_connection = None
-
 class cmd_str(str): pass
 
 def cmd_repr(dumper, data):
@@ -78,7 +73,11 @@ def enforce_json_dictionary(something):
             ' fixed.')
 
 def create_connection():
-    if openstack_connection is None:
+    # Imported here because openstack.connection loads every service proxy in
+    # the SDK, which makes importing this module very slow.
+    try:
+        from openstack import connection as openstack_connection
+    except ImportError:
         raise RuntimeError(
             "Did not find required openstack dependencies. "
             f"Try: {sys.executable} -m pip install -e .[openstack]"
