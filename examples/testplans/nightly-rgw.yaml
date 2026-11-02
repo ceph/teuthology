@@ -1,0 +1,7 @@
+name: nightly-rgw
+description: |
+  One rotating nightly slot: a piece of rgw.
+  Run with '-p 150'.
+runs:
+- suite: rgw
+  subset: random/30000

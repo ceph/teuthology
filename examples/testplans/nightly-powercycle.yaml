@@ -1,0 +1,7 @@
+name: nightly-powercycle
+description: |
+  One rotating nightly slot: a piece of powercycle.
+  Run with '-p 200'.
+runs:
+- suite: powercycle
+  subset: random/4

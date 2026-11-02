@@ -1,0 +1,7 @@
+name: nightly-krbd
+description: |
+  One rotating nightly slot: a piece of krbd.
+  Run with '-p 200 -k testing'; without the testing kernel it isn't meaningful.
+runs:
+- suite: krbd
+  subset: random/4

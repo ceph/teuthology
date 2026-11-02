@@ -1,0 +1,7 @@
+name: nightly-fs
+description: |
+  One rotating nightly slot: a piece of fs.
+  Run with '-p 200'.
+runs:
+- suite: fs
+  subset: random/512

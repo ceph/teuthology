@@ -1,0 +1,8 @@
+name: crimson-debug
+description: |
+  Crimson development coverage. Run with '-f debug'.
+runs:
+- suite: crimson-rados
+  filter: rados_api_tests
+- suite: crimson-rados:basic
+- suite: crimson-rados:thrash

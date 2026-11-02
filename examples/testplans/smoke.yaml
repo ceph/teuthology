@@ -1,0 +1,6 @@
+name: smoke
+description: |
+  Quick sanity check of a build. Scheduled alongside every nightly plan.
+  Run with '-p 100 --force-priority'.
+runs:
+- suite: smoke

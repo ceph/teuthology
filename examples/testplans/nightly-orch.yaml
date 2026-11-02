@@ -1,0 +1,7 @@
+name: nightly-orch
+description: |
+  One rotating nightly slot: a piece of orch.
+  Run with '-p 200'.
+runs:
+- suite: orch
+  subset: random/64

@@ -1,0 +1,7 @@
+name: nightly-rbd
+description: |
+  One rotating nightly slot: a piece of rbd.
+  Run with '-p 200'.
+runs:
+- suite: rbd
+  subset: random/128

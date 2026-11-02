@@ -1,0 +1,7 @@
+name: nightly-upgrade
+description: |
+  One rotating nightly slot: a piece of upgrade.
+  Run with '-p 200'.
+runs:
+- suite: upgrade
+  subset: random/32

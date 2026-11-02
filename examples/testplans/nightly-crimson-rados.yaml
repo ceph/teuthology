@@ -1,0 +1,6 @@
+name: nightly-crimson-rados
+description: |
+  One rotating nightly slot: crimson-rados.
+  Run with '-p 101 --force-priority', and again with '-f debug'.
+runs:
+- suite: crimson-rados

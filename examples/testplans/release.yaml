@@ -1,0 +1,22 @@
+name: release
+description: |
+  Release validation: the same piece of every major suite, so that reruns
+  and comparisons across release candidates test the same jobs. Schedule
+  krbd with '-k testing' alongside it. The client upgrade suites live on
+  older branches, so they need separate runs with '--suite-branch'.
+defaults:
+  subset: 111/120000
+runs:
+- suite: smoke
+- suite: rados
+- suite: crimson-rados
+  subset: 0/1
+- suite: orch
+- suite: rbd
+- suite: fs
+- suite: rgw
+- suite: upgrade
+- suite: powercycle
+- suite: nvmeof
+- suite: perf-basic
+  subset: 0/1

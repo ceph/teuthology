@@ -1,0 +1,22 @@
+name: weekly
+description: |
+  The suites from the nightly rotation as one bundle that tests a single
+  build. Run with '-p 200'. For full coverage, also schedule nightly-rados
+  and nightly-crimson-rados with '-f debug', and nightly-krbd with
+  '-k testing'.
+runs:
+- suite: rados
+  subset: random/100000
+- suite: crimson-rados
+- suite: orch
+  subset: random/64
+- suite: rbd
+  subset: random/128
+- suite: fs
+  subset: random/512
+- suite: powercycle
+  subset: random/4
+- suite: rgw
+  subset: random/30000
+- suite: upgrade
+  subset: random/32

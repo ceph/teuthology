@@ -1,0 +1,8 @@
+name: nfs
+description: |
+  Quick check of NFS changes. orch:cephadm:nfs is a symlink to fs/nfs, so
+  these are the same tests filed under each component; each run picks its
+  own random combination of distro and NFS version.
+runs:
+- suite: fs:nfs
+- suite: orch:cephadm:nfs

@@ -1,0 +1,20 @@
+name: integration
+description: |
+  Broad coverage of an integration branch (a batch of PRs) before merging.
+  Schedule smoke alongside it, and nightly-krbd with '-k testing'.
+runs:
+- suite: rados
+  subset: random/65536
+- suite: crimson-rados
+  subset: random/2
+- suite: orch
+  subset: random/128
+- suite: rbd
+  subset: random/128
+- suite: fs
+  subset: random/2048
+- suite: rgw
+  subset: random/64
+- suite: upgrade
+  subset: random/4
+- suite: nvmeof
