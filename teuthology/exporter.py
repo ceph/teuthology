@@ -9,7 +9,6 @@ import time
 from pathlib import Path
 
 import teuthology.beanstalk as beanstalk
-import teuthology.dispatcher
 from teuthology.config import config
 from teuthology.lock.query import list_locks
 
@@ -143,6 +142,9 @@ class Dispatchers(TeuthologyMetric):
         )
 
     def _update(self):
+        # Imported here because teuthology.dispatcher pulls in most of
+        # teuthology, and teuthology.report imports this module.
+        import teuthology.dispatcher
         dispatcher_procs = teuthology.dispatcher.find_dispatcher_processes()
         for machine_type in MACHINE_TYPES:
             self.metric.labels(machine_type).set(
