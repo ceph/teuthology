@@ -17,10 +17,10 @@ class TestGetDistroVersion(object):
         self.fake_ctx_noarg.os_type = None
 
     def test_default_distro_version(self):
-        # Default distro is ubuntu, default version of ubuntu is 20.04
+        # Default distro is ubuntu, default version of ubuntu is 24.04
         self.fake_ctx.os_version = None
         distroversion = get_distro_version(self.fake_ctx)
-        assert distroversion == '22.04'
+        assert distroversion == '24.04'
 
     def test_argument_version(self):
         self.fake_ctx.os_version = '13.04'
