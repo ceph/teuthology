@@ -18,6 +18,7 @@ from teuthology.lock import ops as lock_ops
 from teuthology.task import internal
 from teuthology.task.ansible import FailureAnalyzer, FAILURE_LOG_NAME
 from teuthology.misc import decanonicalize_hostname as shortname
+from teuthology.orchestra.opsys import DEFAULT_OS_TYPE
 from teuthology.lock import query
 from teuthology.util import sentry
 
@@ -455,7 +456,7 @@ def create_fake_context(job_config, block=False):
         'owner': owner,
         'archive': job_config['archive_path'],
         'machine_type': job_config['machine_type'],
-        'os_type': job_config.get('os_type', 'ubuntu'),
+        'os_type': job_config.get('os_type', DEFAULT_OS_TYPE),
         'os_version': os_version,
         'name': job_config['name'],
         'job_id': job_config['job_id'],

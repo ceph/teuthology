@@ -101,6 +101,9 @@ DISTRO_CODENAME_MAP = {
     },
 }
 
+# The OS a job runs on when it doesn't set os_type
+DEFAULT_OS_TYPE = 'ubuntu'
+
 DEFAULT_OS_VERSION = dict(
     ubuntu="24.04",
     fedora="25",
