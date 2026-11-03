@@ -8,7 +8,8 @@ import requests
 
 from urllib.parse import urljoin
 
-from teuthology import exporter, dispatcher, kill, report, safepath
+from teuthology.exporter import metric
+from teuthology import dispatcher, kill, report, safepath
 from teuthology.config import config as teuth_config
 from teuthology.exceptions import SkipJob, MaxWhileTries
 from teuthology import setup_log_file, install_except_hook
@@ -56,7 +57,7 @@ def main(args):
         # If a job (e.g. from the nop suite) doesn't need nodes, avoid
         # submitting a zero here.
         if node_count:
-            with exporter.NodeReimagingTime().time(
+            with metric.node.NodeReimagingTime().time(
                 machine_type=job_config["machine_type"],
                 node_count=node_count,
             ):
@@ -68,7 +69,7 @@ def main(args):
 
     suite = job_config.get("suite")
     if suite:
-        with exporter.JobTime().time(suite=suite):
+        with metric.generic.JobTime().time(suite=suite):
             return run_job(
                 job_config,
                 args.job_config,

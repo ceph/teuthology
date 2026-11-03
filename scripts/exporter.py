@@ -1,6 +1,6 @@
 import docopt
 
-import teuthology.exporter
+import teuthology.exporter.cli
 
 doc = """
 usage: teuthology-exporter --help
@@ -15,4 +15,4 @@ optional arguments:
 
 def main():
     args = docopt.docopt(doc)
-    teuthology.exporter.main(args)
+    teuthology.exporter.cli.main(args)
