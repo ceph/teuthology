@@ -9,7 +9,6 @@ import socket
 from datetime import datetime
 
 import teuthology
-import teuthology.exporter
 from teuthology.config import config
 from teuthology.contextutil import safe_while
 from teuthology.job_status import get_status, set_status
@@ -474,6 +473,10 @@ def push_job_info(run_name, job_id, job_info, base_uri=None):
     reporter.report_job(run_name, job_id, job_info)
     status = get_status(job_info)
     if status in ["pass", "fail", "dead"] and "machine_type" in job_info:
+        # Imported here because the exporter pulls in prometheus_client,
+        # psutil and teuthology.beanstalk, and many commands import this
+        # module without ever recording metrics.
+        import teuthology.exporter
         teuthology.exporter.JobResults().record(
             machine_type=job_info["machine_type"],
             status=status,
@@ -590,6 +593,8 @@ def try_mark_run_dead(run_name):
                 log.info("Marking job {job_id} as dead".format(job_id=job_id))
                 reporter.report_job(run_name, job['job_id'], dead=True)
                 if "machine_type" in job:
+                    # Imported here for the same reason as in push_job_info()
+                    import teuthology.exporter
                     teuthology.exporter.JobResults().record(
                         machine_type=job["machine_type"],
                         status=job["status"],
