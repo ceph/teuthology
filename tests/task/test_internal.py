@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from teuthology.config import FakeNamespace
 from teuthology.task import internal
 
@@ -55,3 +57,25 @@ class TestInternal(object):
         assert internal.buildpackages_prep(self.ctx,
                                            self.ctx.config) == internal.BUILDPACKAGES_REMOVED
         assert self.ctx.config == {'tasks': []}
+
+    @patch("teuthology.task.internal.packaging.get_builder_project")
+    def test_check_packages_default_os(self, m_get_builder_project):
+        self.ctx.os_type = None
+        self.ctx.os_version = None
+        self.ctx.config = {'tasks': [], 'sha1': 'abc123'}
+        internal.check_packages(self.ctx, self.ctx.config)
+        project, job_config = m_get_builder_project.return_value.call_args.args
+        assert job_config['os_type'] == 'ubuntu'
+        assert job_config['os_version'] == '24.04'
+        assert 'os_type' not in self.ctx.config
+
+    @patch("teuthology.task.internal.packaging.get_builder_project")
+    def test_check_packages_job_os(self, m_get_builder_project):
+        self.ctx.os_type = None
+        self.ctx.os_version = None
+        self.ctx.config = {'tasks': [], 'sha1': 'abc123',
+                           'os_type': 'centos', 'os_version': '9.stream'}
+        internal.check_packages(self.ctx, self.ctx.config)
+        project, job_config = m_get_builder_project.return_value.call_args.args
+        assert job_config['os_type'] == 'centos'
+        assert job_config['os_version'] == '9.stream'

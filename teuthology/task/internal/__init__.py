@@ -83,12 +83,18 @@ def check_packages(ctx, config):
             return
 
     log.info("Checking packages...")
-    os_type = ctx.config.get("os_type")
+    # Check for the OS the job will run on, even when the job config
+    # leaves it to the defaults
+    os_type = misc.get_distro(ctx)
     sha1 = ctx.config.get("sha1")
-    # We can only do this check if there are a defined sha1 and os_type
-    # in the job config.
-    if os_type and sha1:
-        package = packaging.get_builder_project()("ceph", ctx.config)
+    # We can only do this check if there is a defined sha1 in the job config.
+    if sha1:
+        job_config = dict(
+            ctx.config,
+            os_type=os_type,
+            os_version=misc.get_distro_version(ctx),
+        )
+        package = packaging.get_builder_project()("ceph", job_config)
         template = "Checking packages for os_type '{os}', " \
             "flavor '{flav}' and ceph hash '{ver}'"
         log.info(
@@ -115,12 +121,7 @@ def check_packages(ctx, config):
             report.try_push_job_info(ctx.config, dict(status='dead'))
             raise VersionNotFoundError(package.base_url)
     else:
-        log.info(
-            "Checking packages skipped, missing os_type '{os}' or ceph hash '{ver}'".format(
-                os=os_type,
-                ver=sha1,
-            )
-        )
+        log.info("Checking packages skipped, missing ceph hash")
 
 
 @contextlib.contextmanager
