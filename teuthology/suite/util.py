@@ -11,7 +11,6 @@ import sys
 from email.mime.text import MIMEText
 
 import teuthology.lock.query
-import teuthology.lock.util
 from teuthology import repo_utils
 
 from teuthology.config import config
