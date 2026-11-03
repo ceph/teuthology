@@ -288,7 +288,7 @@ class TestMaas(object):
     @mark.parametrize(
         "os_type, os_version, remote_os_type, remote_os_version", [
         ("centos", "8", "centos", "8"),
-        ("", "", "ubuntu", "22.04")
+        ("", "", "ubuntu", "24.04")
     ])
     def test_verify_installed_os(
         self, os_type, os_version, remote_os_type, remote_os_version
