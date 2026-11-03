@@ -200,6 +200,22 @@ class TestCluster(object):
             r1: ['foo']
         }
 
+    def test_iter_roles(self):
+        expected = [
+            ([['client.0', 'osd.0', 'ceph.osd.1'], ['bar.osd.2']],
+             'osd', ['0', '1', '2']),
+            ([['client.0', 'osd.0', 'ceph.osd.1'], ['bar.osd.2', 'baz.client.1']],
+             'client', ['0', '1']),
+            ([['foo.client.1', 'bar.client.2.3'], ['baz.osd.1']], 'mon', []),
+            ([['foo.client.1', 'bar.client.2.3'], ['baz.osd.1', 'ceph.client.bar']],
+             'client', ['1', '2.3', 'bar']),
+            ]
+        for target_roles, name, expected_ids in expected:
+            c = cluster.Cluster(remotes=[
+                (Mock(_name=f'r{i}'), r) for (i, r) in enumerate(target_roles)
+                ])
+            ids = list(c.iter_roles(name))
+            assert ids == expected_ids
 
 class TestWriteFile(object):
     """ Tests for cluster.write_file """

@@ -151,8 +151,7 @@ def test_all_roles_of_type():
          'client', ['1', '2.3', 'bar']),
         ]
     for host_roles, type_, expected_ids in expected:
-        cluster_ = Mock()
-        cluster_.remotes = dict(enumerate(host_roles))
+        cluster_ = cluster.Cluster(remotes=list(enumerate(host_roles)))
         ids = list(misc.all_roles_of_type(cluster_, type_))
         assert ids == expected_ids
 
