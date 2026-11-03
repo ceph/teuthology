@@ -302,6 +302,7 @@ def main(args):
     suite_path = args["suite_path"]
     os_type = args["os_type"]
     os_version = args["os_version"]
+    package_source = args["package_source"]
     interactive_on_error = args["interactive_on_error"]
 
     log.debug("Teuthology command: %s", " ".join(sys.argv))
@@ -353,6 +354,8 @@ def main(args):
         config["os_type"] = os_type
     if os_version:
         config["os_version"] = os_version
+    if package_source:
+        config["package_source"] = package_source
 
     config["tasks"] = validate_tasks(config)
 

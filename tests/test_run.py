@@ -22,6 +22,7 @@ class TestRun(CliTest):
             "--machine-type", "machine_type",
             "--os-type", "os_type",
             "--os-version", "os_version",
+            "--package-source", "pulp",
             "--block",
             "--name", "the_name",
             "--suite-path", "some/suite/dir",
@@ -35,6 +36,7 @@ class TestRun(CliTest):
         assert args.machine_type == "machine_type"
         assert args.os_type == "os_type"
         assert args.os_version == "os_version"
+        assert args.package_source == "pulp"
         assert args.block
         assert args.name == "the_name"
         assert args.suite_path == "some/suite/dir"
@@ -250,6 +252,53 @@ class TestRun(CliTest):
         # ensures os_type and os_version are property overwritten
         assert fake_ctx["config"]["os_type"] == "os_type"
         assert fake_ctx["config"]["os_version"] == "os_version"
+
+    @patch("teuthology.run.set_up_logging")
+    @patch("teuthology.run.setup_config")
+    @patch("teuthology.run.get_user")
+    @patch("teuthology.run.write_initial_metadata")
+    @patch("teuthology.report.try_push_job_info")
+    @patch("teuthology.run.get_machine_type")
+    @patch("teuthology.run.get_summary")
+    @patch("yaml.safe_dump")
+    @patch("teuthology.run.validate_tasks")
+    @patch("teuthology.run.get_initial_tasks")
+    @patch("teuthology.run.fetch_tasks_if_needed")
+    @patch("teuthology.run.run_tasks")
+    @patch("teuthology.run.report_outcome")
+    def test_main_package_source(
+        self,
+        m_report_outcome,
+        m_run_tasks,
+        m_fetch_tasks_if_needed,
+        m_get_initial_tasks,
+        m_validate_tasks,
+        m_safe_dump,
+        m_get_summary,
+        m_get_machine_type,
+        m_try_push_job_info,
+        m_write_initial_metadata,
+        m_get_user,
+        m_setup_config,
+        m_set_up_logging,
+        parser,
+    ):
+        config = {"job_id": 1}
+        m_setup_config.return_value = config
+        m_get_machine_type.return_value = "machine_type"
+        m_get_user.return_value = "the_owner"
+        m_get_summary.return_value = dict(success=True, owner="the_owner")
+        m_validate_tasks.return_value = []
+        m_get_initial_tasks.return_value = []
+        m_fetch_tasks_if_needed.return_value = None
+        args = parser.parse_args([
+            "--package-source", "shaman",
+            "path/to/config.yml",
+        ]).__dict__
+        run.main(args)
+        args, kwargs = m_run_tasks.call_args
+        fake_ctx = kwargs["ctx"]._conf
+        assert fake_ctx["config"]["package_source"] == "shaman"
 
     @patch("teuthology.run.set_up_logging")
     @patch("teuthology.run.setup_config")
