@@ -81,6 +81,12 @@ def process_args(args):
                 config.get_ceph_qa_suite_git_url())
         elif key in ('validate_sha1', 'filter_fragments', 'kdb'):
             value = strtobool(value)
+        elif key == 'package_source' and value is not None:
+            if value not in ('shaman', 'pulp'):
+                schedule_fail(
+                    "--package-source must be 'shaman' or 'pulp'",
+                    dry_run=args.get('--dry-run', False),
+                )
         conf[key] = value
     return conf
 

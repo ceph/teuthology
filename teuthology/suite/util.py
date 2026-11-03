@@ -29,6 +29,25 @@ CONTAINER_DISTRO = 'centos/9'       # the one to check for build_complete
 CONTAINER_FLAVOR = 'default'
 
 
+def resolve_package_source(cli_value):
+    if cli_value:
+        return cli_value
+    return config.package_source
+
+
+def apply_suite_package_source(cli_value):
+    """
+    Set config.package_source for suite scheduling (build availability, --newest).
+
+    The CLI value overrides teuthology.yaml when provided.
+    """
+    if cli_value:
+        config.package_source = cli_value
+    source = resolve_package_source(cli_value)
+    log.debug("package_source for suite scheduling: %s", source)
+    return source
+
+
 def fetch_repos(branch, test_name, dry_run, commit=None):
     """
     Fetch the suite repo (and also the teuthology repo) so that we can use it

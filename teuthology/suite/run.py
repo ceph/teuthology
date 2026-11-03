@@ -43,6 +43,7 @@ class Run(object):
         args must be a config.YamlConfig object
         """
         self.args = args
+        util.apply_suite_package_source(getattr(self.args, 'package_source', None))
         # We assume timestamp is a datetime.datetime object
         self.timestamp = self.args.timestamp or \
             datetime.datetime.now().strftime(TIMESTAMP_FMT)
@@ -134,6 +135,9 @@ class Run(object):
             self.config_input['os_type'] = self.args.distro.lower()
         if self.args.distro_version:
             self.config_input['os_version'] = self.args.distro_version.lower()
+        self.config_input['package_source'] = util.resolve_package_source(
+            getattr(self.args, 'package_source', None),
+        )
         return self.build_base_config()
 
     def get_expiration(self, _base_time: datetime.datetime | None = None) -> datetime.datetime | None:
