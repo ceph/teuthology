@@ -17,7 +17,7 @@ from teuthology.config import config
 from teuthology.exceptions import BranchNotFoundError, ScheduleFailError
 from teuthology.misc import deep_merge
 from teuthology.repo_utils import fetch_qa_suite, fetch_teuthology
-from teuthology.orchestra.opsys import OS, DEFAULT_OS_VERSION
+from teuthology.orchestra.opsys import OS, DEFAULT_OS_TYPE, DEFAULT_OS_VERSION
 from teuthology.packaging import get_builder_project, VersionNotFoundError
 from teuthology.repo_utils import build_git_url
 from teuthology.task.install import get_flavor
@@ -124,7 +124,10 @@ def get_distro_defaults(distro, machine_type):
         (arch, release, pkg_type)
     """
     arch = 'x86_64'
-    if distro in (None, 'None', 'rhel'):
+    if distro in (None, 'None'):
+        # match what jobs without an os_type actually run on
+        distro = DEFAULT_OS_TYPE
+    elif distro == 'rhel':
         distro = 'centos'
 
     try:
