@@ -23,6 +23,9 @@ dependencies = [
     # Set a minimum version for gevent in order to gain python 3.13 support.
     # Also set a maximum version as we had seen hangs with v25.
     "gevent>=24.10.1,<25",
+    # greenlet's cp315 wheels before 3.5.4 were built against early 3.15
+    # betas and segfault on switch under the released 3.15.
+    "greenlet>=3.5.4",
     "httplib2",
     "humanfriendly",
     "lupa>=2.8",
