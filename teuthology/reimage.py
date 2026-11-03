@@ -48,7 +48,14 @@ def main(args):
     def reimage_node(ctx, machine_name, machine_type):
         ops.update_nodes([machine_name], True)
         reimage(ctx, machine_name, machine_type)
-        ops.update_nodes([machine_name])
+        if ctx.os_type == 'windows':
+            # see update_nodes: a Windows node cannot be probed over ssh
+            ops.update_nodes([machine_name], os_info=dict(
+                os_type=ctx.os_type,
+                os_version=ctx.os_version,
+            ))
+        else:
+            ops.update_nodes([machine_name])
         log.debug("Node '%s' reimaging is complete", machine_name)
 
     with parallel() as p:
