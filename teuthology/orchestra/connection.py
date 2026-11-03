@@ -8,8 +8,15 @@ import logging
 from teuthology.config import config
 from teuthology.contextutil import safe_while
 from paramiko.hostkeys import HostKeyEntry
+from paramiko.packet import Packetizer
 
 log = logging.getLogger(__name__)
+
+# Fixes http://tracker.ceph.com/issues/15236
+# This lives here rather than in teuthology.orchestra.monkey so that importing
+# teuthology doesn't import paramiko. Make SSH connections via connect() below
+# rather than with paramiko directly, so that they get this patch.
+Packetizer._trigger_rekey = lambda self: True
 
 
 def split_user(user_at_host):
