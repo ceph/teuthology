@@ -2,10 +2,8 @@ import io
 import json
 import logging
 
-from oauthlib.oauth1 import SIGNATURE_PLAINTEXT
 from requests import Response
-from requests_oauthlib import OAuth1Session
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
 
 import teuthology.orchestra
 
@@ -14,6 +12,9 @@ from teuthology.contextutil import safe_while
 from teuthology.orchestra.opsys import OS
 from teuthology import misc
 from requests.exceptions import HTTPError
+
+if TYPE_CHECKING:
+    from requests_oauthlib import OAuth1Session
 
 log = logging.getLogger(__name__)
 
@@ -68,12 +69,17 @@ def get_types() -> List[str]:
     return [type_ for type_ in types if type_]
 
 
-def get_session() -> OAuth1Session:
+def get_session() -> "OAuth1Session":
     """Create an OAuth1Session for communicating with the MAAS server
 
     :returns: OAuth1Session: An authenticated session object configured with the
                 MAAS API key credentials
     """
+    # Imported here because requests_oauthlib is slow to import and only
+    # needed to talk to the MAAS server.
+    from oauthlib.oauth1 import SIGNATURE_PLAINTEXT
+    from requests_oauthlib import OAuth1Session
+
     if not enabled():
         raise RuntimeError("MAAS is not configured!")
 
