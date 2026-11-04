@@ -373,7 +373,7 @@ class MAAS(object):
         self.log.info(f"Releasing machine '{self.shortname}'")
         self.release_machine()
 
-    def _get_user_data(self) -> Optional[io.BytesIO]:
+    def _get_user_data(self) -> Optional[io.BufferedReader]:
         """Get user data for cloud-init
 
         :returns: BytesIO object containing formatted user data, or None if no template

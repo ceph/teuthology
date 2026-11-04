@@ -9,7 +9,7 @@ from teuthology import misc as teuthology
 log = logging.getLogger(__name__)
 
 
-def _check_mpi_version(remotes):
+def _check_mpi_version(remotes: list) -> None:
     """
     Retrieve the MPI version from each of `remotes` and raise an exception
     if they are not all the same version.
@@ -30,7 +30,7 @@ def _check_mpi_version(remotes):
         log.info("MPI version {0}".format(list(versions)[0]))
 
 
-def task(ctx, config):
+def task(ctx, config: dict) -> None:
     """
     Setup MPI and execute commands
 

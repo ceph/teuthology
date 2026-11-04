@@ -1,6 +1,8 @@
 from io import StringIO
 import contextlib
 import logging
+from typing import Callable, Dict, Generator, Tuple
+
 from teuthology import misc as teuthology
 from teuthology import contextutil
 from teuthology.orchestra import run
@@ -10,7 +12,7 @@ log = logging.getLogger(__name__)
 
 HADOOP_2x_URL = "https://archive.apache.org/dist/hadoop/core/hadoop-2.5.2/hadoop-2.5.2.tar.gz"
 
-def dict_to_hadoop_conf(items):
+def dict_to_hadoop_conf(items: Dict[str, str]) -> str:
     out = "<configuration>\n"
     for key, value in items.items():
         out += "  <property>\n"
@@ -20,10 +22,10 @@ def dict_to_hadoop_conf(items):
     out += "</configuration>\n"
     return out
 
-def is_hadoop_type(type_):
+def is_hadoop_type(type_: str) -> Callable[[str], bool]:
     return lambda role: role.startswith('hadoop.' + type_)
 
-def get_slaves_data(ctx):
+def get_slaves_data(ctx) -> Tuple[str, str]:
     tempdir = teuthology.get_testdir(ctx)
     path = "{tdir}/hadoop/etc/hadoop/slaves".format(tdir=tempdir)
     nodes = ctx.cluster.only(is_hadoop_type('slave'))
@@ -31,7 +33,7 @@ def get_slaves_data(ctx):
     data = '\n'.join(hosts)
     return path, data
 
-def get_masters_data(ctx):
+def get_masters_data(ctx) -> Tuple[str, str]:
     tempdir = teuthology.get_testdir(ctx)
     path = "{tdir}/hadoop/etc/hadoop/masters".format(tdir=tempdir)
     nodes = ctx.cluster.only(is_hadoop_type('master'))
@@ -39,7 +41,7 @@ def get_masters_data(ctx):
     data = '\n'.join(hosts)
     return path, data
 
-def get_core_site_data(ctx, config):
+def get_core_site_data(ctx, config: dict) -> Tuple[str, str]:
     tempdir = teuthology.get_testdir(ctx)
     path = "{tdir}/hadoop/etc/hadoop/core-site.xml".format(tdir=tempdir)
     nodes = ctx.cluster.only(is_hadoop_type('master'))
@@ -66,7 +68,7 @@ def get_core_site_data(ctx, config):
     data_tmpl = dict_to_hadoop_conf(conf)
     return path, data_tmpl.format(tdir=tempdir, namenode=host)
 
-def get_mapred_site_data(ctx):
+def get_mapred_site_data(ctx) -> Tuple[str, str]:
     data_tmpl = """
 <configuration>
      <property>
@@ -87,7 +89,7 @@ def get_mapred_site_data(ctx):
     host = hosts[0]
     return path, data_tmpl.format(namenode=host)
 
-def get_yarn_site_data(ctx):
+def get_yarn_site_data(ctx) -> Tuple[str, str]:
     conf = {}
     conf.update({
         'yarn.resourcemanager.resourcetracker.address': '{namenode}:8025',
@@ -108,7 +110,7 @@ def get_yarn_site_data(ctx):
     host = hosts[0]
     return path, data_tmpl.format(namenode=host)
 
-def get_hdfs_site_data(ctx):
+def get_hdfs_site_data(ctx) -> Tuple[str, str]:
     data = """
 <configuration>
      <property>
@@ -121,7 +123,7 @@ def get_hdfs_site_data(ctx):
     path = "{tdir}/hadoop/etc/hadoop/hdfs-site.xml".format(tdir=tempdir)
     return path, data
 
-def configure(ctx, config, hadoops):
+def configure(ctx, config: dict, hadoops) -> None:
     tempdir = teuthology.get_testdir(ctx)
 
     log.info("Writing Hadoop slaves file...")
@@ -182,7 +184,7 @@ def configure(ctx, config, hadoops):
             )
 
 @contextlib.contextmanager
-def install_hadoop(ctx, config):
+def install_hadoop(ctx, config: dict) -> Generator[None, None, None]:
     testdir = teuthology.get_testdir(ctx)
 
     log.info("Downloading Hadoop...")
@@ -335,7 +337,7 @@ def install_hadoop(ctx, config):
             )
 
 @contextlib.contextmanager
-def start_hadoop(ctx, config):
+def start_hadoop(ctx, config: dict) -> Generator[None, None, None]:
     testdir = teuthology.get_testdir(ctx)
     hadoop_dir = "{tdir}/hadoop/".format(tdir=testdir)
     masters = ctx.cluster.only(is_hadoop_type('master'))
@@ -407,7 +409,7 @@ def start_hadoop(ctx, config):
             )
 
 @contextlib.contextmanager
-def task(ctx, config):
+def task(ctx, config: dict) -> Generator[None, None, None]:
     if config is None:
         config = {}
     assert isinstance(config, dict), "task hadoop config must be dictionary"

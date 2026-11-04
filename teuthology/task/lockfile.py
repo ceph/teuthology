@@ -184,7 +184,7 @@ def task(ctx, config):
     #done!
 # task
 
-def lock_one(op, ctx):
+def lock_one(op: dict, ctx) -> bool:
     """
     Perform the individual lock
     """

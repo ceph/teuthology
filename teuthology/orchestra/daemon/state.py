@@ -1,5 +1,6 @@
 import logging
 import struct
+from typing import Optional
 
 from teuthology.exceptions import CommandFailedError
 from teuthology.orchestra import run
@@ -11,7 +12,7 @@ class DaemonState(object):
     """
     Daemon State.  A daemon exists for each instance of each role.
     """
-    def __init__(self, remote, role, id_, *command_args, **command_kwargs):
+    def __init__(self, remote, role: str, id_: str, *command_args, **command_kwargs) -> None:
         """
         Pass remote command information as parameters to remote site
 
@@ -28,10 +29,10 @@ class DaemonState(object):
         self.id_ = id_
         self.log = command_kwargs.get('logger', log)
         self.fsid = command_kwargs.pop('fsid', None)
-        self.proc = None
+        self.proc: Optional[run.RemoteProcess] = None
         self.command_kwargs = command_kwargs
 
-    def check_status(self):
+    def check_status(self) -> Optional[int]:
         """
         Check to see if the process has exited.
 
@@ -43,10 +44,10 @@ class DaemonState(object):
             return self.proc.poll()
 
     @property
-    def pid(self):
+    def pid(self) -> Optional[int]:
         raise NotImplementedError
 
-    def reset(self):
+    def reset(self) -> None:
         """
         clear remote run command value.
         """

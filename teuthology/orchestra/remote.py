@@ -23,6 +23,7 @@ import os
 import pwd
 import tempfile
 import netaddr
+from typing import IO, List, Optional, Union
 
 log = logging.getLogger(__name__)
 
@@ -59,7 +60,8 @@ class RemoteShell(object):
 
         return self.sh(args).strip()
 
-    def mktemp(self, suffix=None, parentdir=None, data=None):
+    def mktemp(self, suffix: Optional[str] = None, parentdir: Optional[str] = None,
+               data: Optional[Union[str, bytes]] = None) -> str:
         """
         Make a remote temporary file.
 
@@ -82,7 +84,7 @@ class RemoteShell(object):
 
         return path
 
-    def sh(self, script, **kwargs):
+    def sh(self, script: Union[str, List[str]], **kwargs) -> str:
         """
         Shortcut for run method.
 
@@ -101,7 +103,8 @@ class RemoteShell(object):
         else:
             return out
 
-    def sh_file(self, script, label="script", sudo=False, **kwargs):
+    def sh_file(self, script: Union[str, IO], label: str = "script",
+                sudo: Union[bool, str] = False, **kwargs) -> str:
         """
         Run shell script after copying its contents to a remote file
 
@@ -126,7 +129,7 @@ class RemoteShell(object):
 
         return self.sh(command, **kwargs)
 
-    def chmod(self, file_path, permissions):
+    def chmod(self, file_path: str, permissions: str) -> None:
         """
         As super-user, set permissions on the remote file specified.
         """
@@ -140,7 +143,7 @@ class RemoteShell(object):
             args=args,
             )
 
-    def chcon(self, file_path, context):
+    def chcon(self, file_path: str, context: str) -> None:
         """
         Set the SELinux context of a given file.
 
@@ -158,8 +161,8 @@ class RemoteShell(object):
         self.run(args="sudo chcon {con} {path}".format(
             con=context, path=file_path))
 
-    def copy_file(self, src, dst, sudo=False, mode=None, owner=None,
-                                              mkdir=False, append=False):
+    def copy_file(self, src: str, dst: str, sudo: bool = False, mode: Optional[str] = None,
+                  owner: Optional[str] = None, mkdir: bool = False, append: bool = False) -> None:
         """
         Copy data to remote file
 
@@ -190,8 +193,8 @@ class RemoteShell(object):
         args = 'set -ex' + '\n' + args
         self.run(args=args)
 
-    def move_file(self, src, dst, sudo=False, mode=None, owner=None,
-                                              mkdir=False):
+    def move_file(self, src: str, dst: str, sudo: bool = False, mode: Optional[str] = None,
+                  owner: Optional[str] = None, mkdir: bool = False):
         """
         Move data to remote file
 

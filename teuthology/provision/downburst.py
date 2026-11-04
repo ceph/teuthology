@@ -3,6 +3,7 @@ import logging
 import os
 import subprocess
 import tempfile
+from typing import Dict, List, Optional, Tuple
 import yaml
 
 from teuthology.config import config
@@ -14,7 +15,7 @@ from teuthology.lock import query
 log = logging.getLogger(__name__)
 
 
-def get_types():
+def get_types() -> List[str]:
     types = ['vps']
     if 'downburst' in config and 'machine' in config.downburst:
         machine = config.downburst.get('machine')
@@ -23,7 +24,7 @@ def get_types():
     return types
 
 
-def downburst_executable():
+def downburst_executable() -> str:
     """
     First check for downburst in the user's path.
     Then check in ~/src, ~ubuntu/src, and ~teuthology/src.
@@ -51,8 +52,8 @@ def downburst_executable():
     return ''
 
 
-def downburst_environment():
-    env = dict()
+def downburst_environment() -> Dict[str, Optional[str]]:
+    env: Dict[str, Optional[str]] = dict()
     env['PATH'] = os.environ.get('PATH')
     discover_url = os.environ.get('DOWNBURST_DISCOVER_URL')
     if config.downburst and not discover_url:
@@ -83,7 +84,7 @@ class Downburst(object):
         self.executable = downburst_executable()
         self.environment = downburst_environment()
 
-    def create(self):
+    def create(self) -> Optional[bool]:
         """
         Launch a virtual machine instance.
 
@@ -122,7 +123,7 @@ class Downburst(object):
                         break
             return success
 
-    def _run_create(self):
+    def _run_create(self) -> Tuple[int, str, str]:
         """
         Used by create(), this method is what actually calls downburst when
         creating a virtual machine instance.
@@ -154,7 +155,7 @@ class Downburst(object):
         out, err = proc.communicate()
         return (proc.returncode, out, err)
 
-    def destroy(self):
+    def destroy(self) -> bool:
         """
         Destroy (shutdown and delete) a virtual machine instance.
         """
@@ -307,7 +308,7 @@ class Downburst(object):
             return True
         return False
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.remove_config()
 
 
@@ -333,7 +334,7 @@ _known_downburst_distros = {
         ],
 }
 
-def get_distro_from_downburst():
+def get_distro_from_downburst() -> Dict[str, List[str]]:
     """
     Return a table of valid distros.
 

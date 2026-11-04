@@ -4,6 +4,7 @@ import logging
 import requests
 import socket
 import re
+from typing import List, Optional
 
 from paramiko import SSHException
 from paramiko.ssh_exception import (
@@ -22,7 +23,7 @@ from teuthology import misc
 log = logging.getLogger(__name__)
 
 
-def enabled(warn=False):
+def enabled(warn: bool = False) -> bool:
     """
     Check for required FOG settings
 
@@ -40,7 +41,7 @@ def enabled(warn=False):
     return (unset == [])
 
 
-def get_types():
+def get_types() -> List[str]:
     """
     Fetch and parse config.fog['machine_types']
 
@@ -62,7 +63,7 @@ class FOG(object):
     """
     timestamp_format = '%Y-%m-%d %H:%M:%S'
 
-    def __init__(self, name, os_type, os_version):
+    def __init__(self, name: str, os_type: str, os_version: str) -> None:
         self.remote = teuthology.orchestra.remote.Remote(
             misc.canonicalize_hostname(name))
         self.name = self.remote.hostname
@@ -73,7 +74,7 @@ class FOG(object):
         self.resolved_os_version = None
         self.log = log.getChild(self.shortname)
 
-    def create(self):
+    def create(self) -> None:
         """
         Initiate deployment and wait until completion
         """
@@ -130,7 +131,7 @@ class FOG(object):
             resp.raise_for_status()
         return resp
 
-    def get_host_data(self):
+    def get_host_data(self) -> dict:
         """
         Locate the host we want to use, and return the FOG object which
         represents it
@@ -148,13 +149,13 @@ class FOG(object):
                 "More than one host found for %s" % self.shortname)
         return obj['hosts'][0]
 
-    def get_image_data(self):
+    def get_image_data(self) -> dict:
         """
         Locate the image we want to use, and return the FOG object which
         represents it
         :returns: A dict describing the image
         """
-        def do_get(name):
+        def do_get(name: str) -> Optional[dict]:
             resp = self.do_request(
                 '/image',
                 data=json.dumps(dict(name=name)),
@@ -208,7 +209,7 @@ class FOG(object):
             )
         return best
 
-    def image_names(self, machine_type=None):
+    def image_names(self, machine_type: Optional[str] = None) -> List[str]:
         """
         Return available image names for this machine type.
 
@@ -220,7 +221,7 @@ class FOG(object):
         images = obj['images']
         return [image['name'] for image in images]
 
-    def set_image(self, host_id):
+    def set_image(self, host_id: int) -> None:
         """
         Tell FOG to use the proper image on the next deploy
         :param host_id: The id of the host to deploy
@@ -235,7 +236,7 @@ class FOG(object):
             data=json.dumps(dict(imageID=image_id)),
         )
 
-    def schedule_deploy_task(self, host_id):
+    def schedule_deploy_task(self, host_id: int) -> Optional[str]:
         """
         :param host_id: The id of the host to deploy
         :returns: The id of the scheduled task
@@ -286,7 +287,7 @@ class FOG(object):
                       if obj['host']['name'] == self.shortname]
         return host_tasks
 
-    def deploy_task_active(self, task_id):
+    def deploy_task_active(self, task_id: str) -> bool:
         """
         :param task_id: The id of the task to query
         :returns: True if the task is active
@@ -296,7 +297,7 @@ class FOG(object):
             [task['id'] == task_id for task in host_tasks]
         )
 
-    def wait_for_deploy_task(self, task_id):
+    def wait_for_deploy_task(self, task_id: str) -> None:
         """
         Wait until the specified task is no longer active (i.e., it has
         completed)
@@ -307,7 +308,7 @@ class FOG(object):
                 if not self.deploy_task_active(task_id):
                     break
 
-    def cancel_deploy_task(self,  task_id):
+    def cancel_deploy_task(self, task_id: str) -> None:
         """ Cancel an active deploy task """
         self.log.debug(f"Canceling deploy task with ID {task_id}")
         resp = self.do_request(
@@ -317,7 +318,7 @@ class FOG(object):
         )
         resp.raise_for_status()
 
-    def _wait_for_ready(self):
+    def _wait_for_ready(self) -> None:
         """
         Attempt to connect to the machine via SSH (power cycle once at 50% of timeout).
         """
@@ -387,7 +388,7 @@ class FOG(object):
                         log.error(f"{e} on {self.shortname}")
         self.log.info("Node is ready")
 
-    def _fix_hostname(self):
+    def _fix_hostname(self) -> None:
         """
         After a reimage, the host will still have the hostname of the machine
         used to create the image initially. Fix that by making a call to
@@ -419,7 +420,7 @@ class FOG(object):
             check_status=False,
         )
 
-    def _verify_installed_os(self):
+    def _verify_installed_os(self) -> None:
         wanted_os = OS(
             name=self.os_type,
             version=self.resolved_os_version or self.os_version,
@@ -430,6 +431,6 @@ class FOG(object):
                 f"found {self.remote.os}"
             )
 
-    def destroy(self):
+    def destroy(self) -> None:
         """A no-op; we just leave idle nodes as-is"""
         pass

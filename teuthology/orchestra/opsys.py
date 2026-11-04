@@ -1,4 +1,5 @@
 import re
+from typing import Tuple
 
 from packaging.version import parse as parse_version, Version
 
@@ -150,7 +151,7 @@ class OS(object):
         ))
 
     @classmethod
-    def from_lsb_release(cls, lsb_release_str):
+    def from_lsb_release(cls, lsb_release_str: str) -> 'OS':
         """
         Parse output from lsb_release -a and populate attributes
 
@@ -184,7 +185,7 @@ class OS(object):
         return obj
 
     @classmethod
-    def from_os_release(cls, os_release_str):
+    def from_os_release(cls, os_release_str: str) -> 'OS':
         """
         Parse /etc/os-release and populate attributes
 
@@ -222,7 +223,7 @@ class OS(object):
 
 
     @classmethod
-    def version_codename(cls, name, version_or_codename):
+    def version_codename(cls, name: str, version_or_codename: str) -> Tuple[str, str]:
         """
         Return (version, codename) based on one input, trying to infer
         which we're given

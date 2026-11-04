@@ -21,7 +21,7 @@ import datetime
 
 from tarfile import ReadError
 
-from typing import Optional, TypeVar
+from typing import Mapping, Optional, TypeVar
 
 from teuthology.util.compat import urljoin, urlopen, HTTPError
 
@@ -45,7 +45,7 @@ is_arm = lambda x: x.startswith('tala') or x.startswith(
 
 hostname_expr_templ = '(?P<user>.*@)?(?P<shortname>.*){lab_domain}'
 
-def host_shortname(hostname):
+def host_shortname(hostname: str) -> str:
     if _is_ipv4(hostname) or _is_ipv6(hostname):
         return hostname
     else:
@@ -80,7 +80,7 @@ def canonicalize_hostname(hostname, user: Optional[str] ='ubuntu'):
     return ret
 
 
-def decanonicalize_hostname(hostname):
+def decanonicalize_hostname(hostname: str) -> str:
     lab_domain = ''
     if config.lab_domain:
         lab_domain=r'\.' + config.lab_domain.replace('.', r'\.')
@@ -91,7 +91,7 @@ def decanonicalize_hostname(hostname):
     return hostname
 
 
-def config_file(string):
+def config_file(string: str) -> dict:
     """
     Create a config file
 
@@ -1009,7 +1009,7 @@ def deep_merge(a: DeepMerge, b: DeepMerge) -> DeepMerge:
         return a
     return b
 
-def update_key(key_to_update, a: dict, b: dict):
+def update_key(key_to_update, a: dict, b: Mapping):
     """
     Update key (`key_to_update`) of dict `a` on all levels
     to the values of same key in `b` dict.

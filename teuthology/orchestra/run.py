@@ -3,6 +3,7 @@ Paramiko run support
 """
 
 import io
+from typing import List, Optional, Union
 
 from paramiko import ChannelFile
 
@@ -38,8 +39,10 @@ class RemoteProcess(object):
 
     deadlock_warning = "Using PIPE for %s without wait=False would deadlock"
 
-    def __init__(self, client, args, check_status=True, hostname=None,
-                 label=None, timeout=None, wait=True, logger=None, cwd=None):
+    def __init__(self, client, args: Union[str, List[str]], check_status: bool = True,
+                 hostname: Optional[str] = None, label: Optional[str] = None,
+                 timeout: Optional[int] = None, wait: bool = True,
+                 logger: Optional[logging.Logger] = None, cwd: Optional[str] = None) -> None:
         """
         Create the object. Does not initiate command execution.
 
@@ -79,13 +82,16 @@ class RemoteProcess(object):
         else:
             (self.hostname, port) = client.get_transport().getpeername()[0:2]
 
-        self.greenlets = []
+        self.greenlets: list = []
+        self.stdin: Optional[Union[ChannelFile, 'KludgeFile']]
+        self.stdout: Optional[ChannelFile]
+        self.stderr: Optional[ChannelFile]
         self.stdin, self.stdout, self.stderr = (None, None, None)
         self.returncode = self.exitstatus = None
         self._wait = wait
         self.logger = logger or log
 
-    def execute(self):
+    def execute(self) -> None:
         """
         Execute remote command
         """
@@ -101,10 +107,10 @@ class RemoteProcess(object):
         (self.stdin, self.stdout, self.stderr) = \
             (self._stdin_buf, self._stdout_buf, self._stderr_buf)
 
-    def add_greenlet(self, greenlet):
+    def add_greenlet(self, greenlet) -> None:
         self.greenlets.append(greenlet)
 
-    def setup_stdin(self, stream_obj):
+    def setup_stdin(self, stream_obj) -> None:
         self.stdin = KludgeFile(wrapped=self.stdin)
         if stream_obj is not PIPE:
             greenlet = gevent.spawn(copy_and_close, stream_obj, self.stdin)
@@ -114,7 +120,7 @@ class RemoteProcess(object):
             # FIXME: Is this actually true?
             raise RuntimeError(self.deadlock_warning % 'stdin')
 
-    def setup_output_stream(self, stream_obj, stream_name, quiet=False):
+    def setup_output_stream(self, stream_obj, stream_name: str, quiet: bool = False) -> None:
         if stream_obj is not PIPE:
             # Log the stream
             host_log = self.logger.getChild(self.hostname)
@@ -133,7 +139,7 @@ class RemoteProcess(object):
             # FIXME: Is this actually true?
             raise RuntimeError(self.deadlock_warning % stream_name)
 
-    def wait(self):
+    def wait(self) -> Optional[int]:
         """
         Block until remote process finishes.
 
@@ -161,7 +167,7 @@ class RemoteProcess(object):
         self._raise_for_status()
         return status
 
-    def _raise_for_status(self):
+    def _raise_for_status(self) -> None:
         if self.returncode is None:
             self._get_exitstatus()
         if self.check_status:
@@ -183,7 +189,7 @@ class RemoteProcess(object):
                     node=self.hostname, label=self.label
                 )
 
-    def _get_exitstatus(self):
+    def _get_exitstatus(self) -> Optional[int]:
         """
         :returns: the remote command's exit status (return code). Note that
                   if the connection is lost, or if the process was killed by a

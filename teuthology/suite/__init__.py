@@ -7,6 +7,7 @@ import os
 import random
 import sys
 import time
+from typing import Optional
 
 import teuthology
 from teuthology.config import config, YamlConfig
@@ -20,7 +21,7 @@ from teuthology.util.strtobool import strtobool
 log = logging.getLogger(__name__)
 
 
-def override_arg_defaults(name, default, env=os.environ):
+def override_arg_defaults(name: str, default: Optional[str], env=os.environ) -> Optional[str]:
     env_arg = {
         '--ceph-repo'         : 'TEUTH_CEPH_REPO',
         '--suite-repo'        : 'TEUTH_SUITE_REPO',
@@ -38,7 +39,7 @@ def override_arg_defaults(name, default, env=os.environ):
         return default
 
 
-def process_args(args):
+def process_args(args: dict) -> YamlConfig:
     conf = YamlConfig()
     rename_args = {
         'ceph': 'ceph_branch',
@@ -85,10 +86,10 @@ def process_args(args):
     return conf
 
 
-def normalize_suite_name(name):
+def normalize_suite_name(name: str) -> str:
     return name.replace('/', ':')
 
-def expand_short_repo_name(name, orig):
+def expand_short_repo_name(name: str, orig: str) -> str:
     # Allow shortname repo name 'foo' or 'foo/bar'.  This works with
     # github URLs, e.g.
     #
@@ -108,7 +109,7 @@ def expand_short_repo_name(name, orig):
     # otherwise, assume a full URL
     return name
 
-def main(args):
+def main(args: dict) -> Optional[int]:
     conf = process_args(args)
     if conf.verbose:
         teuthology.log.setLevel(logging.DEBUG)
@@ -143,7 +144,7 @@ def main(args):
                     conf.archive_upload_url)
 
 
-def get_rerun_conf_overrides(conf):
+def get_rerun_conf_overrides(conf: YamlConfig) -> None:
     reporter = ResultsReporter()
     run = reporter.get_run(conf.rerun)
 
@@ -203,8 +204,8 @@ def get_rerun_conf_overrides(conf):
     conf.filter_in.extend(rerun_filters['descriptions'])
 
 
-def get_rerun_filters(run, statuses):
-    filters = dict()
+def get_rerun_filters(run: dict, statuses: list[str]) -> dict[str, list[str]]:
+    filters: dict = dict()
     jobs = []
     for job in run['jobs']:
         if job['status'] in statuses:
@@ -217,7 +218,7 @@ class WaitException(Exception):
     pass
 
 
-def wait(name, max_job_time, upload_url):
+def wait(name: str, max_job_time: int, upload_url: Optional[str]) -> int:
     stale_job = max_job_time + Run.WAIT_MAX_JOB_TIME
     reporter = ResultsReporter()
     past_unfinished_jobs = []

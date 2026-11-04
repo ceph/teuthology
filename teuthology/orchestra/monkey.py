@@ -5,7 +5,7 @@ import logging
 
 log = logging.getLogger(__name__)
 
-def patch_001_paramiko_deprecation():
+def patch_001_paramiko_deprecation() -> None:
     """
     Silence an an unhelpful Deprecation Warning triggered by Paramiko.
 
@@ -19,7 +19,7 @@ def patch_001_paramiko_deprecation():
         )
 
 
-def patch_100_paramiko_log():
+def patch_100_paramiko_log() -> None:
     """
     Silence some noise paramiko likes to log.
 

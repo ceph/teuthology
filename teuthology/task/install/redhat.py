@@ -2,6 +2,7 @@ import contextlib
 import logging
 import yaml
 import os
+from typing import Optional
 
 from teuthology import packaging
 from teuthology.orchestra import run
@@ -80,7 +81,7 @@ def install(ctx, config):
                     p.spawn(uninstall_pkgs, ctx, remote, downstream_config)
 
 
-def install_pkgs(ctx, remote, version, downstream_config):
+def install_pkgs(ctx, remote, version: str, downstream_config: dict) -> None:
     """
     Installs RH build using ceph.
 
@@ -126,7 +127,7 @@ def install_pkgs(ctx, remote, version, downstream_config):
         raise RuntimeError("Version check failed on node %s", remote.shortname)
 
 
-def set_deb_repo(remote, deb_repo, deb_gpg_key=None):
+def set_deb_repo(remote, deb_repo: str, deb_gpg_key: Optional[str] = None) -> None:
     """
     Sets up debian repo and gpg key for package verification
     :param remote - remote node object
@@ -197,7 +198,7 @@ def install_deb_pkgs(
         raise RuntimeError("Version check failed on node %s", remote.shortname)
 
 
-def uninstall_pkgs(ctx, remote, downstream_config):
+def uninstall_pkgs(ctx, remote, downstream_config: dict) -> None:
     """
     Removes Ceph from all RH hosts
 

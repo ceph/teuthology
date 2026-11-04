@@ -2,13 +2,12 @@ import logging
 
 import teuthology.lock.query
 import teuthology.lock.util
-
 from teuthology.config import config as teuth_config
 
 log = logging.getLogger(__name__)
 
 
-def check_lock(ctx, config, check_up=True):
+def check_lock(ctx, config, check_up: bool = True) -> None:
     """
     Check lock status of remote machines.
     """

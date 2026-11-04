@@ -4,6 +4,7 @@ Handle iscsi adm commands for tgt connections.
 import logging
 import contextlib
 import socket
+from typing import Generator, List, Tuple
 
 from teuthology import misc as teuthology
 from teuthology import contextutil
@@ -44,7 +45,7 @@ def tgt_devname_get(ctx, test_image):
     return lnkpath
 
 
-def tgt_devname_rtn(ctx, test_image):
+def tgt_devname_rtn(ctx, test_image: str) -> str:
     """
     Wrapper passed to common_fs_util functions.
     """
@@ -52,7 +53,7 @@ def tgt_devname_rtn(ctx, test_image):
     return tgt_devname_get(ctx, image)
 
 
-def file_io_test(rem, file_from, lnkpath):
+def file_io_test(rem, file_from: str, lnkpath: str) -> None:
     """
     dd to the iscsi inteface, read it, and compare with original
     """
@@ -96,7 +97,7 @@ def file_io_test(rem, file_from, lnkpath):
     rem.run(args=['rm', tfile2])
 
 
-def general_io_test(ctx, rem, image_name):
+def general_io_test(ctx, rem, image_name: str) -> None:
     """
     Do simple I/O tests to the iscsi interface before putting a
     filesystem on it.
@@ -122,7 +123,7 @@ def general_io_test(ctx, rem, image_name):
 
 
 @contextlib.contextmanager
-def start_iscsi_initiators(ctx, tgt_link):
+def start_iscsi_initiators(ctx, tgt_link: List[Tuple[str, str]]) -> Generator[None, None, None]:
     """
     This is the sub-task that assigns an rbd to an iscsiadm control and
     performs a login (thereby creating a /dev/sd device).  It performs
@@ -177,7 +178,7 @@ def start_iscsi_initiators(ctx, tgt_link):
             ])
 
 @contextlib.contextmanager
-def task(ctx, config):
+def task(ctx, config) -> Generator[None, None, None]:
     """
     handle iscsi admin login after a tgt connection has been established.
 

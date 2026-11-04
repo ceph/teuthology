@@ -6,6 +6,7 @@ import logging
 import requests
 import yaml
 import os
+from typing import Dict, Generator, List
 from tempfile import NamedTemporaryFile
 from teuthology.config import config as teuthconfig
 from teuthology.parallel import parallel
@@ -44,7 +45,7 @@ def setup_stage_cdn(ctx, config):
                 p.spawn(_unsubscribe_stage_cdn, remote)
 
 
-def _subscribe_stage_cdn(remote):
+def _subscribe_stage_cdn(remote) -> None:
     _unsubscribe_stage_cdn(remote)
     cdn_config = teuthconfig.get('cdn-config', dict())
     server_url = cdn_config.get('server-url', 'subscription.rhsm.stage.redhat.com:443/subscription')
@@ -64,7 +65,7 @@ def _subscribe_stage_cdn(remote):
     _enable_rhel_repos(remote)
 
 
-def _unsubscribe_stage_cdn(remote):
+def _unsubscribe_stage_cdn(remote) -> None:
     try:
         remote.run(args=['sudo', 'subscription-manager', 'unregister'],
                    check_status=False)
@@ -74,7 +75,7 @@ def _unsubscribe_stage_cdn(remote):
 
 
 @contextlib.contextmanager
-def setup_cdn_repo(ctx, config):
+def setup_cdn_repo(ctx, config) -> Generator[None, None, None]:
     """
      setup repo if set_cdn_repo exists in config
      redhat:
@@ -89,7 +90,7 @@ def setup_cdn_repo(ctx, config):
     yield
 
 @contextlib.contextmanager
-def setup_container_registry(ctx, config):
+def setup_container_registry(ctx, config) -> Generator[None, None, None]:
     """
      setup container registry if setup_container_registry in config
 
@@ -120,7 +121,7 @@ def setup_container_registry(ctx, config):
     yield
 
 @contextlib.contextmanager
-def setup_additional_repo(ctx, config):
+def setup_additional_repo(ctx, config) -> Generator[None, None, None]:
     """
     set additional repo's for testing
     redhat:
@@ -138,7 +139,7 @@ def setup_additional_repo(ctx, config):
     yield
 
 
-def _enable_rhel_repos(remote):
+def _enable_rhel_repos(remote) -> None:
 
     # Look for rh specific repos
     ds_yaml = os.path.join(
@@ -155,7 +156,7 @@ def _enable_rhel_repos(remote):
 
 
 @contextlib.contextmanager
-def setup_base_repo(ctx, config):
+def setup_base_repo(ctx, config) -> Generator[None, None, None]:
     """
     Setup repo based on redhat nodes
     redhat:
@@ -184,7 +185,7 @@ def setup_base_repo(ctx, config):
                                      ], check_status=False)
 
 
-def _setup_latest_repo(ctx, config):
+def _setup_latest_repo(ctx, config: dict) -> None:
     """
     Setup repo based on redhat nodes
     """
@@ -240,7 +241,7 @@ def _setup_latest_repo(ctx, config):
                     set_deb_repo(remote, deb_repo, deb_gpg_key)
 
 
-def _get_repos_to_use(base_url, repos):
+def _get_repos_to_use(base_url: str, repos: List[str]) -> Dict[str, str]:
     repod = dict()
     for repo in repos:
         repo_to_use = base_url + "compose/" + repo + "/x86_64/os/"
@@ -252,7 +253,7 @@ def _get_repos_to_use(base_url, repos):
     return repod
 
 
-def _create_temp_repo_file(repos, repo_file):
+def _create_temp_repo_file(repos: Dict[str, str], repo_file) -> None:
     for repo in repos.keys():
         header = "[ceph-" + repo + "]" + "\n"
         name = "name=ceph-" + repo + "\n"

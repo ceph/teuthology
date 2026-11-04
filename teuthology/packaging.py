@@ -621,7 +621,7 @@ class GitbuilderProject(object):
         return version.split(".")[0]
 
     @classmethod
-    def _get_distro_numeric(cls, distro=None, version=None, codename=None):
+    def _get_distro_numeric(cls, distro: str|None=None, version: str|None=None, codename: str|None=None):
         """
         The distro/version string used when searching shaman or pulp,
         e.g. ubuntu/22.04 or centos/9.
@@ -641,7 +641,7 @@ class GitbuilderProject(object):
         return f'{distro}/{version}'
 
     @classmethod
-    def _get_distro(cls, distro=None, version=None, codename=None):
+    def _get_distro(cls, distro: str|None=None, version: str|None=None, codename: str|None=None):
         """
         Given a distro and a version, returned the combined string
         to use in a gitbuilder url.

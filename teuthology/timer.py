@@ -1,6 +1,7 @@
 import logging
 import time
 import yaml
+from typing import Optional
 
 import datetime
 
@@ -19,7 +20,7 @@ class Timer(object):
     # The format to use for date-time strings
     datetime_format = '%Y-%m-%d_%H:%M:%S'
 
-    def __init__(self, path=None, sync=False):
+    def __init__(self, path: Optional[str] = None, sync: bool = False) -> None:
         """
         :param path:       A path to a file to be written when self.write() is
                            called. The file will contain self.data in yaml
@@ -32,11 +33,11 @@ class Timer(object):
                 "When providing sync=True, a path must be specified!")
         self.path = path
         self.sync = sync
-        self.marks = list()
-        self.start_time = None
-        self.start_string = None
+        self.marks: list[dict] = list()
+        self.start_time: Optional[float] = None
+        self.start_string: Optional[str] = None
 
-    def mark(self, message=''):
+    def mark(self, message: str = '') -> None:
         """
         Create a time mark
 
@@ -55,14 +56,14 @@ class Timer(object):
         if self.sync:
             self.write()
 
-    def _mark_start(self, message):
+    def _mark_start(self, message) -> None:
         """
         Create the initial time mark
         """
         self.start_time = time.time()
         self.start_string = self.get_datetime_string(self.start_time)
 
-    def get_datetime_string(self, time):
+    def get_datetime_string(self, time: float) -> str:
         """
         Return a human-readable timestamp in UTC
 
@@ -75,7 +76,7 @@ class Timer(object):
         )
 
     @property
-    def data(self):
+    def data(self) -> dict:
         """
         Return an object similar to::
 
