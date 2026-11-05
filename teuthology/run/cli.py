@@ -56,6 +56,11 @@ def make_parser():
         help='Distro/OS version of machine to run test on'
     )
     parser.add_argument(
+        '--package-source',
+        choices=['shaman', 'pulp'],
+        help='Package repository to use for artifact resolution (default: shaman)'
+    )
+    parser.add_argument(
         '--block',
         action='store_true',
         help='block until locking machines succeeds (use with --lock)'

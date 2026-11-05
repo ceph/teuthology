@@ -134,6 +134,8 @@ class Run(object):
             self.config_input['os_type'] = self.args.distro.lower()
         if self.args.distro_version:
             self.config_input['os_version'] = self.args.distro_version.lower()
+        if self.args.package_source:
+            self.config_input['package_source'] = self.args.package_source
         return self.build_base_config()
 
     def get_expiration(self, _base_time: datetime.datetime | None = None) -> datetime.datetime | None:
