@@ -1,6 +1,7 @@
 import json
 
-from unittest.mock import Mock, patch
+from contextlib import ExitStack
+from unittest.mock import MagicMock, Mock, patch
 
 from teuthology.lock import ops
 
@@ -70,3 +71,47 @@ class TestLockManyOsFilter(object):
         assert data['os_type'] == 'rocky'
         assert data['os_version'] == '10'
         assert not self.m_reimage.called
+
+
+class TestStopNodeOpenShift:
+    def test_stop_node_calls_openshift_release(self):
+        status = {
+            'machine_type': 'ocpvirt',
+            'description': None,
+            'is_vm': False,
+        }
+        instance = MagicMock()
+        with ExitStack() as stack:
+            stack.enter_context(patch(
+                'teuthology.lock.ops.query.get_status', return_value=status,
+            ))
+            stack.enter_context(patch(
+                'teuthology.lock.ops.provision.openshift.get_types',
+                return_value=['ocpvirt'],
+            ))
+            stack.enter_context(patch(
+                'teuthology.lock.ops.provision.fog.get_types',
+                return_value=[],
+            ))
+            stack.enter_context(patch(
+                'teuthology.lock.ops.provision.pelagos.get_types',
+                return_value=[],
+            ))
+            stack.enter_context(patch(
+                'teuthology.lock.ops.provision.maas.get_types',
+                return_value=[],
+            ))
+            m_openshift = stack.enter_context(patch(
+                'teuthology.lock.ops.provision.openshift.OpenShift',
+                return_value=instance,
+            ))
+            stack.enter_context(patch(
+                'teuthology.lock.ops.misc.canonicalize_hostname',
+                side_effect=lambda n, user=None: n,
+            ))
+            # Avoid building a real Remote for console/power paths
+            stack.enter_context(patch('teuthology.lock.ops.remote.Remote'))
+            ops.stop_node('target-002', status)
+
+        m_openshift.assert_called_once_with('target-002')
+        instance.release.assert_called_once_with()
