@@ -1,0 +1,12 @@
+# Force public EPEL — Sepia epel-mirror is unreachable from ocpvirt UDN egress.
+# Copy to ~/Config/override.yaml on the teuthology node and pass as a
+# teuthology-suite <config_yaml> argument.
+overrides:
+  ansible.cephlab:
+    vars:
+      epel_repos:
+        epel:
+          name: "Extra Packages for Enterprise Linux"
+          baseurl: "https://dl.fedoraproject.org/pub/epel/{{ ansible_distribution_major_version }}/Everything/$basearch"
+          enabled: 1
+          gpgcheck: 0
