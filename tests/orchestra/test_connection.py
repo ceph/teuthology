@@ -104,6 +104,46 @@ class TestConnection(object):
         # a mismatched host key is not transient; no point retrying
         m_ssh_instance.connect.assert_called_once()
 
+    def test_connect_bad_host_key_closes_session(self):
+        self.clear_config()
+        m_ssh_instance = self.m_ssh.return_value = Mock()
+        m_ssh_instance.connect.side_effect = paramiko.BadHostKeyException(
+            'orchestra.test.newdream.net.invalid', Mock(), Mock())
+        with raises(paramiko.BadHostKeyException):
+            connection.connect(
+                'jdoe@orchestra.test.newdream.net.invalid',
+                _SSHClient=self.m_ssh,
+            )
+        m_ssh_instance.close.assert_called_once()
+
+    def test_connect_retry_closes_failed_attempt(self):
+        self.clear_config()
+        m_ssh_instance = self.m_ssh.return_value = Mock()
+        m_ssh_instance.connect.side_effect = [
+            paramiko.AuthenticationException('Authentication timeout.'),
+            None,
+        ]
+        got = connection.connect(
+            'jdoe@orchestra.test.newdream.net.invalid',
+            _SSHClient=self.m_ssh,
+        )
+        assert got is m_ssh_instance
+        assert m_ssh_instance.connect.call_count == 2
+        m_ssh_instance.close.assert_called_once()
+
+    def test_connect_no_retry_closes_on_error(self):
+        self.clear_config()
+        m_ssh_instance = self.m_ssh.return_value = Mock()
+        m_ssh_instance.connect.side_effect = paramiko.SSHException(
+            'Error reading SSH protocol banner')
+        with raises(paramiko.SSHException):
+            connection.connect(
+                'jdoe@orchestra.test.newdream.net.invalid',
+                _SSHClient=self.m_ssh,
+                retry=False,
+            )
+        m_ssh_instance.close.assert_called_once()
+
     def test_connect_override_hostkeys(self):
         self.clear_config()
         m_ssh_instance = self.m_ssh.return_value = Mock();

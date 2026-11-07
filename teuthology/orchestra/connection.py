@@ -101,30 +101,39 @@ def connect(user_at_host, host_key=None, keep_alive=False, timeout=60,
 
     log.debug(connect_args)
 
-    if not retry:
-        ssh.connect(**connect_args)
-    else:
-        with safe_while(sleep=1, increment=3, action='connect to ' + host) as proceed:
-            while proceed():
-                auth_err_msg = f"Error authenticating with {host}"
-                try:
-                    ssh.connect(**connect_args)
-                    break
-                except EOFError:
-                    log.error(f"{auth_err_msg}: EOFError")
-                except paramiko.AuthenticationException as e:
-                    log.error(f"{auth_err_msg}: {repr(e)}")
-                except paramiko.BadHostKeyException as e:
-                    # Not transient: the server's key will not change while
-                    # we retry.  Raise so the caller can decide what to do
-                    # (e.g. the FOG provisioner, which expects a new key
-                    # after a reimage).
-                    log.error(f"{auth_err_msg}: {repr(e)}")
-                    raise
-                except paramiko.SSHException as e:
-                    auth_err_msg = f"{auth_err_msg}: {repr(e)}"
-                    if not key_filename:
-                        auth_err_msg = f"{auth_err_msg} (No SSH private key found!)"
-                    log.exception(auth_err_msg)
+    # A failed connect() leaves the session open without authenticating.
+    # sshd drops it only at LoginGraceTime, and OpenSSH >= 9.8 then refuses
+    # every connection from this host for a while (PerSourcePenalties), so
+    # close it as soon as the attempt fails.
+    try:
+        if not retry:
+            ssh.connect(**connect_args)
+        else:
+            with safe_while(sleep=1, increment=3, action='connect to ' + host) as proceed:
+                while proceed():
+                    auth_err_msg = f"Error authenticating with {host}"
+                    try:
+                        ssh.connect(**connect_args)
+                        break
+                    except EOFError:
+                        log.error(f"{auth_err_msg}: EOFError")
+                    except paramiko.AuthenticationException as e:
+                        log.error(f"{auth_err_msg}: {repr(e)}")
+                    except paramiko.BadHostKeyException as e:
+                        # Not transient: the server's key will not change while
+                        # we retry.  Raise so the caller can decide what to do
+                        # (e.g. the FOG provisioner, which expects a new key
+                        # after a reimage).
+                        log.error(f"{auth_err_msg}: {repr(e)}")
+                        raise
+                    except paramiko.SSHException as e:
+                        auth_err_msg = f"{auth_err_msg}: {repr(e)}"
+                        if not key_filename:
+                            auth_err_msg = f"{auth_err_msg} (No SSH private key found!)"
+                        log.exception(auth_err_msg)
+                    ssh.close()
+    except Exception:
+        ssh.close()
+        raise
     ssh.get_transport().set_keepalive(keep_alive)
     return ssh
