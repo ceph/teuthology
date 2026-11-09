@@ -438,7 +438,7 @@ class Run(object):
         if self.base_config.email:
             arg.extend(['--email', self.base_config.email])
         if self.args.timeout:
-            arg.extend(['--timeout', self.args.timeout])
+            arg.extend(['--timeout', str(self.args.timeout)])
         util.teuthology_schedule(
             args=arg,
             dry_run=self.args.dry_run,
