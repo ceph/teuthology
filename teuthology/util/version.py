@@ -1,6 +1,5 @@
 import re
 from functools import total_ordering
-from typing import Union, List
 
 
 @total_ordering
@@ -16,7 +15,7 @@ class LooseVersion:
         self.vstring = str(vstring)
         self.version = self._parse(self.vstring)
 
-    def _parse(self, vstring: str) -> List[Union[int, str]]:
+    def _parse(self, vstring: str) -> list[int | str]:
         """Parse version string into comparable components."""
         components = []
         for match in self._component_re.finditer(vstring.lower()):
