@@ -38,6 +38,18 @@ class CommitNotFoundError(ValueError):
             commit=self.commit, repo_str=repo_str)
 
 
+class CommitValidationError(RuntimeError):
+    """The commit could not be checked at all (as opposed to CommitNotFoundError)."""
+    def __init__(self, commit, url, reason):
+        self.commit = commit
+        self.url = url
+        self.reason = reason
+
+    def __str__(self):
+        return "could not validate '{commit}' against {url}: {reason}".format(
+            commit=self.commit, url=self.url, reason=self.reason)
+
+
 class GitError(RuntimeError):
     pass
 

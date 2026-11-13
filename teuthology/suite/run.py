@@ -16,6 +16,7 @@ from teuthology import repo_utils
 from teuthology.config import config, JobConfig
 from teuthology.exceptions import (
     BranchMismatchError, BranchNotFoundError, CommitNotFoundError,
+    CommitValidationError,
 )
 from teuthology.misc import deep_merge, get_results_url, update_key
 from teuthology.orchestra.opsys import OS
@@ -213,7 +214,10 @@ class Run(object):
         if self.args.ceph_sha1:
             ceph_hash = self.args.ceph_sha1
             if self.args.validate_sha1:
-                ceph_hash = util.git_validate_sha1(repo_name, ceph_hash)
+                try:
+                    ceph_hash = util.git_validate_sha1(repo_name, ceph_hash)
+                except CommitValidationError as exc:
+                    util.schedule_fail(message=str(exc), name=self.name, dry_run=self.args.dry_run)
             if not ceph_hash:
                 exc = CommitNotFoundError(
                     self.args.ceph_sha1,
@@ -357,7 +361,10 @@ class Run(object):
         if self.args.suite_sha1:
             suite_hash = self.args.suite_sha1
             if self.args.validate_sha1:
-                suite_hash = util.git_validate_sha1(suite_repo_name, suite_hash)
+                try:
+                    suite_hash = util.git_validate_sha1(suite_repo_name, suite_hash)
+                except CommitValidationError as exc:
+                    util.schedule_fail(message=str(exc), name=self.name, dry_run=self.args.dry_run)
             if not suite_hash:
                 exc = CommitNotFoundError(
                     self.args.suite_sha1,
