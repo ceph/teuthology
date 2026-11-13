@@ -329,7 +329,8 @@ _known_downburst_distros = {
                '22.04(jammy)', '22.10(kinetic)',
                '23.04(lunar)', '23.10(mantic)',
                '24.04(noble)', '24.10(oracular)',
-               '25.04(plucky)',
+               '25.04(plucky)', '25.10(questing)',
+               '26.04(resolute)', '26.10(stonking)',
         ],
 }
 

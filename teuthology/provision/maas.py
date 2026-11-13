@@ -11,7 +11,7 @@ import teuthology.orchestra
 
 from teuthology.config import config
 from teuthology.contextutil import safe_while
-from teuthology.orchestra.opsys import OS
+from teuthology.orchestra.opsys import OS, DEFAULT_OS_TYPE, DEFAULT_OS_VERSION
 from teuthology import misc
 from requests.exceptions import HTTPError
 
@@ -90,13 +90,14 @@ class MAAS(object):
     """Reimage machines with https://maas.io"""
 
     def __init__(
-            self, name: str, os_type: str = "ubuntu", os_version: str = "22.04"
+            self, name: str, os_type: str = DEFAULT_OS_TYPE,
+            os_version: str = DEFAULT_OS_VERSION[DEFAULT_OS_TYPE]
         ) -> None:
         """Initialize the MAAS object
 
         :param name: The fully-qualified domain name of the machine to manage
         :param os_type: The OS type to deploy (e.g. "ubuntu")
-        :param os_version: The OS version to deploy (e.g. "22.04")
+        :param os_version: The OS version to deploy (e.g. "24.04")
         """
         self.session = get_session()
 
