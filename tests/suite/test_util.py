@@ -7,7 +7,9 @@ from mock import Mock, patch
 from teuthology.config import config
 from teuthology.orchestra.opsys import OS
 from teuthology.suite import util
-from teuthology.exceptions import BranchNotFoundError, ScheduleFailError
+from teuthology.exceptions import (
+    BranchNotFoundError, CommitValidationError, ScheduleFailError,
+)
 
 
 REPO_PROJECTS_AND_URLS = [
@@ -155,6 +157,70 @@ Branch 'no-branch' not found in repo: https://github.com/ceph/ceph-ci.git!"
         parent_sha1s = util.find_git_parents('ceph', 'sha1')
         assert m_requests_get.call_count == 1
         assert parent_sha1s == ['sha1_p']
+
+
+SHA1 = '3f6447e33197885289cfc3fe0f41b9daa15698ef'
+
+
+def head_resp(status_code):
+    return Mock(status_code=status_code, ok=status_code < 400)
+
+
+@patch('teuthology.suite.util.time.sleep')
+@patch('teuthology.suite.util.requests.head')
+class TestGitValidateSha1(object):
+    def setup_method(self):
+        config.ceph_git_url = 'https://github.com/ceph/ceph.git'
+
+    def teardown_method(self):
+        config.ceph_git_url = None
+
+    def test_github_found(self, m_head, m_sleep):
+        m_head.return_value = head_resp(200)
+        assert util.git_validate_sha1('ceph', SHA1) == SHA1
+        url = m_head.call_args[0][0]
+        assert url == 'https://github.com/ceph/ceph/commit/' + SHA1
+        assert m_head.call_args[1]['allow_redirects'] is True
+
+    def test_github_not_found(self, m_head, m_sleep):
+        m_head.return_value = head_resp(404)
+        assert util.git_validate_sha1('ceph', SHA1) is None
+        assert m_head.call_count == 1
+
+    def test_gitweb_uses_https(self, m_head, m_sleep):
+        config.ceph_git_url = 'https://git.ceph.com/ceph.git'
+        m_head.return_value = head_resp(200)
+        assert util.git_validate_sha1('ceph', SHA1) == SHA1
+        url = m_head.call_args[0][0]
+        assert url.startswith('https://git.ceph.com/?p=ceph.git;')
+        assert url.endswith('hb=' + SHA1)
+
+    def test_retries_rate_limit(self, m_head, m_sleep):
+        m_head.side_effect = [head_resp(429), head_resp(502), head_resp(200)]
+        assert util.git_validate_sha1('ceph', SHA1) == SHA1
+        assert m_head.call_count == 3
+        assert m_sleep.call_count == 2
+
+    def test_retries_connection_error(self, m_head, m_sleep):
+        m_head.side_effect = [
+            util.requests.ConnectionError('boom'), head_resp(200)]
+        assert util.git_validate_sha1('ceph', SHA1) == SHA1
+        assert m_head.call_count == 2
+
+    def test_persistent_failure_raises(self, m_head, m_sleep):
+        m_head.return_value = head_resp(503)
+        with pytest.raises(CommitValidationError) as exc:
+            util.git_validate_sha1('ceph', SHA1)
+        assert m_head.call_count == 5
+        assert 'HTTP 503' in str(exc.value)
+        assert SHA1 in str(exc.value)
+
+    def test_other_4xx_raises_without_retry(self, m_head, m_sleep):
+        m_head.return_value = head_resp(403)
+        with pytest.raises(CommitValidationError):
+            util.git_validate_sha1('ceph', SHA1)
+        assert m_head.call_count == 1
+        assert m_sleep.call_count == 0
 
 
 class TestFlavor(object):

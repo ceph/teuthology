@@ -7,6 +7,7 @@ import smtplib
 import socket
 from subprocess import Popen, PIPE, DEVNULL
 import sys
+import time
 
 from email.mime.text import MIMEText
 
@@ -14,7 +15,9 @@ import teuthology.lock.query
 from teuthology import repo_utils
 
 from teuthology.config import config
-from teuthology.exceptions import BranchNotFoundError, ScheduleFailError
+from teuthology.exceptions import (
+    BranchNotFoundError, CommitValidationError, ScheduleFailError,
+)
 from teuthology.misc import deep_merge
 from teuthology.repo_utils import fetch_qa_suite, fetch_teuthology
 from teuthology.orchestra.opsys import OS, DEFAULT_OS_VERSION
@@ -164,10 +167,11 @@ def git_ls_remote(project_or_url, branch, project_owner='ceph'):
 
 def git_validate_sha1(project, sha1, project_owner='ceph'):
     '''
-    Use http to validate that project contains sha1
-    I can't find a way to do this with git, period, so
-    we have specific urls to HEAD for github and git.ceph.com/gitweb
-    for now
+    Validate that project contains sha1 by HEADing a commit-specific URL on
+    the project's web frontend (GitHub, or gitweb on git.ceph.com).
+
+    Returns sha1 if the commit exists, None if the frontend says it does not
+    (404), and raises CommitValidationError if the frontend could not be asked.
     '''
     url = build_git_url(project, project_owner)
 
@@ -175,17 +179,43 @@ def git_validate_sha1(project, sha1, project_owner='ceph'):
         url = '/'.join((url, 'commit', sha1))
     elif '/git.ceph.com/' in url:
         # kinda specific to knowing git.ceph.com is gitweb
-        url = ('http://git.ceph.com/?p=%s.git;a=blob_plain;f=.gitignore;hb=%s'
+        url = ('https://git.ceph.com/?p=%s.git;a=blob_plain;f=.gitignore;hb=%s'
                % (project, sha1))
     else:
         raise RuntimeError(
             'git_validate_sha1: how do I check %s for a sha1?' % url
         )
 
-    resp = requests.head(url)
-    if resp.ok:
-        return sha1
-    return None
+    return _http_validate_sha1(url, sha1)
+
+
+def _http_validate_sha1(url, sha1, attempts=5, delay=2):
+    '''
+    HEAD url. 2xx means sha1 exists, 404 means it does not. Anything else
+    (rate limiting, server errors, connection errors) is retried with
+    backoff and finally raised as CommitValidationError, so that a flaky
+    frontend is never reported as "commit not found".
+    '''
+    reason = None
+    for attempt in range(1, attempts + 1):
+        try:
+            resp = requests.head(url, allow_redirects=True, timeout=30)
+        except requests.RequestException as exc:
+            reason = str(exc)
+        else:
+            if resp.status_code == 404:
+                return None
+            if resp.ok:
+                return sha1
+            reason = 'HTTP %d' % resp.status_code
+            if resp.status_code != 429 and resp.status_code < 500:
+                break
+        log.warning('HEAD %s failed (%s), attempt %d/%d',
+                    url, reason, attempt, attempts)
+        if attempt < attempts:
+            time.sleep(delay)
+            delay *= 2
+    raise CommitValidationError(sha1, url, reason)
 
 
 def git_branch_exists(project_or_url, branch, project_owner='ceph'):
