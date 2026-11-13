@@ -171,9 +171,12 @@ def head_resp(status_code):
 class TestGitValidateSha1(object):
     def setup_method(self):
         config.ceph_git_url = 'https://github.com/ceph/ceph.git'
+        self.githelper_base_url = config.githelper_base_url
+        config.githelper_base_url = None
 
     def teardown_method(self):
         config.ceph_git_url = None
+        config.githelper_base_url = self.githelper_base_url
 
     def test_github_found(self, m_head, m_sleep):
         m_head.return_value = head_resp(200)
@@ -221,6 +224,73 @@ class TestGitValidateSha1(object):
             util.git_validate_sha1('ceph', SHA1)
         assert m_head.call_count == 1
         assert m_sleep.call_count == 0
+
+
+def githelper_resp(sha1, status_code=200):
+    resp = Mock(status_code=status_code, ok=status_code < 400)
+    resp.json.return_value = {'sha1': sha1, 'err': '', 'shortmsg': None}
+    if status_code >= 400:
+        resp.raise_for_status.side_effect = util.requests.HTTPError(
+            '%d' % status_code)
+    return resp
+
+
+@patch('teuthology.suite.util.time.sleep')
+@patch('teuthology.suite.util.requests.head')
+@patch('teuthology.suite.util.requests.get')
+class TestGithelperValidateSha1(object):
+    def setup_method(self):
+        config.ceph_git_url = 'https://github.com/ceph/ceph.git'
+        self.githelper_base_url = config.githelper_base_url
+        config.githelper_base_url = 'https://githelper.example.com/'
+
+    def teardown_method(self):
+        config.ceph_git_url = None
+        config.githelper_base_url = self.githelper_base_url
+
+    def test_found(self, m_get, m_head, m_sleep):
+        m_get.return_value = githelper_resp(SHA1)
+        assert util.git_validate_sha1('ceph', SHA1[:8]) == SHA1
+        assert m_get.call_count == 1
+        url, kwargs = m_get.call_args[0][0], m_get.call_args[1]
+        assert url == 'https://githelper.example.com/ceph.git/sha1/'
+        assert kwargs['params'] == {'sha1': SHA1[:8]}
+        assert m_head.call_count == 0
+
+    def test_found_after_refresh(self, m_get, m_head, m_sleep):
+        m_get.side_effect = [
+            githelper_resp(None), Mock(ok=True), githelper_resp(SHA1)]
+        assert util.git_validate_sha1('ceph', SHA1) == SHA1
+        urls = [c[0][0] for c in m_get.call_args_list]
+        assert urls[1] == 'https://githelper.example.com/ceph.git/refresh/'
+        assert m_head.call_count == 0
+
+    def test_unknown_falls_back_to_http(self, m_get, m_head, m_sleep):
+        m_get.side_effect = [
+            githelper_resp(None), Mock(ok=True), githelper_resp(None)]
+        m_head.return_value = head_resp(404)
+        assert util.git_validate_sha1('ceph', SHA1) is None
+        assert m_head.call_count == 1
+
+    def test_http_error_falls_back_to_http(self, m_get, m_head, m_sleep):
+        # e.g. a repo githelper does not mirror
+        m_get.return_value = githelper_resp(None, status_code=500)
+        m_head.return_value = head_resp(200)
+        assert util.git_validate_sha1('ceph', SHA1) == SHA1
+        assert m_get.call_count == 1
+        assert m_head.call_count == 1
+
+    def test_unreachable_falls_back_to_http(self, m_get, m_head, m_sleep):
+        m_get.side_effect = util.requests.ConnectionError('boom')
+        m_head.return_value = head_resp(200)
+        assert util.git_validate_sha1('ceph', SHA1) == SHA1
+        assert m_head.call_count == 1
+
+    def test_unconfigured_skips_githelper(self, m_get, m_head, m_sleep):
+        config.githelper_base_url = None
+        m_head.return_value = head_resp(200)
+        assert util.git_validate_sha1('ceph', SHA1) == SHA1
+        assert m_get.call_count == 0
 
 
 class TestFlavor(object):

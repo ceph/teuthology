@@ -167,13 +167,30 @@ def git_ls_remote(project_or_url, branch, project_owner='ceph'):
 
 def git_validate_sha1(project, sha1, project_owner='ceph'):
     '''
-    Validate that project contains sha1 by HEADing a commit-specific URL on
-    the project's web frontend (GitHub, or gitweb on git.ceph.com).
+    Validate that project contains sha1.
 
-    Returns sha1 if the commit exists, None if the frontend says it does not
-    (404), and raises CommitValidationError if the frontend could not be asked.
+    Asks githelper first, when configured: it answers from the git mirror the
+    test nodes clone from, without depending on GitHub. If githelper cannot
+    answer, or does not know the commit, fall back to HEADing a
+    commit-specific URL on the project's web frontend (GitHub, or gitweb on
+    git.ceph.com).
+
+    Returns the (full) sha1 if the commit exists, None if it does not, and
+    raises CommitValidationError if nothing could be asked.
     '''
     url = build_git_url(project, project_owner)
+
+    if config.githelper_base_url:
+        try:
+            found = githelper_validate_sha1(project, sha1)
+        except requests.RequestException as exc:
+            log.warning('githelper could not check %s.git for %s: %s',
+                        project, sha1, exc)
+        else:
+            if found:
+                return found
+            log.info('githelper does not know %s in %s.git; asking %s',
+                     sha1, project, url)
 
     if '/github.com/' in url:
         url = '/'.join((url, 'commit', sha1))
@@ -187,6 +204,33 @@ def git_validate_sha1(project, sha1, project_owner='ceph'):
         )
 
     return _http_validate_sha1(url, sha1)
+
+
+def githelper_validate_sha1(project, sha1):
+    '''
+    Ask githelper whether its mirror of project contains sha1. Returns the
+    full sha1, or None when the mirror still lacks it after a refresh.
+
+    Raises requests.RequestException when githelper gave no usable answer
+    (unreachable, HTTP error such as a repo it does not mirror, bad JSON), so
+    the caller can fall back to another check.
+    '''
+    base_url = config.githelper_base_url.rstrip('/')
+
+    def lookup():
+        url = f"{base_url}/{project}.git/sha1/"
+        resp = requests.get(url, params={'sha1': sha1}, timeout=30)
+        resp.raise_for_status()
+        return resp.json().get('sha1')
+
+    found = lookup()
+    if found:
+        return found
+    url = f"{base_url}/{project}.git/refresh/"
+    log.info('%s not in the %s.git mirror; refreshing it: %s', sha1, project, url)
+    resp = requests.get(url, timeout=300)
+    resp.raise_for_status()
+    return lookup()
 
 
 def _http_validate_sha1(url, sha1, attempts=5, delay=2):
