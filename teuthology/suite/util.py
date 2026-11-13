@@ -1,12 +1,9 @@
 import copy
 import functools
 import logging
-import os
 import requests
 import smtplib
 import socket
-from subprocess import Popen, PIPE, DEVNULL
-import sys
 
 from email.mime.text import MIMEText
 
@@ -303,41 +300,6 @@ def get_install_task_flavor(job_config):
     deep_merge(first_install_config, project_overrides)
     return get_flavor(first_install_config)
 
-
-def teuthology_schedule(args, verbose, dry_run, log_prefix='', stdin=None):
-    """
-    Run teuthology-schedule to schedule individual jobs.
-
-    If --dry-run has been passed but --verbose has been passed just once, don't
-    actually run the command - only print what would be executed.
-
-    If --dry-run has been passed and --verbose has been passed multiple times,
-    do both.
-    """
-    exec_path = os.path.join(
-        os.path.dirname(sys.argv[0]),
-        'teuthology-schedule')
-    args.insert(0, exec_path)
-    if dry_run:
-        # Quote any individual args so that individual commands can be copied
-        # and pasted in order to execute them individually.
-        printable_args = []
-        for item in args:
-            if ' ' in item:
-                printable_args.append("'%s'" % item)
-            else:
-                printable_args.append(item)
-        log.debug('{0} command: {1}'.format(
-            log_prefix,
-            ' '.join(printable_args),
-        ))
-    if not dry_run or (dry_run and verbose > 1):
-        astdin = DEVNULL if stdin is None else PIPE
-        p = Popen(args, stdin=astdin)
-        if stdin is not None:
-            p.communicate(input=stdin.encode('utf-8'))
-        else:
-            p.communicate()
 
 def find_git_parents(project: str, sha1: str, count=1):
 
