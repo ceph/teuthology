@@ -255,6 +255,57 @@ Here is a sample configuration with many of the options set and documented::
     # Used by the [libcloud](https://libcloud.apache.org/) backend
     nsupdate_url: http://nsupdate.front.sepia.ceph.com/update
 
+    # Settings for downburst https://github.com/ceph/downburst
+    downburst:
+      path: /home/teuthology/downburst/virtualenv/bin/downburst
+      discover_url: '' # Same as DOWNBURST_DISCOVER_URL
+      # Custom package repos for the VMs, keyed by '<os_type>' (any version)
+      # or '<os_type>-<os_version>' (that version only); settings in the
+      # '<os_type>-<os_version>' entry override the '<os_type>' one.
+      # Only 'rocky' and 'centos' are supported for now; entries for other
+      # distros are ignored. Contributions adding support for other
+      # distros are welcome (see teuthology/provision/downburst.py).
+      distro:
+        # for os_type=='rocky' and os_version=='9.8'
+        rocky-9.8:
+          # By default, if any repo is given below, the image's default
+          # repos are disabled and only the given repos are used.
+          # Set to False to use the given repos in addition to the default.
+          disable_default: True # default
+          repo:
+            custom-rocky:
+              - id: baseos
+                name: Rocky Linux 9 - BaseOS
+                baseurl: "http://dl.rockylinux.org/$contentdir/$releasever/BaseOS/$basearch/os/"
+                enabled: True
+                gpgcheck: False
+              - id: appstream
+                name: Rocky Linux 9 - AppStream
+                baseurl: "http://dl.rockylinux.org/$contentdir/$releasever/AppStream/$basearch/os/"
+                enabled: True
+                gpgcheck: False
+      # Extra cloud-init settings (cloud-config), merged with the ones
+      # teuthology generates: lists are extended, with these entries
+      # first; single values set by both are replaced by teuthology's.
+      cloud_config:
+        write_files:
+          - path: /etc/environment
+            owner: root:root
+            permissions: '0644'
+            append: true
+            content: |
+              http_proxy=http://proxy.example.com:3128
+              https_proxy=http://proxy.example.com:3128
+              no_proxy=localhost,127.0.0.1,.example.com
+      machine:
+      - type: vps
+        cpus: 2
+        disk: 40G
+        ram: 4G
+        volumes:
+          size: 20G
+          count: 4
+
     # Settings for https://fogproject.org/
     fog:
       endpoint: http://fog.example.com/fog
