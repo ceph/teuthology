@@ -3,7 +3,6 @@ import os
 import pytest
 import requests
 import contextlib
-import yaml
 
 from datetime import datetime, timedelta, timezone
 from mock import patch, call, ANY
@@ -202,7 +201,6 @@ class TestRun(object):
         m_git_ls_remote.return_value = "sha1"
         del self.args['distro']
         run_ = run.Run(self.args)
-        run_.base_args = run_.build_base_args()
         run_.base_config = run_.build_base_config()
         configs = [
             ["desc", [], {"os_type": "debian", "os_version": "8.0"}],
@@ -221,7 +219,6 @@ class TestRun(object):
         m_git_ls_remote.return_value = "sha1"
         del self.args['distro']
         run_ = run.Run(self.args)
-        run_.base_args = run_.build_base_args()
         for i in range(5): # mock backtracking
             run_.config_input['ceph_hash'] = f"boo{i}"
             run_.config_input['suite_hash'] = f"bar{i}"
@@ -306,7 +303,6 @@ class TestScheduleSuite(object):
         self.args.newest = 0
         self.args.num = 42
         runobj = self.klass(self.args)
-        runobj.base_args = list()
         count = runobj.schedule_suite()
         assert(count == 1)
         assert runobj.base_config['suite_sha1'] == 'suite_hash'
@@ -347,15 +343,6 @@ class TestScheduleSuite(object):
         expected_job = dict(
             yaml=y,
             sha1='ceph_sha1',
-            args=[
-                '--num',
-                '42',
-                '--description',
-                os.path.join(self.args.suite, build_matrix_desc),
-                '--',
-                '-'
-            ],
-            stdin=ANY,
             desc=os.path.join(self.args.suite, build_matrix_desc),
         )
 
@@ -364,12 +351,11 @@ class TestScheduleSuite(object):
         )
         args = m_schedule_jobs.call_args.args
         log.debug("args =\n%s", args)
-        jobargs  = args[1][0]
-        stdin_yaml = yaml.safe_load(jobargs['stdin'])
+        job_yaml = args[1][0]['yaml']
         for k in y:
-            assert y[k] == stdin_yaml[k]
+            assert y[k] == job_yaml[k]
         for k in teuthology_keys:
-            assert k in stdin_yaml
+            assert k in job_yaml
         m_write_rerun_memo.assert_called_once_with()
 
     @patch('teuthology.suite.util.find_git_parents')
@@ -410,7 +396,6 @@ class TestScheduleSuite(object):
 
         self.args.newest = 10
         runobj = self.klass(self.args)
-        runobj.base_args = list()
         with pytest.raises(ScheduleFailError) as exc:
             runobj.schedule_suite()
         assert 'Exceeded 10 backtracks' in str(exc.value)
@@ -486,7 +471,6 @@ class TestScheduleSuite(object):
 
         self.args.newest = 10
         runobj = self.klass(self.args)
-        runobj.base_args = list()
 
         # Call schedule_suite()
         count = runobj.schedule_suite()
@@ -520,11 +504,9 @@ class TestScheduleSuite(object):
         for job in scheduled_jobs:
             assert job['sha1'] == working_sha1
 
-            # Parse YAML from stdin to check for sha1 and suite_hash
-            if 'stdin' in job:
-                job_yaml = yaml.safe_load(job['stdin'])
-                assert job_yaml.get('sha1') == working_sha1
-                assert job_yaml.get('suite_sha1') == working_sha1
+            job_yaml = job['yaml']
+            assert job_yaml.get('sha1') == working_sha1
+            assert job_yaml.get('suite_sha1') == working_sha1
 
     @patch('teuthology.suite.util.find_git_parents')
     @patch('teuthology.suite.run.Run.schedule_jobs')
@@ -599,7 +581,6 @@ class TestScheduleSuite(object):
 
         self.args.newest = 10
         runobj = self.klass(self.args)
-        runobj.base_args = list()
 
         # Call schedule_suite()
         count = runobj.schedule_suite()
@@ -635,8 +616,6 @@ class TestScheduleSuite(object):
         for job in scheduled_jobs:
             assert job['sha1'] == working_sha1
 
-            # Parse YAML from stdin to check for sha1 and suite_hash
-            if 'stdin' in job:
-                job_yaml = yaml.safe_load(job['stdin'])
-                assert job_yaml.get('sha1') == working_sha1
-                assert job_yaml.get('suite_sha1') == sha1_side_effect[1]
+            job_yaml = job['yaml']
+            assert job_yaml.get('sha1') == working_sha1
+            assert job_yaml.get('suite_sha1') == sha1_side_effect[1]

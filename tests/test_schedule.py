@@ -3,21 +3,18 @@ from teuthology.misc import get_user
 
 
 class TestSchedule(object):
-    basic_args = {
-        '--verbose': False,
-        '--owner': 'OWNER',
-        '--description': 'DESC',
-        '--email': 'EMAIL',
-        '--first-in-suite': False,
-        '--last-in-suite': True,
-        '--name': 'NAME',
-        '--worker': 'tala',
-        '--timeout': '6',
-        '--priority': '99',
-        # TODO: make this work regardless of $PWD
-        #'<conf_file>': ['../../examples/3node_ceph.yaml',
-        #                '../../examples/3node_rgw.yaml'],
-        }
+    basic_kwargs = dict(
+        name='NAME',
+        description='DESC',
+        owner='OWNER',
+        worker='tala',
+        priority='99',
+        first_in_suite=False,
+        last_in_suite=True,
+        email='EMAIL',
+        verbose=False,
+        timeout='6',
+    )
 
     def test_basic(self):
         expected = {
@@ -34,12 +31,11 @@ class TestSchedule(object):
             'tube': 'tala',
         }
 
-        job_dict = build_config(self.basic_args)
+        job_dict = build_config({}, **self.basic_kwargs)
         assert job_dict == expected
 
     def test_owner(self):
-        args = self.basic_args
-        args['--owner'] = None
-        job_dict = build_config(self.basic_args)
+        kwargs = dict(self.basic_kwargs, owner=None)
+        job_dict = build_config({}, **kwargs)
         assert job_dict['owner'] == 'scheduled_%s' % get_user()
 

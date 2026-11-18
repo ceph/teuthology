@@ -18,7 +18,7 @@ def connect():
     if host is None or port is None:
         raise RuntimeError(
             'Beanstalk queue information not found in {conf_path}'.format(
-                conf_path=config.teuthology_yaml))
+                conf_path=config.yaml_path))
     return beanstalkc.Connection(host=host, port=port, parse_yaml=yaml.safe_load)
 
 

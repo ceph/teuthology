@@ -32,7 +32,6 @@ class TestConnection(object):
         self.patcher_sleep.stop()
 
     def clear_config(self):
-        config.config.teuthology_yaml = ''
         config.config.load()
         config.config.ssh_key = None
 
