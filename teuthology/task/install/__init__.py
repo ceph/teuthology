@@ -437,9 +437,26 @@ def task(ctx, config):
     Use 'trusted: true' instead of 'key_url' only for unsigned repos that you
     control, e.g. one built locally. It disables signature verification for
     that repo, and for that repo alone.
-    Packages are installed from the repos by name, without a version
-    constraint, and the repos are removed on cleanup. Patches are welcome to
-    add support for other distros.
+
+    By default the project's packages are installed by name, so apt picks the
+    newest build available in the repos. On Debian-based distros, set
+    'version' to install one specific build instead (it is ignored on
+    RPM-based distros). It is applied to the
+    project's packages only, not to extra_system_packages, and may also be
+    set under overrides, in which case it takes precedence. It requires
+    'repos'; for packages from the project's builder, use sha1, branch or tag.
+    For example, to install ceph 20.2.5-2 from a locally built flat repo:
+
+    - install:
+        repos:
+          - name: "local-build"
+            url: "http://location.repo/apt"
+            suite: "./"
+            trusted: true
+        version: "20.2.5-2"
+
+    The repos are removed on cleanup. Patches are welcome to add support for
+    other distros.
 
 
     Enable Fedora copr repositories using enable_coprs:
@@ -549,14 +566,26 @@ def task(ctx, config):
     log.debug('project %s' % project)
     overrides = ctx.config.get('overrides')
     repos = None
+    # Track presence, not truthiness, so that an empty 'version' is reported
+    # as invalid instead of being silently ignored
+    has_version = 'version' in config
+    version = config.get('version')
 
     if overrides:
         install_overrides = overrides.get('install', {})
         log.debug('INSTALL overrides: %s' % install_overrides)
         _override_extra_system_packages(config, project, install_overrides)
         repos = install_overrides.get('repos', None)
+        if 'version' in install_overrides:
+            has_version = True
+            version = install_overrides['version']
 
     repos = repos or config.get('repos')
+
+    if has_version and not repos:
+        raise ValueError(
+            "'version' requires 'repos': use sha1, branch or tag to select "
+            "the version of packages installed from the project's builder")
 
     log.debug('config %s' % config)
 
@@ -605,6 +634,8 @@ def task(ctx, config):
         )
         if repos:
             nested_config['repos'] = repos
+        if has_version:
+            nested_config['version'] = version
         if 'shaman' in config:
             nested_config['shaman'] = config['shaman']
         if 'pulp' in config:

@@ -101,6 +101,22 @@ def _validate_apt_repos(repos):
                 "whitespace".format(name))
 
 
+def _validate_package_version(version):
+    """
+    Check the ``version`` used to pin packages installed from custom repos.
+
+    Only strings are accepted: YAML turns an unquoted 20.2 into a float, and
+    a pin that was silently rewritten would select the wrong build.
+
+    :raises ValueError: if the version is not usable
+    """
+    if not isinstance(version, str) or not _NO_WHITESPACE_RE.fullmatch(
+            version):
+        raise ValueError(
+            "'version' must be a non-empty string without whitespace, "
+            "got {!r}; quote it in YAML".format(version))
+
+
 def _apt_addrepos(remote, repos):
     """
     Add custom apt repositories to the remote.
@@ -197,6 +213,8 @@ def _update_package_list_and_install(ctx, remote, debs, config):
     repos = config.get('repos')
     if repos:
         _validate_apt_repos(repos)
+        if 'version' in config:
+            _validate_package_version(config['version'])
         arch = remote.arch
     else:
         _ensure_release_key(remote)
@@ -216,7 +234,11 @@ def _update_package_list_and_install(ctx, remote, debs, config):
     if repos:
         log.info("Using custom apt repos")
         _apt_addrepos(remote, repos)
-        pkgs = list(debs)
+        if 'version' in config:
+            log.info("Pinning packages to version %s", config['version'])
+            pkgs = ['%s=%s' % (d, config['version']) for d in debs]
+        else:
+            pkgs = list(debs)
     else:
         # get baseurl
         log.info('Pulling from %s', builder.base_url)
@@ -334,7 +356,12 @@ def _upgrade_packages(ctx, config, remote, debs):
     :param remote: the teuthology.orchestra.remote.Remote object
     :param debs: the Debian packages to be installed
     :param branch: the branch of the project to be used
+    :raises ValueError: if custom apt repos are configured
     """
+    if config.get('repos'):
+        raise ValueError(
+            "Custom apt repos are not supported for upgrades yet")
+
     _ensure_release_key(remote)
 
     builder = _get_builder_project(ctx, remote, config)

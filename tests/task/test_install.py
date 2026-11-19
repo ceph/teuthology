@@ -608,3 +608,89 @@ class TestDebCustomRepos(object):
             assert 'repos' not in nested_config
         else:
             assert nested_config['repos'][0]['name'] == expect
+
+    @patch("teuthology.task.install.deb._get_builder_project")
+    @patch("teuthology.task.install.deb._ensure_release_key")
+    def test_install_with_version_pins_project_packages(self, m_key,
+                                                        m_builder):
+        remote = Mock()
+        config = dict(
+            repos=[apt_repo()],
+            version='20.2.5-2',
+            extra_system_packages=dict(deb=['sys1', 'sys2']),
+        )
+        deb._update_package_list_and_install(
+            Mock(), remote, ['ceph', 'ceph-common'], config)
+
+        m_builder.assert_not_called()
+        calls = [c[1]['args'] for c in remote.run.call_args_list]
+        installs = [c for c in calls if 'install' in c and 'apt-get' in c]
+        assert installs[0][-2:] == ['ceph=20.2.5-2', 'ceph-common=20.2.5-2']
+        assert 'ceph' not in installs[0]
+        assert 'ceph-common' not in installs[0]
+        assert installs[1][-2:] == ['sys1', 'sys2']
+
+    @pytest.mark.parametrize('version', [None, '', ' 1.0', '1.0 2', 20.2, 3])
+    @patch("teuthology.task.install.deb._get_builder_project")
+    def test_invalid_version_does_not_touch_remote(self, m_builder, version):
+        remote = Mock()
+        config = dict(repos=[apt_repo()], version=version)
+        with pytest.raises(ValueError):
+            deb._update_package_list_and_install(
+                Mock(), remote, ['ceph'], config)
+        remote.run.assert_not_called()
+        remote.sudo_write_file.assert_not_called()
+
+    @patch("teuthology.task.install.deb._get_builder_project")
+    @patch("teuthology.task.install.deb._ensure_release_key")
+    def test_upgrade_with_repos_is_not_supported(self, m_key, m_builder):
+        remote = Mock()
+        config = dict(repos=[apt_repo()])
+        with pytest.raises(ValueError):
+            deb._upgrade_packages(Mock(), config, remote, ['ceph'])
+        m_key.assert_not_called()
+        m_builder.assert_not_called()
+        remote.run.assert_not_called()
+
+    @pytest.mark.parametrize(
+        'task_config, overrides',
+        [
+            ({'version': '1.0'}, {}),
+            ({}, {'version': '1.0'}),
+            ({'version': ''}, {}),
+        ],
+    )
+    @patch("teuthology.task.install.ship_utilities")
+    @patch("teuthology.task.install.install")
+    def test_task_rejects_version_without_repos(self, m_install, m_ship,
+                                                task_config, overrides):
+        ctx = Mock(config={'overrides': {'install': overrides}}, summary={})
+        with pytest.raises(ValueError):
+            with install.task(ctx, task_config):
+                pass
+        m_install.assert_not_called()
+
+    @pytest.mark.parametrize(
+        'task_config, overrides, expect',
+        [
+            ({'repos': [apt_repo()], 'version': '1.0'}, {}, '1.0'),
+            ({'repos': [apt_repo()], 'version': '1.0'},
+             {'version': '2.0'}, '2.0'),
+            ({'repos': [apt_repo()]}, {'version': '2.0'}, '2.0'),
+            ({'repos': [apt_repo()]}, {}, None),
+        ],
+    )
+    @patch("teuthology.task.install.ship_utilities")
+    @patch("teuthology.task.install.install")
+    def test_task_passes_version_to_install(self, m_install, m_ship,
+                                            task_config, overrides, expect):
+        m_install.side_effect = lambda ctx, config: contextlib.nullcontext()
+        m_ship.side_effect = lambda ctx, config: contextlib.nullcontext()
+        ctx = Mock(config={'overrides': {'install': overrides}}, summary={})
+        with install.task(ctx, task_config):
+            pass
+        nested_config = m_install.call_args[1]['config']
+        if expect is None:
+            assert 'version' not in nested_config
+        else:
+            assert nested_config['version'] == expect
