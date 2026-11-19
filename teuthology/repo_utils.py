@@ -277,7 +277,7 @@ def clone_repo(repo_url, dest_path, branch, shallow=True):
     validate_branch(branch)
     log.info("Cloning %s %s from upstream", repo_url, branch)
     if branch.startswith('refs/'):
-        clone_repo_ref(repo_url, dest_path, branch)
+        clone_repo_ref(repo_url, dest_path, branch, shallow=shallow)
         return
     args = ['git', 'clone', '--single-branch']
     if shallow:
@@ -342,14 +342,14 @@ def fetch_refspec(ref):
         return ref
 
 
-def clone_repo_ref(repo_url, dest_path, ref):
+def clone_repo_ref(repo_url, dest_path, ref, shallow=True):
     branch_name = local_branch_from_ref(ref)
     remote_ref = remote_ref_from_ref(ref)
     misc.sh('git init %s' % dest_path)
     misc.sh('git remote add origin %s' % repo_url, cwd=dest_path)
     #misc.sh('git fetch --depth 1 origin %s' % fetch_refspec(ref),
     #                                                        cwd=dest_path)
-    fetch_branch(dest_path, ref)
+    fetch_branch(dest_path, ref, shallow=shallow)
     misc.sh('git checkout -b %s %s' % (branch_name, remote_ref),
                                                             cwd=dest_path)
 
