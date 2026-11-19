@@ -20,6 +20,24 @@ from teuthology.util.strtobool import strtobool
 log = logging.getLogger(__name__)
 
 
+def normalize_tags(value):
+    """
+    Normalize --tag / config input to a list of tag strings.
+
+    Accepts a comma-separated string or a list. Tag values are lowercased to
+    match teuthology-suite argument handling.
+    """
+    if not value:
+        return []
+    if isinstance(value, str):
+        parts = value.split(',')
+    else:
+        parts = []
+        for item in value:
+            parts.extend(str(item).split(','))
+    return [str(t).strip().lower() for t in parts if str(t).strip()]
+
+
 def override_arg_defaults(name, default, env=os.environ):
     env_arg = {
         '--ceph-repo'         : 'TEUTH_CEPH_REPO',
@@ -54,6 +72,15 @@ def process_args(args):
         key = rename_args.get(key) or key
         if key == 'suite_branch':
             value = value or override_arg_defaults('--suite-branch', None)
+        if key == 'tag':
+            raw = value
+            value = normalize_tags(value)
+            if raw and not value:
+                schedule_fail(
+                    "--tag was given but no valid tag values remain "
+                    "(use non-empty labels; comma-separated or repeat --tag)",
+                    dry_run=args.get('--dry-run', False),
+                )
         if key == 'suite' and value is not None:
             value = normalize_suite_name(value)
         if key == 'suite_relpath' and value is None:

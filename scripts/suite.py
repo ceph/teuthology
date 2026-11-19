@@ -85,6 +85,9 @@ Standard arguments:
                               purposes, but it will still be used for test
                               running. The <suite_dir> must have `qa/suite`
                               sub-directory.
+  --tag <tag>...              Optional label(s) for this run on the results
+                              server (e.g. tracker id). Repeat the flag or use a
+                              comma-separated value; labels are lowercased.
   --validate-sha1 <bool>
                               Validate that git SHA1s passed to -S exist.
                               [default: true]
