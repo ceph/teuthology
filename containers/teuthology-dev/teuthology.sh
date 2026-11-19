@@ -9,10 +9,17 @@ if [ -n "$TEUTHOLOGY_TESTNODES" ]; then
     done
     TEUTHOLOGY_CONF=${TEUTHOLOGY_CONF:-}
 else
-    TEUTHOLOGY_CONF=/teuthology/containerized_node.yaml
+    TEUTHOLOGY_CONF=${TEUTHOLOGY_CONF:-/teuthology/containerized_node.yaml}
 fi
 export TEUTHOLOGY_MACHINE_TYPE=${TEUTHOLOGY_MACHINE_TYPE:-testnode}
 if [ "$TEUTHOLOGY_SUITE" != "none" ]; then
+    # Add Filter out list for teuthology-suite
+    DEFAULT_FILTER_OUT="libcephfs,kclient"
+    EXTRA_FILTER_OUT=${EXTRA_FILTER_OUT:-}
+    FILTER_OUT_LIST=${FILTER_OUT_LIST:-$DEFAULT_FILTER_OUT}
+    if [ -n "$EXTRA_FILTER_OUT" ]; then
+        FILTER_OUT_LIST="$FILTER_OUT_LIST,$EXTRA_FILTER_OUT"
+    fi
     if [ -n "$TEUTHOLOGY_BRANCH" ]; then
       TEUTH_BRANCH_FLAG="--teuthology-branch $TEUTHOLOGY_BRANCH"
     fi
@@ -25,7 +32,7 @@ if [ "$TEUTHOLOGY_SUITE" != "none" ]; then
         --suite "${TEUTHOLOGY_SUITE:-teuthology:no-ceph}" \
         --suite-branch "${TEUTHOLOGY_SUITE_BRANCH:-main}" \
         --suite-repo "${TEUTHOLOGY_SUITE_REPO:-https://github.com/ceph/ceph.git}" \
-        --filter-out "libcephfs,kclient" \
+        --filter-out "$FILTER_OUT_LIST" \
         --force-priority \
         --seed 349 \
         ${TEUTHOLOGY_SUITE_EXTRA_ARGS} \
