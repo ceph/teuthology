@@ -417,8 +417,29 @@ def task(ctx, config):
             priority: 1
             url: "http://location.repo"
 
-    Note: The 'repos' are supported for SUSE-based distros only, but patches
-    are welcome to add support for other distros.
+    The 'repos' may also be set under overrides, in which case they take
+    precedence. They are supported for SUSE-based distros and CentOS, Rocky
+    and Alma, and for Debian-based distros with a different set of keys:
+    every entry must specify 'name', 'url', 'suite', 'components' (a list)
+    and exactly one of 'key_url' (an ASCII-armored public key that is
+    trusted for that repository only) or 'trusted: true'. For a flat
+    repository, use a 'suite' ending in '/' such as './' and omit
+    'components':
+
+    - install:
+        repos:
+          - name: "repo-alias"
+            url: "http://location.repo/ubuntu"
+            suite: "jammy"
+            components: ["main"]
+            key_url: "http://location.repo/release.asc"
+
+    Use 'trusted: true' instead of 'key_url' only for unsigned repos that you
+    control, e.g. one built locally. It disables signature verification for
+    that repo, and for that repo alone.
+    Packages are installed from the repos by name, without a version
+    constraint, and the repos are removed on cleanup. Patches are welcome to
+    add support for other distros.
 
 
     Enable Fedora copr repositories using enable_coprs:
@@ -534,6 +555,8 @@ def task(ctx, config):
         log.debug('INSTALL overrides: %s' % install_overrides)
         _override_extra_system_packages(config, project, install_overrides)
         repos = install_overrides.get('repos', None)
+
+    repos = repos or config.get('repos')
 
     log.debug('config %s' % config)
 

@@ -1,3 +1,4 @@
+import contextlib
 import os
 import pytest
 import yaml
@@ -6,6 +7,7 @@ from mock import patch, Mock
 from pytest import mark
 
 from teuthology.task import install
+from teuthology.task.install import deb
 
 
 class TestInstall(object):
@@ -444,3 +446,165 @@ class TestInstall(object):
         install._override_extra_system_packages(install_task, 'ceph', install_overrides)
 
         assert install_task.get('extra_system_packages') == expect
+
+
+def apt_repo(**kwargs):
+    repo = dict(
+        name='custom',
+        url='https://example.com/ubuntu',
+        suite='jammy',
+        components=['main'],
+        key_url='https://example.com/release.asc',
+    )
+    repo.update(kwargs)
+    return repo
+
+
+class TestDebCustomRepos(object):
+
+    @pytest.mark.parametrize(
+        'repo',
+        [
+            {k: v for k, v in apt_repo().items() if k != 'suite'},
+            apt_repo(priority=1),
+            apt_repo(name='../evil'),
+            apt_repo(components=[]),
+            apt_repo(components='main'),
+            apt_repo(suite='./'),
+            {k: v for k, v in apt_repo().items() if k != 'components'},
+            apt_repo(url='https://example.com/ubuntu jammy'),
+            apt_repo(trusted=True),
+            apt_repo(trusted='yes'),
+            {k: v for k, v in apt_repo().items() if k != 'key_url'},
+        ],
+    )
+    def test_validate_rejects_invalid_repo(self, repo):
+        with pytest.raises(ValueError):
+            deb._validate_apt_repos([repo])
+
+    def test_validate_rejects_duplicate_names(self):
+        with pytest.raises(ValueError):
+            deb._validate_apt_repos([apt_repo(), apt_repo()])
+
+    @patch("teuthology.task.install.deb._get_builder_project")
+    @patch("teuthology.task.install.deb._ensure_release_key")
+    def test_install_with_custom_repos(self, m_key, m_builder):
+        remote = Mock()
+        config = dict(
+            repos=[apt_repo()],
+            extra_system_packages=dict(deb=['sys1']),
+        )
+        deb._update_package_list_and_install(
+            Mock(), remote, ['pkg1', 'pkg2'], config)
+
+        m_builder.assert_not_called()
+        m_key.assert_not_called()
+        key_path = '/etc/apt/keyrings/teuthology-custom.asc'
+        remote.sudo_write_file.assert_called_once_with(
+            '/etc/apt/sources.list.d/teuthology-custom.list',
+            'deb [signed-by=%s] https://example.com/ubuntu jammy main\n'
+            % key_path,
+            mode='0644',
+        )
+        calls = [c[1]['args'] for c in remote.run.call_args_list]
+        fetch_key = ['sudo', 'curl', '-sSfL', '-o', key_path,
+                     'https://example.com/release.asc']
+        update = ['sudo', 'apt-get', 'update']
+        assert calls.index(fetch_key) < calls.index(update)
+        assert remote.run.call_args_list[calls.index(update)][1][
+            'check_status'] is True
+        installs = [c for c in calls if 'install' in c and 'apt-get' in c]
+        assert [c[-2:] for c in installs[:1]] == [['pkg1', 'pkg2']]
+        assert installs[1][-1] == 'sys1'
+
+    @patch("teuthology.task.install.deb._get_builder_project")
+    def test_install_with_trusted_repo(self, m_builder):
+        remote = Mock()
+        repo = {k: v for k, v in apt_repo().items() if k != 'key_url'}
+        repo['trusted'] = True
+        deb._update_package_list_and_install(
+            Mock(), remote, ['pkg1'], dict(repos=[repo]))
+
+        remote.sudo_write_file.assert_called_once_with(
+            '/etc/apt/sources.list.d/teuthology-custom.list',
+            'deb [trusted=yes] https://example.com/ubuntu jammy main\n',
+            mode='0644',
+        )
+        calls = [c[1]['args'] for c in remote.run.call_args_list]
+        assert not any('curl' in c for c in calls)
+
+    @patch("teuthology.task.install.deb._get_builder_project")
+    def test_install_with_flat_repo(self, m_builder):
+        remote = Mock()
+        repo = apt_repo(suite='./', trusted=True)
+        del repo['components'], repo['key_url']
+        deb._update_package_list_and_install(
+            Mock(), remote, ['pkg1'], dict(repos=[repo]))
+
+        remote.sudo_write_file.assert_called_once_with(
+            '/etc/apt/sources.list.d/teuthology-custom.list',
+            'deb [trusted=yes] https://example.com/ubuntu ./\n',
+            mode='0644',
+        )
+
+    @patch("teuthology.task.install.deb._get_builder_project")
+    @patch("teuthology.task.install.deb._ensure_release_key")
+    def test_install_without_repos_uses_builder(self, m_key, m_builder):
+        builder = m_builder.return_value
+        builder.version = '1.2.3'
+        remote = Mock()
+        deb._update_package_list_and_install(Mock(), remote, ['pkg1'], {})
+
+        m_key.assert_called_once_with(remote)
+        builder.install_repo.assert_called_once_with()
+        remote.sudo_write_file.assert_not_called()
+        install = remote.run.call_args_list[-1][1]['args']
+        assert install[-1] == 'pkg1=1.2.3'
+
+    @patch("teuthology.task.install.deb._get_builder_project")
+    def test_invalid_repos_do_not_touch_remote(self, m_builder):
+        remote = Mock()
+        with pytest.raises(ValueError):
+            deb._update_package_list_and_install(
+                Mock(), remote, ['pkg1'], dict(repos=[apt_repo(priority=1)]))
+        remote.run.assert_not_called()
+        remote.sudo_write_file.assert_not_called()
+
+    @patch("teuthology.task.install.deb._get_builder_project")
+    def test_remove_sources_list_only_removes_generated_files(self, m_builder):
+        remote = Mock()
+        config = dict(repos=[apt_repo(name='a'), apt_repo(name='b')])
+        deb._remove_sources_list(Mock(), config, remote)
+
+        m_builder.assert_not_called()
+        assert remote.run.call_args_list[0][1]['args'] == [
+            'sudo', 'rm', '-f',
+            '/etc/apt/sources.list.d/teuthology-a.list',
+            '/etc/apt/keyrings/teuthology-a.asc',
+            '/etc/apt/sources.list.d/teuthology-b.list',
+            '/etc/apt/keyrings/teuthology-b.asc',
+        ]
+
+    @pytest.mark.parametrize(
+        'task_config, overrides, expect',
+        [
+            ({'repos': [apt_repo(name='task')]}, {}, 'task'),
+            ({'repos': [apt_repo(name='task')]},
+             {'repos': [apt_repo(name='override')]}, 'override'),
+            ({}, {}, None),
+        ],
+    )
+    @patch("teuthology.task.install.ship_utilities")
+    @patch("teuthology.task.install.install")
+    def test_task_passes_repos_to_install(self, m_install, m_ship,
+                                          task_config, overrides, expect):
+        m_install.side_effect = lambda ctx, config: contextlib.nullcontext()
+        m_ship.side_effect = lambda ctx, config: contextlib.nullcontext()
+        ctx = Mock(config={'overrides': {'install': overrides}}, summary={})
+        with install.task(ctx, task_config):
+            pass
+        nested_config = m_install.call_args[1]['config']
+        if expect is None:
+            assert 'repos' not in nested_config
+        else:
+            assert nested_config['repos'][0]['name'] == expect
