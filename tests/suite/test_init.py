@@ -267,3 +267,23 @@ Maybe you want 'gibba,smithi,mira' or similar"
                 '--machine-type', machine_type
             ])
             m_sleep.assert_called_with(int(throttle))
+
+
+def test_normalize_tags():
+    assert suite.normalize_tags('Foo, bar') == ['foo', 'bar']
+    assert suite.normalize_tags(['Squid', 'Reef']) == ['squid', 'reef']
+    assert suite.normalize_tags(['tracker-1,tracker-2']) == [
+        'tracker-1', 'tracker-2',
+    ]
+    assert suite.normalize_tags('') == []
+    assert suite.normalize_tags(None) == []
+    assert suite.normalize_tags([]) == []
+
+
+def test_process_args_rejects_empty_tag_values():
+    with pytest.raises(ScheduleFailError):
+        suite.process_args({
+            '--suite': 'rados',
+            '--tag': [','],
+            '--dry-run': True,
+        })

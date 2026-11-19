@@ -51,6 +51,21 @@ class TestRun(object):
         assert runobj.base_config.email == self.args_dict['email']
 
     @patch('teuthology.suite.run.util.fetch_repos')
+    @patch('teuthology.suite.run.util.git_ls_remote')
+    @patch('teuthology.suite.run.util.git_validate_sha1')
+    def test_tags_on_base_config(self, m_git_validate_sha1,
+                                  m_git_ls_remote, _):
+        m_git_validate_sha1.return_value = self.args_dict['ceph_sha1']
+        self.args_dict['teuthology_branch'] = 'main'
+        self.args_dict['suite_branch'] = 'main'
+        self.args_dict['tag'] = ['v20.2.2.rc1-fs', 'smoke']
+        m_git_ls_remote.return_value = 'suite_sha1'
+        args = YamlConfig.from_dict(self.args_dict)
+
+        runobj = self.klass(args)
+        assert runobj.base_config.tags == ['v20.2.2.rc1-fs', 'smoke']
+
+    @patch('teuthology.suite.run.util.fetch_repos')
     def test_name(self, m_fetch_repos):
         stamp = datetime.now().strftime(TIMESTAMP_FMT)
         with patch.object(run.Run, 'create_initial_config',
