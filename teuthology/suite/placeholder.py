@@ -62,6 +62,7 @@ dict_templ = {
     'machine_type': Placeholder('machine_type'),
     'os_type': Placeholder('os_type', required=False),
     'os_version': Placeholder('os_version', required=False),
+    'package_source': Placeholder('package_source', required=False),
     'overrides': {
         'admin_socket': {
             'branch': Placeholder('ceph_branch'),
