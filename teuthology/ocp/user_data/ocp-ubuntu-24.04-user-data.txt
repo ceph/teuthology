@@ -1,0 +1,18 @@
+#cloud-config
+disable_root: false
+packages:
+  - qemu-guest-agent
+users:
+  - name: ubuntu
+    groups: sudo
+    shell: /bin/bash
+    sudo: ["ALL=(ALL) NOPASSWD:ALL"]
+
+# NoCloud networkData (teuthology strips this into cloudInitNoCloud.networkData)
+network:
+  version: 2
+  ethernets:
+    all-en:
+      match:
+        name: en*
+      dhcp4: true
