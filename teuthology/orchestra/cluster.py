@@ -2,7 +2,11 @@
 Cluster definition
 part of context, Cluster is used to save connection information.
 """
+
 from teuthology.orchestra import run
+from teuthology.orchestra.role import Role
+
+from typing import Optional, Iterator
 
 class Cluster(object):
     """
@@ -48,6 +52,38 @@ class Cluster(object):
                     ),
                 )
         self.remotes[remote] = list(roles)
+
+    def role_items(self):
+        """
+        Generator of role values.  Each call returns another role.
+        """
+        for _, roles in self.remotes.items():
+            for name in roles:
+                yield name
+
+
+    def iter_items(self, name: str):
+        """
+        Generator of remotes.  Each call returns another remote, roles pair.
+        :param name: role name
+        """
+        for remote, roles in self.remotes.items():
+            if next(Role.iter_roles(roles, name)):
+                yield (remote, roles)
+
+
+    def iter_roles(self, name: str, cluster: Optional[str] = None) -> Iterator[str]:
+        """
+        Generator of role indeces.
+        Each call returns another role index for the role name specified.
+
+        :param name: role name
+        :param cluster: Cluster name
+        """
+        for _, roles in self.remotes.items():
+            for _, index in Role.iter_name_index(roles, name, cluster):
+                yield index
+
 
     def run(self, wait=True, parallel=False, **kwargs):
         """
