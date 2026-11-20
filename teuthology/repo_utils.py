@@ -6,8 +6,6 @@ import shutil
 import subprocess
 import time
 
-import teuthology.exporter as exporter
-
 from teuthology import misc
 from teuthology.util.flock import FileLock
 from teuthology.config import config
@@ -571,6 +569,9 @@ def fetch_teuthology(branch, commit=None, lock=True):
 
 
 def bootstrap_teuthology(dest_path):
+    # Imported here because the exporter is slow to import and can lead back
+    # to this module (via teuthology.dispatcher and teuthology.task.ansible).
+    import teuthology.exporter as exporter
     with exporter.BootstrapTime().time():
         log.info("Bootstrapping %s", dest_path)
         # This magic makes the bootstrap script not attempt to clobber an

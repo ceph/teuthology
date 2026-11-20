@@ -1,7 +1,6 @@
 import logging
 import os
 
-import teuthology.exporter
 import teuthology.lock.query
 from teuthology.misc import decanonicalize_hostname, get_distro, get_distro_version
 
@@ -68,6 +67,10 @@ def reimage(ctx, machine_name, machine_type):
         # or SystemExit
         raise
     finally:
+        # Imported here because the exporter pulls in prometheus_client,
+        # psutil and teuthology.beanstalk, and many importers of this package
+        # never reimage anything.
+        import teuthology.exporter
         teuthology.exporter.NodeReimagingResults().record(
             machine_type=machine_type,
             status=status,
