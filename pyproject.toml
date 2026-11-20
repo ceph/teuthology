@@ -42,6 +42,7 @@ dependencies = [
     "requests>2.13.0",
     "requests-oauthlib",
     "sentry-sdk",
+    "sshtunnel",
     "types-psutil",
     "urllib3",
     "build>=1.2.1",
