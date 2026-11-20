@@ -1,11 +1,12 @@
 import re
 
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 # When we're not using ISO format, we're using this
 TIMESTAMP_FMT = "%Y-%m-%d_%H:%M:%S"
 
-def parse_timestamp(timestamp: str) -> datetime:
+def parse_timestamp(timestamp: str, tz: Optional[timezone] = timezone.utc) -> datetime:
     """
     timestamp: A string either in ISO 8601 format or TIMESTAMP_FMT.
                If no timezone is specified, UTC is assumed.
@@ -17,7 +18,7 @@ def parse_timestamp(timestamp: str) -> datetime:
     except ValueError:
         dt = datetime.strptime(timestamp, TIMESTAMP_FMT)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=tz)
     return dt
 
 def parse_offset(offset: str) -> timedelta:
