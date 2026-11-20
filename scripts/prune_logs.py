@@ -10,6 +10,10 @@ usage:
 
 Prune old logfiles from the archive
 
+A job's age is its run's age: the scheduling timestamp in the run's name, or
+the run directory's creation time if the name has none. File and directory
+modification times are not used.
+
 optional arguments:
   -h, --help            Show this help message and exit
   -v, --verbose         Be more verbose
