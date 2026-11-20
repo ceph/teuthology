@@ -6,8 +6,6 @@ import subprocess
 import logging
 import getpass
 
-from typing import Union
-
 import teuthology.exporter
 
 from teuthology import beanstalk
@@ -219,7 +217,7 @@ def find_pids(run_name):
             run_pids.append(pid)
     return run_pids
 
-def find_targets(run_name: str, job_id: Union[str, int, None] = None) -> dict:
+def find_targets(run_name: str, job_id: str | int | None = None) -> dict:
     if job_id is not None:
         job_info = report.ResultsReporter().get_jobs(run_name, str(job_id))
         return job_info.get("targets") or dict()

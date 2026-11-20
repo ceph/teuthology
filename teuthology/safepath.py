@@ -1,7 +1,7 @@
 import errno
 import os
 
-def munge(path):
+def munge(path: str) -> str:
     """
     Munge a potentially hostile path name to be safe to use.
 
@@ -24,7 +24,7 @@ def munge(path):
     return '/'.join(segments)
 
 
-def makedirs(root, path):
+def makedirs(root: str, path: str) -> None:
     """
     os.makedirs gets confused if the path contains '..', and root might.
 

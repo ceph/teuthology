@@ -1,5 +1,6 @@
 import contextlib
 import logging
+from collections.abc import Generator
 
 import teuthology.lock.ops
 import teuthology.lock.query
@@ -9,7 +10,7 @@ log = logging.getLogger(__name__)
 
 
 @contextlib.contextmanager
-def lock_machines(ctx, config):
+def lock_machines(ctx, config: list[int | str]) -> Generator[None, None, None]:
     """
     Lock machines.  Called when the teuthology run finds and locks
     new machines.  This is not called if the one has teuthology-locked

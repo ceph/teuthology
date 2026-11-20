@@ -25,7 +25,7 @@ def split_user(user_at_host):
     return user, host
 
 
-def create_key(keytype, key):
+def create_key(keytype: str, key: str) -> 'paramiko.PKey':
     """
     Create an ssh-rsa, ssh-dss or ssh-ed25519 key.
     """
@@ -36,8 +36,10 @@ def create_key(keytype, key):
     return ke.key
 
 
-def connect(user_at_host, host_key=None, keep_alive=False, timeout=60,
-            _SSHClient=None, _create_key=None, retry=True, key_filename=None):
+def connect(user_at_host: str, host_key: str | None = None, keep_alive: bool = False,
+            timeout: int = 60,
+            _SSHClient=None, _create_key=None,
+            retry: bool = True, key_filename: str | list[str] | None = None) -> paramiko.SSHClient:
     """
     ssh connection routine.
 

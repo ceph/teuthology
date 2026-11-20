@@ -1,7 +1,6 @@
 import pytest
 
 from datetime import datetime, timedelta, timezone
-from typing import Type
 
 from teuthology.util import time
 
@@ -22,7 +21,7 @@ from teuthology.util import time
 
     ]
 )
-def test_parse_timestamp(timestamp: str, result: datetime | Type[Exception]):
+def test_parse_timestamp(timestamp: str, result: datetime | type[Exception]):
     if isinstance(result, datetime):
         assert time.parse_timestamp(timestamp) == result
     else:
@@ -46,7 +45,7 @@ def test_parse_timestamp(timestamp: str, result: datetime | Type[Exception]):
         ["7dwarfs", ValueError],
     ]
 )
-def test_parse_offset(offset: str, result: timedelta | Type[Exception]):
+def test_parse_offset(offset: str, result: timedelta | type[Exception]):
     if isinstance(result, timedelta):
         assert time.parse_offset(offset) == result
     else:

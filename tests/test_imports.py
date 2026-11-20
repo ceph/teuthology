@@ -3,12 +3,11 @@ import pytest
 import sys
 
 from pathlib import Path
-from typing import List
 
 root = Path("./teuthology")
 
 
-def find_modules() -> List[str]:
+def find_modules() -> list[str]:
     modules = []
     for path in root.rglob("*.py"):
         if path.name.startswith("test_"):

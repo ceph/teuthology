@@ -7,8 +7,6 @@ import subprocess
 import sys
 import yaml
 
-from typing import Dict, List
-
 try:
     from gevent.exceptions import LoopExit
 except ImportError:
@@ -39,7 +37,7 @@ def stop(_sig, _frame) -> None:
     sys.exit(0)
 
 
-def load_config(archive_dir=None):
+def load_config(archive_dir: str | None = None) -> None:
     teuth_config.load()
     if archive_dir is not None:
         if not os.path.isdir(archive_dir):
@@ -51,7 +49,7 @@ def load_config(archive_dir=None):
             teuth_config.archive_base = archive_dir
 
 
-def main(args):
+def main(args) -> int:
     signal.signal(signal.SIGTERM, stop)
     archive_dir = args.archive_dir or teuth_config.archive_base
 
@@ -283,7 +281,7 @@ def delete_job(job):
         log.exception("Saw exception while trying to delete job")
 
 
-def find_dispatcher_processes() -> Dict[str, List[psutil.Process]]:
+def find_dispatcher_processes() -> dict[str, list[psutil.Process]]:
     def match(proc):
         try:
             cmdline = proc.cmdline()

@@ -137,7 +137,7 @@ exclude = [
 version_scheme = "python-simplified-semver"
 
 [tool.ruff]
-lint.select = ["F", "E9"]
+lint.select = ["F", "E9", "UP006", "UP007", "UP035", "UP045"]
 
 [tool.pytest]
 testpaths = ["tests"]
