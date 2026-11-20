@@ -805,7 +805,7 @@ class TestShamanProject(TestBuilderProject):
         ('rhel', None, None, 'centos/8'),
         ('centos', None, None, 'centos/9'),
         ('fedora', None, None, 'fedora/25'),
-        ('ubuntu', None, None, 'ubuntu/22.04'),
+        ('ubuntu', None, None, 'ubuntu/24.04'),
         ('alma', None, None, 'alma/9'),
         ('rocky', None, None, 'rocky/9'),
     ]
@@ -1051,7 +1051,7 @@ class TestPulpProject(TestBuilderProject):
         ('rhel', None, None, 'centos/8'),
         ('centos', None, None, 'centos/9'),
         ('fedora', None, None, 'fedora/25'),
-        ('ubuntu', None, None, 'ubuntu/22.04'),
+        ('ubuntu', None, None, 'ubuntu/24.04'),
         ('alma', None, None, 'alma/9'),
         ('rocky', None, None, 'rocky/9'),
     ]

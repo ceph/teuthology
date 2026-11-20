@@ -33,7 +33,7 @@ from teuthology.exceptions import (CommandCrashedError, CommandFailedError,
 from teuthology.orchestra import run
 from teuthology.config import config
 from teuthology.contextutil import safe_while
-from teuthology.orchestra.opsys import DEFAULT_OS_VERSION
+from teuthology.orchestra.opsys import DEFAULT_OS_TYPE, DEFAULT_OS_VERSION
 
 
 log = logging.getLogger(__name__)
@@ -1174,8 +1174,7 @@ def get_distro(ctx):
     except AttributeError:
         pass
 
-    # if os_type is None, return the default of ubuntu
-    return os_type or "ubuntu"
+    return os_type or DEFAULT_OS_TYPE
 
 
 def get_distro_version(ctx):

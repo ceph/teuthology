@@ -242,8 +242,8 @@ class TestMissingPackages(object):
 
 class TestDistroDefaults(object):
     def test_distro_defaults_plana(self):
-        expected = ('x86_64', 'ubuntu/22.04',
-                    OS(name='ubuntu', version='22.04', codename='jammy'))
+        expected = ('x86_64', 'ubuntu/24.04',
+                    OS(name='ubuntu', version='24.04', codename='noble'))
         assert util.get_distro_defaults('ubuntu', 'plana') == expected
 
     def test_distro_defaults_debian(self):
@@ -261,7 +261,13 @@ class TestDistroDefaults(object):
                     OS(name='fedora', version='25', codename='25'))
         assert util.get_distro_defaults('fedora', 'magna') == expected
 
-    def test_distro_defaults_default(self):
+    def test_distro_defaults_rhel(self):
         expected = ('x86_64', 'centos/9',
                     OS(name='centos', version='9.stream', codename='stream'))
         assert util.get_distro_defaults('rhel', 'magna') == expected
+
+    @pytest.mark.parametrize('distro', [None, 'None'])
+    def test_distro_defaults_default(self, distro):
+        expected = ('x86_64', 'ubuntu/24.04',
+                    OS(name='ubuntu', version='24.04', codename='noble'))
+        assert util.get_distro_defaults(distro, 'magna') == expected
