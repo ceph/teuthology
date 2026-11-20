@@ -1,0 +1,8 @@
+[Unit]
+Description=Run Teuthology Node Cleanup
+
+[Timer]
+OnUnitActiveSec=15m
+
+[Install]
+WantedBy=timers.target
