@@ -1,6 +1,7 @@
 import json
 import pytest
 import yaml
+from mock import Mock, patch
 
 from tests import fake_archive
 from teuthology import report
@@ -82,5 +83,60 @@ def test_json_for_job(archive, reporter):
         run_name, str(job['job_id']))
     out_obj = json.loads(out_json)
     assert full_obj == out_obj
+
+
+def test_register_run_posts_tags_list():
+    reporter = report.ResultsReporter(base_uri='http://paddles.example')
+    reporter.session = Mock()
+    reporter.session.post.return_value = Mock(status_code=200)
+    reporter.register_run(
+        'user-2025-01-01_00:00:00-smoke-main-testing-basic-plana',
+        ['v20.2.2.rc1-fs', 'smoke'],
+    )
+    reporter.session.post.assert_called_once()
+    uri = reporter.session.post.call_args[0][0]
+    body = json.loads(reporter.session.post.call_args[1]['data'])
+    assert uri == 'http://paddles.example/runs/'
+    assert body == {
+        'name': 'user-2025-01-01_00:00:00-smoke-main-testing-basic-plana',
+        'tags': ['v20.2.2.rc1-fs', 'smoke'],
+    }
+
+
+def test_register_run_puts_tags_when_run_exists():
+    reporter = report.ResultsReporter(base_uri='http://paddles.example')
+    reporter.session = Mock()
+    reporter.session.post.return_value = Mock(
+        status_code=400,
+        json=Mock(return_value={
+            'message': 'run with name foo already exists',
+        }),
+        text='',
+    )
+    reporter.session.put.return_value = Mock(status_code=200)
+    reporter.register_run('foo', ['release-qa'])
+    reporter.session.put.assert_called_once()
+    body = json.loads(reporter.session.put.call_args[1]['data'])
+    assert body == {'tags': ['release-qa']}
+
+
+@patch('teuthology.report.config')
+def test_try_register_run_skips_without_server(mock_config):
+    mock_config.results_server = None
+    reporter = report.ResultsReporter()
+    reporter.register_run = Mock()
+    with patch('teuthology.report.ResultsReporter', return_value=reporter):
+        report.try_register_run('foo', tags=['bar'])
+    reporter.register_run.assert_not_called()
+
+
+@patch('teuthology.report.config')
+def test_try_register_run_calls_register(mock_config):
+    mock_config.results_server = 'http://paddles'
+    reporter = report.ResultsReporter(base_uri='http://paddles')
+    reporter.register_run = Mock()
+    with patch('teuthology.report.ResultsReporter', return_value=reporter):
+        report.try_register_run('foo', tags=['bar'])
+    reporter.register_run.assert_called_once_with('foo', ['bar'])
 
 
