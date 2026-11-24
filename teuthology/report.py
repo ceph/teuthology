@@ -457,6 +457,65 @@ class ResultsReporter(object):
         response = self.session.delete(uri)
         response.raise_for_status()
 
+    def register_run(self, run_name, tags):
+        """
+        Create a run on the results server with metadata tags, or update tags
+        when the run already exists.
+        """
+        if not self.base_uri or not tags:
+            return
+        payload = {'name': run_name, 'tags': list(tags)}
+        headers = {'content-type': 'application/json'}
+        uri = '{base}/runs/'.format(base=self.base_uri)
+        body = json.dumps(payload)
+        inc = random.uniform(0, 1)
+        with safe_while(
+                sleep=1, increment=inc,
+                action='register run {name}'.format(name=run_name)) as proceed:
+            while proceed():
+                response = self.session.post(
+                    uri, data=body, headers=headers)
+                if response.status_code == 200:
+                    self.log.info(
+                        "Registered run %s with tags %r", run_name, tags)
+                    return
+                try:
+                    resp_json = response.json()
+                except ValueError:
+                    resp_json = {}
+                msg = resp_json.get('message', '') or response.text
+                if (response.status_code == 400
+                        and msg and 'already exists' in msg):
+                    if self._update_run_tags(run_name, tags):
+                        return
+                if msg:
+                    self.log.error(
+                        "POST to {uri} failed with status {status}: {msg}"
+                        .format(
+                            uri=uri,
+                            status=response.status_code,
+                            msg=msg,
+                        ))
+        response.raise_for_status()
+
+    def _update_run_tags(self, run_name, tags):
+        headers = {'content-type': 'application/json'}
+        uri = '{base}/runs/{name}/'.format(
+            base=self.base_uri, name=run_name)
+        body = json.dumps({'tags': list(tags)})
+        response = self.session.put(uri, data=body, headers=headers)
+        if response.status_code == 200:
+            self.log.info("Updated tags on run %s: %r", run_name, tags)
+            return True
+        try:
+            msg = response.json().get('message', '')
+        except ValueError:
+            msg = response.text
+        self.log.error(
+            "PUT to {uri} failed with status {status}: {msg}".format(
+                uri=uri, status=response.status_code, msg=msg))
+        return False
+
 
 def push_job_info(run_name, job_id, job_info, base_uri=None):
     """
@@ -517,6 +576,27 @@ def try_push_job_info(job_config, extra_info=None):
     except report_exceptions:
         log.exception("Could not report results to %s",
                       config.results_server)
+
+
+def try_register_run(run_name, tags=None):
+    """
+    Register a suite run on the results server with optional metadata tags.
+
+    Failures are logged and ignored so scheduling can continue.
+    """
+    log = init_logging()
+    if not config.results_server:
+        log.warning(
+            'No results_server in config; not registering run tags')
+        return
+    if not tags:
+        return
+    reporter = ResultsReporter()
+    try:
+        reporter.register_run(run_name, tags)
+    except report_exceptions:
+        log.exception(
+            "Could not register run tags at %s", config.results_server)
 
 
 def try_delete_jobs(run_name, job_ids, delete_empty_run=True):

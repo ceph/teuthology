@@ -11,7 +11,7 @@ from pathlib import Path
 
 from humanfriendly import format_timespan
 
-from teuthology import repo_utils, schedule
+from teuthology import report, repo_utils, schedule
 import teuthology.beanstalk
 
 from teuthology.config import config, JobConfig
@@ -462,6 +462,9 @@ class Run(object):
         "last-in-suite" job that sends an email to the specified address (if
         one is configured).
         """
+        tags = getattr(self.args, 'tag', None) or []
+        if tags and not self.args.dry_run:
+            report.try_register_run(self.name, tags=tags)
         # Make sure the yaml paths are actually valid
         for yaml_path in self.base_yaml_paths:
             full_yaml_path = os.path.join(self.suite_repo_path, yaml_path)
