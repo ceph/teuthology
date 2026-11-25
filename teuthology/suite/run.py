@@ -37,6 +37,7 @@ class Run(object):
     __slots__ = (
         'args', 'name', 'base_config', 'suite_repo_path', 'base_yaml_paths',
         'kernel_dict', 'config_input', 'timestamp', 'user', 'os',
+        'tag',
     )
 
     def __init__(self, args):
@@ -53,6 +54,7 @@ class Run(object):
             config.ceph_git_url = self.args.ceph_repo
         if self.args.suite_repo:
             config.ceph_qa_suite_git_url = self.args.suite_repo
+        self.tag = getattr(self.args, 'tag', None) or []
 
         self.base_config = self.create_initial_config()
 
@@ -397,6 +399,8 @@ class Run(object):
             job_config.sleep_before_teardown = int(self.args.sleep_before_teardown)
         if self.args.rocketchat:
             job_config.rocketchat = self.args.rocketchat
+        if self.tag:
+            job_config.tags = list(self.tag)
         return job_config
 
     def build_job_config(self, conf_dict, description=None, **kwargs):
