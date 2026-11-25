@@ -7,6 +7,27 @@ if [ -n "$TEUTHOLOGY_TESTNODES" ]; then
     for node in $(echo $TEUTHOLOGY_TESTNODES | tr , ' '); do
         teuthology-update-inventory -m "$TEUTHOLOGY_MACHINE_TYPE" "$node"
     done
+    # teuthology-update-inventory records each node's os_version as major.minor
+    # (e.g. Rocky "10.2"), but suites request the major version (rocky "10", and
+    # Shaman builds are rocky/10). For fixed, non-reimaged testnodes that would
+    # make `lock_many` fail with "0 nodes available". Normalize every node of
+    # this machine_type in paddles to its major os_version so the lock matches.
+    python3 - "$TEUTHOLOGY_MACHINE_TYPE" <<'PY'
+import sys, json, urllib.request
+machine_type = sys.argv[1]
+base = "http://paddles:8080"
+nodes = json.load(urllib.request.urlopen(f"{base}/nodes/?machine_type={machine_type}"))
+for n in nodes:
+    ver = n.get("os_version") or ""
+    major = ver.split(".")[0]
+    if major and major != ver:
+        body = json.dumps({"os_version": major}).encode()
+        req = urllib.request.Request(
+            f"{base}/nodes/{n['name']}/", data=body,
+            headers={"Content-Type": "application/json"}, method="PUT")
+        urllib.request.urlopen(req)
+        print(f"normalized os_version for {n['name']}: {ver} -> {major}")
+PY
     TEUTHOLOGY_CONF=${TEUTHOLOGY_CONF:-}
 else
     TEUTHOLOGY_CONF=/teuthology/containerized_node.yaml
