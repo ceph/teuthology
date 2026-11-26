@@ -265,3 +265,17 @@ class TestDistroDefaults(object):
         expected = ('x86_64', 'centos/9',
                     OS(name='centos', version='9.stream', codename='stream'))
         assert util.get_distro_defaults('rhel', 'magna') == expected
+
+
+class TestPackageSource(object):
+    def test_resolve_package_source_cli(self):
+        with patch.object(config, 'package_source', 'pulp'):
+            assert util.resolve_package_source('shaman') == 'shaman'
+            assert util.resolve_package_source(None) == 'pulp'
+
+    def test_apply_suite_package_source(self):
+        with patch.object(config, 'package_source', 'pulp'):
+            assert util.apply_suite_package_source(None) == 'pulp'
+            assert config.package_source == 'pulp'
+            assert util.apply_suite_package_source('shaman') == 'shaman'
+            assert config.package_source == 'shaman'

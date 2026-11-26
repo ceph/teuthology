@@ -319,6 +319,7 @@ class TestScheduleSuite(object):
           'name',
           'os_type',
           'os_version',
+          'package_source',
           'overrides',
           'priority',
           'repo',

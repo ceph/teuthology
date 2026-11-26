@@ -52,6 +52,10 @@ Standard arguments:
                               The ceph packages shaman flavor to run with:
                               ('default', 'crimson', 'notcmalloc', 'jaeger')
                               [default: default]
+  --package-source <source>   Package repository for artifact resolution:
+                              ('shaman', 'pulp'). When omitted, uses
+                              package_source from teuthology.yaml
+                              (currently {default_package_source})
   -t <branch>, --teuthology-branch <branch>
                               The teuthology branch to run against.
                               Default value is determined in the next order.
@@ -224,6 +228,7 @@ Scheduler arguments:
                             config.get_ceph_qa_suite_git_url()),
     default_ceph_branch=defaults('--ceph-branch', 'main'),
     default_job_threshold=config.job_threshold,
+    default_package_source=config.package_source,
 )
 
 
